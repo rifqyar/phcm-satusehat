@@ -15,6 +15,8 @@
                     <ul aria-expanded="false" class="collapse">
                         <li><a href="#">Master Obat</a></li>
                         <li><a href="#">Master Specimen</a></li>
+                        <li><a href="#">Master Tindakan Lab</a></li>
+                        <li><a href="#">Master Tindakan Radiologi</a></li>
                     </ul>
                 </li>
                 <li>
