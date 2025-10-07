@@ -1,0 +1,27 @@
+.my-preloader {
+    position: fixed;
+    z-index: 9999;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.loading-text {
+    padding-top: 20px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, 50%);
+    text-align: center;
+    font-size: 18px;
+    color: #000000;
+}
+
+.custom-spinner {
+    color: red;
+}
