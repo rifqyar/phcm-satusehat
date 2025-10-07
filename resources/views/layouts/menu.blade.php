@@ -5,7 +5,7 @@
         <nav class="sidebar-nav">
             <ul id="sidebarnav">
                 <li>
-                    <a href="#" aria-expanded="false"><span class="hide-menu">Dashboard </span></a>
+                    <a href="{{ route('home') }}" aria-expanded="false"><span class="hide-menu">Dashboard </span></a>
                 </li>
                 <li>
                     <a href="#" aria-expanded="false"><span class="hide-menu">Transaksi</span></a>
@@ -13,7 +13,7 @@
                 <li>
                     <a class="has-arrow" href="#" aria-expanded="false"><span class="hide-menu">Master Data</span></a>
                     <ul aria-expanded="false" class="collapse">
-                        <li><a href="#">Master Obat</a></li>
+                        <li><a href="{{ route('master_obat') }}">Master Obat</a></li>
                         <li><a href="#">Master Specimen</a></li>
                     </ul>
                 </li>
