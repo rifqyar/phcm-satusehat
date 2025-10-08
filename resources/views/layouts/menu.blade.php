@@ -15,8 +15,8 @@
                     <ul aria-expanded="false" class="collapse">
                         <li><a href="{{ route('master_obat') }}">Master Obat</a></li>
                         <li><a href="#">Master Specimen</a></li>
-                        <li><a href="#">Master Tindakan Lab</a></li>
-                        <li><a href="#">Master Tindakan Radiologi</a></li>
+                        <li><a href="{{ route('master_laboratory') }}">Master Tindakan Lab</a></li>
+                        <li><a href="{{ route('master_radiology') }}">Master Tindakan Radiologi</a></li>
                     </ul>
                 </li>
                 <li>
