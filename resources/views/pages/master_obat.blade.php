@@ -48,7 +48,7 @@
                             <th>KODE KFA</th>
                             <th>NAMA KFA</th>
                             <th>DESKRIPSI</th>
-
+                            <th>AKSI</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -58,9 +58,26 @@
                                 <td>{{ $data->firstItem() + $index }}</td>
                                 <td>{{ $obat->KDBRG_CENTRA }}</td>
                                 <td>{{ $obat->NAMABRG }}</td>
-                                <td>{{ $obat->KD_BRG_KFA }}</td>
+                                <td>
+                                    {{ $obat->KD_BRG_KFA && trim($obat->KD_BRG_KFA) !== '' ? $obat->KD_BRG_KFA : 'Data Belum di-mapping' }}
+                                </td>
                                 <td>{{ $obat->NAMABRG_KFA }}</td>
                                 <td>{{ $obat->DESCRIPTION }}</td>
+                                <td class="text-center">
+                                    @if (empty($obat->KD_BRG_KFA) || trim($obat->KD_BRG_KFA) === '')
+                                        <button type="button" class="btn btn-sm btn-success" data-toggle="modal"
+                                            data-target="#modalMapping" data-id="{{ $obat->ID }}">
+                                            <i class="fas fa-link"></i> Mapping
+                                        </button>
+                                    @else
+                                        <button type="button" class="btn btn-sm btn-warning" data-toggle="modal"
+                                            data-target="#modalMapping" data-id="{{ $obat->ID }}">
+                                            <i class="fas fa-sync-alt"></i> Mapping Ulang
+                                        </button>
+                                    @endif
+
+                                </td>
+
                             </tr>
                         @empty
                             <tr>
@@ -78,6 +95,48 @@
             </div>
         </div>
     </div>
+    @include('modals.modal_mapping_obat')
+    @push('after-script')
+        <script>
+            $(document).ready(function () {
 
+                // Event saat modal dibuka
+                $('#modalMapping').on('show.bs.modal', function (event) {
+                    const button = $(event.relatedTarget); // tombol yang diklik
+                    const id = button.data('id');
+
+                    // Reset form dulu
+                    $('#formMappingObat')[0].reset();
+
+                    // Simpan ID ke input hidden
+                    $('#id_obat').val(id);
+
+                    // Fetch data via POST
+                    $.ajax({
+                        url: "{{ route('master_obat.show') }}",
+                        type: "POST",
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            id: id
+                        },
+                        success: function (data) {
+                            // Isi form di modal
+                            $('#no').val(data.ID);
+                            $('#kode_barang').val(data.KDBRG_CENTRA);
+                            $('#nama_barang').val(data.NAMABRG);
+                            $('#kode_kfa').val(data.KD_BRG_KFA);
+                            $('#nama_kfa').val(data.NAMABRG_KFA);
+                            $('#deskripsi').val(data.DESCRIPTION);
+                        },
+                        error: function (xhr) {
+                            console.error(xhr.responseText);
+                            alert('Gagal mengambil data obat.');
+                        }
+                    });
+                });
+
+            });
+        </script>
+    @endpush
 
 @endsection
