@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\MasterRadiology;
+use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 class MasterRadiologyController extends Controller
 {
@@ -54,26 +56,56 @@ class MasterRadiologyController extends Controller
     public function saveLoinc(Request $request)
     {
         $request->validate([
-            'id' => 'required|string',      // KD_TIND
-            'nm_tind' => 'required|string', // NM_TIND
-            'code' => 'required|string',
-            'display' => 'required|string',
+            'id' => 'required',
+            'nm_tind' => 'required',
+            'code' => 'required',
+            'display' => 'required',
         ]);
 
-        DB::connection('sqlsrv')
-            ->table('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE')
-            ->updateOrInsert(
-                ['ID' => $request->id], // primary key
-                [
-                    'NM_TIND'    => $request->nm_tind,
-                    'code'       => $request->code,
-                    'display'    => $request->display,
-                    'codesystem' => 'http://loinc.org',
-                    'CATEGORY'   => 'Radiology',
-                ]
-            );
+        try {
+            DB::connection('sqlsrv')
+                ->table('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE')
+                ->updateOrInsert(
+                    ['ID' => $request->id],
+                    [
+                        'NM_TIND' => $request->nm_tind,
+                        'code' => $request->code,
+                        'display' => $request->display,
+                        'codesystem' => 'http://loinc.org',
+                        'CATEGORY' => 'Radiology',
+                    ]
+                );
 
-        return response()->json(['success' => true]);
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'DB error'], 500);
+        }
+    }
+
+    public function searchLoinc(Request $request)
+    {
+        $q = $request->get('query', '');
+        if (trim($q) === '') {
+            return response()->json(['Results' => []]);
+        }
+
+        $client = new Client([
+            'timeout' => 10,
+        ]);
+
+        try {
+            $res = $client->get('https://loinc.regenstrief.org/searchapi/loincs', [
+                'auth' => ['rifqyar', 'Rif1912Qy!'],
+                'query' => ['query' => $q],
+            ]);
+
+            $data = json_decode((string)$res->getBody(), true);
+            $results = $data['Results'] ?? [];
+
+            return response()->json(['Results' => array_slice($results, 0, 10)]);
+        } catch (\Exception $e) {
+            return response()->json(['Results' => []], 500);
+        }
     }
 
 }

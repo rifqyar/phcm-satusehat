@@ -122,15 +122,9 @@
                 async searchLoinc(query) {
                     if (!query) { this.results = []; return; }
                     try {
-                        const res = await axios.get(
-                            `https://loinc.regenstrief.org/searchapi/loincs?query=${encodeURIComponent(query)}`, 
-                            {
-                                auth: {
-                                    username: "USERNAME",
-                                    password: "PASSWORD"
-                                }
-                            }
-                        );
+                        const res = await axios.get("{{ route('master_radiology.search_loinc') }}", {
+                            params: { query }
+                        });
                         this.results = (res.data.Results || []).slice(0, 10); // limit to 10
                     } catch (e) {
                         console.error("LOINC API error:", e);
