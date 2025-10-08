@@ -31,4 +31,22 @@ class MasterObatController extends Controller
 
         return view('pages.master_obat', compact('data'));
     }
+
+public function show(Request $request)
+{
+    $id = $request->input('id');
+
+    $obat = MasterObat::select('ID', 'KDBRG_CENTRA', 'NAMABRG', 'KD_BRG_KFA', 'NAMABRG_KFA', 'DESCRIPTION')
+        ->where('ID', $id)
+        ->first();
+
+    if (!$obat) {
+        return response()->json(['error' => 'Data tidak ditemukan'], 404);
+    }
+
+    return response()->json($obat);
 }
+
+
+}
+

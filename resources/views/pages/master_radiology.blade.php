@@ -122,12 +122,12 @@
                 async searchLoinc(query) {
                     if (!query) { this.results = []; return; }
                     try {
-                        const res = await axios.get(
+                        const res = await axios.post(
                             `https://loinc.regenstrief.org/searchapi/loincs?query=${encodeURIComponent(query)}`, 
                             {
                                 auth: {
-                                    username: "USERNAME",
-                                    password: "PASSWORD"
+                                    username: "rifqyar",
+                                    password: "Rif1912Qy!"
                                 }
                             }
                         );
