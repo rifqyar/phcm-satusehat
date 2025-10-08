@@ -48,6 +48,7 @@
                             <th>KODE KFA</th>
                             <th>NAMA KFA</th>
                             <th>DESKRIPSI</th>
+                            <th>AKSI</th>
 
                         </tr>
                     </thead>
@@ -58,7 +59,9 @@
                                 <td>{{ $data->firstItem() + $index }}</td>
                                 <td>{{ $obat->KDBRG_CENTRA }}</td>
                                 <td>{{ $obat->NAMABRG }}</td>
-                                <td>{{ $obat->KD_BRG_KFA }}</td>
+                                <td>
+                                    {{ $obat->KD_BRG_KFA && trim($obat->KD_BRG_KFA) !== '' ? $obat->KD_BRG_KFA : 'Data Belum di-mapping' }}
+                                </td>
                                 <td>{{ $obat->NAMABRG_KFA }}</td>
                                 <td>{{ $obat->DESCRIPTION }}</td>
                             </tr>
