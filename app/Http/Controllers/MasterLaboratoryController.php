@@ -37,13 +37,13 @@ class MasterLaboratoryController extends Controller
             ->leftJoin('SIRS_PHCM.dbo.RJ_MGRUP_TIND as c', 'a.ID_GRUP_TIND', '=', 'c.ID_GRUP_TIND')
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as ss', 'a.KD_TIND', '=', 'ss.ID')
             ->select(
-                'a.ID_GRUP_TIND',
-                'c.NM_GRUP_TIND',
+                'a.ID_GRUP_TIND as ID_GRUP',
+                'c.NM_GRUP_TIND as NAMA_GRUP',
                 'a.KDKLINIK',
-                'a.KD_TIND',
+                'a.KD_TIND as ID_TINDAKAN',
                 DB::raw('ISNULL(a.URUTAN, 99) as URUTAN'),
-                'b.NM_TIND',
-                DB::raw('COUNT(DISTINCT a.ID_GRUP_TIND) OVER() as JUMLAH_DATA'),
+                'b.NM_TIND as NAMA_TINDAKAN',
+                // DB::raw('COUNT(DISTINCT a.ID_GRUP_TIND) OVER() as JUMLAH_DATA'),
                 'ss.code as SATUSEHAT_CODE',
                 'ss.codesystem as SATUSEHAT_SYSTEM',
                 'ss.display as SATUSEHAT_DISPLAY',

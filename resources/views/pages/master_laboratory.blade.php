@@ -13,6 +13,21 @@
 
     <style>
         /* Existing styles */
+        .table-responsive { overflow: visible; }
+
+        [x-cloak] { display: none !important; }
+
+        .loinc-results {
+            position: absolute;
+            z-index: 3000;
+            left: 0;
+            right: 0;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .loinc-item { cursor: pointer; text-align: left; width: 100%; }
+
         @media (max-width: 640px) {
             .ct-label.ct-horizontal.ct-end {
                 display: none;
@@ -50,19 +65,23 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($data as $index => $lab)
+                        @forelse ($tindakanData as $index => $lab)
                             <tr>
                                 <!-- Nomor urut sesuai pagination -->
-                                <td>{{ $data->firstItem() + $index }}</td>
-                                <td>{{ $lab->NM_GRUP_TIND }}</td>
-                                <td>{{ $lab->NM_TIND }}</td>
+                                <td>{{ $tindakanData->firstItem() + $index }}</td>
+                                <td>{{ $lab->NAMA_GRUP }}</td>
+                                <td>{{ $lab->NAMA_TINDAKAN }}</td>
                                 <td>
-                                    <div x-data="loincHandler('{{ $lab->SATUSEHAT_CODE }}', '{{ $lab->SATUSEHAT_DISPLAY }}', '{{ $lab->KD_TIND }}', '{{ $lab->NM_TIND }}')" class="flex items-center gap-2">
+                                    <div 
+                                        x-data="loincHandler('{{ $lab->SATUSEHAT_CODE }}', '{{ $lab->SATUSEHAT_DISPLAY }}', '{{ $lab->ID_TINDAKAN }}', '{{ $lab->NAMA_TINDAKAN }}')"
+                                        class="position-relative"
+                                        x-cloak
+                                    >
                                         <!-- Display mode -->
                                         <template x-if="!edit">
                                             <div>
-                                                <span x-text="code ? code : '-'"></span>
-                                                <button class="btn btn-sm btn-link p-0" @click="edit = true">
+                                                <span x-text="code ? code : ''"></span>
+                                                <button class="btn btn-sm btn-link p-0" @click="startEdit()">
                                                     <i class="fas" :class="code ? 'fa-edit' : 'fa-plus'"></i>
                                                 </button>
                                             </div>
@@ -71,26 +90,30 @@
                                         <!-- Edit mode -->
                                         <template x-if="edit">
                                             <div class="flex gap-1">
-                                                <input type="text" x-model="searchQuery" placeholder="Search LOINC..." 
-                                                    class="form-control form-control-sm" 
+                                                <input type="text" x-model="searchQuery" placeholder="Search LOINC..."
+                                                    class="form-control form-control-sm"
                                                     @input.debounce.500ms="searchLoinc(searchQuery)">
-                                                <button class="btn btn-success btn-sm" @click="save()">✅</button>
-                                                <button class="btn btn-secondary btn-sm" @click="edit=false">❌</button>
+                                                <button class="btn btn-light btn-sm" @click="save()">✅</button>
+                                                <button class="btn btn-light btn-sm" @click="cancelEdit()">❌</button>
                                             </div>
                                         </template>
 
-                                        <!-- Dropdown results -->
-                                        <div x-show="results.length > 0" class="dropdown-menu show mt-1">
+                                        <!-- Dropdown -->
+                                        <div x-show="results.length > 0" class="dropdown-menu show mt-1" style="max-height:200px; overflow-y:auto;">
                                             <template x-for="item in results" :key="item.LOINC_NUM">
-                                                <button class="dropdown-item" 
-                                                        @click="code=item.LOINC_NUM; display=item.LONG_COMMON_NAME; results=[]">
-                                                    <strong x-text="item.LOINC_NUM"></strong> - <span x-text="item.LONG_COMMON_NAME"></span>
+                                                <button type="button" class="dropdown-item"
+                                                    @click="selectItem(item)">
+                                                    <strong x-text="item.LOINC_NUM"></strong> - 
+                                                    <span x-text="item.LONG_COMMON_NAME"></span>
                                                 </button>
                                             </template>
                                         </div>
+
                                     </div>
                                 </td>
-                                <td>{{ $rad->SATUSEHAT_DISPLAY }}</td>
+                                <td>
+                                    <span x-text="false">{{ $lab->SATUSEHAT_DISPLAY }}</span>
+                                </td>
                             </tr>
                         @empty
                             <tr>
@@ -103,7 +126,7 @@
 
             <!-- 📄 Pagination -->
             <div class="d-flex justify-content-center mt-3">
-                {{ $data->appends(['search' => request('search')])->links() }}
+                {{ $tindakanData->appends(['search' => request('search')])->links() }}
             </div>
         </div>
     </div>
@@ -112,40 +135,74 @@
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
 
     <script>
+        axios.defaults.headers.common['X-CSRF-TOKEN'] = '{{ csrf_token() }}';
+
         document.addEventListener('alpine:init', () => {
             Alpine.data('loincHandler', (initialCode, initialDisplay, id, nm_tind) => ({
                 edit: false,
                 code: initialCode,
                 display: initialDisplay,
+                draftCode: '',
+                draftDisplay: '',
                 searchQuery: '',
                 results: [],
+
+                startEdit() {
+                    this.draftCode = this.code;
+                    this.draftDisplay = this.display;
+                    this.edit = true;
+                },
+
+                cancelEdit() {
+                    this.edit = false;
+                    this.results = [];
+                },
+
                 async searchLoinc(query) {
                     if (!query) { this.results = []; return; }
                     try {
                         const res = await axios.get("{{ route('master_radiology.search_loinc') }}", {
                             params: { query }
                         });
-                        this.results = (res.data.Results || []).slice(0, 10); // limit to 10
+                        this.results = (res.data.Results || []).slice(0, 10);
                     } catch (e) {
                         console.error("LOINC API error:", e);
                         this.results = [];
                     }
                 },
+
+                selectItem(item) {
+                    this.draftCode = item.LOINC_NUM;
+                    this.draftDisplay = item.LONG_COMMON_NAME;
+                    this.searchQuery = item.LOINC_NUM;
+                    this.results = [];
+                },
+
                 async save() {
                     try {
-                        await axios.post("{{ route('master_laboratory.save_loinc') }}", {
-                            id, 
-                            nm_tind, 
-                            code: this.code, 
-                            display: this.display,
+                        const res = await axios.post("{{ route('master_radiology.save_loinc') }}", {
+                            id,
+                            nm_tind,
+                            code: this.draftCode,
+                            display: this.draftDisplay,
                             _token: "{{ csrf_token() }}"
                         });
-                        window.location.reload(); 
+
+                        if (res.data.success) {
+                            this.code = this.draftCode;
+                            this.display = this.draftDisplay;
+                            this.edit = false;
+
+                            window.location.reload();
+                        } else {
+                            alert("Failed to save LOINC");
+                        }
                     } catch (e) {
                         alert("Failed to save LOINC");
                     }
                 }
             }))
+
         })
     </script>
 
