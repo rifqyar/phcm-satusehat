@@ -4,7 +4,7 @@
         <div class="modal-content">
 
             <div class="modal-header bg-info text-white">
-                <h5 class="modal-title text-white" id="modalMappingLabel">Mapping Data Tindakan Radiology</h5>
+                <h5 class="modal-title text-white" id="modalMappingLabel">Mapping Data Tindakan Laboratory</h5>
                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -12,7 +12,7 @@
             </div>
 
             <div class="modal-body">
-                <form id="formMappingRadiology" action="{{ route('master_radiology.save_loinc') }}" method="POST">
+                <form id="formMappingLaboratory" action="{{ route('master_laboratory.save_loinc') }}" method="POST">
                     @csrf
                     <input type="hidden" name="id_tindakan" id="id_tindakan">
 

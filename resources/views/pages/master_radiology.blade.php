@@ -13,21 +13,6 @@
 
     <style>
         /* Existing styles */
-        .table-responsive { overflow: visible; }
-
-        [x-cloak] { display: none !important; }
-
-        .loinc-results {
-            position: absolute;
-            z-index: 3000;
-            left: 0;
-            right: 0;
-            max-height: 240px;
-            overflow-y: auto;
-        }
-
-        .loinc-item { cursor: pointer; text-align: left; width: 100%; }
-        
         @media (max-width: 640px) {
             .ct-label.ct-horizontal.ct-end {
                 display: none;
@@ -43,12 +28,26 @@
 
             <!-- 🔍 Search Form -->
             <form method="GET" action="{{ route('master_radiology') }}" class="mb-3">
-                <div class="input-group">
-                    <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode radiology..."
-                        value="{{ request('search') }}">
-                    <div class="input-group-append">
-                        <button class="btn btn-info" type="submit">Cari</button>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="input-group">
+                            <select name="mapped_filter" class="form-control">
+                                <option value="">Semua</option>
+                                <option value="mapped" {{ request('mapped_filter') == 'mapped' ? 'selected' : '' }}>Sudah Mapping</option>
+                                <option value="unmapped" {{ request('mapped_filter') == 'unmapped' ? 'selected' : '' }}>Belum Mapping</option>
+                            </select>
+                        </div>
                     </div>
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode radiology..."
+                                value="{{ request('search') }}">
+                            <div class="input-group-append">
+                                <button class="btn btn-info" type="submit">Cari</button>
+                            </div>
+                        </div>
+                    </div>
+                    
                 </div>
             </form>
 
@@ -108,19 +107,14 @@
     @push('after-script')
         <script>
             $(document).ready(function () {
-
-                // Event saat modal dibuka
                 $('#modalMapping').on('show.bs.modal', function (event) {
-                    const button = $(event.relatedTarget); // tombol yang diklik
+                    const button = $(event.relatedTarget);
                     const id = button.data('id');
 
-                    // Reset form dulu
                     $('#formMappingRadiology')[0].reset();
 
-                    // Simpan ID ke input hidden
                     $('#id_tindakan').val(id);
 
-                    // Fetch data via POST
                     $.ajax({
                         url: "{{ route('master_radiology.show') }}",
                         type: "POST",
@@ -129,7 +123,6 @@
                             id: id
                         },
                         success: function (data) {
-                            // Isi form di modal
                             $('#no').val(data.ID_TINDAKAN);
                             $('#nama_grup').val(data.NAMA_GRUP);
                             $('#nama_tindakan').val(data.NAMA_TINDAKAN);
@@ -143,6 +136,56 @@
                     });
                 });
 
+            });
+        </script>
+        <script>
+            $('#btnSaveMapping').on('click', function () {
+                let formData = $('#formMappingRadiology').serialize();
+                console.log(formData);
+
+                $.ajax({
+                    url: "{{ route('master_radiology.save_loinc') }}",
+                    type: "POST",
+                    data: formData,
+                    success: function (res) {
+                        if (res.success) {
+                            $.toast({
+                                heading: 'Sukses',
+                                text: 'Mapping data tindakan radiology berhasil disimpan.',
+                                position: 'top-right',
+                                loaderBg: '#51A351',
+                                icon: 'success',
+                                hideAfter: 1500
+                            });
+
+                            $('#modalMapping').modal('hide');
+
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            $.toast({
+                                heading: 'Gagal',
+                                text: res.message || 'Gagal menyimpan data.',
+                                position: 'top-right',
+                                loaderBg: '#FF5733',
+                                icon: 'error',
+                                hideAfter: 4000
+                            });
+                        }
+                    },
+                    error: function (xhr) {
+                        $.toast({
+                            heading: 'Error',
+                            text: 'Terjadi kesalahan saat menyimpan data.',
+                            position: 'top-right',
+                            loaderBg: '#FF5733',
+                            icon: 'error',
+                            hideAfter: 4000
+                        });
+                        console.error(xhr.responseText);
+                    }
+                });
             });
         </script>
     @endpush

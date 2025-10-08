@@ -43,9 +43,21 @@ class MasterRadiologyController extends Controller
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
                 $q->where('a.NM_TIND', 'like', "%{$search}%")
+                  ->orWhere('c.NM_GRUP_TIND', 'like', "%{$search}%")
                   ->orWhere('d.code', 'like', "%{$search}%")
                   ->orWhere('d.display', 'like', "%{$search}%");
             });
+        }
+
+        // Mapped filter: mapped/unmapped
+        if ($request->filled('mapped_filter')) {
+            if ($request->mapped_filter === 'mapped') {
+                $query->whereNotNull('d.code')->where('d.code', '<>', '');
+            } elseif ($request->mapped_filter === 'unmapped') {
+                $query->where(function($q) {
+                    $q->whereNull('d.code')->orWhere('d.code', '');
+                });
+            }
         }
 
         $data = $query->paginate(10);
@@ -87,30 +99,51 @@ class MasterRadiologyController extends Controller
 
     public function saveLoinc(Request $request)
     {
-        $request->validate([
-            'id' => 'required',
-            'nm_tind' => 'required',
-            'code' => 'required',
-            'display' => 'required',
-        ]);
-
         try {
-            DB::connection('sqlsrv')
+            $validated = $request->validate([
+                'id_tindakan' => 'required|integer',
+                'nama_tindakan' => 'required|string|max:255',
+                'satusehat_code' => 'required|string|max:100',
+                'satusehat_display' => 'required|string|max:255',
+            ]);
+
+            $loinc = DB::connection('sqlsrv')
                 ->table('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE')
-                ->updateOrInsert(
-                    ['ID' => $request->id],
-                    [
-                        'NM_TIND' => $request->nm_tind,
-                        'code' => $request->code,
-                        'display' => $request->display,
-                        'codesystem' => 'http://loinc.org',
-                        'CATEGORY' => 'Radiology',
-                    ]
-                );
+                ->where('ID', $validated['id_tindakan'])
+                ->first();
+
+            if ($loinc) {
+                // Update
+                DB::connection('sqlsrv')
+                    ->table('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE')
+                    ->where('ID', $validated['id_tindakan'])
+                    ->update([
+                        'NM_TIND'   => $validated['nama_tindakan'],
+                        'code'      => $validated['satusehat_code'],
+                        'display'   => $validated['satusehat_display'],
+                        'codesystem'=> 'http://loinc.org',
+                        'CATEGORY'  => 1,       // Radiology
+                    ]);
+            } else {
+                // Insert
+                DB::connection('sqlsrv')
+                    ->table('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE')
+                    ->insert([
+                        'ID'        => $validated['id_tindakan'],
+                        'NM_TIND'   => $validated['nama_tindakan'],
+                        'code'      => $validated['satusehat_code'],
+                        'display'   => $validated['satusehat_display'],
+                        'codesystem'=> 'http://loinc.org',
+                        'CATEGORY'  => 1,       // Radiology
+                    ]);
+            }
 
             return response()->json(['success' => true]);
         } catch (\Exception $e) {
-            return response()->json(['success' => false, 'message' => 'DB error'], 500);
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 
