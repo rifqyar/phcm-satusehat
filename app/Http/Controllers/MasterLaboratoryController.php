@@ -12,7 +12,6 @@ class MasterLaboratoryController extends Controller
         $klinikLab = '0017';
         $idUnit = '001';
 
-        // Step 1: Get all lab groups
         $groupsQuery = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.RJ_MGRUP_TIND as a')
             ->join('SIRS_PHCM.dbo.RJ_DGRUP_TIND as b', 'a.ID_GRUP_TIND', '=', 'b.ID_GRUP_TIND')
@@ -28,7 +27,6 @@ class MasterLaboratoryController extends Controller
 
         $groups = $groupsQuery->get();
 
-        // Step 2: For each group, get the tindakan details
         $groupIds = $groups->pluck('ID_GRUP_TIND');
 
         $tindakanQuery = DB::connection('sqlsrv')
