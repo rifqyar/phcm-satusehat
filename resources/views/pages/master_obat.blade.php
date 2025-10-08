@@ -137,6 +137,58 @@
 
             });
         </script>
+        <script>
+            $('#btnSaveMapping').on('click', function () {
+                let formData = $('#formMappingObat').serialize();
+
+                $.ajax({
+                    url: "{{ route('master_obat.saveMapping') }}",
+                    type: "POST",
+                    data: formData,
+                    success: function (res) {
+                        if (res.success) {
+                            $.toast({
+                                heading: 'Sukses',
+                                text: 'Mapping berhasil disimpan.',
+                                position: 'top-right',
+                                loaderBg: '#51A351',
+                                icon: 'success',
+                                hideAfter: 1500
+                            });
+
+                            $('#modalMapping').modal('hide');
+
+                            // 🔄 reload halaman penuh setelah toast selesai
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            $.toast({
+                                heading: 'Gagal',
+                                text: res.message || 'Gagal menyimpan data.',
+                                position: 'top-right',
+                                loaderBg: '#FF5733',
+                                icon: 'error',
+                                hideAfter: 4000
+                            });
+                        }
+                    },
+                    error: function (xhr) {
+                        $.toast({
+                            heading: 'Error',
+                            text: 'Terjadi kesalahan saat menyimpan data.',
+                            position: 'top-right',
+                            loaderBg: '#FF5733',
+                            icon: 'error',
+                            hideAfter: 4000
+                        });
+                        console.error(xhr.responseText);
+                    }
+                });
+            });
+        </script>
+
+
     @endpush
 
 @endsection
