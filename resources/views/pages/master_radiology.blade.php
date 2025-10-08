@@ -13,21 +13,6 @@
 
     <style>
         /* Existing styles */
-        .table-responsive { overflow: visible; }
-
-        [x-cloak] { display: none !important; }
-
-        .loinc-results {
-            position: absolute;
-            z-index: 3000;
-            left: 0;
-            right: 0;
-            max-height: 240px;
-            overflow-y: auto;
-        }
-
-        .loinc-item { cursor: pointer; text-align: left; width: 100%; }
-        
         @media (max-width: 640px) {
             .ct-label.ct-horizontal.ct-end {
                 display: none;
@@ -43,12 +28,26 @@
 
             <!-- 🔍 Search Form -->
             <form method="GET" action="{{ route('master_radiology') }}" class="mb-3">
-                <div class="input-group">
-                    <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode radiology..."
-                        value="{{ request('search') }}">
-                    <div class="input-group-append">
-                        <button class="btn btn-info" type="submit">Cari</button>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="input-group">
+                            <select name="mapped_filter" class="form-control">
+                                <option value="">Semua</option>
+                                <option value="mapped" {{ request('mapped_filter') == 'mapped' ? 'selected' : '' }}>Sudah Mapping</option>
+                                <option value="unmapped" {{ request('mapped_filter') == 'unmapped' ? 'selected' : '' }}>Belum Mapping</option>
+                            </select>
+                        </div>
                     </div>
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode radiology..."
+                                value="{{ request('search') }}">
+                            <div class="input-group-append">
+                                <button class="btn btn-info" type="submit">Cari</button>
+                            </div>
+                        </div>
+                    </div>
+                    
                 </div>
             </form>
 
@@ -62,6 +61,7 @@
                             <th>NAMA TINDAKAN</th>
                             <th>CODE LOINC</th>
                             <th>NAMA LOINC</th>
+                            <th>AKSI</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -71,48 +71,21 @@
                                 <td>{{ $data->firstItem() + $index }}</td>
                                 <td>{{ $rad->NAMA_GRUP }}</td>
                                 <td>{{ $rad->NAMA_TINDAKAN }}</td>
-                                <td>
-                                    <div 
-                                        x-data="loincHandler('{{ $rad->SATUSEHAT_CODE }}', '{{ $rad->SATUSEHAT_DISPLAY }}', '{{ $rad->ID_TINDAKAN }}', '{{ $rad->NAMA_TINDAKAN }}')"
-                                        class="position-relative"
-                                        x-cloak
-                                    >
-                                        <!-- Display mode -->
-                                        <template x-if="!edit">
-                                            <div>
-                                                <span x-text="code ? code : ''"></span>
-                                                <button class="btn btn-sm btn-link p-0" @click="startEdit()">
-                                                    <i class="fas" :class="code ? 'fa-edit' : 'fa-plus'"></i>
-                                                </button>
-                                            </div>
-                                        </template>
+                                <td>{{ $rad->SATUSEHAT_CODE }}</td>
+                                <td>{{ $rad->SATUSEHAT_DISPLAY }}</td>
+                                <td class="text-center">
+                                    @if (empty($rad->SATUSEHAT_CODE) || trim($rad->SATUSEHAT_CODE) === '')
+                                        <button type="button" class="btn btn-sm btn-success" data-toggle="modal"
+                                            data-target="#modalMapping" data-id="{{ $rad->ID_TINDAKAN }}">
+                                            <i class="fas fa-link"></i> Mapping
+                                        </button>
+                                    @else
+                                        <button type="button" class="btn btn-sm btn-warning" data-toggle="modal"
+                                            data-target="#modalMapping" data-id="{{ $rad->ID_TINDAKAN }}">
+                                            <i class="fas fa-sync-alt"></i> Mapping Ulang
+                                        </button>
+                                    @endif
 
-                                        <!-- Edit mode -->
-                                        <template x-if="edit">
-                                            <div class="flex gap-1">
-                                                <input type="text" x-model="searchQuery" placeholder="Search LOINC..."
-                                                    class="form-control form-control-sm"
-                                                    @input.debounce.500ms="searchLoinc(searchQuery)">
-                                                <button class="btn btn-light btn-sm" @click="save()">✅</button>
-                                                <button class="btn btn-light btn-sm" @click="cancelEdit()">❌</button>
-                                            </div>
-                                        </template>
-
-                                        <!-- Dropdown -->
-                                        <div x-show="results.length > 0" class="dropdown-menu show mt-1" style="max-height:200px; overflow-y:auto;">
-                                            <template x-for="item in results" :key="item.LOINC_NUM">
-                                                <button type="button" class="dropdown-item"
-                                                    @click="selectItem(item)">
-                                                    <strong x-text="item.LOINC_NUM"></strong> - 
-                                                    <span x-text="item.LONG_COMMON_NAME"></span>
-                                                </button>
-                                            </template>
-                                        </div>
-
-                                    </div>
-                                </td>
-                                <td>
-                                    <span x-text="false">{{ $rad->SATUSEHAT_DISPLAY }}</span>
                                 </td>
                             </tr>
                         @empty
@@ -130,82 +103,92 @@
             </div>
         </div>
     </div>
+    @include('modals.modal_mapping_radiology')
+    @push('after-script')
+        <script>
+            $(document).ready(function () {
+                $('#modalMapping').on('show.bs.modal', function (event) {
+                    const button = $(event.relatedTarget);
+                    const id = button.data('id');
 
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+                    $('#formMappingRadiology')[0].reset();
 
-    <script>
-        axios.defaults.headers.common['X-CSRF-TOKEN'] = '{{ csrf_token() }}';
+                    $('#id_tindakan').val(id);
 
-        document.addEventListener('alpine:init', () => {
-            Alpine.data('loincHandler', (initialCode, initialDisplay, id, nm_tind) => ({
-                edit: false,
-                code: initialCode,
-                display: initialDisplay,
-                draftCode: '',
-                draftDisplay: '',
-                searchQuery: '',
-                results: [],
-
-                startEdit() {
-                    this.draftCode = this.code;
-                    this.draftDisplay = this.display;
-                    this.edit = true;
-                },
-
-                cancelEdit() {
-                    this.edit = false;
-                    this.results = [];
-                },
-
-                async searchLoinc(query) {
-                    if (!query) { this.results = []; return; }
-                    try {
-                        const res = await axios.get("{{ route('master_radiology.search_loinc') }}", {
-                            params: { query }
-                        });
-                        this.results = (res.data.Results || []).slice(0, 10);
-                    } catch (e) {
-                        console.error("LOINC API error:", e);
-                        this.results = [];
-                    }
-                },
-
-                selectItem(item) {
-                    this.draftCode = item.LOINC_NUM;
-                    this.draftDisplay = item.LONG_COMMON_NAME;
-                    this.searchQuery = item.LOINC_NUM;
-                    this.results = [];
-                },
-
-                async save() {
-                    try {
-                        const res = await axios.post("{{ route('master_radiology.save_loinc') }}", {
-                            id,
-                            nm_tind,
-                            code: this.draftCode,
-                            display: this.draftDisplay,
-                            _token: "{{ csrf_token() }}"
-                        });
-
-                        if (res.data.success) {
-                            this.code = this.draftCode;
-                            this.display = this.draftDisplay;
-                            this.edit = false;
-
-                            window.location.reload();
-                        } else {
-                            alert("Failed to save LOINC");
+                    $.ajax({
+                        url: "{{ route('master_radiology.show') }}",
+                        type: "POST",
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            id: id
+                        },
+                        success: function (data) {
+                            $('#no').val(data.ID_TINDAKAN);
+                            $('#nama_grup').val(data.NAMA_GRUP);
+                            $('#nama_tindakan').val(data.NAMA_TINDAKAN);
+                            $('#satusehat_code').val(data.SATUSEHAT_CODE);
+                            $('#satusehat_display').val(data.SATUSEHAT_DISPLAY);
+                        },
+                        error: function (xhr) {
+                            console.error(xhr.responseText);
+                            alert('Gagal mengambil data tindakan radiology.');
                         }
-                    } catch (e) {
-                        alert("Failed to save LOINC");
+                    });
+                });
+
+            });
+        </script>
+        <script>
+            $('#btnSaveMapping').on('click', function () {
+                let formData = $('#formMappingRadiology').serialize();
+                console.log(formData);
+
+                $.ajax({
+                    url: "{{ route('master_radiology.save_loinc') }}",
+                    type: "POST",
+                    data: formData,
+                    success: function (res) {
+                        if (res.success) {
+                            $.toast({
+                                heading: 'Sukses',
+                                text: 'Mapping data tindakan radiology berhasil disimpan.',
+                                position: 'top-right',
+                                loaderBg: '#51A351',
+                                icon: 'success',
+                                hideAfter: 1500
+                            });
+
+                            $('#modalMapping').modal('hide');
+
+                            setTimeout(() => {
+                                location.reload();
+                            }, 1500);
+                        } else {
+                            $.toast({
+                                heading: 'Gagal',
+                                text: res.message || 'Gagal menyimpan data.',
+                                position: 'top-right',
+                                loaderBg: '#FF5733',
+                                icon: 'error',
+                                hideAfter: 4000
+                            });
+                        }
+                    },
+                    error: function (xhr) {
+                        $.toast({
+                            heading: 'Error',
+                            text: 'Terjadi kesalahan saat menyimpan data.',
+                            position: 'top-right',
+                            loaderBg: '#FF5733',
+                            icon: 'error',
+                            hideAfter: 4000
+                        });
+                        console.error(xhr.responseText);
                     }
-                }
-            }))
-
-        })
-    </script>
-
+                });
+            });
+        </script>
+    @endpush
 
 
 @endsection

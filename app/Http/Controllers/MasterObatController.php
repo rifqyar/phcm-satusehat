@@ -15,18 +15,63 @@ class MasterObatController extends Controller
 
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('KDBRG_CENTRA', 'like', "%{$search}%")
-                  ->orWhere('NAMABRG', 'like', "%{$search}%")
-                  ->orWhere('KD_BRG_KFA', 'like', "%{$search}%")
-                  ->orWhere('NAMABRG_KFA', 'like', "%{$search}%");
+                    ->orWhere('NAMABRG', 'like', "%{$search}%")
+                    ->orWhere('KD_BRG_KFA', 'like', "%{$search}%")
+                    ->orWhere('NAMABRG_KFA', 'like', "%{$search}%");
             });
         }
 
         $data = $query->select('ID', 'KDBRG_CENTRA', 'NAMABRG', 'KD_BRG_KFA', 'NAMABRG_KFA', 'DESCRIPTION')
-                      ->orderBy('NAMABRG', 'asc')
-                      ->paginate(10); // tampil 10 per halaman
+            ->orderByRaw('CASE WHEN KD_BRG_KFA IS NULL OR KD_BRG_KFA = \'\' THEN 0 ELSE 1 END')
+            ->orderBy('NAMABRG', 'asc')
+            ->paginate(10);
+
 
         return view('pages.master_obat', compact('data'));
     }
+
+    public function show(Request $request)
+    {
+        $id = $request->input('id');
+
+        $obat = MasterObat::select('ID', 'KDBRG_CENTRA', 'NAMABRG', 'KD_BRG_KFA', 'NAMABRG_KFA', 'DESCRIPTION')
+            ->where('ID', $id)
+            ->first();
+
+        if (!$obat) {
+            return response()->json(['error' => 'Data tidak ditemukan'], 404);
+        }
+
+        return response()->json($obat);
+    }
+    public function saveMapping(Request $request)
+    {
+        try {
+            $validated = $request->validate([
+                'id' => 'required|integer',
+                'kode_kfa' => 'nullable|string|max:100',
+                'nama_kfa' => 'nullable|string|max:255',
+                'deskripsi' => 'nullable|string|max:500',
+            ]);
+
+            $obat = MasterObat::find($validated['id']);
+            if (!$obat) {
+                return response()->json(['success' => false, 'message' => 'Data tidak ditemukan.']);
+            }
+
+            $obat->KD_BRG_KFA = $validated['kode_kfa'];
+            $obat->NAMABRG_KFA = $validated['nama_kfa'];
+            $obat->DESCRIPTION = $validated['deskripsi'];
+            $obat->save();
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
+        }
+    }
+
+
 }
+

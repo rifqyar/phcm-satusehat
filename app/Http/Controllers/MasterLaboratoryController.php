@@ -12,7 +12,6 @@ class MasterLaboratoryController extends Controller
         $klinikLab = '0017';
         $idUnit = '001';
 
-        // Step 1: Get all lab groups
         $groupsQuery = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.RJ_MGRUP_TIND as a')
             ->join('SIRS_PHCM.dbo.RJ_DGRUP_TIND as b', 'a.ID_GRUP_TIND', '=', 'b.ID_GRUP_TIND')
@@ -28,10 +27,9 @@ class MasterLaboratoryController extends Controller
 
         $groups = $groupsQuery->get();
 
-        // Step 2: For each group, get the tindakan details
         $groupIds = $groups->pluck('ID_GRUP_TIND');
 
-        $tindakanQuery = DB::connection('sqlsrv')
+        $query = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.RJ_DGRUP_TIND as a')
             ->leftJoin('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as b', 'a.KD_TIND', '=', 'b.KD_TIND')
             ->leftJoin('SIRS_PHCM.dbo.RJ_MGRUP_TIND as c', 'a.ID_GRUP_TIND', '=', 'c.ID_GRUP_TIND')
@@ -52,44 +50,128 @@ class MasterLaboratoryController extends Controller
             ->whereIn('a.ID_GRUP_TIND', $groupIds)
             ->orderByRaw('ISNULL(a.URUTAN, 99)');
 
-        // Apply search filter
+        // search filter
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $tindakanQuery->where(function($q) use ($search) {
+            $query->where(function($q) use ($search) {
                 $q->where('b.NM_TIND', 'like', "%{$search}%")
+                  ->orWhere('c.NM_GRUP_TIND', 'like', "%{$search}%")
                   ->orWhere('ss.code', 'like', "%{$search}%")
                   ->orWhere('ss.display', 'like', "%{$search}%");
             });
         }
 
-        $tindakanData = $tindakanQuery->paginate(10);
+        // Mapped filter: mapped/unmapped
+        if ($request->filled('mapped_filter')) {
+            if ($request->mapped_filter === 'mapped') {
+                $query->whereNotNull('d.code')->where('d.code', '<>', '');
+            } elseif ($request->mapped_filter === 'unmapped') {
+                $query->where(function($q) {
+                    $q->whereNull('d.code')->orWhere('d.code', '');
+                });
+            }
+        }
 
-        return view('pages.master_laboratory', compact('groups', 'tindakanData'));
+        $data = $query->paginate(10);
+
+        return view('pages.master_laboratory', compact('groups', 'data'));
+    }
+
+    public function show(Request $request)
+    {
+        $id = $request->input('id');
+
+        $klinikLab = '0017';
+        $idUnit = '001';
+
+        $groupsQuery = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.RJ_MGRUP_TIND as a')
+            ->join('SIRS_PHCM.dbo.RJ_DGRUP_TIND as b', 'a.ID_GRUP_TIND', '=', 'b.ID_GRUP_TIND')
+            ->select(
+                'a.ID_GRUP_TIND',
+                'a.KDKLINIK',
+                'a.NM_GRUP_TIND',
+                DB::raw("ISNULL(a.IDUNIT,'$idUnit') as IDUNIT")
+            )
+            ->where('a.KDKLINIK', $klinikLab)
+            ->distinct()
+            ->orderBy('a.NM_GRUP_TIND');
+
+        $groups = $groupsQuery->get();
+
+        $groupIds = $groups->pluck('ID_GRUP_TIND');
+
+        $query = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.RJ_DGRUP_TIND as a')
+            ->leftJoin('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as b', 'a.KD_TIND', '=', 'b.KD_TIND')
+            ->leftJoin('SIRS_PHCM.dbo.RJ_MGRUP_TIND as c', 'a.ID_GRUP_TIND', '=', 'c.ID_GRUP_TIND')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as ss', 'a.KD_TIND', '=', 'ss.ID')
+            ->select(
+                'c.NM_GRUP_TIND as NAMA_GRUP',
+                'a.KD_TIND as ID_TINDAKAN',
+                'b.NM_TIND as NAMA_TINDAKAN',
+                'ss.code as SATUSEHAT_CODE',
+                'ss.display as SATUSEHAT_DISPLAY',
+            )
+            ->whereIn('a.ID_GRUP_TIND', $groupIds)
+            ->where('a.KD_TIND', $id)
+            ->first();
+
+        if (!$query) {
+            return response()->json(['error' => 'Data tidak ditemukan'], 404);
+        }
+
+        return response()->json($query);
     }
 
     public function saveLoinc(Request $request)
     {
-        $request->validate([
-            'id' => 'required|string',      // KD_TIND
-            'nm_tind' => 'required|string', // NM_TIND
-            'code' => 'required|string',
-            'display' => 'required|string',
-        ]);
+        try {
+            $validated = $request->validate([
+                'id_tindakan' => 'required|integer',
+                'nama_tindakan' => 'required|string|max:255',
+                'satusehat_code' => 'required|string|max:100',
+                'satusehat_display' => 'required|string|max:255',
+            ]);
 
-        DB::connection('sqlsrv')
-            ->table('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE')
-            ->updateOrInsert(
-                ['ID' => $request->id], // primary key
-                [
-                    'NM_TIND'    => $request->nm_tind,
-                    'code'       => $request->code,
-                    'display'    => $request->display,
-                    'codesystem' => 'http://loinc.org',
-                    'CATEGORY'   => 'Laboratory',
-                ]
-            );
+            $loinc = DB::connection('sqlsrv')
+                ->table('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE')
+                ->where('ID', $validated['id_tindakan'])
+                ->first();
 
-        return response()->json(['success' => true]);
+            if ($loinc) {
+                // Update
+                DB::connection('sqlsrv')
+                    ->table('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE')
+                    ->where('ID', $validated['id_tindakan'])
+                    ->update([
+                        'NM_TIND'   => $validated['nama_tindakan'],
+                        'code'      => $validated['satusehat_code'],
+                        'display'   => $validated['satusehat_display'],
+                        'codesystem'=> 'http://loinc.org',
+                        'CATEGORY'  => 2,       // Laboratory
+                    ]);
+            } else {
+                // Insert
+                DB::connection('sqlsrv')
+                    ->table('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE')
+                    ->insert([
+                        'ID'        => $validated['id_tindakan'],
+                        'NM_TIND'   => $validated['nama_tindakan'],
+                        'code'      => $validated['satusehat_code'],
+                        'display'   => $validated['satusehat_display'],
+                        'codesystem'=> 'http://loinc.org',
+                        'CATEGORY'  => 2,       // Laboratory
+                    ]);
+            }
+
+            return response()->json(['success' => true]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage()
+            ], 500);
+        }
     }
 
 
