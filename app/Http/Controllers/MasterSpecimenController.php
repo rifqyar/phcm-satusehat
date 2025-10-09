@@ -18,9 +18,40 @@ class MasterSpecimenController extends Controller
         $successMessage = session('success');
         $errorMessage = session('error');
 
+        $klinikLab = '0017';
+        $idUnit = '001';
+        $groupsQuery = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.RJ_MGRUP_TIND as a')
+            ->join('SIRS_PHCM.dbo.RJ_DGRUP_TIND as b', 'a.ID_GRUP_TIND', '=', 'b.ID_GRUP_TIND')
+            ->select(
+                'a.ID_GRUP_TIND',
+                'a.KDKLINIK',
+                'a.NM_GRUP_TIND',
+                DB::raw("ISNULL(a.IDUNIT,'$idUnit') as IDUNIT")
+            )
+            ->where('a.KDKLINIK', $klinikLab)
+            ->distinct()
+            ->orderBy('a.NM_GRUP_TIND');
+
+        $groups = $groupsQuery->get();
+
+        $groupIds = $groups->pluck('ID_GRUP_TIND');
+
         $totalTindakan = DB::connection('sqlsrv')
-            ->table('SIRS_PHCM.dbo.RIRJ_MTINDAKAN')
-            ->count();
+            ->table('SIRS_PHCM.dbo.RJ_DGRUP_TIND as a')
+            ->leftJoin('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as b', 'a.KD_TIND', '=', 'b.KD_TIND')
+            ->leftJoin('SIRS_PHCM.dbo.RJ_MGRUP_TIND as c', 'a.ID_GRUP_TIND', '=', 'c.ID_GRUP_TIND')
+            ->whereIn('a.ID_GRUP_TIND', $groupIds)
+            ->select(
+                'a.KD_TIND as ID_TINDAKAN',
+                'b.NM_TIND as NAMA_TINDAKAN',
+            )
+            ->groupBy(
+                'a.KD_TIND',
+                'b.NM_TIND'
+            )
+            ->get();
+        $totalTindakan = count($totalTindakan);
 
         $totalMapping = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.SATUSEHAT_SPECIMEN_MAPPING')
@@ -90,12 +121,11 @@ class MasterSpecimenController extends Controller
         // search filter
         if ($request->filled('cari')) {
             $search = $request->cari;
-            if($search != '' && $search == 'mapped'){
+            if ($search != '' && $search == 'mapped') {
                 $tindakanQuery->whereNotNull('ss.KODE_TINDAKAN');
-            } else if($search != '' && $search == 'unmapped'){
+            } else if ($search != '' && $search == 'unmapped') {
                 $tindakanQuery->whereNull('ss.KODE_TINDAKAN');
-            }
-;
+            };
         }
 
         return DataTables::of($tindakanQuery->get())
