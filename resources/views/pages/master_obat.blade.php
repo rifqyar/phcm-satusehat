@@ -26,16 +26,75 @@
         <div class="card-body">
             <h4 class="card-title">Daftar Master Obat</h4>
 
-            <!-- 🔍 Search Form -->
+            <!-- 📊 Statistik -->
+            <div class="row mb-4">
+                <!-- Total -->
+                <div class="col-md-4 mb-3">
+                    <div class="card shadow-sm border-left-secondary">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="mr-3">
+                                <i class="fas fa-pills fa-2x text-secondary"></i>
+                            </div>
+                            <div>
+                                <h6 class="text-secondary mb-0">Total Obat</h6>
+                                <h4 class="font-weight-bold mb-0">{{ number_format($total_all) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sudah Dimapping -->
+                <div class="col-md-4 mb-3">
+                    <div class="card shadow-sm border-left-success">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="mr-3">
+                                <i class="fas fa-link fa-2x text-success"></i>
+                            </div>
+                            <div>
+                                <h6 class="text-success mb-0">Sudah Dimapping</h6>
+                                <h4 class="font-weight-bold mb-0">{{ number_format($total_mapped) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Belum Dimapping -->
+                <div class="col-md-4 mb-3">
+                    <div class="card shadow-sm border-left-warning">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="mr-3">
+                                <i class="fas fa-unlink fa-2x text-warning"></i>
+                            </div>
+                            <div>
+                                <h6 class="text-warning mb-0">Belum Dimapping</h6>
+                                <h4 class="font-weight-bold mb-0">{{ number_format($total_unmapped) }}</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <!-- 🔍 Search & Filter -->
             <form method="GET" action="{{ route('master_obat') }}" class="mb-3">
-                <div class="input-group">
-                    <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode obat..."
-                        value="{{ request('search') }}">
-                    <div class="input-group-append">
-                        <button class="btn btn-info" type="submit">Cari</button>
+                <div class="form-row align-items-center">
+                    <div class="col-md-4 mb-2">
+                        <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode obat..."
+                            value="{{ request('search') }}">
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <select name="status" class="form-control">
+                            <option value="all" {{ $status == 'all' ? 'selected' : '' }}>Semua</option>
+                            <option value="mapped" {{ $status == 'mapped' ? 'selected' : '' }}>Sudah Dimapping</option>
+                            <option value="unmapped" {{ $status == 'unmapped' ? 'selected' : '' }}>Belum Dimapping</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <button class="btn btn-info btn-block" type="submit">Filter</button>
                     </div>
                 </div>
             </form>
+
 
             <!-- 🧾 Tabel Data -->
             <div class="table-responsive">
