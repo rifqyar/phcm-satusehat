@@ -64,10 +64,10 @@ class MasterLaboratoryController extends Controller
         // Mapped filter: mapped/unmapped
         if ($request->filled('mapped_filter')) {
             if ($request->mapped_filter === 'mapped') {
-                $query->whereNotNull('d.code')->where('d.code', '<>', '');
+                $query->whereNotNull('ss.code')->where('ss.code', '<>', '');
             } elseif ($request->mapped_filter === 'unmapped') {
                 $query->where(function($q) {
-                    $q->whereNull('d.code')->orWhere('d.code', '');
+                    $q->whereNull('ss.code')->orWhere('ss.code', '');
                 });
             }
         }
