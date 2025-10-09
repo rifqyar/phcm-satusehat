@@ -19,15 +19,15 @@
                     <div class="row mb-3">
                         <div class="col-md-2">
                             <label class="form-label">ID</label>
-                            <input type="text" class="form-control" id="no" readonly>
+                            <input type="text" class="form-control" id="no" disabled>
                         </div>
                         <div class="col-md-5">
                             <label class="form-label">Nama Group Tindakan</label>
-                            <input type="text" class="form-control" id="nama_grup" readonly>
+                            <input type="text" class="form-control" id="nama_grup" disabled>
                         </div>
                         <div class="col-md-5">
                             <label class="form-label">Nama Tindakan</label>
-                            <input type="text" class="form-control" id="nama_tindakan" name="nama_tindakan" readonly>
+                            <input type="text" class="form-control" id="nama_tindakan" name="nama_tindakan" disabled>
                         </div>
                     </div>
 
@@ -35,19 +35,22 @@
                         <div class="col-md-6">
                             <label class="form-label">Kode LOINC</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="satusehat_code" name="satusehat_code"
-                                    placeholder="Input kode LOINC">
-                                <button type="button" class="btn btn-info" id="btnCariLoincCode">
-                                    <i class="fa fa-search"></i> Cari
-                                </button>
+                                <input type="text" class="form-control" id="satusehat_code" name="satusehat_code" disabled>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Nama LOINC</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="satusehat_display" name="satusehat_display"
-                                    placeholder="Input nama LOINC">
-                                <button type="button" class="btn btn-info" id="btnCariLoincDisplay">
+                                <input type="text" class="form-control" id="satusehat_display" name="satusehat_display" disabled>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="search_loinc" name="search_loinc" placeholder="Search LOINC...">
+                                <button type="button" class="btn btn-info" id="btnCariLoincCode">
                                     <i class="fa fa-search"></i> Cari
                                 </button>
                             </div>
@@ -121,9 +124,9 @@
     }
 
     document.getElementById('btnCariLoincCode').addEventListener('click', async function () {
-        const query = document.getElementById('satusehat_code').value.trim();
+        const query = document.getElementById('search_loinc').value.trim();
         if (!query) {
-            alert('Masukkan code LOINC untuk mencari data LOINC.');
+            alert('Masukkan code atau nama LOINC untuk mencari data LOINC.');
             return;
         }
 
@@ -137,22 +140,22 @@
         
     });
 
-    document.getElementById('btnCariLoincDisplay').addEventListener('click', async function () {
-        const query = document.getElementById('satusehat_display').value.trim();
-        if (!query) {
-            alert('Masukkan keyword LOINC untuk mencari data LOINC.');
-            return;
-        }
+    // document.getElementById('btnCariLoincDisplay').addEventListener('click', async function () {
+    //     const query = document.getElementById('satusehat_display').value.trim();
+    //     if (!query) {
+    //         alert('Masukkan keyword LOINC untuk mencari data LOINC.');
+    //         return;
+    //     }
 
-        try {
-            await getDataLoinc(query);
-        } catch (error) {
-            console.error(error);
-            alert('Terjadi error saat memuat data LOINC.');
-            return;
-        }
+    //     try {
+    //         await getDataLoinc(query);
+    //     } catch (error) {
+    //         console.error(error);
+    //         alert('Terjadi error saat memuat data LOINC.');
+    //         return;
+    //     }
         
-    });
+    // });
 
     document.addEventListener('click', function (e) {
         if (e.target.classList.contains('btnPilihLoinc')) {
@@ -161,6 +164,7 @@
             document.getElementById('satusehat_code').value = kode;
             document.getElementById('satusehat_display').value = nama;
             document.getElementById('tableLoincWrapper').style.display = 'none';
+            document.getElementById('search_loinc').value = '';
         }
     });
 

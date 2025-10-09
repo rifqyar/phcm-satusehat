@@ -40,7 +40,7 @@
                     </div>
                     <div class="col-md-9">
                         <div class="input-group">
-                            <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode radiology..."
+                            <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode laboratory..."
                                 value="{{ request('search') }}">
                             <div class="input-group-append">
                                 <button class="btn btn-info" type="submit">Cari</button>
