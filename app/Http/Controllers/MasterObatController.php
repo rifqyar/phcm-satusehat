@@ -12,7 +12,7 @@ class MasterObatController extends Controller
     {
         $query = MasterObat::query();
 
-
+        // 🔍 Filter pencarian
         if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
@@ -23,13 +23,36 @@ class MasterObatController extends Controller
             });
         }
 
+        // 🧩 Filter status mapping
+        $status = $request->get('status', 'all'); // default: semua
+
+        if ($status === 'mapped') {
+            $query->whereNotNull('KD_BRG_KFA')->where('KD_BRG_KFA', '<>', '');
+        } elseif ($status === 'unmapped') {
+            $query->where(function ($q) {
+                $q->whereNull('KD_BRG_KFA')->orWhere('KD_BRG_KFA', '');
+            });
+        }
+
+        // 🔢 Hitung total
+        $total_all = MasterObat::count();
+        $total_mapped = MasterObat::whereNotNull('KD_BRG_KFA')->where('KD_BRG_KFA', '<>', '')->count();
+        $total_unmapped = MasterObat::whereNull('KD_BRG_KFA')->orWhere('KD_BRG_KFA', '')->count();
+
+        // 🔽 Ambil data utama
         $data = $query->select('ID', 'KDBRG_CENTRA', 'NAMABRG', 'KD_BRG_KFA', 'NAMABRG_KFA', 'DESCRIPTION')
             ->orderByRaw('CASE WHEN KD_BRG_KFA IS NULL OR KD_BRG_KFA = \'\' THEN 0 ELSE 1 END')
             ->orderBy('NAMABRG', 'asc')
-            ->paginate(10);
+            ->paginate(10)
+            ->appends(['search' => $request->search, 'status' => $status]);
 
-
-        return view('pages.master_obat', compact('data'));
+        return view('pages.master_obat', compact(
+            'data',
+            'status',
+            'total_all',
+            'total_mapped',
+            'total_unmapped'
+        ));
     }
 
     public function show(Request $request)

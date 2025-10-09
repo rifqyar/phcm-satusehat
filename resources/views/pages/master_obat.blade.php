@@ -26,16 +26,105 @@
         <div class="card-body">
             <h4 class="card-title">Daftar Master Obat</h4>
 
-            <!-- 🔍 Search Form -->
-            <form method="GET" action="{{ route('master_obat') }}" class="mb-3">
-                <div class="input-group">
-                    <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode obat..."
-                        value="{{ request('search') }}">
-                    <div class="input-group-append">
-                        <button class="btn btn-info" type="submit">Cari</button>
-                    </div>
+            <!-- 📊 Statistik -->
+            <div class="row mb-2">
+                <!-- Total -->
+                <div class="col-md-4 mb-3">
+                    <a href="{{ route('master_obat', ['status' => 'all', 'search' => request('search')]) }}"
+                        class="text-decoration-none">
+                        <div class="card shadow-sm border-left-secondary card-stat clickable">
+                            <div class="card-body d-flex align-items-center">
+                                <div class="mr-3">
+                                    <i class="fas fa-pills fa-2x text-secondary"></i>
+                                </div>
+                                <div>
+                                    <h6 class="text-secondary mb-0">Total Obat</h6>
+                                    <h4 class="font-weight-bold mb-0">{{ number_format($total_all) }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
                 </div>
-            </form>
+
+                <!-- Sudah Dimapping -->
+                <div class="col-md-4 mb-3">
+                    <a href="{{ route('master_obat', ['status' => 'mapped', 'search' => request('search')]) }}"
+                        class="text-decoration-none">
+                        <div class="card shadow-sm border-left-success card-stat clickable">
+                            <div class="card-body d-flex align-items-center">
+                                <div class="mr-3">
+                                    <i class="fas fa-link fa-2x text-success"></i>
+                                </div>
+                                <div>
+                                    <h6 class="text-success mb-0">Sudah Dimapping</h6>
+                                    <h4 class="font-weight-bold mb-0">{{ number_format($total_mapped) }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Belum Dimapping -->
+                <div class="col-md-4 mb-3">
+                    <a href="{{ route('master_obat', ['status' => 'unmapped', 'search' => request('search')]) }}"
+                        class="text-decoration-none">
+                        <div class="card shadow-sm border-left-warning card-stat clickable">
+                            <div class="card-body d-flex align-items-center">
+                                <div class="mr-3">
+                                    <i class="fas fa-unlink fa-2x text-warning"></i>
+                                </div>
+                                <div>
+                                    <h6 class="text-warning mb-0">Belum Dimapping</h6>
+                                    <h4 class="font-weight-bold mb-0">{{ number_format($total_unmapped) }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+
+
+            <!-- 🔍 Search & Filter -->
+            <div class="mb-2">
+                <h5 class="mb-2"><i class="fas fa-filter text-info"></i> Pencarian & Filter Data</h5>
+                <p class="text-muted small mb-3">
+                    Gunakan kolom di bawah ini untuk mencari dan memfilter data obat.
+                </p>
+
+                <form method="GET" action="{{ route('master_obat') }}" class="mb-3">
+                    <div class="form-row align-items-end">
+                        <!-- 🔤 Kata Kunci -->
+                        <div class="col-md-4 mb-2">
+                            <label for="search" class="font-weight-bold small text-muted">Kata Kunci</label>
+                            <input type="text" name="search" id="search" class="form-control"
+                                placeholder="Cari nama atau kode obat..." value="{{ request('search') }}">
+                        </div>
+
+                        <!-- 🔖 Status Mapping -->
+                        <div class="col-md-3 mb-2">
+                            <label for="status" class="font-weight-bold small text-muted">Status Mapping</label>
+                            <select name="status" id="status" class="form-control">
+                                <option value="all" {{ $status == 'all' ? 'selected' : '' }}>Semua</option>
+                                <option value="mapped" {{ $status == 'mapped' ? 'selected' : '' }}>Sudah Dimapping</option>
+                                <option value="unmapped" {{ $status == 'unmapped' ? 'selected' : '' }}>Belum Dimapping
+                                </option>
+                            </select>
+                        </div>
+
+                        <!-- 🔘 Tombol Filter -->
+                        <div class="col-md-2 mb-2">
+                            <label class="font-weight-bold small text-muted d-block">&nbsp;</label>
+                            <button class="btn btn-info btn-block" type="submit">
+                                <i class="fas fa-search"></i> Filter
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            a
+
+
 
             <!-- 🧾 Tabel Data -->
             <div class="table-responsive">
