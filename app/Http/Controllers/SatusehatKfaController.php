@@ -25,6 +25,7 @@ class SatusehatKfaController extends Controller
         try {
             $response = Http::withToken($token)
                 ->accept('application/json')
+                ->withoutVerifying()
                 ->get($baseUrl, [
                     'page' => $page,
                     'size' => $size,
