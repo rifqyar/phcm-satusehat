@@ -56,15 +56,18 @@
                     <div class="row align-items-end">
                         <div class="col-md-8">
                             <label class="form-label">Cari Produk KFA</label>
-                            <input type="text" class="form-control" id="keyword_kfa" placeholder="Masukkan keyword produk...">
+                            <input type="text" class="form-control" id="keyword_kfa"
+                                placeholder="Masukkan keyword produk...">
                         </div>
                         <div class="col-md-4">
-                            <button type="button" class="btn btn-info w-100" id="btnCariKfa">
+                            <!-- ubah type dari button jadi submit -->
+                            <button type="submit" class="btn btn-info w-100" id="btnCariKfa">
                                 <i class="fa fa-search"></i> Cari KFA
                             </button>
                         </div>
                     </div>
                 </form>
+
 
                 <!-- Hasil KFA -->
                 <div class="table-responsive" id="tableKfaWrapper" style="display:none;">
@@ -93,9 +96,28 @@
 </div>
 
 <script>
+    const tableWrapper = document.getElementById('tableKfaWrapper');
+    const tbody = document.getElementById('tbodyKfa');
+    const formCariKfa = document.getElementById('formCariKfa');
+
+    // Helper untuk tampilkan spinner loading
+    function showLoading() {
+        tableWrapper.style.display = 'block';
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-4">
+                    <div class="spinner-border text-info" role="status" style="width: 2rem; height: 2rem;">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <div class="mt-2 text-secondary">Memuat data KFA...</div>
+                </td>
+            </tr>
+        `;
+    }
+
     // === HANDLE CARI KFA ===
-    document.getElementById('btnCariKfa').addEventListener('click', function (e) {
-        e.preventDefault();
+    formCariKfa.addEventListener('submit', function (e) {
+        e.preventDefault(); // cegah reload form bawaan HTML
 
         const keyword = document.getElementById('keyword_kfa').value.trim();
         if (!keyword) {
@@ -103,16 +125,17 @@
             return;
         }
 
+        showLoading(); // tampilkan spinner saat mulai fetch
+
         fetch(`/satusehat/kfa-search?keyword=${encodeURIComponent(keyword)}`)
             .then(response => response.json())
             .then(data => {
-                const tbody = document.getElementById('tbodyKfa');
                 tbody.innerHTML = '';
                 const items = data?.items?.data || [];
 
                 if (items.length === 0) {
                     tbody.innerHTML = `<tr><td colspan="6" class="text-center">Tidak ada data ditemukan</td></tr>`;
-                    document.getElementById('tableKfaWrapper').style.display = 'block';
+                    tableWrapper.style.display = 'block';
                     return;
                 }
 
@@ -136,11 +159,12 @@
                     tbody.insertAdjacentHTML('beforeend', row);
                 });
 
-                document.getElementById('tableKfaWrapper').style.display = 'block';
+                tableWrapper.style.display = 'block';
             })
             .catch(err => {
                 console.error(err);
-                alert('Terjadi kesalahan saat memuat data KFA.');
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3">Terjadi kesalahan saat memuat data KFA.</td></tr>`;
+                tableWrapper.style.display = 'block';
             });
     });
 
@@ -151,7 +175,7 @@
             const nama = e.target.dataset.nama;
             document.getElementById('kode_kfa').value = kode;
             document.getElementById('nama_kfa').value = nama;
-            document.getElementById('tableKfaWrapper').style.display = 'none';
+            tableWrapper.style.display = 'none';
         }
     });
 </script>
