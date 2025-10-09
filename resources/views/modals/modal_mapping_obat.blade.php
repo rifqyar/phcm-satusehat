@@ -11,6 +11,7 @@
             </div>
 
             <div class="modal-body">
+                {{-- FORM UTAMA MAPPING --}}
                 <form id="formMappingObat">
                     @csrf
                     <input type="hidden" name="id" id="id_obat">
@@ -33,18 +34,11 @@
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label">Kode KFA</label>
-                            <input type="text" class="form-control" id="kode_kfa" name="kode_kfa"
-                                placeholder="Masukkan kode KFA">
+                            <input type="text" class="form-control" id="kode_kfa" name="kode_kfa" readonly>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Nama KFA</label>
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="nama_kfa" name="nama_kfa"
-                                    placeholder="Masukkan nama KFA">
-                                <button type="button" class="btn btn-info" id="btnCariKfa">
-                                    <i class="fa fa-search"></i> Cari
-                                </button>
-                            </div>
+                            <input type="text" class="form-control" id="nama_kfa" name="nama_kfa" readonly>
                         </div>
                     </div>
 
@@ -56,6 +50,21 @@
                 </form>
 
                 <hr>
+
+                {{-- FORM PENCARIAN KFA --}}
+                <form id="formCariKfa" class="mb-3">
+                    <div class="row align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label">Cari Produk KFA</label>
+                            <input type="text" class="form-control" id="keyword_kfa" placeholder="Masukkan keyword produk...">
+                        </div>
+                        <div class="col-md-4">
+                            <button type="button" class="btn btn-info w-100" id="btnCariKfa">
+                                <i class="fa fa-search"></i> Cari KFA
+                            </button>
+                        </div>
+                    </div>
+                </form>
 
                 <!-- Hasil KFA -->
                 <div class="table-responsive" id="tableKfaWrapper" style="display:none;">
@@ -75,7 +84,6 @@
                 </div>
             </div>
 
-
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
                 <button type="button" id="btnSaveMapping" class="btn btn-primary">Simpan Mapping</button>
@@ -83,9 +91,13 @@
         </div>
     </div>
 </div>
+
 <script>
-    document.getElementById('btnCariKfa').addEventListener('click', function () {
-        const keyword = document.getElementById('nama_kfa').value.trim();
+    // === HANDLE CARI KFA ===
+    document.getElementById('btnCariKfa').addEventListener('click', function (e) {
+        e.preventDefault();
+
+        const keyword = document.getElementById('keyword_kfa').value.trim();
         if (!keyword) {
             alert('Masukkan keyword untuk mencari data KFA.');
             return;
@@ -106,21 +118,21 @@
 
                 items.forEach(item => {
                     const row = `
-                    <tr>
-                        <td>${item.kfa_code || '-'}</td>
-                        <td>${item.name || '-'}</td>
-                        <td>${item.nama_dagang || '-'}</td>
-                        <td>${item.manufacturer || '-'}</td>
-                        <td>${item.dosage_form?.name || '-'}</td>
-                        <td>
-                            <button type="button" class="btn btn-sm btn-success btnPilihKfa" 
-                                data-kfa="${item.kfa_code}" 
-                                data-nama="${item.name}">
-                                Pilih
-                            </button>
-                        </td>
-                    </tr>
-                `;
+                        <tr>
+                            <td>${item.kfa_code || '-'}</td>
+                            <td>${item.name || '-'}</td>
+                            <td>${item.nama_dagang || '-'}</td>
+                            <td>${item.manufacturer || '-'}</td>
+                            <td>${item.dosage_form?.name || '-'}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-success btnPilihKfa" 
+                                    data-kfa="${item.kfa_code}" 
+                                    data-nama="${item.name}">
+                                    Pilih
+                                </button>
+                            </td>
+                        </tr>
+                    `;
                     tbody.insertAdjacentHTML('beforeend', row);
                 });
 
@@ -132,6 +144,7 @@
             });
     });
 
+    // === HANDLE PILIH KFA ===
     document.addEventListener('click', function (e) {
         if (e.target.classList.contains('btnPilihKfa')) {
             const kode = e.target.dataset.kfa;
@@ -141,5 +154,4 @@
             document.getElementById('tableKfaWrapper').style.display = 'none';
         }
     });
-
 </script>
