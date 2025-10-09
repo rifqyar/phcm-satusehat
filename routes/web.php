@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\MasterSpecimenController;
 use Illuminate\Support\Facades\Route;
 
 /*
