@@ -141,7 +141,6 @@
         <script>
             $('#btnSaveMapping').on('click', function () {
                 let formData = $('#formMappingLaboratory').serialize();
-                console.log(formData);
 
                 $.ajax({
                     url: "{{ route('master_laboratory.save_loinc') }}",
