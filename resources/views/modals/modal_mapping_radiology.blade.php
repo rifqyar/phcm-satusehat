@@ -19,15 +19,15 @@
                     <div class="row mb-3">
                         <div class="col-md-2">
                             <label class="form-label">ID</label>
-                            <input type="text" class="form-control" id="no" disabled>
+                            <input type="text" class="form-control" id="no" readonly>
                         </div>
                         <div class="col-md-5">
                             <label class="form-label">Nama Group Tindakan</label>
-                            <input type="text" class="form-control" id="nama_grup" disabled>
+                            <input type="text" class="form-control" id="nama_grup" readonly>
                         </div>
                         <div class="col-md-5">
                             <label class="form-label">Nama Tindakan</label>
-                            <input type="text" class="form-control" id="nama_tindakan" name="nama_tindakan" disabled>
+                            <input type="text" class="form-control" id="nama_tindakan" name="nama_tindakan" readonly>
                         </div>
                     </div>
 
@@ -35,28 +35,34 @@
                         <div class="col-md-6">
                             <label class="form-label">Kode LOINC</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="satusehat_code" name="satusehat_code" disabled>
+                                <input type="text" class="form-control" id="satusehat_code" name="satusehat_code" readonly>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Nama LOINC</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="satusehat_display" name="satusehat_display" disabled>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <div class="input-group">
-                                <input type="text" class="form-control" id="search_loinc" name="search_loinc" placeholder="Search LOINC...">
-                                <button type="button" class="btn btn-info" id="btnCariLoincCode">
-                                    <i class="fa fa-search"></i> Cari
-                                </button>
+                                <input type="text" class="form-control" id="satusehat_display" name="satusehat_display" readonly>
                             </div>
                         </div>
                     </div>
                 </form>
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <form id="formSearchLoinc">
+                            <div class="row align-items-end">
+                                <div class="col-md-10">
+                                    <input type="text" class="form-control" id="search_loinc" name="keyword" 
+                                        placeholder="Search LOINC..." required>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-info w-100" id="btnCariLoincCode">
+                                        <i class="fa fa-search"></i> Cari
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
 
                 <hr>
 
@@ -86,44 +92,47 @@
         </div>
     </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 <script>
-    async function getDataLoinc(query) {
-        const res = await axios.get("{{ route('master_radiology.search_loinc') }}", {
-            params: { query }
-        });
+    function getDataLoinc(query) {
+        fetch(`/master-radiology/loinc-search?query=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            const items = data?.Results || [];
+            const tbody = document.getElementById('tbodyLoinc');
+            tbody.innerHTML = '';
 
-        const items = res.data?.Results || [];
-        const tbody = document.getElementById('tbodyLoinc');
-        tbody.innerHTML = '';
-        if (items.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center">Tidak ada data LOINC ditemukan</td></tr>`;
+            if (items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center">Tidak ada data LOINC ditemukan</td></tr>`;
+                document.getElementById('tableLoincWrapper').style.display = 'block';
+                return;
+            }
+            
+            items.forEach(item => {
+                const row = `
+                    <tr>
+                        <td>${item.LOINC_NUM || '-'}</td>
+                        <td>${item.LONG_COMMON_NAME || '-'}</td>
+                        <td>${item.CLASS || '-'}</td>
+                        <td>${(item.Tags || []).join(', ') || '-'}</td>
+                        <td><a href="${item.Link || '#'}" target="_blank">Link</a></td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-success btnPilihLoinc" 
+                                data-code="${item.LOINC_NUM}" 
+                                data-display="${item.LONG_COMMON_NAME}">
+                                Pilih
+                            </button>
+                        </td>
+                    </tr>
+                `;
+                tbody.insertAdjacentHTML('beforeend', row);
+            });
             document.getElementById('tableLoincWrapper').style.display = 'block';
-            return;
-        }
-        items.forEach(item => {
-            const row = `
-                <tr>
-                    <td>${item.LOINC_NUM || '-'}</td>
-                    <td>${item.LONG_COMMON_NAME || '-'}</td>
-                    <td>${item.CLASS || '-'}</td>
-                    <td>${(item.Tags || []).join(', ') || '-'}</td>
-                    <td><a href="${item.Link || '#'}" target="_blank">Link</a></td>
-                    <td>
-                        <button type="button" class="btn btn-sm btn-success btnPilihLoinc" 
-                            data-code="${item.LOINC_NUM}" 
-                            data-display="${item.LONG_COMMON_NAME}">
-                            Pilih
-                        </button>
-                    </td>
-                </tr>
-            `;
-            tbody.insertAdjacentHTML('beforeend', row);
-        });
-        document.getElementById('tableLoincWrapper').style.display = 'block';
+        })
     }
 
-    document.getElementById('btnCariLoincCode').addEventListener('click', async function () {
+    document.getElementById('btnCariLoincCode').addEventListener('click', function (e) {
+        e.preventDefault();
+
         const query = document.getElementById('search_loinc').value.trim();
         if (!query) {
             alert('Masukkan code atau nama LOINC untuk mencari data LOINC.');
@@ -131,7 +140,7 @@
         }
 
         try {
-            await getDataLoinc(query);
+            getDataLoinc(query);
         } catch (error) {
             console.error(error);
             alert('Terjadi error saat memuat data LOINC.');

@@ -149,27 +149,31 @@ class MasterRadiologyController extends Controller
 
     public function searchLoinc(Request $request)
     {
-        $q = $request->get('query', '');
-        if (trim($q) === '') {
-            return response()->json(['Results' => []]);
-        }
+        $query = $request->input('query', '');
 
-        $client = new Client([
-            'timeout' => 10,
-        ]);
-
+        $baseUrl = 'https://loinc.regenstrief.org/searchapi/loincs';
+        $username = 'rifqyar'; // hardcode dulu
+        $password = 'Rif1912Qy!';
+        
         try {
-            $res = $client->get('https://loinc.regenstrief.org/searchapi/loincs', [
-                'auth' => ['rifqyar', 'Rif1912Qy!'],
-                'query' => ['query' => $q],
-            ]);
+            $response = Http::withBasicAuth($username, $password)
+                ->accept('application/json')
+                ->withoutVerifying()
+                ->get($baseUrl, [
+                    'query' => $query,
+                ]);
 
-            $data = json_decode((string)$res->getBody(), true);
+            $data = json_decode($response->body(), true);
             $results = $data['Results'] ?? [];
 
-            return response()->json(['Results' => array_slice($results, 0, 10)]);
+            return response()->json([
+                'Results' => array_slice($results, 0, 10)
+            ], $response->status());
         } catch (\Exception $e) {
-            return response()->json(['Results' => []], 500);
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage()
+            ], 500);
         }
     }
 
