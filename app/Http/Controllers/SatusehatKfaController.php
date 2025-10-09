@@ -14,7 +14,7 @@ class SatusehatKfaController extends Controller
         $size = $request->query('size', 20);
 
         // Hardcode token dev dulu (replace later dari .env)
-        $token = env('SATUSEHAT_TOKEN', 'RpepjKpuMDXoB2wmMCatGTz7OQDi');
+        $token = env('SATUSEHAT_TOKEN', 'rRuGRsxASDvhbDQun9EA6hQKlmEs');
 
         $baseUrl = 'https://api-satusehat-stg.dto.kemkes.go.id/kfa-v2/products/all';
 
