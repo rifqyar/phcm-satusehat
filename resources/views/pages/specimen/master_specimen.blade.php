@@ -143,10 +143,10 @@
                                         </td>
                                         <td>
                                             @if (count(json_decode($lab->SPECIMEN)) > 0)
-                                                <a href="{{ route('master_specimen.edit', $lab->ID_TINDAKAN) }}?search={{ $lab->NAMA_TINDAKAN }}"
+                                                <a href="{{ route('master_specimen.edit', $lab->ID_TINDAKAN) }}"
                                                     class="badge badge-pill badge-warning p-2 w-100">Edit Specimen</a>
                                             @else
-                                                <a href="{{ route('master_specimen.create') }}?search={{ $lab->NAMA_TINDAKAN }}"
+                                                <a href="{{ route('master_specimen.create') }}"
                                                     class="badge badge-pill badge-primary p-2 w-100">Tambah Specimen</a>
                                             @endif
                                         </td>

@@ -12,6 +12,10 @@
         crossorigin="anonymous" referrerpolicy="no-referrer" />
 @endpush
 
+@section('pages-css')
+    <link href="{{ asset('assets/plugins/select2/dist/css/select2.min.css') }}" rel="stylesheet" />
+@endsection
+
 @section('content')
     <div class="card">
         <div class="card-body">
@@ -22,6 +26,32 @@
                     <div class="card-title">
                         <h4>Data Tindakan & Specimen</h4>
                     </div>
+
+                    <form method="POST" action="{{ route('master_specimen.store') }}" class="mb-3">
+                        @csrf
+
+                        <div class="mb-3">
+                            <label for="tindakan" class="form-label">Tindakan</label>
+                            <select class="form-control" id="tindakan" name="tindakan">
+                                @foreach ($tindakanData as $index => $lab)
+                                    <option value="{{ $lab->ID_TINDAKAN }}">
+                                        {{ $lab->NAMA_GRUP }} - {{ $lab->NAMA_TINDAKAN }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="specimen" class="form-label">Specimen</label>
+                            <select class="form-control" id="specimen" name="specimen[]" multiple>
+                                @foreach ($specimens as $specimen)
+                                    <option value="{{ $specimen->code }}">
+                                        {{ $specimen->display }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Simpan Specimen</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -29,7 +59,19 @@
 @endsection
 
 
-@push('after-script')
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
-@endpush
+@section('pages-js')
+    <script src="{{ asset('assets/plugins/select2/dist/js/select2.min.js') }}"></script>
+    <script>
+        $(document).ready(function() {
+            $('#specimen').select2({
+                placeholder: 'Pilih Specimen / Sample Lab',
+                allowClear: true
+            });
+
+            $('#tindakan').select2({
+                placeholder: 'Pilih Tindakan Lab',
+                allowClear: true
+            });
+        })
+    </script>
+@endsection

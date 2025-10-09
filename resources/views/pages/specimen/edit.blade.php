@@ -32,13 +32,9 @@
 
                         <div class="mb-3">
                             <label for="tindakan" class="form-label">Tindakan</label>
-                            <input type="text" class="form-control" id="tindakan" name="tindakan"
+                            <input type="text" class="form-control" id="tindakan" name="tindakan_text"
                                 value="{{ $tindakan->NM_TIND }}" readonly>
-                        </div>
-                        <div class="mb-3">
-                            <label for="tindakan" class="form-label">Tindakan</label>
-                            <input type="text" class="form-control" id="tindakan" name="tindakan"
-                                value="{{ $tindakan->KD_TIND }}" readonly>
+                            <input type="hidden" name="tindakan" value="{{ $tindakan->KD_TIND }}" readonly>
                         </div>
                         <div class="mb-3">
                             <label for="specimen" class="form-label">Specimen</label>

@@ -8,9 +8,6 @@
                     <a href="{{ route('home') }}" aria-expanded="false"><span class="hide-menu">Dashboard </span></a>
                 </li>
                 <li>
-                    <a href="#" aria-expanded="false"><span class="hide-menu">Transaksi</span></a>
-                </li>
-                <li>
                     <a class="has-arrow" href="#" aria-expanded="false"><span class="hide-menu">Master
                             Data</span></a>
                     <ul aria-expanded="false" class="collapse">
@@ -19,6 +16,9 @@
                         <li><a href="{{ route('master_laboratory') }}">Master Tindakan Lab</a></li>
                         <li><a href="{{ route('master_radiology') }}">Master Tindakan Radiologi</a></li>
                     </ul>
+                </li>
+                <li>
+                    <a href="#" aria-expanded="false"><span class="hide-menu">Transaksi</span></a>
                 </li>
                 <li>
                     <a href="#" aria-expanded="false"><span class="hide-menu">Log Transaksi</span></a>

@@ -93,7 +93,71 @@ class MasterSpecimenController extends Controller
      */
     public function create()
     {
-        return view('pages.specimen.create');
+        $klinikLab = '0017';
+        $idUnit = '001';
+
+        // Step 1: Get all lab groups
+        $groupsQuery = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.RJ_MGRUP_TIND as a')
+            ->join('SIRS_PHCM.dbo.RJ_DGRUP_TIND as b', 'a.ID_GRUP_TIND', '=', 'b.ID_GRUP_TIND')
+            ->select(
+                'a.ID_GRUP_TIND',
+                'a.KDKLINIK',
+                'a.NM_GRUP_TIND',
+                DB::raw("ISNULL(a.IDUNIT,'$idUnit') as IDUNIT")
+            )
+            ->where('a.KDKLINIK', $klinikLab)
+            ->distinct()
+            ->orderBy('a.NM_GRUP_TIND');
+
+        $groups = $groupsQuery->get();
+
+        // Step 2: For each group, get the tindakan details
+        $groupIds = $groups->pluck('ID_GRUP_TIND');
+
+        $tindakanQuery = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.RJ_DGRUP_TIND as a')
+            ->leftJoin('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as b', 'a.KD_TIND', '=', 'b.KD_TIND')
+            ->leftJoin('SIRS_PHCM.dbo.RJ_MGRUP_TIND as c', 'a.ID_GRUP_TIND', '=', 'c.ID_GRUP_TIND')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_SPECIMEN_MAPPING as ss', 'a.KD_TIND', '=', 'ss.KODE_TINDAKAN')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SPECIMEN as sp', 'ss.KODE_SPECIMEN', '=', 'sp.CODE')
+            ->select(
+                'a.ID_GRUP_TIND as ID_GRUP',
+                'c.NM_GRUP_TIND as NAMA_GRUP',
+                'a.KDKLINIK',
+                'a.KD_TIND as ID_TINDAKAN',
+                DB::raw('ISNULL(a.URUTAN, 99) as URUTAN'),
+                'b.NM_TIND as NAMA_TINDAKAN',
+                DB::raw("(
+                        SELECT CONCAT('[', STRING_AGG(
+                            CONCAT('{\"code\":\"', sp.code, '\",\"display\":\"', sp.display, '\"}')
+                        , ','), ']')
+                        FROM SATUSEHAT.dbo.SATUSEHAT_SPECIMEN_MAPPING ss2
+                        JOIN SATUSEHAT.dbo.SATUSEHAT_M_SPECIMEN sp ON ss2.KODE_SPECIMEN = sp.CODE
+                        WHERE ss2.KODE_TINDAKAN = a.KD_TIND
+                    ) as SPECIMEN")
+            )
+            ->whereIn('a.ID_GRUP_TIND', $groupIds)
+            ->whereNull('ss.KODE_TINDAKAN')
+            ->groupBy(
+                'a.ID_GRUP_TIND',
+                'c.NM_GRUP_TIND',
+                'a.KDKLINIK',
+                'a.KD_TIND',
+                'a.URUTAN',
+                'b.NM_TIND'
+            )
+            ->orderByRaw('ISNULL(a.URUTAN, 99)');
+
+        $tindakanData = $tindakanQuery->get();
+
+        $specimens = DB::connection('dbsatusehat')
+            ->table('SATUSEHAT.dbo.SATUSEHAT_M_SPECIMEN')
+            ->select('code', 'display', 'codesystem')
+            ->orderBy('display')
+            ->get();
+
+        return view('pages.specimen.create', compact('tindakanData', 'groups', 'specimens'));
     }
 
     /**
@@ -104,8 +168,34 @@ class MasterSpecimenController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'tindakan' => 'required|string|max:80',
+            'specimen' => 'required|array',
+            'specimen.*' => 'string|max:250',
+        ], [
+            'tindakan.required' => 'Kode tindakan wajib diisi.',
+            'specimen.required' => 'Minimal pilih satu specimen.',
+        ]);
+
+        DB::connection('sqlsrv')->transaction(function () use ($validated) {
+            $dataToInsert = collect($validated['specimen'])->map(function ($kodeSpecimen) use ($validated) {
+                return [
+                    'KODE_TINDAKAN' => $validated['tindakan'],
+                    'KODE_SPECIMEN' => $kodeSpecimen,
+                ];
+            })->toArray();
+
+            DB::connection('sqlsrv')
+                ->table('SATUSEHAT.dbo.SATUSEHAT_SPECIMEN_MAPPING')
+                ->insert($dataToInsert);
+        });
+
+        // ✅ 3. Redirect ke halaman index dengan pesan sukses
+        return redirect()
+            ->route('master_specimen.index')
+            ->with('success', 'Mapping specimen berhasil ditambahkan.');
     }
+
 
     /**
      * Display the specified resource.
