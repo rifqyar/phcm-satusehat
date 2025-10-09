@@ -141,7 +141,6 @@
         <script>
             $('#btnSaveMapping').on('click', function () {
                 let formData = $('#formMappingRadiology').serialize();
-                console.log(formData);
 
                 $.ajax({
                     url: "{{ route('master_radiology.save_loinc') }}",
