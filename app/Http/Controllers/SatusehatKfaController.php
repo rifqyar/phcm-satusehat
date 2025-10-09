@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use DB;
 
 class SatusehatKfaController extends Controller
 {
@@ -14,7 +15,10 @@ class SatusehatKfaController extends Controller
         $size = $request->query('size', 20);
 
         // Hardcode token dev dulu (replace later dari .env)
-        $token = env('SATUSEHAT_TOKEN', 'Z7BCgfLMYD7JZGQmRkQ4UShMIF3i');
+        $token = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_AUTH')
+            ->orderByDesc('id')
+            ->value('access_token');
+
 
         $baseUrl = 'https://api-satusehat-stg.dto.kemkes.go.id/kfa-v2/products/all';
 

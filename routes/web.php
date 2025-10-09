@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\Route;
 | contains the "web" middleware group. Now create something great!
 |
 */
-
 Route::get('/', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
 // mapping obat
@@ -33,3 +32,5 @@ Route::get('/master_laboratory', [App\Http\Controllers\MasterLaboratoryControlle
 Route::post('/master-laboratory/save-loinc', [App\Http\Controllers\MasterLaboratoryController::class, 'saveLoinc'])->name('master_laboratory.save_loinc');
 Route::post('/master_laboratory/detail', [App\Http\Controllers\MasterLaboratoryController::class, 'show'])->name('master_laboratory.show');
 
+// Specimen
+Route::resource('master_specimen', MasterSpecimenController::class);
