@@ -29,7 +29,7 @@ class MasterSpecimenController extends Controller
 
         $totalUnmapped = $totalTindakan - $totalMapping;
 
-        return view('pages.specimen.master_specimen', compact('successMessage', 'errorMessage', 'totalMapping', 'totalUnmapped'));
+        return view('pages.specimen.master_specimen', compact('successMessage', 'errorMessage', 'totalTindakan', 'totalMapping', 'totalUnmapped'));
     }
 
     public function datatable(Request $request)
@@ -90,12 +90,13 @@ class MasterSpecimenController extends Controller
         // search filter
         if ($request->filled('cari')) {
             $search = $request->cari;
-            if($search != '' && $search == 'mapped'){
+            if ($search == 'mapped') {
                 $tindakanQuery->whereNotNull('ss.KODE_TINDAKAN');
-            } else if($search != '' && $search == 'unmapped'){
+            } else if ($search == 'unmapped') {
                 $tindakanQuery->whereNull('ss.KODE_TINDAKAN');
+            } else if ($search == 'all') {
+                $tindakanQuery = $tindakanQuery;
             }
-;
         }
 
         return DataTables::of($tindakanQuery->get())

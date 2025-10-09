@@ -41,7 +41,22 @@
 
                     <input type="hidden" name="search" value="{{ request('search') }}">
                     <div class="row justify-content-center">
-                        <div class="col-6">
+                        <div class="col-4">
+                            <div class="card card-inverse card-primary card-mapping" onclick="search('all')">
+                                <div class="card-body">
+                                    <div class="card-title">
+                                        <div class="row align-items-center ml-1">
+                                            <i class="fas fa-info-circle" style="font-size: 48px"></i>
+                                            <div class="ml-3">
+                                                <span style="font-size: 24px">{{ $totalTindakan }}</span>
+                                                <h4 class="text-white">Semua Data Tindakan</h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-4">
                             <div class="card card-inverse card-info card-mapping" onclick="search('mapped')">
                                 <div class="card-body">
                                     <div class="card-title">
@@ -56,7 +71,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-6">
+                        <div class="col-4">
                             <div class="card card-inverse card-warning card-mapping" onclick="search('unmapped')">
                                 <div class="card-body">
                                     <div class="card-title">
