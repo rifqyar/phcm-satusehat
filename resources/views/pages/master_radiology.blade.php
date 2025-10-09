@@ -24,16 +24,30 @@
 @section('content')
     <div class="card">
         <div class="card-body">
-            <h4 class="card-title">Daftar Master Obat</h4>
+            <h4 class="card-title">Daftar Master Radiology</h4>
 
             <!-- 🔍 Search Form -->
-            <form method="GET" action="{{ route('master_obat') }}" class="mb-3">
-                <div class="input-group">
-                    <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode obat..."
-                        value="{{ request('search') }}">
-                    <div class="input-group-append">
-                        <button class="btn btn-info" type="submit">Cari</button>
+            <form method="GET" action="{{ route('master_radiology') }}" class="mb-3">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="input-group">
+                            <select name="mapped_filter" class="form-control">
+                                <option value="">Semua</option>
+                                <option value="mapped" {{ request('mapped_filter') == 'mapped' ? 'selected' : '' }}>Sudah Mapping</option>
+                                <option value="unmapped" {{ request('mapped_filter') == 'unmapped' ? 'selected' : '' }}>Belum Mapping</option>
+                            </select>
+                        </div>
                     </div>
+                    <div class="col-md-9">
+                        <div class="input-group">
+                            <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode radiology..."
+                                value="{{ request('search') }}">
+                            <div class="input-group-append">
+                                <button class="btn btn-info" type="submit">Cari</button>
+                            </div>
+                        </div>
+                    </div>
+                    
                 </div>
             </form>
 
@@ -43,41 +57,36 @@
                     <thead>
                         <tr>
                             <th>NO</th>
-                            <th>KODE BARANG CENTRA</th>
-                            <th>NAMA BARANG</th>
-                            <th>KODE KFA</th>
-                            <th>NAMA KFA</th>
-                            <th>DESKRIPSI</th>
+                            <th>NAMA GROUP</th>
+                            <th>NAMA TINDAKAN</th>
+                            <th>CODE LOINC</th>
+                            <th>NAMA LOINC</th>
                             <th>AKSI</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($data as $index => $obat)
+                        @forelse ($data as $index => $rad)
                             <tr>
                                 <!-- Nomor urut sesuai pagination -->
                                 <td>{{ $data->firstItem() + $index }}</td>
-                                <td>{{ $obat->KDBRG_CENTRA }}</td>
-                                <td>{{ $obat->NAMABRG }}</td>
-                                <td>
-                                    {{ $obat->KD_BRG_KFA && trim($obat->KD_BRG_KFA) !== '' ? $obat->KD_BRG_KFA : 'Data Belum di-mapping' }}
-                                </td>
-                                <td>{{ $obat->NAMABRG_KFA }}</td>
-                                <td>{{ $obat->DESCRIPTION }}</td>
+                                <td>{{ $rad->NAMA_GRUP }}</td>
+                                <td>{{ $rad->NAMA_TINDAKAN }}</td>
+                                <td>{{ $rad->SATUSEHAT_CODE }}</td>
+                                <td>{{ $rad->SATUSEHAT_DISPLAY }}</td>
                                 <td class="text-center">
-                                    @if (empty($obat->KD_BRG_KFA) || trim($obat->KD_BRG_KFA) === '')
+                                    @if (empty($rad->SATUSEHAT_CODE) || trim($rad->SATUSEHAT_CODE) === '')
                                         <button type="button" class="btn btn-sm btn-success" data-toggle="modal"
-                                            data-target="#modalMapping" data-id="{{ $obat->ID }}">
+                                            data-target="#modalMapping" data-id="{{ $rad->ID_TINDAKAN }}">
                                             <i class="fas fa-link"></i> Mapping
                                         </button>
                                     @else
                                         <button type="button" class="btn btn-sm btn-warning" data-toggle="modal"
-                                            data-target="#modalMapping" data-id="{{ $obat->ID }}">
+                                            data-target="#modalMapping" data-id="{{ $rad->ID_TINDAKAN }}">
                                             <i class="fas fa-sync-alt"></i> Mapping Ulang
                                         </button>
                                     @endif
 
                                 </td>
-
                             </tr>
                         @empty
                             <tr>
@@ -85,7 +94,6 @@
                             </tr>
                         @endforelse
                     </tbody>
-
                 </table>
             </div>
 
@@ -95,42 +103,35 @@
             </div>
         </div>
     </div>
-    @include('modals.modal_mapping_obat')
+    @include('modals.modal_mapping_radiology')
     @push('after-script')
         <script>
             $(document).ready(function () {
-
-                // Event saat modal dibuka
                 $('#modalMapping').on('show.bs.modal', function (event) {
-                    const button = $(event.relatedTarget); // tombol yang diklik
+                    const button = $(event.relatedTarget);
                     const id = button.data('id');
 
-                    // Reset form dulu
-                    $('#formMappingObat')[0].reset();
+                    $('#formMappingRadiology')[0].reset();
 
-                    // Simpan ID ke input hidden
-                    $('#id_obat').val(id);
+                    $('#id_tindakan').val(id);
 
-                    // Fetch data via POST
                     $.ajax({
-                        url: "{{ route('master_obat.show') }}",
+                        url: "{{ route('master_radiology.show') }}",
                         type: "POST",
                         data: {
                             _token: "{{ csrf_token() }}",
                             id: id
                         },
                         success: function (data) {
-                            // Isi form di modal
-                            $('#no').val(data.ID);
-                            $('#kode_barang').val(data.KDBRG_CENTRA);
-                            $('#nama_barang').val(data.NAMABRG);
-                            $('#kode_kfa').val(data.KD_BRG_KFA);
-                            $('#nama_kfa').val(data.NAMABRG_KFA);
-                            $('#deskripsi').val(data.DESCRIPTION);
+                            $('#no').val(data.ID_TINDAKAN);
+                            $('#nama_grup').val(data.NAMA_GRUP);
+                            $('#nama_tindakan').val(data.NAMA_TINDAKAN);
+                            $('#satusehat_code').val(data.SATUSEHAT_CODE);
+                            $('#satusehat_display').val(data.SATUSEHAT_DISPLAY);
                         },
                         error: function (xhr) {
                             console.error(xhr.responseText);
-                            alert('Gagal mengambil data obat.');
+                            alert('Gagal mengambil data tindakan radiology.');
                         }
                     });
                 });
@@ -139,17 +140,18 @@
         </script>
         <script>
             $('#btnSaveMapping').on('click', function () {
-                let formData = $('#formMappingObat').serialize();
+                let formData = $('#formMappingRadiology').serialize();
+                console.log(formData);
 
                 $.ajax({
-                    url: "{{ route('master_obat.saveMapping') }}",
+                    url: "{{ route('master_radiology.save_loinc') }}",
                     type: "POST",
                     data: formData,
                     success: function (res) {
                         if (res.success) {
                             $.toast({
                                 heading: 'Sukses',
-                                text: 'Mapping berhasil disimpan.',
+                                text: 'Mapping data tindakan radiology berhasil disimpan.',
                                 position: 'top-right',
                                 loaderBg: '#51A351',
                                 icon: 'success',
@@ -158,7 +160,6 @@
 
                             $('#modalMapping').modal('hide');
 
-                            // 🔄 reload halaman penuh setelah toast selesai
                             setTimeout(() => {
                                 location.reload();
                             }, 1500);
@@ -187,8 +188,7 @@
                 });
             });
         </script>
-
-
     @endpush
+
 
 @endsection
