@@ -26,6 +26,60 @@
         <div class="card-body">
             <h4 class="card-title">Daftar Master Radiology</h4>
 
+            <!-- 📊 Statistik -->
+            <div class="row">
+                <!-- Total -->
+                <div class="col-md-4">
+                    <a href="{{ route('master_radiology') }}" class="text-decoration-none">
+                        <div class="card shadow-sm">
+                            <div class="card-body d-flex align-items-center">
+                                <div class="mr-3">
+                                    <i class="fas fa-radiation fa-2x {{ request('mapped_filter') == '' ? 'text-primary' : 'text-secondary' }}"></i>
+                                </div>
+                                <div>
+                                    <h6 class="{{ request('mapped_filter') == '' ? 'text-primary' : 'text-secondary' }} mb-0">Total Tindakan Radiology</h6>
+                                    <h4 class="font-weight-bold mb-0">{{ number_format($total_all) }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Sudah Dimapping -->
+                <div class="col-md-4">
+                    <a href="{{ route('master_radiology', ['mapped_filter' => 'mapped']) }}" class="text-decoration-none">
+                        <div class="card shadow-sm">
+                            <div class="card-body d-flex align-items-center">
+                                <div class="mr-3">
+                                    <i class="fas fa-link fa-2x {{ request('mapped_filter') == 'mapped' ? 'text-success' : 'text-secondary' }}"></i>
+                                </div>
+                                <div>
+                                    <h6 class="{{ request('mapped_filter') == 'mapped' ? 'text-success' : 'text-secondary' }} mb-0">Sudah Dimapping</h6>
+                                    <h4 class="font-weight-bold mb-0">{{ number_format($total_mapped) }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Belum Dimapping -->
+                <div class="col-md-4">
+                    <a href="{{ route('master_radiology', ['mapped_filter' => 'unmapped']) }}" class="text-decoration-none">
+                        <div class="card shadow-sm">
+                            <div class="card-body d-flex align-items-center">
+                                <div class="mr-3">
+                                    <i class="fas fa-unlink fa-2x {{ request('mapped_filter') == 'unmapped' ? 'text-warning' : 'text-secondary' }}"></i>
+                                </div>
+                                <div>
+                                    <h6 class="{{ request('mapped_filter') == 'unmapped' ? 'text-warning' : 'text-secondary' }} mb-0">Belum Dimapping</h6>
+                                    <h4 class="font-weight-bold mb-0">{{ number_format($total_unmapped) }}</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
             <!-- 🔍 Search Form -->
             <form method="GET" action="{{ route('master_radiology') }}" class="mb-3">
                 <div class="row mb-3">
