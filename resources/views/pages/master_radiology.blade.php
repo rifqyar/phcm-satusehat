@@ -30,14 +30,14 @@
             <div class="row">
                 <!-- Total -->
                 <div class="col-md-4">
-                    <a href="{{ route('master_radiology') }}" class="text-decoration-none">
+                    <a href="{{ route('master_radiology', ['mapped_filter' => 'all', 'search' => request('search')]) }}" class="text-decoration-none">
                         <div class="card shadow-sm">
                             <div class="card-body d-flex align-items-center">
                                 <div class="mr-3">
-                                    <i class="fas fa-radiation fa-2x {{ request('mapped_filter') == '' ? 'text-primary' : 'text-secondary' }}"></i>
+                                    <i class="fas fa-radiation fa-2x {{ request('mapped_filter') == '' || request('mapped_filter') == 'all' ? 'text-primary' : 'text-secondary' }}"></i>
                                 </div>
                                 <div>
-                                    <h6 class="{{ request('mapped_filter') == '' ? 'text-primary' : 'text-secondary' }} mb-0">Total Tindakan Radiology</h6>
+                                    <h6 class="{{ request('mapped_filter') == '' || request('mapped_filter') == 'all' ? 'text-primary' : 'text-secondary' }} mb-0">Total Tindakan Radiology</h6>
                                     <h4 class="font-weight-bold mb-0">{{ number_format($total_all) }}</h4>
                                 </div>
                             </div>
@@ -47,7 +47,7 @@
 
                 <!-- Sudah Dimapping -->
                 <div class="col-md-4">
-                    <a href="{{ route('master_radiology', ['mapped_filter' => 'mapped']) }}" class="text-decoration-none">
+                    <a href="{{ route('master_radiology', ['mapped_filter' => 'mapped', 'search' => request('search')]) }}" class="text-decoration-none">
                         <div class="card shadow-sm">
                             <div class="card-body d-flex align-items-center">
                                 <div class="mr-3">
@@ -64,7 +64,7 @@
 
                 <!-- Belum Dimapping -->
                 <div class="col-md-4">
-                    <a href="{{ route('master_radiology', ['mapped_filter' => 'unmapped']) }}" class="text-decoration-none">
+                    <a href="{{ route('master_radiology', ['mapped_filter' => 'unmapped', 'search' => request('search')]) }}" class="text-decoration-none">
                         <div class="card shadow-sm">
                             <div class="card-body d-flex align-items-center">
                                 <div class="mr-3">
@@ -86,7 +86,7 @@
                     <div class="col-md-3">
                         <div class="input-group">
                             <select name="mapped_filter" class="form-control">
-                                <option value="">Semua</option>
+                                <option value="all" {{ request('mapped_filter') == '' || request('mapped_filter') == 'all' ? 'selected' : '' }}>Semua</option>
                                 <option value="mapped" {{ request('mapped_filter') == 'mapped' ? 'selected' : '' }}>Sudah Mapping</option>
                                 <option value="unmapped" {{ request('mapped_filter') == 'unmapped' ? 'selected' : '' }}>Belum Mapping</option>
                             </select>
