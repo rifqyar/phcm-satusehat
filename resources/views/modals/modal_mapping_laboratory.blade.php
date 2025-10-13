@@ -12,7 +12,7 @@
             </div>
 
             <div class="modal-body">
-                <form id="formMappingLaboratory" action="{{ route('master_laboratory.save_loinc') }}" method="POST">
+                <form id="formMappingLaboratory">
                     @csrf
                     <input type="hidden" name="id_tindakan" id="id_tindakan">
 
@@ -93,6 +93,22 @@
     </div>
 </div>
 <script>
+    const formSearchLoinc = document.getElementById('formSearchLoinc');
+
+    function showLoading() {
+        document.getElementById('tableLoincWrapper').style.display = 'block';
+        document.getElementById('tbodyLoinc').innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-4">
+                    <div class="spinner-border text-info" role="status" style="width: 2rem; height: 2rem;">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                    <div class="mt-2 text-secondary">Memuat data LOINC...</div>
+                </td>
+            </tr>
+        `;
+    }
+
     function getDataLoinc(query) {
         fetch(`/master-radiology/loinc-search?query=${encodeURIComponent(query)}`)
         .then(response => response.json())
@@ -130,7 +146,7 @@
         });
     }
 
-    document.getElementById('btnCariLoincCode').addEventListener('click', function (e) {
+    formSearchLoinc.addEventListener('submit', function (e) {
         e.preventDefault();
 
         const query = document.getElementById('search_loinc').value.trim();
@@ -138,6 +154,8 @@
             alert('Masukkan code LOINC untuk mencari data LOINC.');
             return;
         }
+
+        showLoading();
 
         try {
             getDataLoinc(query);
