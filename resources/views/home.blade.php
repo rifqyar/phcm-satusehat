@@ -23,6 +23,7 @@
 
 @section('content')
     <div class="row page-titles">
+        <!-- Existing content -->
         <div class="col-md-5 col-8 align-self-center">
             <h3 class="text-themecolor">Dashboard</h3>
             <ol class="breadcrumb">
@@ -31,11 +32,29 @@
             </ol>
         </div>
         <div class="col-md-7 col-4 align-self-center">
-
+            <div class="d-flex m-t-10 justify-content-end">
+                <h6>Selamat Datang <p><b>{{ Session::get('user') }}</b></p>
+                </h6>
+            </div>
         </div>
     </div>
 
-    <div class="row">
+    <div class="d-flex justify-content-between align-items-center mt-4">
+        <h3 class="card-title">Transaksi Satu Sehat</h3>
+    </div>
 
+    <div class="card">
+        <div class="card-body">
+            <div class="row text-center">
+                @foreach ($satuSehatMenu as $item)
+                    <div class="col-md-4 mb-5">
+                        <div class="card">
+                            <a class="btn btn-light p-5 shadow"
+                                href="{{ $item->url != '#' ? route($item->url) : '#' }}">{{ $item->title }}</a>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
     </div>
 @endsection

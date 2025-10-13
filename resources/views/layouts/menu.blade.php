@@ -18,9 +18,6 @@
                     </ul>
                 </li>
                 <li>
-                    <a href="#" aria-expanded="false"><span class="hide-menu">Transaksi</span></a>
-                </li>
-                <li>
                     <a href="#" aria-expanded="false"><span class="hide-menu">Log Transaksi</span></a>
                 </li>
             </ul>
