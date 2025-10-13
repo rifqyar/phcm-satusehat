@@ -18,8 +18,7 @@ class MasterLaboratoryController extends Controller
             ->select(
                 'a.ID_GRUP_TIND',
                 'a.KDKLINIK',
-                'a.NM_GRUP_TIND',
-                DB::raw("ISNULL(a.IDUNIT,'$idUnit') as IDUNIT")
+                'a.NM_GRUP_TIND'
             )
             ->where('a.KDKLINIK', $klinikLab)
             ->distinct()
@@ -37,27 +36,75 @@ class MasterLaboratoryController extends Controller
             ->select(
                 'a.ID_GRUP_TIND as ID_GRUP',
                 'c.NM_GRUP_TIND as NAMA_GRUP',
-                'a.KDKLINIK',
                 'a.KD_TIND as ID_TINDAKAN',
-                DB::raw('ISNULL(a.URUTAN, 99) as URUTAN'),
                 'b.NM_TIND as NAMA_TINDAKAN',
-                // DB::raw('COUNT(DISTINCT a.ID_GRUP_TIND) OVER() as JUMLAH_DATA'),
                 'ss.code as SATUSEHAT_CODE',
                 'ss.codesystem as SATUSEHAT_SYSTEM',
                 'ss.display as SATUSEHAT_DISPLAY',
                 'ss.CATEGORY'
             )
             ->whereIn('a.ID_GRUP_TIND', $groupIds)
-            ->orderByRaw('ISNULL(a.URUTAN, 99)');
+            ->groupBy(
+                'a.ID_GRUP_TIND',
+                'c.NM_GRUP_TIND',
+                'a.KD_TIND',
+                'b.NM_TIND',
+                'ss.code',
+                'ss.codesystem',
+                'ss.display',
+                'ss.CATEGORY'
+            )
+            ->orderBy('a.ID_GRUP_TIND', 'asc')
+            ->distinct();
+
+        // clone the base query for later reuse
+        $queryCount = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.RJ_DGRUP_TIND as a')
+            ->leftJoin('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as b', 'a.KD_TIND', '=', 'b.KD_TIND')
+            ->leftJoin('SIRS_PHCM.dbo.RJ_MGRUP_TIND as c', 'a.ID_GRUP_TIND', '=', 'c.ID_GRUP_TIND')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as ss', 'a.KD_TIND', '=', 'ss.ID')
+            ->select(
+                'a.ID_GRUP_TIND as ID_GRUP',
+                'b.NM_TIND as NAMA_TINDAKAN',
+            )
+            ->whereIn('a.ID_GRUP_TIND', $groupIds)
+            ->groupBy(
+                'a.ID_GRUP_TIND',
+                'b.NM_TIND',
+            )
+            ->get();
+        $total_all = count($queryCount);
+
+        $queryMapped = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.RJ_DGRUP_TIND as a')
+            ->leftJoin('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as b', 'a.KD_TIND', '=', 'b.KD_TIND')
+            ->leftJoin('SIRS_PHCM.dbo.RJ_MGRUP_TIND as c', 'a.ID_GRUP_TIND', '=', 'c.ID_GRUP_TIND')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as ss', 'a.KD_TIND', '=', 'ss.ID')
+            ->select(
+                'a.ID_GRUP_TIND as ID_GRUP',
+                'b.NM_TIND as NAMA_TINDAKAN',
+                'ss.code as SATUSEHAT_CODE',
+            )
+            ->whereIn('a.ID_GRUP_TIND', $groupIds)
+            ->whereNotNull('ss.code')
+            ->where('ss.code', '<>', '')
+            ->groupBy(
+                'a.ID_GRUP_TIND',
+                'b.NM_TIND',
+                'ss.code',
+            )
+            ->get();
+        $total_mapped = count($queryMapped);
+        $total_unmapped = ($total_all - $total_mapped);
 
         // search filter
         if ($request->filled('search')) {
             $search = $request->get('search');
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('b.NM_TIND', 'like', "%{$search}%")
-                  ->orWhere('c.NM_GRUP_TIND', 'like', "%{$search}%")
-                  ->orWhere('ss.code', 'like', "%{$search}%")
-                  ->orWhere('ss.display', 'like', "%{$search}%");
+                    ->orWhere('c.NM_GRUP_TIND', 'like', "%{$search}%")
+                    ->orWhere('ss.code', 'like', "%{$search}%")
+                    ->orWhere('ss.display', 'like', "%{$search}%");
             });
         }
 
@@ -66,7 +113,7 @@ class MasterLaboratoryController extends Controller
             if ($request->mapped_filter === 'mapped') {
                 $query->whereNotNull('ss.code')->where('ss.code', '<>', '');
             } elseif ($request->mapped_filter === 'unmapped') {
-                $query->where(function($q) {
+                $query->where(function ($q) {
                     $q->whereNull('ss.code')->orWhere('ss.code', '');
                 });
             }
@@ -74,7 +121,7 @@ class MasterLaboratoryController extends Controller
 
         $data = $query->paginate(10);
 
-        return view('pages.master_laboratory', compact('groups', 'data'));
+        return view('pages.master_laboratory', compact('groups', 'data', 'total_all', 'total_mapped', 'total_unmapped'));
     }
 
     public function show(Request $request)
@@ -148,7 +195,7 @@ class MasterLaboratoryController extends Controller
                         'NM_TIND'   => $validated['nama_tindakan'],
                         'code'      => $validated['satusehat_code'],
                         'display'   => $validated['satusehat_display'],
-                        'codesystem'=> 'http://loinc.org',
+                        'codesystem' => 'http://loinc.org',
                         'CATEGORY'  => 2,       // Laboratory
                     ]);
             } else {
@@ -160,7 +207,7 @@ class MasterLaboratoryController extends Controller
                         'NM_TIND'   => $validated['nama_tindakan'],
                         'code'      => $validated['satusehat_code'],
                         'display'   => $validated['satusehat_display'],
-                        'codesystem'=> 'http://loinc.org',
+                        'codesystem' => 'http://loinc.org',
                         'CATEGORY'  => 2,       // Laboratory
                     ]);
             }
@@ -173,6 +220,4 @@ class MasterLaboratoryController extends Controller
             ], 500);
         }
     }
-
-
 }
