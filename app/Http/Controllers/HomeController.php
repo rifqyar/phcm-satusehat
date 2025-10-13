@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 class HomeController extends Controller
 {
@@ -16,93 +17,75 @@ class HomeController extends Controller
         $satuSehatMenu = [
             [
                 'title' => 'Encounter / Kunjungan Pasien',
-                'url' => '#',
-                'icon' => 'mdi mdi-pill',
+                'url' => 'satusehat.encounter.index',
             ],
             [
                 'title' => 'Diagnosis',
                 'url' => '#',
-                'icon' => 'mdi mdi-radiology',
             ],
             [
                 'title' => 'Observasi',
                 'url' => '#',
-                'icon' => 'mdi mdi-flask',
             ],
             [
                 'title' => 'Tindakan',
                 'url' => '#',
-                'icon' => 'mdi mdi-cube-send',
             ],
             [
                 'title' => 'Resume Medis',
                 'url' => '#',
-                'icon' => 'mdi mdi-cube-send',
             ],
             [
                 'title' => 'Imunisasi',
                 'url' => '#',
-                'icon' => 'mdi mdi-cube-send',
             ],
             [
                 'title' => 'Resep Obat',
                 'url' => '#',
-                'icon' => 'mdi mdi-cube-send',
             ],
             [
                 'title' => 'Tebus Obat',
                 'url' => '#',
-                'icon' => 'mdi mdi-cube-send',
             ],
             [
                 'title' => 'Alergi Intoleran',
                 'url' => '#',
-                'icon' => 'mdi mdi-cube-send',
             ],
             [
                 'title' => 'Radiologi',
                 'url' => '#',
-                'icon' => 'mdi mdi-cube-send',
             ],
             [
                 'title' => 'Permintaan Pemeriksaan (Penunjang Medis)',
                 'url' => '#',
-                'icon' => 'mdi mdi-cube-send',
             ],
             [
                 'title' => 'Spesimen',
                 'url' => '#',
-                'icon' => 'mdi mdi-cube-send',
             ],
             [
                 'title' => 'Laporan Pemeriksaan',
                 'url' => '#',
-                'icon' => 'mdi mdi-cube-send',
             ],
             [
                 'title' => 'Rencana Perawatan',
                 'url' => '#',
-                'icon' => 'mdi mdi-cube-send',
             ],
             [
                 'title' => 'Catatan Pengobatan',
                 'url' => '#',
-                'icon' => 'mdi mdi-chart-bar',
             ],
             [
                 'title' => 'Respon Kuesioner',
                 'url' => '#',
-                'icon' => 'mdi mdi-chart-bar',
             ],
             [
                 'title' => 'Data Obat',
                 'url' => '#',
-                'icon' => 'mdi mdi-chart-bar',
             ],
             [
                 'title' => 'Episode Perawatan',
                 'url' => '#',
-                'icon' => 'mdi mdi-chart-bar',
             ]
         ];
         $satuSehatMenu = json_decode(json_encode($satuSehatMenu));

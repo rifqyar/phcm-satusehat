@@ -50,7 +50,7 @@
                     <div class="col-md-4 mb-5">
                         <div class="card">
                             <a class="btn btn-light p-5 shadow"
-                                href="{{ $item->url != '#' ? route($item->url) : '#' }}">{{ $item->title }}</a>
+                                href="{{ $item->url != '#' && Route::has($item->url) ? route($item->url) : '#' }}">{{ $item->title }}</a>
                         </div>
                     </div>
                 @endforeach

@@ -14,7 +14,7 @@ class EncounterController extends Controller
      */
     public function index()
     {
-        //
+        return view('pages.satusehat.encounter.index');
     }
 
     public function datatable(Request $request) {}
