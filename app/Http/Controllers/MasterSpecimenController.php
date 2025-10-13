@@ -260,6 +260,7 @@ class MasterSpecimenController extends Controller
                 return [
                     'KODE_TINDAKAN' => $validated['tindakan'],
                     'KODE_SPECIMEN' => $kodeSpecimen,
+                    'ENV' => 'Dev'
                 ];
             })->toArray();
 
@@ -351,6 +352,7 @@ class MasterSpecimenController extends Controller
                     return [
                         'KODE_TINDAKAN' => $id,
                         'KODE_SPECIMEN' => $specimenCode,
+                        'ENV' => 'Dev'
                     ];
                 })->toArray();
 
