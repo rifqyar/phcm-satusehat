@@ -54,20 +54,30 @@
                 {{-- FORM PENCARIAN KFA --}}
                 <form id="formCariKfa" class="mb-3">
                     <div class="row align-items-end">
-                        <div class="col-md-8">
+                        <!-- 🔽 Pilihan tipe pencarian -->
+                        <div class="col-md-3">
+                            <label class="form-label">Tipe Pencarian</label>
+                            <select class="form-select" id="tipe_pencarian">
+                                <option value="keyword" selected>Medicine</option>
+                                <option value="template_code">Code</option>
+                            </select>
+                        </div>
+
+                        <!-- 🔍 Input keyword -->
+                        <div class="col-md-5">
                             <label class="form-label">Cari Produk KFA</label>
                             <input type="text" class="form-control" id="keyword_kfa"
                                 placeholder="Masukkan keyword produk...">
                         </div>
+
+                        <!-- 🔘 Tombol cari -->
                         <div class="col-md-4">
-                            <!-- ubah type dari button jadi submit -->
                             <button type="submit" class="btn btn-info w-100" id="btnCariKfa">
                                 <i class="fa fa-search"></i> Cari KFA
                             </button>
                         </div>
                     </div>
                 </form>
-
 
                 <!-- Hasil KFA -->
                 <div class="table-responsive" id="tableKfaWrapper" style="display:none;">
@@ -76,9 +86,7 @@
                             <tr>
                                 <th>Kode KFA</th>
                                 <th>Nama Produk</th>
-                                <th>Nama Dagang</th>
-                                <th>Produsen</th>
-                                <th>Form</th>
+                                <th>Update Terakhir</th>
                                 <th>Aksi</th>
                             </tr>
                         </thead>
@@ -99,13 +107,14 @@
     const tableWrapper = document.getElementById('tableKfaWrapper');
     const tbody = document.getElementById('tbodyKfa');
     const formCariKfa = document.getElementById('formCariKfa');
+    const inputKeyword = document.getElementById('keyword_kfa');
 
-    // Helper untuk tampilkan spinner loading
+    // 🔄 Spinner saat loading
     function showLoading() {
         tableWrapper.style.display = 'block';
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center py-4">
+                <td colspan="5" class="text-center py-4">
                     <div class="spinner-border text-info" role="status" style="width: 2rem; height: 2rem;">
                         <span class="sr-only">Loading...</span>
                     </div>
@@ -115,42 +124,45 @@
         `;
     }
 
-    // === HANDLE CARI KFA ===
+    // 🔍 Event: cari produk KFA
     formCariKfa.addEventListener('submit', function (e) {
-        e.preventDefault(); // cegah reload form bawaan HTML
+        e.preventDefault();
 
-        const keyword = document.getElementById('keyword_kfa').value.trim();
+        const tipe = document.getElementById('tipe_pencarian').value; // keyword / template_code
+        const keyword = inputKeyword.value.trim();
+
         if (!keyword) {
-            alert('Masukkan keyword untuk mencari data KFA.');
+            alert('Masukkan keyword atau code untuk mencari data KFA.');
             return;
         }
 
-        showLoading(); // tampilkan spinner saat mulai fetch
+        showLoading();
 
-        fetch(`/satusehat/kfa-search?keyword=${encodeURIComponent(keyword)}`)
+        const queryParam = `${tipe}=${encodeURIComponent(keyword)}`;
+
+        fetch(`/satusehat/kfa-search?${queryParam}`)
             .then(response => response.json())
             .then(data => {
                 tbody.innerHTML = '';
-                const items = data?.items?.data || [];
+                const items = Array.isArray(data) ? data : [];
 
                 if (items.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="6" class="text-center">Tidak ada data ditemukan</td></tr>`;
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center">Tidak ada data ditemukan</td></tr>`;
                     tableWrapper.style.display = 'block';
                     return;
                 }
 
+                // Isi tabel hasil pencarian
                 items.forEach(item => {
                     const row = `
                         <tr>
                             <td>${item.kfa_code || '-'}</td>
-                            <td>${item.name || '-'}</td>
-                            <td>${item.nama_dagang || '-'}</td>
-                            <td>${item.manufacturer || '-'}</td>
-                            <td>${item.dosage_form?.name || '-'}</td>
+                            <td>${item.display_name || item.name || '-'}</td>
+                            <td>${item.updated_at || '-'}</td>
                             <td>
                                 <button type="button" class="btn btn-sm btn-success btnPilihKfa" 
                                     data-kfa="${item.kfa_code}" 
-                                    data-nama="${item.name}">
+                                    data-nama="${item.display_name || item.name}">
                                     Pilih
                                 </button>
                             </td>
@@ -163,12 +175,20 @@
             })
             .catch(err => {
                 console.error(err);
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3">Terjadi kesalahan saat memuat data KFA.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3">Terjadi kesalahan saat memuat data KFA.</td></tr>`;
                 tableWrapper.style.display = 'block';
             });
     });
 
-    // === HANDLE PILIH KFA ===
+    // ⏎ Enter di input = submit form
+    inputKeyword.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            formCariKfa.dispatchEvent(new Event('submit'));
+        }
+    });
+
+    // 🟩 Event: pilih hasil KFA
     document.addEventListener('click', function (e) {
         if (e.target.classList.contains('btnPilihKfa')) {
             const kode = e.target.dataset.kfa;
