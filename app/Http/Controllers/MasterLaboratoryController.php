@@ -109,19 +109,19 @@ class MasterLaboratoryController extends Controller
         }
 
         // Mapped filter: mapped/unmapped
-        if ($request->filled('mapped_filter')) {
-            if ($request->mapped_filter === 'mapped') {
-                $query->whereNotNull('ss.code')->where('ss.code', '<>', '');
-            } elseif ($request->mapped_filter === 'unmapped') {
-                $query->where(function ($q) {
-                    $q->whereNull('ss.code')->orWhere('ss.code', '');
-                });
-            }
+        $mapped_filter = $request->get('mapped_filter', 'all');
+        if ($request->mapped_filter === 'mapped') {
+            $query->whereNotNull('ss.code')->where('ss.code', '<>', '');
+        } elseif ($request->mapped_filter === 'unmapped') {
+            $query->where(function ($q) {
+                $q->whereNull('ss.code')->orWhere('ss.code', '');
+            });
         }
 
-        $data = $query->paginate(10);
+        $data = $query->paginate(10)
+            ->appends(['search' => request('search'), 'mapped_filter' => request('mapped_filter')]);
 
-        return view('pages.master_laboratory', compact('groups', 'data', 'total_all', 'total_mapped', 'total_unmapped'));
+        return view('pages.master_laboratory', compact('groups', 'data', 'mapped_filter', 'total_all', 'total_mapped', 'total_unmapped'));
     }
 
     public function show(Request $request)

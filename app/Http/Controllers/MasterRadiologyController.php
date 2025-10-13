@@ -58,19 +58,19 @@ class MasterRadiologyController extends Controller
         }
 
         // Mapped filter: mapped/unmapped
-        if ($request->filled('mapped_filter')) {
-            if ($request->mapped_filter === 'mapped') {
-                $query->whereNotNull('d.code')->where('d.code', '<>', '');
-            } elseif ($request->mapped_filter === 'unmapped') {
-                $query->where(function ($q) {
-                    $q->whereNull('d.code')->orWhere('d.code', '');
-                });
-            }
+        $mapped_filter = $request->get('mapped_filter', 'all');
+        if ($mapped_filter === 'mapped') {
+            $query->whereNotNull('d.code')->where('d.code', '<>', '');
+        } elseif ($mapped_filter === 'unmapped') {
+            $query->where(function ($q) {
+                $q->whereNull('d.code')->orWhere('d.code', '');
+            });
         }
 
-        $data = $query->paginate(10);
+        $data = $query->paginate(10)
+            ->appends(['search' => request('search'), 'mapped_filter' => request('mapped_filter')]);
 
-        return view('pages.master_radiology', compact('data', 'total_all', 'total_mapped', 'total_unmapped'));
+        return view('pages.master_radiology', compact('data', 'mapped_filter', 'total_all', 'total_mapped', 'total_unmapped'));
     }
 
     public function show(Request $request)
