@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\SatuSehat;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\SATUSEHATTraits;
 use App\Lib\LZCompressor\LZString;
+use App\Models\GlobalParameter;
+use App\Models\SATUSEHAT\SS_Kode_API;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +14,8 @@ use Yajra\DataTables\DataTables;
 
 class EncounterController extends Controller
 {
+    use SATUSEHATTraits;
+
     /**
      * Display a listing of the resource.
      *
@@ -144,11 +149,12 @@ class EncounterController extends Controller
                 $idUnit = LZString::compressToEncodedURIComponent($row->ID_UNIT);
                 $param = LZString::compressToEncodedURIComponent($kdbuku . '+' . $kdDok . '+' . $kdKlinik . '+' . $idUnit);
 
+                $jenisPerawatan = $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
+                $id_transaksi = LZString::compressToEncodedURIComponent($row->ID_TRANSAKSI);
                 $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
                 $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
-                $dokter = LZString::compressToEncodedURIComponent($row->KODE_DOKTER);
                 $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
-                $paramSatuSehat = LZString::compressToEncodedURIComponent($kdbuku . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $dokter . '+' .  $kdLokasiSS);
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($jenisPerawatan . ' + ' . $id_transaksi . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' .  $kdLokasiSS);
 
                 if ($row->ID_PASIEN_SS == null) {
                     $btn = '<i class="text-muted">Pasien Belum Mapping Satu Sehat</i>';
@@ -218,10 +224,126 @@ class EncounterController extends Controller
         return view('pages.satusehat.encounter.lihat-erm', compact('kdbuku', 'kdDok', 'kdKlinik', 'idUnit'));
     }
 
-    public function sendSatuSehat(Request $request)
+    public function sendSatuSehat(Request $request, $param)
     {
-        $id_transaksi = $request->input('id_transaksi');
+        $param = base64_decode($param);
+        $param = LZString::decompressFromEncodedURIComponent($param);
+        $parts = explode('+', $param);
+
+        $jenisPerawatan = trim($parts[0]);
+        $idTransaksi = LZString::decompressFromEncodedURIComponent(trim($parts[1]));
+        $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[2]);
+        $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[3]);
+        $kdLokasiSS = LZString::decompressFromEncodedURIComponent($parts[4]);
         $id_unit      = '001'; // session('id_klinik');
+
+        $jenisEncounter = [];
+        if ($jenisPerawatan == 'RJ') {
+            $jenisEncounter = [
+                "system" => "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                "code" => "AMB",
+                "display" => "ambulatory"
+            ];
+        } else {
+            $jenisEncounter = [
+                "system" => "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                "code" => "IMP",
+                "display" => "inpatient"
+            ];
+        }
+
+        $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
+            ->where('idpx', $kdPasienSS)
+            ->first();
+
+        $nakes = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
+            ->where('idnakes', $kdNakesSS)
+            ->first();
+
+        $location = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_LOCATION')
+            ->where('idss', $kdLokasiSS)
+            ->first();
+
+        $baseurl = '';
+        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
+            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+        } else {
+            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
+            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+        }
+
+        $data = [
+            "resourceType" => "Encounter",
+            "status" => "arrived",
+            "class" => $jenisEncounter,
+            "subject" => [
+                "reference" => "Patient/{$kdPasienSS}",
+                "display" => "$patient->nama"
+            ],
+            "participant" => [[
+                "type" => [[
+                    "coding" => [[
+                        "system" => "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                        "code" => "ATND",
+                        "display" => "attender"
+                    ]]
+                ]],
+                "individual" => [
+                    "reference" => "Practitioner/{$kdNakesSS}",
+                    "display" => "$nakes->nama"
+                ]
+            ]],
+            "period" => [
+                "start" => "$request->jam_datang"
+            ],
+            "location" => [[
+                "location" => [
+                    "reference" => "Location/{$kdLokasiSS}",
+                    "display" => "$location->name"
+                ]
+            ]],
+            "statusHistory" => [[
+                "status" => "arrived",
+                "period" => [
+                    "start" => "$request->jam_datang"
+                ]
+            ]],
+            "serviceProvider" => [
+                "reference" => "Organization/{$organisasi}"
+            ],
+            "identifier" => [[
+                "system" => "http://sys-ids.kemkes.go.id/encounter/{$organisasi}",
+                "value" => (string)$idTransaksi
+            ]]
+        ];
+
+        $login = $this->login($id_unit);
+        if ($login['metadata']['code'] != 200) {
+            $hasil = $login;
+        }
+
+        $token = $login['response']['token'];
+
+        $url = '';
+        // $data = json_decode(json_encode($data), true);
+        $data = json_decode(json_encode($data));
+        $dataencounter = $this->consumeSATUSEHATAPI('POST', $baseurl, $url, $data, true, $token);
+        $result = json_decode($dataencounter->getBody()->getContents(), true);
+        if ($dataencounter->getStatusCode() >= 400) {
+            $dataencounter = json_decode($dataencounter->getBody(), true);
+
+            $hasil['metadata'] = array(
+                'code' => 400,
+                'message' => 'Error Kirim Encounter. Cek Log',
+            );
+            $hasil['response']  = array(
+                'issue' => $dataencounter,
+            );
+        }
+
+        $dataencounter = json_decode($dataencounter->getBody(), true);
+        $encounterID = $dataencounter['id'];
     }
     /**
      * Show the form for creating a new resource.

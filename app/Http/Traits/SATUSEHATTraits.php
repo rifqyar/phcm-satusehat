@@ -27,7 +27,7 @@ trait SATUSEHATTraits
         $kode_unit = UnitPHC::where('ID_UNIT', $idunit)->first();
 
         $hasil = array();
-        DB::connection('satusehat')->beginTransaction();
+        DB::connection('dbsatusehat')->beginTransaction();
         try {
             if ($kode_unit->KIRIM_SATUSEHAT == 0) {
                 $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_AUTHURL_STAGING')->select('valStr')->first()->valStr;
@@ -82,7 +82,7 @@ trait SATUSEHATTraits
                 $expired_in = $auth->expired_in;
             }
 
-            DB::connection('satusehat')->commit();
+            DB::connection('dbsatusehat')->commit();
             $hasil['metadata'] = array(
                 'code' => 200,
                 'message' => 'OK',
@@ -93,7 +93,7 @@ trait SATUSEHATTraits
                 'token' => $token,
             );
         } catch (Exception $e) {
-            DB::connection('satusehat')->rollBack();
+            DB::connection('dbsatusehat')->rollBack();
             $hasil['metadata'] = array(
                 'code' => 500,
                 'message' => 'Error : ' . $e->getMessage(),
@@ -138,6 +138,8 @@ trait SATUSEHATTraits
                     $param = [
                         'headers' => [
                             'Authorization' => 'Bearer ' . $token,
+                            'Content-Type'  => 'application/json',
+                            'Accept'        => 'application/json',
                         ],
                         'json' => $query_param,
                     ];

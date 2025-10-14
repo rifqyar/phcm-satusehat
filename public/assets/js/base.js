@@ -26,7 +26,7 @@ async function ajaxGetJson(url, onsuccess, onerror) {
 
             console.log(text);
             $.toast({
-                heading: "Gagal Mengambil Data",
+                heading: "Gagal Memproses Data",
                 text: text,
                 position: "top-right",
                 loaderBg: "#ff6849",

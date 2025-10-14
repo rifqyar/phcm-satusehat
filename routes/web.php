@@ -46,7 +46,7 @@ Route::middleware(['checkLogin'])->group(function () {
         // Encounter
         Route::get('/encounter', [App\Http\Controllers\SatuSehat\EncounterController::class, 'index'])->name('encounter.index');
         Route::post('/encounter/datatable', [App\Http\Controllers\SatuSehat\EncounterController::class, 'datatable'])->name('encounter.datatable');
-        Route::get('/encounter/send-satusehat', [App\Http\Controllers\SatuSehat\EncounterController::class, 'sendSatuSehat'])->name('encounter.send-satusehat');
+        Route::get('/encounter/send/{param}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'sendSatuSehat'])->name('encounter.send');
         Route::get('/encounter/lihat-erm/{param}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'lihatERM'])->name('encounter.lihat-erm');
         // Route::post('/encounter/store', [App\Http\Controllers\SatuSehat\EncounterController::class, 'store'])->name('encounter.store');
         // Route::get('/encounter/{id}/edit', [App\Http\Controllers\SatuSehat\EncounterController::class, 'edit'])->name('encounter.edit');
