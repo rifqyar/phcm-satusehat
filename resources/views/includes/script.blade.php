@@ -31,8 +31,9 @@
 <script src="{{ asset('assets/plugins/toast-master/js/jquery.toast.js') }}"></script>
 <script src="{{ asset('assets/plugins/datatables/datatables.min.js') }}"></script>
 <script src="{{ asset('assets/plugins/datatables/datatables.bootstrap4.min.js') }}"></script>
-<script src="{{asset('assets/js/datatable-config.js')}}"></script>
-<script src="{{asset('assets/plugins/jqueryui/jquery-ui.min.js')}}"></script>
+<script src="{{ asset('assets/plugins/datatables/datatables-responsive.min.js') }}"></script>
+<script src="{{ asset('assets/js/datatable-config.js') }}"></script>
+<script src="{{ asset('assets/plugins/jqueryui/jquery-ui.min.js') }}"></script>
 <!-- js menu -->
 <script>
     $(function() {

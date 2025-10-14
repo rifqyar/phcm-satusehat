@@ -13,3 +13,4 @@
 <link rel="stylesheet" href="{{ asset('assets/css/datatable-spinner.css') }}">
 <link rel="stylesheet" href="{{asset('assets/plugins/jqueryui/jquery-ui.min.css')}}">
 <link rel="stylesheet" href="{{asset('assets/plugins/datatables/datatables.min.css')}}">
+<link rel="stylesheet" href="{{asset('assets/plugins/datatables/datatabels-responsive.min.css')}}">
