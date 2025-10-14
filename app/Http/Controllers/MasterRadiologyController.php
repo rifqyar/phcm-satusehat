@@ -12,6 +12,37 @@ class MasterRadiologyController extends Controller
 {
     public function index(Request $request)
     {
+        // base query untuk menghitung total, mapped, dan unmapped
+        $baseQuery = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as a')
+            ->join('SIRS_PHCM.dbo.RJ_DGRUP_TIND as b', 'a.KD_TIND', '=', 'b.KD_TIND')
+            ->join('SIRS_PHCM.dbo.RJ_MGRUP_TIND as c', 'b.ID_GRUP_TIND', '=', 'c.ID_GRUP_TIND')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as d', 'a.KD_TIND', '=', 'd.ID')
+            ->whereIn('b.KDKLINIK', function ($sub) {
+                $sub->select('KODE_KLINIK')
+                    ->from('SIRS_PHCM.dbo.RJ_KLINIK_RADIOLOGI')
+                    ->where('AKTIF', 'true')
+                    ->where('IDUNIT', '001');
+            })
+            ->whereRaw('ISNULL(a.STT_ACT,0) <> 0');
+
+        $qAll = clone $baseQuery;
+        $total_all = $qAll
+            ->select('a.KD_TIND')
+            ->distinct()
+            ->count('a.KD_TIND');
+
+        $qMapped = clone $baseQuery;
+        $total_mapped = $qMapped
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as d2', 'a.KD_TIND', '=', 'd2.ID')
+            ->whereNotNull('d2.code')
+            ->where('d2.code', '<>', '')
+            ->select('a.KD_TIND')
+            ->distinct()
+            ->count('a.KD_TIND');
+
+        $total_unmapped = $total_all - $total_mapped;
+
         $query = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as a')
             ->join('SIRS_PHCM.dbo.RJ_DGRUP_TIND as b', 'a.KD_TIND', '=', 'b.KD_TIND')
@@ -22,10 +53,10 @@ class MasterRadiologyController extends Controller
                 'c.NM_GRUP_TIND as NAMA_GRUP',
                 'a.KD_TIND as ID_TINDAKAN',
                 'a.NM_TIND as NAMA_TINDAKAN',
-                'd.code as SATUSEHAT_CODE',
-                'd.codesystem as SATUSEHAT_SYSTEM',
-                'd.display as SATUSEHAT_DISPLAY',
-                'd.CATEGORY'
+                DB::raw('MAX(d.code) as SATUSEHAT_CODE'),
+                DB::raw('MAX(d.codesystem) as SATUSEHAT_SYSTEM'),
+                DB::raw('MAX(d.display) as SATUSEHAT_DISPLAY'),
+                DB::raw('MAX(d.CATEGORY) as CATEGORY')
             )
             ->whereIn('b.KDKLINIK', function ($sub) {
                 $sub->select('KODE_KLINIK')
@@ -34,19 +65,11 @@ class MasterRadiologyController extends Controller
                     ->where('IDUNIT', '001');
             })
             ->whereRaw('ISNULL(a.STT_ACT,0) <> 0')
+            ->groupBy('c.ID_GRUP_TIND', 'c.NM_GRUP_TIND', 'a.KD_TIND', 'a.NM_TIND')
             ->orderBy('c.ID_GRUP_TIND')
-            ->orderBy('a.NM_TIND')
-            ->distinct();
+            ->orderBy('a.NM_TIND');
 
-        // clone the base query for later reuse
-        $total_all = (clone $query)->count();
-        $total_mapped = (clone $query)
-            ->whereNotNull('d.code')
-            ->where('d.code', '<>', '')
-            ->count();
-        $total_unmapped = ($total_all - $total_mapped);
-
-        // search filter
+        // 🔎 Search filter
         if ($request->filled('search')) {
             $search = $request->get('search');
             $query->where(function ($q) use ($search) {
@@ -57,21 +80,21 @@ class MasterRadiologyController extends Controller
             });
         }
 
-        // Mapped filter: mapped/unmapped
+        // 🧩 Mapped/unmapped filter
         $mapped_filter = $request->get('mapped_filter', 'all');
         if ($mapped_filter === 'mapped') {
-            $query->whereNotNull('d.code')->where('d.code', '<>', '');
+            $query->havingRaw('MAX(d.code) IS NOT NULL AND MAX(d.code) <> \'\'');
         } elseif ($mapped_filter === 'unmapped') {
-            $query->where(function ($q) {
-                $q->whereNull('d.code')->orWhere('d.code', '');
-            });
+            $query->havingRaw('MAX(d.code) IS NULL OR MAX(d.code) = \'\'');
         }
 
+        // 📄 Paginate final result
         $data = $query->paginate(10)
-            ->appends(['search' => request('search'), 'mapped_filter' => request('mapped_filter')]);
+            ->appends(['search' => $request->search, 'mapped_filter' => $mapped_filter]);
 
         return view('pages.master_radiology', compact('data', 'mapped_filter', 'total_all', 'total_mapped', 'total_unmapped'));
     }
+
 
     public function show(Request $request)
     {

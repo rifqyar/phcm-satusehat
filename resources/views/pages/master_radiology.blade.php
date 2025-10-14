@@ -54,7 +54,7 @@
                                     <i class="fas fa-link fa-2x {{ request('mapped_filter') == 'mapped' ? 'text-success' : 'text-secondary' }}"></i>
                                 </div>
                                 <div>
-                                    <h6 class="{{ request('mapped_filter') == 'mapped' ? 'text-success' : 'text-secondary' }} mb-0">Sudah Dimapping</h6>
+                                    <h6 class="{{ request('mapped_filter') == 'mapped' ? 'text-success' : 'text-secondary' }} mb-0">Sudah Mapping</h6>
                                     <h4 class="font-weight-bold mb-0">{{ number_format($total_mapped) }}</h4>
                                 </div>
                             </div>
@@ -71,7 +71,7 @@
                                     <i class="fas fa-unlink fa-2x {{ request('mapped_filter') == 'unmapped' ? 'text-warning' : 'text-secondary' }}"></i>
                                 </div>
                                 <div>
-                                    <h6 class="{{ request('mapped_filter') == 'unmapped' ? 'text-warning' : 'text-secondary' }} mb-0">Belum Dimapping</h6>
+                                    <h6 class="{{ request('mapped_filter') == 'unmapped' ? 'text-warning' : 'text-secondary' }} mb-0">Belum Mapping</h6>
                                     <h4 class="font-weight-bold mb-0">{{ number_format($total_unmapped) }}</h4>
                                 </div>
                             </div>
@@ -97,7 +97,7 @@
                             <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode radiology..."
                                 value="{{ request('search') }}">
                             <div class="input-group-append">
-                                <button class="btn btn-info" type="submit">Cari</button>
+                                <button class="btn btn-info" type="submit">Filter</button>
                             </div>
                         </div>
                     </div>
@@ -131,7 +131,7 @@
                                     @if (empty($rad->SATUSEHAT_CODE) || trim($rad->SATUSEHAT_CODE) === '')
                                         <button type="button" class="btn btn-sm btn-success" data-toggle="modal"
                                             data-target="#modalMapping" data-id="{{ $rad->ID_TINDAKAN }}">
-                                            <i class="fas fa-link"></i> Mapping
+                                            <i class="fas fa-link"></i> Mapping Baru
                                         </button>
                                     @else
                                         <button type="button" class="btn btn-sm btn-warning" data-toggle="modal"
