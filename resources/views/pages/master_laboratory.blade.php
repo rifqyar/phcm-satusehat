@@ -30,7 +30,7 @@
             <div class="row">
                 <!-- Total -->
                 <div class="col-md-4">
-                    <a href="{{ route('master_laboratory') }}" class="text-decoration-none">
+                    <a href="{{ route('master_laboratory', ['mapped_filter' => 'all', 'search' => request('search')]) }}" class="text-decoration-none">
                         <div class="card shadow-sm">
                             <div class="card-body d-flex align-items-center">
                                 <div class="mr-3">
@@ -47,14 +47,14 @@
 
                 <!-- Sudah Dimapping -->
                 <div class="col-md-4">
-                    <a href="{{ route('master_laboratory', ['mapped_filter' => 'mapped']) }}" class="text-decoration-none">
+                    <a href="{{ route('master_laboratory', ['mapped_filter' => 'mapped', 'search' => request('search')]) }}" class="text-decoration-none">
                         <div class="card shadow-sm">
                             <div class="card-body d-flex align-items-center">
                                 <div class="mr-3">
                                     <i class="fas fa-link fa-2x {{ request('mapped_filter') == 'mapped' ? 'text-success' : 'text-secondary' }}"></i>
                                 </div>
                                 <div>
-                                    <h6 class="{{ request('mapped_filter') == 'mapped' ? 'text-success' : 'text-secondary' }} mb-0">Sudah Dimapping</h6>
+                                    <h6 class="{{ request('mapped_filter') == 'mapped' ? 'text-success' : 'text-secondary' }} mb-0">Sudah Mapping</h6>
                                     <h4 class="font-weight-bold mb-0">{{ number_format($total_mapped) }}</h4>
                                 </div>
                             </div>
@@ -64,14 +64,14 @@
 
                 <!-- Belum Dimapping -->
                 <div class="col-md-4">
-                    <a href="{{ route('master_laboratory', ['mapped_filter' => 'unmapped']) }}" class="text-decoration-none">
+                    <a href="{{ route('master_laboratory', ['mapped_filter' => 'unmapped', 'search' => request('search')]) }}" class="text-decoration-none">
                         <div class="card shadow-sm">
                             <div class="card-body d-flex align-items-center">
                                 <div class="mr-3">
                                     <i class="fas fa-unlink fa-2x {{ request('mapped_filter') == 'unmapped' ? 'text-warning' : 'text-secondary' }}"></i>
                                 </div>
                                 <div>
-                                    <h6 class="{{ request('mapped_filter') == 'unmapped' ? 'text-warning' : 'text-secondary' }} mb-0">Belum Dimapping</h6>
+                                    <h6 class="{{ request('mapped_filter') == 'unmapped' ? 'text-warning' : 'text-secondary' }} mb-0">Belum Mapping</h6>
                                     <h4 class="font-weight-bold mb-0">{{ number_format($total_unmapped) }}</h4>
                                 </div>
                             </div>
@@ -94,10 +94,10 @@
                     </div>
                     <div class="col-md-9">
                         <div class="input-group">
-                            <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode laboratory..."
+                            <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode tindakan laboratory..."
                                 value="{{ request('search') }}">
                             <div class="input-group-append">
-                                <button class="btn btn-info" type="submit">Cari</button>
+                                <button class="btn btn-info" type="submit">Filter</button>
                             </div>
                         </div>
                     </div>
@@ -129,12 +129,12 @@
                                 <td>{{ $lab->SATUSEHAT_DISPLAY }}</td>
                                 <td class="text-center">
                                     @if (empty($lab->SATUSEHAT_CODE) || trim($lab->SATUSEHAT_CODE) === '')
-                                        <button type="button" class="btn btn-sm btn-success" data-toggle="modal"
+                                        <button type="button" class="btn btn-sm btn-warning" data-toggle="modal"
                                             data-target="#modalMapping" data-id="{{ $lab->ID_TINDAKAN }}">
-                                            <i class="fas fa-link"></i> Mapping
+                                            <i class="fas fa-link"></i> Mapping Baru
                                         </button>
                                     @else
-                                        <button type="button" class="btn btn-sm btn-warning" data-toggle="modal"
+                                        <button type="button" class="btn btn-sm btn-success" data-toggle="modal"
                                             data-target="#modalMapping" data-id="{{ $lab->ID_TINDAKAN }}">
                                             <i class="fas fa-sync-alt"></i> Mapping Ulang
                                         </button>

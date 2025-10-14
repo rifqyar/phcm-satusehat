@@ -94,7 +94,7 @@
                     </div>
                     <div class="col-md-9">
                         <div class="input-group">
-                            <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode radiology..."
+                            <input type="text" name="search" class="form-control" placeholder="Cari nama atau kode tindakan radiology..."
                                 value="{{ request('search') }}">
                             <div class="input-group-append">
                                 <button class="btn btn-info" type="submit">Filter</button>
@@ -129,12 +129,12 @@
                                 <td>{{ $rad->SATUSEHAT_DISPLAY }}</td>
                                 <td class="text-center">
                                     @if (empty($rad->SATUSEHAT_CODE) || trim($rad->SATUSEHAT_CODE) === '')
-                                        <button type="button" class="btn btn-sm btn-success" data-toggle="modal"
+                                        <button type="button" class="btn btn-sm btn-warning" data-toggle="modal"
                                             data-target="#modalMapping" data-id="{{ $rad->ID_TINDAKAN }}">
                                             <i class="fas fa-link"></i> Mapping Baru
                                         </button>
                                     @else
-                                        <button type="button" class="btn btn-sm btn-warning" data-toggle="modal"
+                                        <button type="button" class="btn btn-sm btn-success" data-toggle="modal"
                                             data-target="#modalMapping" data-id="{{ $rad->ID_TINDAKAN }}">
                                             <i class="fas fa-sync-alt"></i> Mapping Ulang
                                         </button>
