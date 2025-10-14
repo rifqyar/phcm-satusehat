@@ -139,7 +139,7 @@ class EncounterController extends Controller
             ->addColumn('action', function ($row) {
                 if ($row->JENIS_PERAWATAN == 'RAWAT_JALAN') {
                     if ($row->JUMLAH_NOTA_SATUSEHAT == 0) {
-                        if ($row->STATUS_SELESAI == "9" || $row->STATUS_SELESAI == "10") {
+                        if ($row->STATUS_SELESAI != "9" && $row->STATUS_SELESAI != "10") {
                             $btn = '<a href="#" class="btn btn-sm btn-primary"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
                         } else {
                             $btn = '<i class="text-muted">Tunggu Verifikasi Pasien</i>';

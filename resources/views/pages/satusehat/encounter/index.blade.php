@@ -312,7 +312,8 @@
                     },
                     {
                         data: 'JENIS_PERAWATAN',
-                        name: 'JENIS_PERAWATAN'
+                        name: 'JENIS_PERAWATAN',
+                        responsivePriority: 3
                     },
                     {
                         data: 'STATUS_SELESAI',
@@ -333,6 +334,7 @@
                     {
                         data: 'NAMA_PASIEN',
                         name: 'NAMA_PASIEN',
+                        responsivePriority: 2
                     },
                     {
                         data: 'DOKTER',
