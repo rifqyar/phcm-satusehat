@@ -276,6 +276,10 @@
 
                 $(this).addClass("was-validated");
             });
+
+            $('.data-table').on('click', 'button, a', function(e) {
+                e.stopPropagation();
+            });
         })
 
         function getAllData() {

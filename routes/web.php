@@ -46,11 +46,12 @@ Route::middleware(['checkLogin'])->group(function () {
         // Encounter
         Route::get('/encounter', [App\Http\Controllers\SatuSehat\EncounterController::class, 'index'])->name('encounter.index');
         Route::post('/encounter/datatable', [App\Http\Controllers\SatuSehat\EncounterController::class, 'datatable'])->name('encounter.datatable');
-        Route::get('/encounter/create', [App\Http\Controllers\SatuSehat\EncounterController::class, 'create'])->name('encounter.create');
-        Route::post('/encounter/store', [App\Http\Controllers\SatuSehat\EncounterController::class, 'store'])->name('encounter.store');
-        Route::get('/encounter/{id}/edit', [App\Http\Controllers\SatuSehat\EncounterController::class, 'edit'])->name('encounter.edit');
-        Route::put('/encounter/{id}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'update'])->name('encounter.update');
-        Route::delete('/encounter/{id}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'destroy'])->name('encounter.destroy');
+        Route::get('/encounter/send-satusehat', [App\Http\Controllers\SatuSehat\EncounterController::class, 'sendSatuSehat'])->name('encounter.send-satusehat');
+        Route::get('/encounter/lihat-erm/{param}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'lihatERM'])->name('encounter.lihat-erm');
+        // Route::post('/encounter/store', [App\Http\Controllers\SatuSehat\EncounterController::class, 'store'])->name('encounter.store');
+        // Route::get('/encounter/{id}/edit', [App\Http\Controllers\SatuSehat\EncounterController::class, 'edit'])->name('encounter.edit');
+        // Route::put('/encounter/{id}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'update'])->name('encounter.update');
+        // Route::delete('/encounter/{id}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'destroy'])->name('encounter.destroy');
 
         // Diagnosa
         Route::get('/diagnosa', [App\Http\Controllers\SatuSehat\DiagnosaController::class, 'index'])->name('diagnosa.index');

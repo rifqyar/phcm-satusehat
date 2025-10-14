@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\SatuSehat;
 
 use App\Http\Controllers\Controller;
+use App\Lib\LZCompressor\LZString;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -32,7 +33,7 @@ class EncounterController extends Controller
                 'v.*',
                 DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
             )
-            ->groupBy('v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_LOKASI', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN');
+            ->groupBy('v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_LOKASI', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN');
 
         $rjAll = $rj->get();
         $rjIntegrasi = $rj->whereNotNull('n.ID_SATUSEHAT_ENCOUNTER')->get();
@@ -90,7 +91,7 @@ class EncounterController extends Controller
                 'v.*',
                 DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
             )
-            ->groupBy('v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_LOKASI', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN');
+            ->groupBy('v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_LOKASI', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN');
 
         $rjAll = $rj->get();
         $rjIntegrasi = $rj->whereNotNull('n.ID_SATUSEHAT_ENCOUNTER')->get();
@@ -137,19 +138,41 @@ class EncounterController extends Controller
                 }
             })
             ->addColumn('action', function ($row) {
-                if ($row->JENIS_PERAWATAN == 'RAWAT_JALAN') {
-                    if ($row->JUMLAH_NOTA_SATUSEHAT == 0) {
-                        if ($row->STATUS_SELESAI != "9" && $row->STATUS_SELESAI != "10") {
-                            $btn = '<a href="#" class="btn btn-sm btn-primary"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
+                $kdbuku = LZString::compressToEncodedURIComponent($row->KBUKU);
+                $kdDok = LZString::compressToEncodedURIComponent($row->KODE_DOKTER);
+                $kdKlinik = LZString::compressToEncodedURIComponent($row->KODE_KLINIK);
+                $idUnit = LZString::compressToEncodedURIComponent($row->ID_UNIT);
+                $param = LZString::compressToEncodedURIComponent($kdbuku . '+' . $kdDok . '+' . $kdKlinik . '+' . $idUnit);
+
+                $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
+                $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
+                $dokter = LZString::compressToEncodedURIComponent($row->KODE_DOKTER);
+                $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($kdbuku . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $dokter . '+' .  $kdLokasiSS);
+
+                if ($row->ID_PASIEN_SS == null) {
+                    $btn = '<i class="text-muted">Pasien Belum Mapping Satu Sehat</i>';
+                } else if ($row->ID_NAKES_SS == null) {
+                    $btn = '<i class="text-muted">Nakes Belum Mapping Satu Sehat</i>';
+                } else if ($row->ID_LOKASI_SS == null) {
+                    $btn = '<i class="text-muted">Lokasi Belum Mapping Satu Sehat</i>';
+                } else {
+                    if ($row->JENIS_PERAWATAN == 'RAWAT_JALAN') {
+                        if ($row->JUMLAH_NOTA_SATUSEHAT == 0) {
+                            if ($row->STATUS_SELESAI != "9" && $row->STATUS_SELESAI != "10") {
+                                $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
+                            } else {
+                                $btn = '<i class="text-muted">Tunggu Verifikasi Pasien</i>';
+                            }
                         } else {
-                            $btn = '<i class="text-muted">Tunggu Verifikasi Pasien</i>';
+                            $btn = '<a href="#" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                         }
                     } else {
-                        $btn = '<a href="#" class="btn btn-sm btn-warning"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                        // return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
                     }
-                } else {
-                    // return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
                 }
+                // $btn .= '<br>';
+                // $btn .= '<a href="' . route('satusehat.encounter.lihat-erm', $param) . '" class="mt-2 btn btn-sm btn-info w-100"><i class="fas fa-info-circle mr-2"></i>Lihat ERM</a>';
                 return $btn;
             })
             ->addColumn('status_integrasi', function ($row) {
@@ -183,11 +206,23 @@ class EncounterController extends Controller
         }
     }
 
-    private function convertDate($date)
+    public function lihatERM($param)
     {
-        return substr($date, 6, 4) . '-' . substr($date, 3, 2) . '-' . substr($date, 0, 2);
+        $params = LZString::decompressFromEncodedURIComponent($param);
+        $parts = explode('|', $params);
+        $kdbuku = LZString::decompressFromEncodedURIComponent($parts[0]);
+        $kdDok = LZString::decompressFromEncodedURIComponent($parts[1]);
+        $kdKlinik = LZString::decompressFromEncodedURIComponent($parts[2]);
+        $idUnit = LZString::decompressFromEncodedURIComponent($parts[3]);
+
+        return view('pages.satusehat.encounter.lihat-erm', compact('kdbuku', 'kdDok', 'kdKlinik', 'idUnit'));
     }
 
+    public function sendSatuSehat(Request $request)
+    {
+        $id_transaksi = $request->input('id_transaksi');
+        $id_unit      = '001'; // session('id_klinik');
+    }
     /**
      * Show the form for creating a new resource.
      *
