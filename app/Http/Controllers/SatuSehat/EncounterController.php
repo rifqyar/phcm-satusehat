@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\SatuSehat;
 
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\DataTables;
@@ -16,58 +17,170 @@ class EncounterController extends Controller
      */
     public function index()
     {
-        return view('pages.satusehat.encounter.index');
+        $startDate = Carbon::now()->subDays(30)->startOfDay();
+        $endDate   = Carbon::now()->endOfDay();
+
+        $rj = DB::table('v_kunjungan_rj as v')
+            ->whereBetween('TANGGAL', [$startDate, $endDate])
+            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as n', function ($join) {
+                $join->on('n.KARCIS', '=', 'v.ID_TRANSAKSI')
+                    ->on('n.IDUNIT', '=', 'v.ID_UNIT')
+                    ->on('n.KBUKU', '=', 'v.KBUKU')
+                    ->on('n.NO_PESERTA', '=', 'v.NO_PESERTA');
+            })
+            ->select(
+                'v.*',
+                DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
+            )
+            ->groupBy('v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_LOKASI', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN');
+
+        $rjAll = $rj->get();
+        $rjIntegrasi = $rj->whereNotNull('n.ID_SATUSEHAT_ENCOUNTER')->get();
+
+        $ri = DB::table('v_kunjungan_ri')
+            ->whereBetween('TANGGAL', [$startDate, $endDate])
+            ->get();
+
+        $mergedAll = $rjAll->merge($ri)
+            ->sortByDesc('TANGGAL')
+            ->values();
+
+        $mergedIntegrated = $rjIntegrasi->merge($ri)
+            ->sortByDesc('TANGGAL')
+            ->values();
+
+        $unmapped = count($mergedAll) - count($mergedIntegrated);
+        return view('pages.satusehat.encounter.index', compact('mergedAll', 'mergedIntegrated', 'rjAll', 'rjIntegrasi', 'ri', 'unmapped'));
     }
 
     public function datatable(Request $request)
     {
-        $tgl_awal   = $request->input('tgl_awal');
-        $tgl_akhir  = $request->input('tgl_akhir');
-        $nopeserta  = $request->input('nopeserta');
-        $id_unit    = session('id_klinik');
-        // Jika parameter belum lengkap, kembalikan data kosong
-        if (empty($tgl_awal) || empty($tgl_akhir) || empty($nopeserta)) {
-            return DataTables::of([])->make(true);
+        $tgl_awal  = $request->input('tgl_awal');
+        $tgl_akhir = $request->input('tgl_akhir');
+        $id_unit   = '001'; // session('id_klinik');
+
+        if (empty($tgl_awal) && empty($tgl_akhir)) {
+            $tgl_awal  = Carbon::now()->subDays(30)->startOfDay();
+            $tgl_akhir = Carbon::now()->endOfDay();
+        } else {
+            if (empty($tgl_awal)) {
+                $tgl_awal = Carbon::parse($tgl_akhir)->subDays(30)->startOfDay();
+            }
+            if (empty($tgl_akhir)) {
+                $tgl_akhir = Carbon::parse($tgl_awal)->addDays(30)->endOfDay();
+            }
         }
 
-        // Pastikan format tanggal valid
         if (!$this->checkDateFormat($tgl_awal) || !$this->checkDateFormat($tgl_akhir)) {
             return DataTables::of([])->make(true);
         }
 
-        // Konversi tanggal ke format DB (yyyy-mm-dd)
-        $tgl_awal_db  = $this->convertDate($tgl_awal);
-        $tgl_akhir_db = $this->convertDate($tgl_akhir);
+        $tgl_awal_db  = Carbon::parse($tgl_awal)->format('Y-m-d H:i:s');
+        $tgl_akhir_db = Carbon::parse($tgl_akhir)->format('Y-m-d H:i:s');
 
-        $dataKunjungan = DB::select(
-            'EXEC rj_sp_bacalistkunjungan ?, ?, ?, ?',
-            [$nopeserta, $tgl_awal_db, $tgl_akhir_db, $id_unit]
-        );
+        $rj = DB::table('v_kunjungan_rj as v')
+            ->whereBetween('TANGGAL', [$tgl_awal_db, $tgl_akhir_db])
+            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as n', function ($join) {
+                $join->on('n.KARCIS', '=', 'v.ID_TRANSAKSI')
+                    ->on('n.IDUNIT', '=', 'v.ID_UNIT')
+                    ->on('n.KBUKU', '=', 'v.KBUKU')
+                    ->on('n.NO_PESERTA', '=', 'v.NO_PESERTA');
+            })
+            ->select(
+                'v.*',
+                DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
+            )
+            ->groupBy('v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_LOKASI', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN');
+
+        $rjAll = $rj->get();
+        $rjIntegrasi = $rj->whereNotNull('n.ID_SATUSEHAT_ENCOUNTER')->get();
+
+        $ri = DB::table('v_kunjungan_ri')
+            ->whereBetween('TANGGAL', [$tgl_awal_db, $tgl_akhir_db])
+            ->get();
+
+        $mergedAll = $rjAll->merge($ri)
+            ->sortByDesc('TANGGAL')
+            ->values();
+
+        $mergedIntegrated = $rjIntegrasi->merge($ri)
+            ->sortByDesc('TANGGAL')
+            ->values();
+
+        if ($request->input('cari') == 'mapped') {
+            $dataKunjungan = $mergedIntegrated;
+        } else if ($request->input('cari') == 'unmapped') {
+            $dataKunjungan = $mergedAll->filter(function ($item) {
+                return $item->JUMLAH_NOTA_SATUSEHAT == '0';
+            })->values();
+        } else {
+            $dataKunjungan = $mergedAll;
+        }
 
         return DataTables::of($dataKunjungan)
             ->addIndexColumn()
-            ->editColumn('TGL', function ($row) {
-                return date('d-m-Y', strtotime($row->TGL));
+            ->editColumn('JENIS_PERAWATAN', function ($row) {
+                return $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
             })
-            ->editColumn('BIAYA_NOTA', function ($row) {
-                return number_format($row->BIAYA_NOTA, 0);
+            ->editColumn('TANGGAL', function ($row) {
+                return date('Y-m-d', strtotime($row->TANGGAL));
             })
-            ->editColumn('BIAYA_FARMASI', function ($row) {
-                return number_format($row->BIAYA_FARMASI, 0);
+            ->editColumn('STATUS_SELESAI', function ($row) {
+                if ($row->JENIS_PERAWATAN == 'RAWAT_JALAN') {
+                    if ($row->STATUS_SELESAI == "9" || $row->STATUS_SELESAI == "10") {
+                        return '<span class="badge badge-pill badge-secondary p-2 w-100">Belum Verif</span>';
+                    } else {
+                        return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Verif</span>';
+                    }
+                } else {
+                    return $row->STATUS_SELESAI == 1 ? 'Selesai' : 'Belum Selesai';
+                }
             })
-            ->editColumn('TOTAL_BIAYA', function ($row) {
-                return number_format($row->TOTAL_BIAYA, 0);
+            ->addColumn('action', function ($row) {
+                if ($row->JENIS_PERAWATAN == 'RAWAT_JALAN') {
+                    if ($row->JUMLAH_NOTA_SATUSEHAT == 0) {
+                        if ($row->STATUS_SELESAI != "9" && $row->STATUS_SELESAI != "10") {
+                            $btn = '<a href="#" class="btn btn-sm btn-primary"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
+                        } else {
+                            $btn = '<i class="text-muted">Tunggu Verifikasi Pasien</i>';
+                        }
+                    } else {
+                        $btn = '<a href="#" class="btn btn-sm btn-warning"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                    }
+                } else {
+                    // return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
+                }
+                return $btn;
             })
+            ->addColumn('status_integrasi', function ($row) {
+                if ($row->JENIS_PERAWATAN == 'RAWAT_JALAN') {
+                    if ($row->JUMLAH_NOTA_SATUSEHAT > 0) {
+                        return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
+                    } else {
+                        return '<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>';
+                    }
+                } else {
+                    return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
+                }
+            })
+            ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi'])
             ->make(true);
     }
 
     private function checkDateFormat($date)
     {
-        $day   = substr($date, 0, 2);
-        $month = substr($date, 3, 2);
-        $year  = substr($date, 6, 4);
+        try {
+            // Kalau $date sudah Carbon instance
+            if ($date instanceof \Carbon\Carbon) {
+                return true;
+            }
 
-        return checkdate((int)$month, (int)$day, (int)$year);
+            // Kalau string tapi masih bisa di-parse ke Carbon
+            \Carbon\Carbon::parse($date);
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     private function convertDate($date)
