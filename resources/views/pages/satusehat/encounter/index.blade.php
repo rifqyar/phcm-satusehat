@@ -26,9 +26,28 @@
             cursor: pointer
         }
     </style>
+    <link href="{{ asset('assets/plugins/bootstrap-material-datetimepicker/css/bootstrap-material-datetimepicker.css') }}"
+        rel="stylesheet">
 @endpush
 
 @section('content')
+    <div class="row page-titles">
+        <!-- Existing content -->
+        <div class="col-md-5 col-8 align-self-center">
+            <h3 class="text-themecolor">Dashboard</h3>
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="javascript:void(0)">Encounter</a></li>
+                <li class="breadcrumb-item active">Dashboard</li>
+            </ol>
+        </div>
+        <div class="col-md-7 col-4 align-self-center">
+            <div class="d-flex m-t-10 justify-content-end">
+                <h6>Selamat Datang <p><b>{{ Session::get('user') }}</b></p>
+                </h6>
+            </div>
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-body">
             <h4 class="card-title">Daftar Kunjungan Pasien</h4>
@@ -36,57 +55,122 @@
             <div class="card">
                 <div class="card-body">
                     <div class="card-title">
-                        <h4>Form Filter</h4>
+                        {{-- <h4>Form Filter</h4> --}}
                     </div>
 
-                    <input type="hidden" name="search" value="{{ request('search') }}">
-                    <div class="row justify-content-center">
-                        <div class="col-4">
-                            <div class="card card-inverse card-primary card-mapping" onclick="search('all')">
-                                <div class="card-body">
-                                    <div class="card-title">
-                                        <div class="row align-items-center ml-1">
-                                            <i class="fas fa-info-circle" style="font-size: 48px"></i>
-                                            <div class="ml-3">
-                                                <span style="font-size: 24px">{{ $totalTindakan }}</span>
-                                                <h4 class="text-white">Semua Data Kunjungan</h4>
+                    <form action="javascript:void(0)" id="search-data" class="m-t-40">
+                        <input type="hidden" name="search" value="{{ request('search') }}">
+                        <div class="row justify-content-center">
+                            <div class="col-4">
+                                <div class="card card-inverse card-primary card-mapping" onclick="search('all')">
+                                    <div class="card-body">
+                                        <div class="card-title">
+                                            <div class="row align-items-center ml-1">
+                                                <i class="fas fa-info-circle" style="font-size: 48px"></i>
+                                                <div class="ml-3">
+                                                    <span style="font-size: 24px">{{ count($mergedAll) }}</span>
+                                                    <h4 class="text-white">Semua Data Kunjungan <br> (1 bulan terakhir)</h4>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="card card-inverse card-info card-mapping" onclick="search('mapped')">
-                                <div class="card-body">
-                                    <div class="card-title">
-                                        <div class="row align-items-center ml-1">
-                                            <i class="fas fa-link" style="font-size: 48px"></i>
-                                            <div class="ml-3">
-                                                <span style="font-size: 24px">{{ $totalMapping }}</span>
-                                                <h4 class="text-white">Data Sudah Terkirim</h4>
+                            <div class="col-4">
+                                <div class="card card-inverse card-info card-mapping" onclick="search('rj')">
+                                    <div class="card-body">
+                                        <div class="card-title">
+                                            <div class="row align-items-center ml-1">
+                                                <i class="fas fa-hospital" style="font-size: 48px"></i>
+                                                <div class="ml-3">
+                                                    <span style="font-size: 24px">{{ count($rjAll) }}</span>
+                                                    <h4 class="text-white">Kunjungan Rawat Jalan <br> (1 bulan terakhir)
+                                                    </h4>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="card card-inverse card-warning card-mapping" onclick="search('unmapped')">
-                                <div class="card-body">
-                                    <div class="card-title">
-                                        <div class="row align-items-center ml-1">
-                                            <i class="fas fa-unlink" style="font-size: 48px"></i>
-                                            <div class="ml-3">
-                                                <span style="font-size: 24px">{{ $totalUnmapped }}</span>
-                                                <h4 class="text-white">Data Belum Terkirim</h4>
+                            <div class="col-4">
+                                <div class="card card-inverse card-warning card-mapping" onclick="search('ri')">
+                                    <div class="card-body">
+                                        <div class="card-title">
+                                            <div class="row align-items-center ml-1">
+                                                <i class="fas fa-bed" style="font-size: 48px"></i>
+                                                <div class="ml-3">
+                                                    <span style="font-size: 24px">{{ count($ri) }}</span>
+                                                    <h4 class="text-white">Kunjungan Rawat Inap <br> (1 bulan terakhir)</h4>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
+                            <div class="col-6">
+                                <div class="card card-inverse card-info card-mapping" onclick="search('mapped')">
+                                    <div class="card-body">
+                                        <div class="card-title">
+                                            <div class="row align-items-center ml-1">
+                                                <i class="fas fa-link" style="font-size: 48px"></i>
+                                                <div class="ml-3">
+                                                    <span style="font-size: 24px">{{ count($mergedIntegrated) }}</span>
+                                                    <h4 class="text-white">Data Termapping <br> (1 bulan terakhir)</h4>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card card-inverse card-danger card-mapping" onclick="search('unmapped')">
+                                    <div class="card-body">
+                                        <div class="card-title">
+                                            <div class="row align-items-center ml-1">
+                                                <i class="fas fa-unlink" style="font-size: 48px"></i>
+                                                <div class="ml-3">
+                                                    <span style="font-size: 24px">{{ $unmapped }}</span>
+                                                    <h4 class="text-white">Data belum mapping <br> (1 bulan terakhir)</h4>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-12">
+                                <div class="form-group">
+                                    <div class="row justify-content-center align-items-end">
+                                        <div class="col-5">
+                                            <label for="start_date">Periode Tanggal Kunjungan</label>
+                                            <input type="text" class="form-control" name="tgl_awal" id="start_date">
+                                            <span class="bar"></span>
+                                        </div>
+                                        <div class="col-2 text-center">
+                                            <label>&nbsp;</label>
+                                            <small>-</small>
+                                        </div>
+                                        <div class="col-5">
+                                            <label for="end_date">&nbsp;</label>
+                                            <input type="text" class="form-control" name="tgl_akhir" id="end_date">
+                                            <span class="bar"></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+
+                        <div class="d-flex justify-content-end">
+                            <button type="button" class="btn btn-success btn-rounded mr-3" onclick="resetSearch()">
+                                Reset Pencarian
+                                <i class="mdi mdi-refresh"></i>
+                            </button>
+                            <button type="submit" class="btn btn-rounded btn-info">
+                                Cari Data
+                                <i class="mdi mdi-magnify"></i>
+                            </button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -135,11 +219,18 @@
                         <table class="display nowrap table data-table">
                             <thead>
                                 <tr>
+                                    <th></th>
                                     <th>NO</th>
-                                    <th></th>
-                                    <th></th>
-                                    <th></th>
-                                    <th>STATUS MAPPING</th>
+                                    <th>Jenis Perawatan</th>
+                                    <th>Status Transaksi</th>
+                                    <th>Tanggal Masuk</th>
+                                    <th>No. Peserta</th>
+                                    <th>No. RM</th>
+                                    <th>Nama</th>
+                                    <th>Dokter</th>
+                                    <th>Debitur</th>
+                                    <th>Ruangan</th>
+                                    <th>Status Integrasi</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -155,15 +246,46 @@
 
 
 @push('after-script')
+    <script src="{{ asset('assets/plugins/moment/moment.js') }}"></script>
+    <script src="{{ asset('assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js') }}">
+    </script>
     <script>
         var table
         $(function() {
+            $("#start_date").bootstrapMaterialDatePicker({
+                weekStart: 0,
+                time: false
+            });
+            $("#end_date").bootstrapMaterialDatePicker({
+                weekStart: 0,
+                time: false
+            });
+
             getAllData()
+
+            $("#search-data").on("submit", function(e) {
+                if (this.checkValidity()) {
+                    e.preventDefault();
+                    $("html, body").animate({
+                            scrollTop: $("#data-section").offset().top,
+                        },
+                        1250
+                    );
+                    table.ajax.reload();
+                }
+
+                $(this).addClass("was-validated");
+            });
         })
 
         function getAllData() {
             table = $('.data-table').DataTable({
-                responsive: true,
+                responsive: {
+                    details: {
+                        type: 'column',
+                        target: 'tr'
+                    }
+                },
                 processing: true,
                 serverSide: false,
                 ajax: {
@@ -172,44 +294,73 @@
                     data: function(data) {
                         data._token = `${$('meta[name="csrf-token"]').attr("content")}`;
                         data.cari = $('input[name="search"]').val();
+                        data.tgl_awal = $('input[name="tgl_awal"]').val();
+                        data.tgl_akhir = $('input[name="tgl_akhir"]').val();
                     },
                 },
-                scrollX: true,
                 columns: [{
+                        className: 'dtr-control',
+                        orderable: false,
+                        searchable: false,
+                        data: null,
+                        defaultContent: ''
+                    }, {
                         data: 'DT_RowIndex',
                         name: 'DT_RowIndex',
                         orderable: false,
                         searchable: false
                     },
                     {
-                        data: 'NAMA_GRUP',
-                        name: 'NAMA_GRUP'
+                        data: 'JENIS_PERAWATAN',
+                        name: 'JENIS_PERAWATAN'
                     },
                     {
-                        data: 'NAMA_TINDAKAN',
-                        name: 'NAMA_TINDAKAN'
+                        data: 'STATUS_SELESAI',
+                        name: 'STATUS_SELESAI',
                     },
                     {
-                        data: 'SPECIMEN',
-                        name: 'SPECIMEN',
-                        orderable: false,
-                        searchable: false
+                        data: 'TANGGAL',
+                        name: 'TANGGAL',
                     },
                     {
-                        data: 'status_mapping',
-                        name: 'status_mapping',
-                        orderable: false,
-                        searchable: false
+                        data: 'NO_PESERTA',
+                        name: 'NO_PESERTA',
+                    },
+                    {
+                        data: 'KBUKU',
+                        name: 'KBUKU',
+                    },
+                    {
+                        data: 'NAMA_PASIEN',
+                        name: 'NAMA_PASIEN',
+                    },
+                    {
+                        data: 'DOKTER',
+                        name: 'DOKTER',
+                    },
+                    {
+                        data: 'DEBITUR',
+                        name: 'DEBITUR',
+                    },
+                    {
+                        data: 'LOKASI',
+                        name: 'LOKASI',
+                    },
+                    {
+                        data: 'status_integrasi',
+                        name: 'status_integrasi',
+                        responsivePriority: 1
                     },
                     {
                         data: 'action',
                         name: 'action',
                         orderable: false,
-                        searchable: false
+                        searchable: false,
+                        responsivePriority: 1
                     },
                 ],
                 order: [
-                    [0, 'asc']
+                    [5, 'desc']
                 ],
                 lengthMenu: [
                     [10, 25, 50, -1],
@@ -220,13 +371,7 @@
         }
 
         function search(type) {
-            if (type === 'mapped') {
-                $('input[name="search"]').val('mapped')
-            } else if (type === 'unmapped') {
-                $('input[name="search"]').val('unmapped')
-            } else {
-                $('input[name="search"]').val('')
-            }
+            $('input[name="search"]').val(type)
             table.ajax.reload()
         }
     </script>
