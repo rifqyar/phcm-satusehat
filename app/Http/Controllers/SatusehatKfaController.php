@@ -4,12 +4,16 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use App\Http\Controllers\HomeController;
 use DB;
 
 class SatusehatKfaController extends Controller
 {
     public function search(Request $request)
     {
+        $homeController = app(HomeController::class);
+        $homeController->cek_validitas_token();
+
         $keyword = $request->query('keyword');
         $templateCode = $request->query('template_code');
         $page = $request->query('page', 1);
