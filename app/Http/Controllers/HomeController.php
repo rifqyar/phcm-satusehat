@@ -114,15 +114,19 @@ class HomeController extends Controller
         $now = Carbon::now('Asia/Jakarta');
         $expiredAt = Carbon::parse($data->expired_in, 'Asia/Jakarta');
 
-        // Bandingkan validitas token
-        if ($now->lessThan($expiredAt)) {
-            // Masih valid
+        // Kurangi 1 jam dari waktu expired aktual
+        $earlyExpire = $expiredAt->copy()->subHour();
+
+        if ($now->lessThan($earlyExpire)) {
+            // Masih valid (dengan buffer 1 jam)
             return [
                 'expired_in' => $expiredAt->toDateTimeString(),
+                'expired_buffer' => $earlyExpire->toDateTimeString(),
                 'now' => $now->toDateTimeString(),
-                'status' => 'MASIH VALID',
+                'status' => 'MASIH VALID (BUFFER 1 JAM)',
             ];
         }
+
 
         // ==============================
         // Token expired → minta token baru
@@ -133,10 +137,13 @@ class HomeController extends Controller
 
         $url = 'https://api-satusehat-stg.dto.kemkes.go.id/oauth2/v1/accesstoken?grant_type=client_credentials';
 
-        $response = Http::asForm()->post($url, [
-            'client_id' => $clientId,
-            'client_secret' => $clientSecret,
-        ]);
+        $response = Http::asForm()
+            ->withOptions(['verify' => false]) // ignore ssl
+            ->post($url, [
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
+            ]);
+
 
         if ($response->failed()) {
             return [
