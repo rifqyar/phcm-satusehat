@@ -109,118 +109,100 @@
 </div>
 
 <script>
-    const tableWrapper = document.getElementById('tableKfaWrapper');
-    const tbody = document.getElementById('tbodyKfa');
-    const formCariKfa = document.getElementById('formCariKfa');
-    const inputKeyword = document.getElementById('keyword_kfa');
-    const quickSearchWrapper = document.getElementById('quickSearchWrapper');
-    const quickSearchInput = document.getElementById('quickSearch');
+document.addEventListener('DOMContentLoaded', function () {
 
-    let currentItems = [];
+    // fungsi dipanggil setiap kali modal mapping muncul
+    $(document).on('shown.bs.modal', '#modalMapping', function () {
+        console.log('Modal mapping aktif.');
 
-    // 🔄 Spinner saat loading
-    function showLoading() {
-        tableWrapper.style.display = 'block';
-        quickSearchWrapper.style.display = 'none';
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="4" class="text-center py-4">
-                    <div class="spinner-border text-info" role="status" style="width: 2rem; height: 2rem;">
-                        <span class="sr-only">Loading...</span>
-                    </div>
-                    <div class="mt-2 text-secondary">Memuat data KFA...</div>
-                </td>
-            </tr>
-        `;
-    }
+        // pakai on() agar event submit tetap ke-capture meski elemen form diganti
+        $(document).off('submit', '#formCariKfa').on('submit', '#formCariKfa', function (e) {
+            e.preventDefault(); // 🔥 cegah reload halaman
+            console.log('Form cari KFA disubmit tanpa reload.');
 
-    // 🔍 Event: cari produk KFA
-    formCariKfa.addEventListener('submit', function (e) {
-        e.preventDefault();
+            const tipe = $('#tipe_pencarian').val();
+            const keyword = $('#keyword_kfa').val().trim();
+            const tbody = $('#tbodyKfa');
+            const tableWrapper = $('#tableKfaWrapper');
+            const quickSearchWrapper = $('#quickSearchWrapper');
 
-        const tipe = document.getElementById('tipe_pencarian').value; // keyword / template_code
-        const keyword = inputKeyword.value.trim();
+            if (!keyword) {
+                alert('Masukkan keyword atau code untuk mencari data KFA.');
+                return;
+            }
 
-        if (!keyword) {
-            alert('Masukkan keyword atau code untuk mencari data KFA.');
-            return;
-        }
-
-        showLoading();
-
-        const queryParam = `${tipe}=${encodeURIComponent(keyword)}`;
-
-        fetch(`/satusehat/kfa-search?${queryParam}`)
-            .then(response => response.json())
-            .then(data => {
-                tbody.innerHTML = '';
-                currentItems = Array.isArray(data) ? data : [];
-
-                if (currentItems.length === 0) {
-                    tbody.innerHTML = `<tr><td colspan="4" class="text-center">Tidak ada data ditemukan</td></tr>`;
-                    tableWrapper.style.display = 'block';
-                    return;
-                }
-
-                renderTable(currentItems);
-                tableWrapper.style.display = 'block';
-                quickSearchWrapper.style.display = 'block';
-            })
-            .catch(err => {
-                console.error(err);
-                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-3">Terjadi kesalahan saat memuat data KFA.</td></tr>`;
-                tableWrapper.style.display = 'block';
-            });
-    });
-
-    // 🔁 Render hasil tabel
-    function renderTable(items) {
-        tbody.innerHTML = '';
-        items.forEach(item => {
-            const row = `
+            // tampilkan spinner loading
+            tableWrapper.show();
+            quickSearchWrapper.hide();
+            tbody.html(`
                 <tr>
-                    <td>${item.kfa_code || '-'}</td>
-                    <td>${item.display_name || item.name || '-'}</td>
-                    <td>${item.updated_at || '-'}</td>
-                    <td>
-                        <button type="button" class="btn btn-sm btn-success btnPilihKfa" 
-                            data-kfa="${item.kfa_code}" 
-                            data-nama="${item.display_name || item.name}">
-                            Pilih
-                        </button>
+                    <td colspan="4" class="text-center py-4">
+                        <div class="spinner-border text-info" role="status"></div>
+                        <div class="mt-2 text-secondary">Memuat data KFA...</div>
                     </td>
                 </tr>
-            `;
-            tbody.insertAdjacentHTML('beforeend', row);
+            `);
+
+            const queryParam = `${tipe}=${encodeURIComponent(keyword)}`;
+
+            // ambil data dari endpoint Laravel
+            fetch(`/satusehat/kfa-search?${queryParam}`)
+                .then(res => res.json())
+                .then(data => {
+                    tbody.empty();
+
+                    if (!Array.isArray(data) || data.length === 0) {
+                        tbody.html(`<tr><td colspan="4" class="text-center text-muted py-3">Tidak ada data ditemukan</td></tr>`);
+                        tableWrapper.show();
+                        return;
+                    }
+
+                    // render hasil
+                    data.forEach(item => {
+                        const row = `
+                            <tr>
+                                <td>${item.kfa_code || '-'}</td>
+                                <td>${item.display_name || item.name || '-'}</td>
+                                <td>${item.updated_at || '-'}</td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-success btnPilihKfa"
+                                        data-kfa="${item.kfa_code}"
+                                        data-nama="${item.display_name || item.name}">
+                                        Pilih
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                        tbody.append(row);
+                    });
+
+                    // tampilkan quick search
+                    quickSearchWrapper.show();
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                    tbody.html(`<tr><td colspan="4" class="text-center text-danger">Terjadi kesalahan saat memuat data KFA.</td></tr>`);
+                });
         });
-    }
 
-    // 🔎 Quick search filter by display_name
-    quickSearchInput.addEventListener('input', function () {
-        const query = this.value.toLowerCase();
-        const filtered = currentItems.filter(item =>
-            (item.display_name || item.name || '').toLowerCase().includes(query)
-        );
-        renderTable(filtered);
-    });
+        // filter cepat
+        $(document).off('input', '#quickSearch').on('input', '#quickSearch', function () {
+            const query = $(this).val().toLowerCase();
+            $('#tbodyKfa tr').each(function () {
+                const nama = $(this).find('td:nth-child(2)').text().toLowerCase();
+                $(this).toggle(nama.includes(query));
+            });
+        });
 
-    // ⏎ Enter di input = submit form
-    inputKeyword.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            formCariKfa.dispatchEvent(new Event('submit'));
-        }
+        // tombol pilih
+        $(document).off('click', '.btnPilihKfa').on('click', '.btnPilihKfa', function () {
+            const kode = $(this).data('kfa');
+            const nama = $(this).data('nama');
+            $('#kode_kfa').val(kode);
+            $('#nama_kfa').val(nama);
+            $('#tableKfaWrapper').hide();
+            $('#quickSearchWrapper').hide();
+        });
     });
-
-    // 🟩 Event: pilih hasil KFA
-    document.addEventListener('click', function (e) {
-        if (e.target.classList.contains('btnPilihKfa')) {
-            const kode = e.target.dataset.kfa;
-            const nama = e.target.dataset.nama;
-            document.getElementById('kode_kfa').value = kode;
-            document.getElementById('nama_kfa').value = nama;
-            tableWrapper.style.display = 'none';
-            quickSearchWrapper.style.display = 'none';
-        }
-    });
+});
 </script>
