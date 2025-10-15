@@ -3,18 +3,24 @@
 namespace App\Http\Controllers\SatuSehat;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\LogTraits;
 use App\Http\Traits\SATUSEHATTraits;
 use App\Lib\LZCompressor\LZString;
 use App\Models\GlobalParameter;
+use App\Models\SATUSEHAT\SATUSEHAT_NOTA;
 use App\Models\SATUSEHAT\SS_Kode_API;
 use Carbon\Carbon;
+use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 use Yajra\DataTables\DataTables;
 
 class EncounterController extends Controller
 {
-    use SATUSEHATTraits;
+    use SATUSEHATTraits, LogTraits;
 
     /**
      * Display a listing of the resource.
@@ -99,6 +105,7 @@ class EncounterController extends Controller
             ->groupBy('v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_LOKASI', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN');
 
         $rjAll = $rj->get();
+
         $rjIntegrasi = $rj->whereNotNull('n.ID_SATUSEHAT_ENCOUNTER')->get();
 
         $ri = DB::table('v_kunjungan_ri')
@@ -273,77 +280,142 @@ class EncounterController extends Controller
             $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
 
-        $data = [
-            "resourceType" => "Encounter",
-            "status" => "arrived",
-            "class" => $jenisEncounter,
-            "subject" => [
-                "reference" => "Patient/{$kdPasienSS}",
-                "display" => "$patient->nama"
-            ],
-            "participant" => [[
-                "type" => [[
-                    "coding" => [[
-                        "system" => "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
-                        "code" => "ATND",
-                        "display" => "attender"
-                    ]]
-                ]],
-                "individual" => [
-                    "reference" => "Practitioner/{$kdNakesSS}",
-                    "display" => "$nakes->nama"
-                ]
-            ]],
-            "period" => [
-                "start" => "$request->jam_datang"
-            ],
-            "location" => [[
-                "location" => [
-                    "reference" => "Location/{$kdLokasiSS}",
-                    "display" => "$location->name"
-                ]
-            ]],
-            "statusHistory" => [[
+        $jam_datang = Carbon::parse($request->jam_datang, 'Asia/Jakarta')->toIso8601String();
+
+        try {
+            $payload = [
+                "resourceType" => "Encounter",
                 "status" => "arrived",
+                "class" => $jenisEncounter,
+                "subject" => [
+                    "reference" => "Patient/{$kdPasienSS}",
+                    "display" => $patient->nama,
+                ],
+                "participant" => [[
+                    "type" => [[
+                        "coding" => [[
+                            "system" => "http://terminology.hl7.org/CodeSystem/v3-ParticipationType",
+                            "code" => "ATND",
+                            "display" => "attender"
+                        ]]
+                    ]],
+                    "individual" => [
+                        "reference" => "Practitioner/{$kdNakesSS}",
+                        "display" => $nakes->nama,
+                    ]
+                ]],
                 "period" => [
-                    "start" => "$request->jam_datang"
-                ]
-            ]],
-            "serviceProvider" => [
-                "reference" => "Organization/{$organisasi}"
-            ],
-            "identifier" => [[
-                "system" => "http://sys-ids.kemkes.go.id/encounter/{$organisasi}",
-                "value" => (string)$idTransaksi
-            ]]
-        ];
+                    "start" => $jam_datang,
+                ],
+                "location" => [[
+                    "location" => [
+                        "reference" => "Location/{$kdLokasiSS}",
+                        "display" => $location->name,
+                    ]
+                ]],
+                "statusHistory" => [[
+                    "status" => "arrived",
+                    "period" => [
+                        "start" => $jam_datang,
+                    ]
+                ]],
+                "serviceProvider" => [
+                    "reference" => "Organization/{$organisasi}"
+                ],
+                "identifier" => [[
+                    "system" => "http://sys-ids.kemkes.go.id/encounter/{$organisasi}",
+                    "value" => (string)$idTransaksi
+                ]]
+            ];
 
-        $login = $this->login($id_unit);
-        if ($login['metadata']['code'] != 200) {
-            $hasil = $login;
+            $login = $this->login($id_unit);
+            if ($login['metadata']['code'] != 200) {
+                $hasil = $login;
+            }
+
+            $token = $login['response']['token'];
+
+            $url = 'Encounter';
+            $dataencounter = $this->consumeSATUSEHATAPI('POST', $baseurl, $url, $payload, true, $token);
+            $result = json_decode($dataencounter->getBody()->getContents(), true);
+            if ($dataencounter->getStatusCode() >= 400) {
+                $response = json_decode($dataencounter->getBody(), true);
+
+                $this->logError('encounter', 'Gagal kirim data encounter', [
+                    'payload' => $payload,
+                    'response' => $response,
+                    'user_id' => 'system' //Session::get('id')
+                ]);
+
+                $this->logDb(json_encode($response), 'Encounter', json_encode($payload), 'system'); //Session::get('id')
+
+                $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Encounter';
+                throw new Exception($msg, $dataencounter->getStatusCode());
+            } else {
+                DB::beginTransaction();
+                try {
+                    $dataKarcis = DB::table('RJ_KARCIS as rk')
+                        ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
+                        ->where('rk.KARCIS', $idTransaksi)
+                        ->where('rk.IDUNIT', $id_unit)
+                        ->orderBy('rk.TGL', 'DESC')
+                        ->first();
+
+                    $dataPeserta = DB::table('RIRJ_MASTERPX')
+                        ->where('KBUKU', $dataKarcis->KBUKU)
+                        ->first();
+
+                    $nota_satusehat = new SATUSEHAT_NOTA();
+                    $nota_satusehat->id_satusehat_encounter = $result['id'];
+                    $nota_satusehat->karcis = (int)$dataKarcis->KARCIS;
+                    $nota_satusehat->idunit = $id_unit;
+                    $nota_satusehat->tgl = Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d');
+                    $nota_satusehat->kbuku = $dataPeserta->KBUKU;
+                    $nota_satusehat->no_peserta = $dataPeserta->NO_PESERTA;
+                    $nota_satusehat->id_satusehat_px = $kdPasienSS;
+                    $nota_satusehat->kddok = $dataKarcis->KDDOK;
+                    $nota_satusehat->id_satusehat_dokter = $kdNakesSS;
+                    $nota_satusehat->kdklinik = $dataKarcis->KLINIK;
+                    $nota_satusehat->id_satusehat_klinik_location = $kdLokasiSS;
+                    $nota_satusehat->crtdt = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
+                    $nota_satusehat->crtusr = 'system';
+                    $nota_satusehat->jam_datang = Carbon::parse($jam_datang, 'Asia/Jakarta')->format('Y-m-d H:i:s');
+                    $nota_satusehat->status_sinkron = 1;
+                    $nota_satusehat->sinkron_date = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
+                    $nota_satusehat->save();
+
+                    $this->logInfo('encounter', 'Sukses kirim data encounter', [
+                        'payload' => $payload,
+                        'response' => $result,
+                        'user_id' => 'system' //Session::get('id')
+                    ]);
+                    $this->logDb(json_encode($result), 'Encounter', json_encode($payload), 'system'); //Session::get('id')
+
+                    DB::commit();
+                    return response()->json([
+                        'status' => JsonResponse::HTTP_OK,
+                        'message' => 'Berhasil Kirim Data Encounter',
+                        'redirect' => [
+                            'need' => false,
+                            'to' => null,
+                        ]
+                    ], 200);
+                } catch (Exception $th) {
+                    dd($th);
+                    throw new Exception($th->getMessage(), $th->getCode());
+                }
+            }
+        } catch (Exception $th) {
+            return response()->json([
+                'status' => [
+                    'msg' => $th->getMessage() != '' ? $th->getMessage() : 'Err',
+                    'code' => $th->getCode() != '' ? $th->getCode() : 500,
+                ],
+                'data' => null,
+                'err_detail' => $th,
+                'message' => $th->getMessage() != '' ? $th->getMessage() : 'Terjadi Kesalahan Saat Kirim Data, Harap Coba lagi!'
+            ], $th->getCode() != '' ? $th->getCode() : 500);
         }
-
-        $token = $login['response']['token'];
-
-        $url = '';
-        // $data = json_decode(json_encode($data), true);
-        $data = json_decode(json_encode($data));
-        $dataencounter = $this->consumeSATUSEHATAPI('POST', $baseurl, $url, $data, true, $token);
-        $result = json_decode($dataencounter->getBody()->getContents(), true);
-        if ($dataencounter->getStatusCode() >= 400) {
-            $dataencounter = json_decode($dataencounter->getBody(), true);
-
-            $hasil['metadata'] = array(
-                'code' => 400,
-                'message' => 'Error Kirim Encounter. Cek Log',
-            );
-            $hasil['response']  = array(
-                'issue' => $dataencounter,
-            );
-        }
-
-        $dataencounter = json_decode($dataencounter->getBody(), true);
-        $encounterID = $dataencounter['id'];
     }
     /**
      * Show the form for creating a new resource.
