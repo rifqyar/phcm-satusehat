@@ -27,6 +27,9 @@ Route::middleware(['checkLogin'])->group(function () {
 
     Route::get('/satusehat/kfa-search', [App\Http\Controllers\SatusehatKfaController::class, 'search'])->name('kfa.search');
 
+    // Dashboard Obat <=> Satu Sehat
+    
+
     // Radiology
     Route::get('/master_radiology', [App\Http\Controllers\MasterRadiologyController::class, 'index'])->name('master_radiology');
     Route::post('/master_radiology/detail', [App\Http\Controllers\MasterRadiologyController::class, 'show'])->name('master_radiology.show');
