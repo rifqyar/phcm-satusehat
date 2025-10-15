@@ -60,7 +60,7 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Permintaan Pemeriksaan (Penunjang Medis)',
-                'url' => '#',
+                'url' => 'satusehat.service-request.index',
             ],
             [
                 'title' => 'Spesimen',
