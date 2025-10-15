@@ -3,16 +3,23 @@
 namespace App\Http\Controllers\SatuSehat;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\LogTraits;
+use App\Http\Traits\SATUSEHATTraits;
 use App\Lib\LZCompressor\LZString;
 use App\Models\GlobalParameter;
 use App\Models\SATUSEHAT\SS_Kode_API;
 use Carbon\Carbon;
+use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 use Yajra\DataTables\DataTables;
 
 class ServiceRequestController extends Controller
 {
+    use SATUSEHATTraits, LogTraits;
     /**
      * Display a listing of the resource.
      *
@@ -331,11 +338,11 @@ class ServiceRequestController extends Controller
         $kdDokterSS = LZString::decompressFromEncodedURIComponent($parts[5]);
         $id_unit      = '001'; // session('id_klinik');
 
-        $encounterID = DB::connection('sqlsrv')
+        $encounter = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
             ->where('karcis', $karcis)
             ->where('idunit', $id_unit)
-            ->value('id_satusehat_encounter');
+            ->first();
 
         $patient = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
@@ -420,9 +427,9 @@ class ServiceRequestController extends Controller
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
             $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
-        dd($baseurl);
+        // dd($baseurl);
 
-        if ($tindakanList) {
+        try {
             $data = [
                 "resourceType" => "ServiceRequest",
                 "identifier" => [
@@ -443,7 +450,7 @@ class ServiceRequestController extends Controller
                     "display" => "$patient->nama"
                 ],
                 "encounter" => [
-                    "reference" => "Encounter/{$encounterID}",
+                    "reference" => "Encounter/{$encounter->id_satusehat_encounter}",
                     "display" => "Karcis: $karcis, Kunjungan: $patient->nama, Tanggal Entri: $riwayat->TANGGAL_ENTRI"
                 ],
                 "occurrenceDateTime" => $dateTimeNow,
@@ -456,35 +463,100 @@ class ServiceRequestController extends Controller
                     "display" => "$dokter->nama"
                 ],
             ];
+            // dd($data);
+
+            $login = $this->login($id_unit);
+            if ($login['metadata']['code'] != 200) {
+                $hasil = $login;
+            }
+            // dd($login);
+
+            $token = $login['response']['token'];
+
+            $url = 'ServiceRequest';
+            $data = json_decode(json_encode($data));
+            $dataServiceRequest = $this->consumeSATUSEHATAPI('POST', $baseurl, $url, $data, true, $token);
+            $result = json_decode($dataServiceRequest->getBody()->getContents(), true);
+            if ($dataServiceRequest->getStatusCode() >= 400) {
+                $response = json_decode($dataServiceRequest->getBody(), true);
+
+                $this->logError('servicerequest', 'Gagal kirim data service request', [
+                    'payload' => $data,
+                    'response' => $response,
+                    'user_id' => 'system' //Session::get('id')
+                ]);
+
+                $this->logDb(json_encode($response), 'ServiceRequest', json_encode($data), 'system'); //Session::get('id')
+
+                $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Service Request';
+                throw new Exception($msg, $dataServiceRequest->getStatusCode());
+            } else {
+                try {
+                    $dataKarcis = DB::connection('sqlsrv')
+                        ->table('SIRS_PHCM.dbo.RJ_KARCIS as rk')
+                        ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
+                        ->where('rk.KARCIS', $karcis)
+                        ->where('rk.IDUNIT', $id_unit)
+                        ->orderBy('rk.TGL', 'DESC')
+                        ->first();
+
+                    $dataPeserta = DB::connection('sqlsrv')
+                        ->table('SIRS_PHCM.dbo.RIRJ_MASTERPX')
+                        ->where('KBUKU', $dataKarcis->KBUKU)
+                        ->first();
+
+                    DB::connection('sqlsrv')
+                        ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
+                        ->insert([
+                            'karcis'    => $karcis,
+                            'nota'      => $encounter->nota,
+                            'idunit'    => $id_unit,
+                            'tgl'       => Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d'),
+                            'id_satusehat_encounter' => $encounter->id_satusehat_encounter,
+                            'id_satusehat_servicerequest' => $result['id'],
+                            'kbuku'     => $dataPeserta->KBUKU,
+                            'no_peserta' => $dataPeserta->NO_PESERTA,
+                            'id_satusehat_px' => $kdPasienSS,
+                            'kddok'     => $dataKarcis->KDDOK,
+                            'id_satusehat_dokter' => $kdDokterSS,
+                            'kdklinik'  => $dataKarcis->KLINIK,
+                            'status_sinkron' => 1,
+                            'crtdt'     => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
+                            'crtusr'    => 'system', //Session::get('id'),
+                            'sinkron_date' => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
+                            'jam_datang' => Carbon::parse($riwayat->TANGGAL_ENTRI, 'Asia/Jakarta')->format('Y-m-d H:i:s'),
+                        ]);
+
+                    $this->logInfo('servicerequest', 'Sukses kirim data service request', [
+                        'payload' => $data,
+                        'response' => $result,
+                        'user_id' => 'system' //Session::get('id')
+                    ]);
+                    $this->logDb(json_encode($result), 'ServiceRequest', json_encode($data), 'system'); //Session::get('id')
+
+                    return response()->json([
+                        'status' => JsonResponse::HTTP_OK,
+                        'message' => 'Berhasil Kirim Data Service Request',
+                        'redirect' => [
+                            'need' => false,
+                            'to' => null,
+                        ]
+                    ], 200);
+                } catch (Exception $th) {
+                    // dd($th);
+                    throw new Exception($th->getMessage(), $th->getCode());
+                }
+            }
+        } catch (Exception $th) {
+            return response()->json([
+                'status' => $th->getCode() != '' ? $th->getCode() : 500,
+                'message' => $th->getMessage() != '' ? $th->getMessage() : 'Gagal Kirim Data Service Request',
+                'redirect' => [
+                    'need' => false,
+                    'to' => null,
+                ]
+            ], $th->getCode() != '' ? $th->getCode() : 500);
         }
-        dd($data);
-
-        $login = $this->login($id_unit);
-        if ($login['metadata']['code'] != 200) {
-            $hasil = $login;
-        }
-
-        $token = $login['response']['token'];
-
-        $url = '';
-        // $data = json_decode(json_encode($data), true);
-        $data = json_decode(json_encode($data));
-        $dataServiceRequest = $this->consumeSATUSEHATAPI('POST', $baseurl, $url, $data, true, $token);
-        $result = json_decode($dataServiceRequest->getBody()->getContents(), true);
-        if ($dataServiceRequest->getStatusCode() >= 400) {
-            $dataServiceRequest = json_decode($dataServiceRequest->getBody(), true);
-
-            $hasil['metadata'] = array(
-                'code' => 400,
-                'message' => 'Error Kirim Service Request. Cek Log',
-            );
-            $hasil['response']  = array(
-                'issue' => $dataServiceRequest,
-            );
-        }
-
-        $dataServiceRequest = json_decode($dataServiceRequest->getBody(), true);
-        $serviceRequestID = $dataServiceRequest['id'];
     }
 
     /**
