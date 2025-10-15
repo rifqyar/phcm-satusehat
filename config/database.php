@@ -89,6 +89,8 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
+                'encrypt' => env('DB_ENCRYPT', 'no'),
+    'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
         ],
 
         'dbsatusehat' => [
@@ -102,6 +104,8 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
+                'encrypt' => env('DB_ENCRYPT', 'no'),
+    'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
         ],
 
         'ermklinik' => [
@@ -115,6 +119,8 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
+                'encrypt' => env('DB_ENCRYPT', 'no'),
+    'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
         ],
 
         'dbsirs' => [
@@ -128,6 +134,8 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
+                'encrypt' => env('DB_ENCRYPT', 'no'),
+    'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
         ],
     ],
 
