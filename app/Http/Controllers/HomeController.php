@@ -44,7 +44,7 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Resep Obat',
-                'url' => 'satusehat.encounter.index',
+                'url' => 'satusehat.medication-request.index',
             ],
             [
                 'title' => 'Tebus Obat',
