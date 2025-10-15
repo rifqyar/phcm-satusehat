@@ -496,6 +496,7 @@
                         window.location.href = res.redirect.to;
                     } else {
                         Swal.close();
+                        table.ajax.reload()
                     }
                 },
             });

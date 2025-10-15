@@ -17,6 +17,7 @@ Route::get('/login', [App\Http\Controllers\Auth\LoginController::class, 'showLog
 Route::post('/login', [App\Http\Controllers\Auth\LoginController::class, 'login'])->name('do.login');
 Route::post('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout');
 Route::middleware(['checkLogin'])->group(function () {
+    Route::get('logs', [\Rap2hpoutre\LaravelLogViewer\LogViewerController::class, 'index']);
     // Home
     Route::get('/', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 

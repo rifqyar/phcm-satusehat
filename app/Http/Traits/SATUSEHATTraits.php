@@ -25,7 +25,6 @@ trait SATUSEHATTraits
         $token = '';
 
         $kode_unit = UnitPHC::where('ID_UNIT', $idunit)->first();
-
         $hasil = array();
         DB::connection('dbsatusehat')->beginTransaction();
         try {
