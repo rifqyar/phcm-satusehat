@@ -48,8 +48,8 @@
             <div class="row text-center">
                 @foreach ($satuSehatMenu as $item)
                     <div class="col-md-4 mb-5">
-                        <div class="card">
-                            <a class="btn btn-light p-5 shadow"
+                        <div class="card {{$item->bg_color}}">
+                            <a class="btn p-5 shadow {{$item->bg_color != '' ? 'text-white' : ''}}"
                                 href="{{ $item->url != '#' && Route::has($item->url) ? route($item->url) : '#' }}">{{ $item->title }}</a>
                         </div>
                     </div>
