@@ -250,21 +250,39 @@ class ServiceRequestController extends Controller
             ->values()
             ->toArray();
 
+        $allTindakanIdsSS = DB::connection('sqlsrv')
+            ->table('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE')
+            ->pluck('ID')
+            ->toArray();
+
         $tindakanList = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.RIRJ_MTINDAKAN')
             ->whereIn('KD_TIND', $allTindakanIds)
             ->pluck('NM_TIND', 'KD_TIND')
             ->toArray();
+        // dd($tindakanList);
 
-        foreach ($dataKunjungan as $item) {
-            $ids = explode(',', $item->ARRAY_TINDAKAN ?? '');
-            $names = array_filter(array_map(function ($id) use ($tindakanList) {
-                return $tindakanList[$id] ?? null;
-            }, $ids));
+        $dataKunjungan = $dataKunjungan->map(function ($item) use ($allTindakanIdsSS, $tindakanList) {
+            $ids = array_filter(explode(',', $item->ARRAY_TINDAKAN ?? ''));
+
+            $item->AllServiceRequestExist = count($ids) > 0 && collect($ids)->every(fn($id) => in_array((int)$id, $allTindakanIdsSS)) ? 1 : 0;
+
+            $names = array_filter(array_map(fn($id) => $tindakanList[$id] ?? null, $ids));
             $item->NM_TINDAKAN = implode(', ', $names);
-        }
+
+            return $item;
+        });
+
+        // foreach ($dataKunjungan as $item) {
+        //     $ids = explode(',', $item->ARRAY_TINDAKAN ?? '');
+        //     $names = array_filter(array_map(function ($id) use ($tindakanList) {
+        //         return $tindakanList[$id] ?? null;
+        //     }, $ids));
+        //     $item->NM_TINDAKAN = implode(', ', $names);
+        // }
         // dd($dataKunjungan);
         $dataKunjungan = $dataKunjungan->sortByDesc('TANGGAL_ENTRI')->values();
+        // dd($dataKunjungan);
 
         return DataTables::of($dataKunjungan)
             ->addIndexColumn()
@@ -301,6 +319,8 @@ class ServiceRequestController extends Controller
                     $btn = '<i class="text-muted">Nakes Belum Mapping Satu Sehat</i>';
                 } else if ($row->idnakes == null) {
                     $btn = '<i class="text-muted">Dokter Penindak Lanjut Belum Mapping Satu Sehat</i>';
+                } else if ($row->AllServiceRequestExist == 0) {
+                    $btn = '<i class="text-muted">Tindakan Belum Mapping</i>';
                 } else {
                     if ($row->SATUSEHAT == 0) {
                         if ($row->STATUS_SELESAI != "9" && $row->STATUS_SELESAI != "10") {
@@ -321,7 +341,14 @@ class ServiceRequestController extends Controller
                     return '<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>';
                 }
             })
-            ->rawColumns(['KLINIK_TUJUAN', 'action', 'status_integrasi'])
+            ->addColumn('status_mapping', function ($row) {
+                if ($row->AllServiceRequestExist == 1) {
+                    return '<span class="badge badge-pill badge-success p-2 w-100">Semua Tindakan Sudah Mapping</span>';
+                } else {
+                    return '<span class="badge badge-pill badge-danger p-2 w-100">Tindakan Belum Mapping</span>';
+                }
+            })
+            ->rawColumns(['KLINIK_TUJUAN', 'action', 'status_integrasi', 'status_mapping'])
             // ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi'])
             ->make(true);
     }

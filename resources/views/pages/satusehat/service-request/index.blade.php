@@ -231,6 +231,7 @@
                                     <th>No. RM</th>
                                     <th>Tindakan</th>
                                     <th>Status Integrasi</th>
+                                    <th>Status Mapping</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -373,6 +374,10 @@
                         data: 'status_integrasi',
                         name: 'status_integrasi',
                         responsivePriority: 1
+                    },
+                    {
+                        data: 'status_mapping',
+                        name: 'status_mapping',
                     },
                     {
                         data: 'action',
