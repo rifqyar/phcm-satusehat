@@ -29,7 +29,7 @@ Route::middleware(['checkLogin'])->group(function () {
     Route::get('/satusehat/kfa-search', [App\Http\Controllers\SatusehatKfaController::class, 'search'])->name('kfa.search');
 
     // Dashboard Obat <=> Satu Sehat
-    
+
 
     // Radiology
     Route::get('/master_radiology', [App\Http\Controllers\MasterRadiologyController::class, 'index'])->name('master_radiology');
@@ -96,6 +96,7 @@ Route::middleware(['checkLogin'])->group(function () {
         // Service Request
         Route::get('/service-request', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'index'])->name('service-request.index');
         Route::post('/service-request/datatable', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'datatable'])->name('service-request.datatable');
+        Route::post('/service-request/summary', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'summary'])->name('service-request.summary');
         Route::get('/service-request/send/{param}', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'sendSatuSehat'])->name('service-request.send');
         // Route::get('/service-request/create', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'create'])->name('service-request.create');
         // Route::post('/service-request/store', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'store'])->name('service-request.store');

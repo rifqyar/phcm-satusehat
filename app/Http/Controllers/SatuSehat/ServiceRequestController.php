@@ -27,8 +27,28 @@ class ServiceRequestController extends Controller
      */
     public function index()
     {
-        $startDate = Carbon::now()->subDays(30)->startOfDay()->format('Y-m-d H:i:s');
-        $endDate   = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
+        return view('pages.satusehat.service-request.index');
+    }
+
+    public function summary(Request $request)
+    {
+        $startDate  = $request->input('tgl_awal');
+        $endDate = $request->input('tgl_akhir');
+
+        if (empty($startDate) && empty($endDate)) {
+            $startDate  = Carbon::now()->subDays(30)->startOfDay();
+            $endDate = Carbon::now()->endOfDay();
+        } else {
+            if (empty($startDate)) {
+                $startDate = Carbon::parse($endDate)->subDays(30)->startOfDay();
+            }
+            if (empty($endDate)) {
+                $endDate = Carbon::parse($startDate)->addDays(30)->endOfDay();
+            } else {
+                // Force the end date to be at 23:59:59 (end of that day)
+                $endDate = Carbon::parse($endDate)->endOfDay();
+            }
+        }
 
         // Base query for lab and rad
         $lab = DB::connection('sqlsrv')
@@ -72,54 +92,36 @@ class ServiceRequestController extends Controller
                     ->where('IDUNIT', '001');
             });
 
-        // ===== LAB TOTALS =====
-        $total_all_lab = (clone $lab)
-            ->select('c.ID_RIWAYAT_ELAB')
-            ->distinct()
-            ->count('c.ID_RIWAYAT_ELAB');
-
+        // === Counts ===
+        $total_all_lab = (clone $lab)->distinct()->count('c.ID_RIWAYAT_ELAB');
         $total_mapped_lab = (clone $lab)
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as d', 'a.KBUKU', '=', 'd.kbuku')
             ->whereNotNull('d.id_satusehat_servicerequest')
             ->where('d.id_satusehat_servicerequest', '<>', '')
-            ->select('c.ID_RIWAYAT_ELAB')
-            ->distinct()
-            ->count('c.ID_RIWAYAT_ELAB');
+            ->distinct()->count('c.ID_RIWAYAT_ELAB');
 
         $total_unmapped_lab = $total_all_lab - $total_mapped_lab;
 
-        // ===== RAD TOTALS =====
-        $total_all_rad = (clone $rad)
-            ->select('c.ID_RIWAYAT_ELAB')
-            ->distinct()
-            ->count('c.ID_RIWAYAT_ELAB');
-
+        $total_all_rad = (clone $rad)->distinct()->count('c.ID_RIWAYAT_ELAB');
         $total_mapped_rad = (clone $rad)
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as d', 'a.KBUKU', '=', 'd.kbuku')
             ->whereNotNull('d.id_satusehat_servicerequest')
             ->where('d.id_satusehat_servicerequest', '<>', '')
-            ->select('c.ID_RIWAYAT_ELAB')
-            ->distinct()
-            ->count('c.ID_RIWAYAT_ELAB');
+            ->distinct()->count('c.ID_RIWAYAT_ELAB');
 
         $total_unmapped_rad = $total_all_rad - $total_mapped_rad;
 
-        // ===== COMBINED TOTALS =====
-        $total_all_combined     = $total_all_lab + $total_all_rad;
-        $total_mapped_combined  = $total_mapped_lab + $total_mapped_rad;
-        $total_unmapped_combined = $total_unmapped_lab + $total_unmapped_rad;
-
-        return view('pages.satusehat.service-request.index', compact(
-            'total_all_lab',
-            'total_all_rad',
-            'total_all_combined',
-            'total_mapped_lab',
-            'total_mapped_rad',
-            'total_mapped_combined',
-            'total_unmapped_lab',
-            'total_unmapped_rad',
-            'total_unmapped_combined'
-        ));
+        return response()->json([
+            'total_all_lab' => $total_all_lab,
+            'total_all_rad' => $total_all_rad,
+            'total_all_combined' => $total_all_lab + $total_all_rad,
+            'total_mapped_lab' => $total_mapped_lab,
+            'total_mapped_rad' => $total_mapped_rad,
+            'total_mapped_combined' => $total_mapped_lab + $total_mapped_rad,
+            'total_unmapped_lab' => $total_unmapped_lab,
+            'total_unmapped_rad' => $total_unmapped_rad,
+            'total_unmapped_combined' => $total_unmapped_lab + $total_unmapped_rad,
+        ]);
     }
 
     public function datatable(Request $request)
@@ -138,6 +140,9 @@ class ServiceRequestController extends Controller
             }
             if (empty($tgl_akhir)) {
                 $tgl_akhir = Carbon::parse($tgl_awal)->addDays(30)->endOfDay();
+            } else {
+                // Force the end date to be at 23:59:59 (end of that day)
+                $tgl_akhir = Carbon::parse($tgl_akhir)->endOfDay();
             }
         }
 
@@ -297,10 +302,14 @@ class ServiceRequestController extends Controller
                 } else if ($row->idnakes == null) {
                     $btn = '<i class="text-muted">Dokter Penindak Lanjut Belum Mapping Satu Sehat</i>';
                 } else {
-                    if ($row->STATUS_SELESAI != "9" && $row->STATUS_SELESAI != "10") {
-                        $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
+                    if ($row->SATUSEHAT == 0) {
+                        if ($row->STATUS_SELESAI != "9" && $row->STATUS_SELESAI != "10") {
+                            $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
+                        } else {
+                            $btn = '<i class="text-muted">Tunggu Verifikasi Pasien</i>';
+                        }
                     } else {
-                        $btn = '<i class="text-muted">Tunggu Verifikasi Pasien</i>';
+                        $btn = '<a href="#" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                     }
                 }
                 return $btn;

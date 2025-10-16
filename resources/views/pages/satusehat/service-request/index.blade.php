@@ -70,8 +70,8 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-info-circle" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ number_format($total_all_combined) }}</span>
-                                                    <h4 class="text-white">Semua Data Service Request <br> (1 bulan terakhir)</h4>
+                                                    <span style="font-size: 24px" id="total_all_combined">0</span>
+                                                    <h4 class="text-white">Semua Data Service Request </h4>
                                                 </div>
                                             </div>
                                         </div>
@@ -85,8 +85,8 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-radiation" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ number_format($total_all_rad) }}</span>
-                                                    <h4 class="text-white">Radiology <br> (1 bulan terakhir)
+                                                    <span style="font-size: 24px" id="total_all_rad">0</span>
+                                                    <h4 class="text-white">Radiology 
                                                     </h4>
                                                 </div>
                                             </div>
@@ -101,8 +101,8 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-flask" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ number_format($total_all_lab) }}</span>
-                                                    <h4 class="text-white">Laboratory <br> (1 bulan terakhir)</h4>
+                                                    <span style="font-size: 24px" id="total_all_lab">0</span>
+                                                    <h4 class="text-white">Laboratory </h4>
                                                 </div>
                                             </div>
                                         </div>
@@ -116,8 +116,8 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-link" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ number_format($total_mapped_combined) }}</span>
-                                                    <h4 class="text-white">Data Sudah Mapping <br> (1 bulan terakhir)</h4>
+                                                    <span style="font-size: 24px" id="total_mapped_combined">0</span>
+                                                    <h4 class="text-white">Data Sudah Mapping </h4>
                                                 </div>
                                             </div>
                                         </div>
@@ -131,8 +131,8 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-unlink" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ number_format($total_unmapped_combined) }}</span>
-                                                    <h4 class="text-white">Data Belum Mapping <br> (1 bulan terakhir)</h4>
+                                                    <span style="font-size: 24px" id="total_unmapped_combined">0</span>
+                                                    <h4 class="text-white">Data Belum Mapping </h4>
                                                 </div>
                                             </div>
                                         </div>
@@ -262,6 +262,7 @@
             });
 
             getAllData()
+            refreshSummary()
 
             $("#search-data").on("submit", function(e) {
                 if (this.checkValidity()) {
@@ -270,6 +271,7 @@
                     if (section.length) {
                         $("html, body").animate({ scrollTop: section.offset().top }, 1250);
                     }
+                    refreshSummary()
                     table.ajax.reload();
                 }
 
@@ -300,7 +302,6 @@
                 hideAfter: 2000,
             });
         }
-
 
         function getAllData() {
             table = $('.data-table').DataTable({
@@ -388,6 +389,33 @@
                 ],
                 pageLength: 10,
             })
+        }
+
+        function refreshSummary() {
+            $.ajax({
+                url: `{{ route('satusehat.service-request.summary') }}`,
+                type: "POST",
+                data: {
+                    _token: $('meta[name="csrf-token"]').attr("content"),
+                    tgl_awal: $('input[name="tgl_awal"]').val(),
+                    tgl_akhir: $('input[name="tgl_akhir"]').val(),
+                },
+                success: function(res) {
+                    // Update the total counters on your page
+                    $('#total_all_lab').text(res.total_all_lab);
+                    $('#total_all_rad').text(res.total_all_rad);
+                    $('#total_all_combined').text(res.total_all_combined);
+                    $('#total_mapped_lab').text(res.total_mapped_lab);
+                    $('#total_mapped_rad').text(res.total_mapped_rad);
+                    $('#total_mapped_combined').text(res.total_mapped_combined);
+                    $('#total_unmapped_lab').text(res.total_unmapped_lab);
+                    $('#total_unmapped_rad').text(res.total_unmapped_rad);
+                    $('#total_unmapped_combined').text(res.total_unmapped_combined);
+                },
+                error: function(err) {
+                    console.error("Failed to update summary:", err);
+                }
+            });
         }
 
         $('.data-table').on('click', 'button, a', function(e) {
