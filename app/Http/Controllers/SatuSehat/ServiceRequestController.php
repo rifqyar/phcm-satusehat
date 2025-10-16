@@ -165,6 +165,7 @@ class ServiceRequestController extends Controller
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'nt.karcis', '=', 'ss.karcis')
             ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'rd.KDDOK', '=', 'nk.kddok')
+            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dk.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
             ->distinct()
             ->whereBetween('rd.TANGGAL_ENTRI', [$tgl_awal, $tgl_akhir])
             ->where('rd.IDUNIT', '001')
@@ -173,7 +174,8 @@ class ServiceRequestController extends Controller
                     ->from('SIRS_PHCM.dbo.RJ_KLINIK_RADIOLOGI')
                     ->where('AKTIF', 'true')
                     ->where('IDUNIT', '001');
-            });
+            })
+            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dk.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN');
         // dd($rad->toSql());
 
         $radAll = $rad->get();
@@ -198,10 +200,12 @@ class ServiceRequestController extends Controller
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'nt.karcis', '=', 'ss.karcis')
             ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'rd.KDDOK', '=', 'nk.kddok')
+            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dk.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
             ->distinct()
             ->whereBetween('rd.TANGGAL_ENTRI', [$tgl_awal, $tgl_akhir])
             ->where('rd.IDUNIT', '001')
-            ->where('rd.KLINIK_TUJUAN', '0017');
+            ->where('rd.KLINIK_TUJUAN', '0017')
+            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dk.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN');
 
         $labAll = $lab->get();
         $labIntegrasi = $lab->whereNotNull('ss.id_satusehat_servicerequest')->get();
@@ -219,7 +223,7 @@ class ServiceRequestController extends Controller
             $dataKunjungan = $mergedIntegrated;
         } else if ($request->input('cari') == 'unmapped') {
             $dataKunjungan = $mergedAll->filter(function ($item) {
-                return $item->id_satusehat_servicerequest == null;
+                return $item->SATUSEHAT == '0';
             })->values();
         } else if ($request->input('cari') == 'rad') {
             $dataKunjungan = $radAll;
@@ -275,8 +279,8 @@ class ServiceRequestController extends Controller
                 $kdbuku = LZString::compressToEncodedURIComponent($row->KBUKU);
                 $kdDok = LZString::compressToEncodedURIComponent($row->kdDok);
                 $kdKlinik = LZString::compressToEncodedURIComponent($row->KLINIK_TUJUAN);
-                $idUnit = LZString::compressToEncodedURIComponent($row->ID_UNIT);
-                $param = LZString::compressToEncodedURIComponent($kdbuku . '+' . $kdDok . '+' . $kdKlinik . '+' . $idUnit);
+                // $idUnit = LZString::compressToEncodedURIComponent($row->ID_UNIT);
+                // $param = LZString::compressToEncodedURIComponent($kdbuku . '+' . $kdDok . '+' . $kdKlinik . '+' . $idUnit);
 
                 $idRiwayatElab = LZString::compressToEncodedURIComponent($row->ID_RIWAYAT_ELAB);
                 $karcis = LZString::compressToEncodedURIComponent($row->KARCIS_ASAL);
@@ -302,7 +306,7 @@ class ServiceRequestController extends Controller
                 return $btn;
             })
             ->addColumn('status_integrasi', function ($row) {
-                if ($row->id_satusehat_servicerequest > 0) {
+                if ($row->SATUSEHAT > 0) {
                     return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
                 } else {
                     return '<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>';
@@ -483,7 +487,7 @@ class ServiceRequestController extends Controller
             $result = json_decode($dataServiceRequest->getBody()->getContents(), true);
             if ($dataServiceRequest->getStatusCode() >= 400) {
                 $response = json_decode($dataServiceRequest->getBody(), true);
-                // dd($response);
+                dd($response);
 
                 $this->logError('servicerequest', 'Gagal kirim data service request', [
                     'payload' => $data,
