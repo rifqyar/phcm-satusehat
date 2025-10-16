@@ -262,8 +262,8 @@
                 time: false
             });
 
-            getAllData()
-            refreshSummary()
+            getAllData();
+            refreshSummary();
 
             $("#search-data").on("submit", function(e) {
                 if (this.checkValidity()) {
@@ -272,7 +272,7 @@
                     if (section.length) {
                         $("html, body").animate({ scrollTop: section.offset().top }, 1250);
                     }
-                    refreshSummary()
+                    refreshSummary();
                     table.ajax.reload();
                 }
 

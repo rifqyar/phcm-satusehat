@@ -33,26 +33,28 @@ class ServiceRequestController extends Controller
     public function summary(Request $request)
     {
         $startDate  = $request->input('tgl_awal');
-        $endDate = $request->input('tgl_akhir');
+        $endDate    = $request->input('tgl_akhir');
 
-        if (empty($startDate) && empty($endDate)) {
-            $startDate  = Carbon::now()->subDays(30)->startOfDay();
-            $endDate = Carbon::now()->endOfDay();
-        } else {
-            if (empty($startDate)) {
-                $startDate = Carbon::parse($endDate)->subDays(30)->startOfDay();
-            }
-            if (empty($endDate)) {
-                $endDate = Carbon::parse($startDate)->addDays(30)->endOfDay();
-            } else {
-                // Force the end date to be at 23:59:59 (end of that day)
-                $endDate = Carbon::parse($endDate)->endOfDay();
-            }
-        }
+        // Set default date range if empty
+        $startDate = $startDate ? Carbon::parse($startDate)->startOfDay() : Carbon::now()->subDays(30)->startOfDay();
+        $endDate   = $endDate ? Carbon::parse($endDate)->endOfDay() : Carbon::now()->endOfDay();
 
-        // Base query for lab and rad
-        $lab = DB::connection('sqlsrv')
-            ->table('SIRS_PHCM.dbo.v_kunjungan_rj as a')
+        $connection = DB::connection('sqlsrv');
+
+        // Pre-fetch active radiology clinics and format for SQL IN clause
+        $activeRadKlinik = $connection->table('SIRS_PHCM.dbo.RJ_KLINIK_RADIOLOGI')
+            ->where('AKTIF', 'true')
+            ->where('IDUNIT', '001')
+            ->pluck('KODE_KLINIK')
+            ->map(function ($k) {
+                return "'$k'";
+            })  // wrap each value in quotes
+            ->toArray();
+
+        $activeRadKlinikString = implode(',', $activeRadKlinik);
+
+        // Combined query for lab & rad
+        $summary = $connection->table('SIRS_PHCM.dbo.v_kunjungan_rj as a')
             ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as b', function ($join) {
                 $join->on('b.karcis', '=', 'a.ID_TRANSAKSI')
                     ->on('b.idunit', '=', 'a.ID_UNIT')
@@ -65,59 +67,32 @@ class ServiceRequestController extends Controller
                     ->on('c.KBUKU', '=', 'b.kbuku')
                     ->on('c.NO_PESERTA', '=', 'b.no_peserta');
             })
+            // LEFT JOIN log table for mapped check
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as d', 'a.KBUKU', '=', 'd.kbuku')
             ->whereBetween('c.TANGGAL_ENTRI', [$startDate, $endDate])
             ->where('c.IDUNIT', '001')
-            ->where('c.KLINIK_TUJUAN', '0017');
+            ->selectRaw("
+                COUNT(DISTINCT CASE WHEN c.KLINIK_TUJUAN = '0017' THEN c.ID_RIWAYAT_ELAB END) as total_all_lab,
+                COUNT(DISTINCT CASE WHEN c.KLINIK_TUJUAN = '0017' AND d.id_satusehat_servicerequest IS NOT NULL AND d.id_satusehat_servicerequest <> '' THEN c.ID_RIWAYAT_ELAB END) as total_mapped_lab,
+                
+                COUNT(DISTINCT CASE WHEN c.KLINIK_TUJUAN IN ($activeRadKlinikString) THEN c.ID_RIWAYAT_ELAB END) as total_all_rad,
+                COUNT(DISTINCT CASE WHEN c.KLINIK_TUJUAN IN ($activeRadKlinikString) AND d.id_satusehat_servicerequest IS NOT NULL AND d.id_satusehat_servicerequest <> '' THEN c.ID_RIWAYAT_ELAB END) as total_mapped_rad
+            ")
+            ->first();
+        // dd($summary);
 
-        $rad = DB::connection('sqlsrv')
-            ->table('SIRS_PHCM.dbo.v_kunjungan_rj as a')
-            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as b', function ($join) {
-                $join->on('b.karcis', '=', 'a.ID_TRANSAKSI')
-                    ->on('b.idunit', '=', 'a.ID_UNIT')
-                    ->on('b.kbuku', '=', 'a.KBUKU')
-                    ->on('b.no_peserta', '=', 'a.NO_PESERTA');
-            })
-            ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as c', function ($join) {
-                $join->on('c.KARCIS_ASAL', '=', 'b.karcis')
-                    ->on('c.IDUNIT', '=', 'b.idunit')
-                    ->on('c.KBUKU', '=', 'b.kbuku')
-                    ->on('c.NO_PESERTA', '=', 'b.no_peserta');
-            })
-            ->whereBetween('c.TANGGAL_ENTRI', [$startDate, $endDate])
-            ->where('c.IDUNIT', '001')
-            ->whereIn('c.KLINIK_TUJUAN', function ($sub) {
-                $sub->select('KODE_KLINIK')
-                    ->from('SIRS_PHCM.dbo.RJ_KLINIK_RADIOLOGI')
-                    ->where('AKTIF', 'true')
-                    ->where('IDUNIT', '001');
-            });
+        // Calculate unmapped counts
+        $total_unmapped_lab = $summary->total_all_lab - $summary->total_mapped_lab;
+        $total_unmapped_rad = $summary->total_all_rad - $summary->total_mapped_rad;
 
-        // === Counts ===
-        $total_all_lab = (clone $lab)->distinct()->count('c.ID_RIWAYAT_ELAB');
-        $total_mapped_lab = (clone $lab)
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as d', 'a.KBUKU', '=', 'd.kbuku')
-            ->whereNotNull('d.id_satusehat_servicerequest')
-            ->where('d.id_satusehat_servicerequest', '<>', '')
-            ->distinct()->count('c.ID_RIWAYAT_ELAB');
-
-        $total_unmapped_lab = $total_all_lab - $total_mapped_lab;
-
-        $total_all_rad = (clone $rad)->distinct()->count('c.ID_RIWAYAT_ELAB');
-        $total_mapped_rad = (clone $rad)
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as d', 'a.KBUKU', '=', 'd.kbuku')
-            ->whereNotNull('d.id_satusehat_servicerequest')
-            ->where('d.id_satusehat_servicerequest', '<>', '')
-            ->distinct()->count('c.ID_RIWAYAT_ELAB');
-
-        $total_unmapped_rad = $total_all_rad - $total_mapped_rad;
-
+        // Return JSON response
         return response()->json([
-            'total_all_lab' => $total_all_lab,
-            'total_all_rad' => $total_all_rad,
-            'total_all_combined' => $total_all_lab + $total_all_rad,
-            'total_mapped_lab' => $total_mapped_lab,
-            'total_mapped_rad' => $total_mapped_rad,
-            'total_mapped_combined' => $total_mapped_lab + $total_mapped_rad,
+            'total_all_lab' => $summary->total_all_lab,
+            'total_all_rad' => $summary->total_all_rad,
+            'total_all_combined' => $summary->total_all_lab + $summary->total_all_rad,
+            'total_mapped_lab' => $summary->total_mapped_lab,
+            'total_mapped_rad' => $summary->total_mapped_rad,
+            'total_mapped_combined' => $summary->total_mapped_lab + $summary->total_mapped_rad,
             'total_unmapped_lab' => $total_unmapped_lab,
             'total_unmapped_rad' => $total_unmapped_rad,
             'total_unmapped_combined' => $total_unmapped_lab + $total_unmapped_rad,
