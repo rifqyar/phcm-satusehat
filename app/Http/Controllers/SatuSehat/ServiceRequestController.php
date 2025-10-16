@@ -27,8 +27,8 @@ class ServiceRequestController extends Controller
      */
     public function index()
     {
-        $startDate = '2025-01-25 00:00:00';
-        $endDate   = '2025-02-25 23:59:59';
+        $startDate = Carbon::now()->subDays(30)->startOfDay()->format('Y-m-d H:i:s');
+        $endDate   = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
 
         // Base query for lab and rad
         $lab = DB::connection('sqlsrv')
@@ -130,14 +130,14 @@ class ServiceRequestController extends Controller
         // dd($request->all());
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
-            $tgl_awal  = '2025-01-25 00:00:00';
-            $tgl_akhir = '2025-02-25 23:59:59';
+            $tgl_awal  = Carbon::now()->subDays(30)->startOfDay();
+            $tgl_akhir = Carbon::now()->endOfDay();
         } else {
             if (empty($tgl_awal)) {
-                $tgl_awal = '2025-01-25 00:00:00';
+                $tgl_awal = Carbon::parse($tgl_akhir)->subDays(30)->startOfDay();
             }
             if (empty($tgl_akhir)) {
-                $tgl_akhir = '2025-02-25 23:59:59';
+                $tgl_akhir = Carbon::parse($tgl_awal)->addDays(30)->endOfDay();
             }
         }
 
@@ -221,6 +221,10 @@ class ServiceRequestController extends Controller
             $dataKunjungan = $mergedAll->filter(function ($item) {
                 return $item->id_satusehat_servicerequest == null;
             })->values();
+        } else if ($request->input('cari') == 'rad') {
+            $dataKunjungan = $radAll;
+        } else if ($request->input('cari') == 'lab') {
+            $dataKunjungan = $labAll;
         } else {
             $dataKunjungan = $mergedAll;
         }
@@ -251,6 +255,7 @@ class ServiceRequestController extends Controller
             $item->NM_TINDAKAN = implode(', ', $names);
         }
         // dd($dataKunjungan);
+        $dataKunjungan = $dataKunjungan->sortByDesc('TANGGAL_ENTRI')->values();
 
         return DataTables::of($dataKunjungan)
             ->addIndexColumn()
@@ -432,36 +437,35 @@ class ServiceRequestController extends Controller
         try {
             $data = [
                 "resourceType" => "ServiceRequest",
-                "identifier" => [
+                "identifier" => [[
                     "system" => "http://sys-ids.kemkes.go.id/servicerequest/{$organisasi}",
                     "value" => "$idRiwayatElab"
-                ],
+                ]],
                 "status" => "active",
                 "intent" => "original-order",
                 "priority" => "routine",
                 "category" => [[
                     "coding" => $jenisService
                 ]],
-                "code" => [[
+                "code" => [
                     "coding" => $tindakanList
-                ]],
+                ],
                 "subject" => [
                     "reference" => "Patient/{$kdPasienSS}",
                     "display" => "$patient->nama"
                 ],
                 "encounter" => [
                     "reference" => "Encounter/{$encounter->id_satusehat_encounter}",
-                    "display" => "Karcis: $karcis, Kunjungan: $patient->nama, Tanggal Entri: $riwayat->TANGGAL_ENTRI"
                 ],
                 "occurrenceDateTime" => $dateTimeNow,
                 "requester" => [
                     "reference" => "Practitioner/{$kdNakesSS}",
                     "display" => "$nakes->nama"
                 ],
-                "performer" => [
+                "performer" => [[
                     "reference" => "Practitioner/{$kdDokterSS}",
                     "display" => "$dokter->nama"
-                ],
+                ]],
             ];
             // dd($data);
 
@@ -479,6 +483,7 @@ class ServiceRequestController extends Controller
             $result = json_decode($dataServiceRequest->getBody()->getContents(), true);
             if ($dataServiceRequest->getStatusCode() >= 400) {
                 $response = json_decode($dataServiceRequest->getBody(), true);
+                // dd($response);
 
                 $this->logError('servicerequest', 'Gagal kirim data service request', [
                     'payload' => $data,
@@ -508,23 +513,23 @@ class ServiceRequestController extends Controller
                     DB::connection('sqlsrv')
                         ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
                         ->insert([
-                            'karcis'    => $karcis,
-                            'nota'      => $encounter->nota,
-                            'idunit'    => $id_unit,
-                            'tgl'       => Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d'),
-                            'id_satusehat_encounter' => $encounter->id_satusehat_encounter,
+                            'karcis'                      => $karcis,
+                            'nota'                        => $encounter->nota,
+                            'idunit'                      => $id_unit,
+                            'tgl'                         => Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d'),
+                            'id_satusehat_encounter'      => $encounter->id_satusehat_encounter,
                             'id_satusehat_servicerequest' => $result['id'],
-                            'kbuku'     => $dataPeserta->KBUKU,
-                            'no_peserta' => $dataPeserta->NO_PESERTA,
-                            'id_satusehat_px' => $kdPasienSS,
-                            'kddok'     => $dataKarcis->KDDOK,
-                            'id_satusehat_dokter' => $kdDokterSS,
-                            'kdklinik'  => $dataKarcis->KLINIK,
-                            'status_sinkron' => 1,
-                            'crtdt'     => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
-                            'crtusr'    => 'system', //Session::get('id'),
-                            'sinkron_date' => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
-                            'jam_datang' => Carbon::parse($riwayat->TANGGAL_ENTRI, 'Asia/Jakarta')->format('Y-m-d H:i:s'),
+                            'kbuku'                       => $dataPeserta->KBUKU,
+                            'no_peserta'                  => $dataPeserta->NO_PESERTA,
+                            'id_satusehat_px'             => $kdPasienSS,
+                            'kddok'                       => $dataKarcis->KDDOK,
+                            'id_satusehat_dokter'         => $kdDokterSS,
+                            'kdklinik'                    => $dataKarcis->KLINIK,
+                            'status_sinkron'              => 1,
+                            'crtdt'                       => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
+                            'crtusr'                      => 'system', // Session::get('id'),
+                            'sinkron_date'                => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
+                            'jam_datang'                  => Carbon::parse($riwayat->TANGGAL_ENTRI, 'Asia/Jakarta')->format('Y-m-d H:i:s'),
                         ]);
 
                     $this->logInfo('servicerequest', 'Sukses kirim data service request', [
