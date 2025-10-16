@@ -291,14 +291,16 @@
             $("#search-data").removeClass("was-validated");
 
             if (typeof table !== 'undefined' && table) {
+                refreshSummary()
                 table.ajax.reload();
             }
 
             $.toast?.({
                 heading: "Pencarian direset",
-                text: "Filter pencarian telah dikosongkan.",
+                text: "Filter pencarian dikosongkan.",
                 position: "top-right",
                 icon: "info",
+                textColor: "white",
                 hideAfter: 2000,
             });
         }
