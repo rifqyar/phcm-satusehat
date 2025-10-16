@@ -213,18 +213,26 @@
                         }
                     },
 
-                    // 📤 kolom kirim satu sehat
-                    {
-                        data: null,
-                        orderable: false,
-                        searchable: false,
-                        render: function (data) {
+                // 📤 kolom kirim satu sehat
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    render: function (data) {
+                        if (data.STATUS_MAPPING === '100') {
+                            // ✅ Semua obat sudah termapping → tampilkan tombol kirim
                             return `
-                            <button class="btn btn-sm btn-primary w-100" onclick="kirimSatusehat(${data.id})">
-                                <i class='fas fa-link mr-2'></i> Kirim SATUSEHAT
-                            </button>`;
+                                <button class="btn btn-sm btn-primary w-100" onclick="kirimSatusehat(${data.id})">
+                                    <i class='fas fa-link mr-2'></i> Kirim SATUSEHAT
+                                </button>`;
+                        } else {
+                            // ❌ Ada obat belum termapping → tampilkan teks
+                            return `
+                                <i class="text-muted">Data obat belum termapping</i>`;
                         }
                     }
+                }
+
                 ],
                 order: [[0, 'desc']]
             });
