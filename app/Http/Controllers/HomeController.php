@@ -21,74 +21,92 @@ class HomeController extends Controller
             [
                 'title' => 'Encounter / Kunjungan Pasien',
                 'url' => 'satusehat.encounter.index',
+                'bg_color' => 'card-success'
             ],
             [
                 'title' => 'Diagnosis',
                 'url' => '#',
+                'bg_color' => ''
             ],
             [
                 'title' => 'Observasi',
                 'url' => '#',
+                'bg_color' => ''
             ],
             [
                 'title' => 'Tindakan',
                 'url' => '#',
+                'bg_color' => ''
             ],
             [
                 'title' => 'Resume Medis',
                 'url' => '#',
+                'bg_color' => ''
             ],
             [
                 'title' => 'Imunisasi',
                 'url' => '#',
+                'bg_color' => ''
             ],
             [
                 'title' => 'Resep Obat',
                 'url' => 'satusehat.medication-request.index',
+                'bg_color' => 'card-success'
             ],
             [
                 'title' => 'Tebus Obat',
                 'url' => '#',
+                'bg_color' => ''
             ],
             [
                 'title' => 'Alergi Intoleran',
                 'url' => '#',
+                'bg_color' => ''
             ],
             [
                 'title' => 'Radiologi',
                 'url' => '#',
+                'bg_color' => ''
             ],
             [
                 'title' => 'Permintaan Pemeriksaan (Penunjang Medis)',
                 'url' => 'satusehat.service-request.index',
+                'bg_color' => 'card-success'
             ],
             [
                 'title' => 'Spesimen',
                 'url' => '#',
+                'bg_color' => ''
             ],
             [
                 'title' => 'Laporan Pemeriksaan',
                 'url' => '#',
+                'bg_color' => ''
             ],
             [
                 'title' => 'Rencana Perawatan',
                 'url' => '#',
+                'bg_color' => ''
             ],
             [
                 'title' => 'Catatan Pengobatan',
                 'url' => '#',
+                'bg_color' => ''
             ],
             [
                 'title' => 'Respon Kuesioner',
                 'url' => '#',
+                'bg_color' => ''
             ],
             [
                 'title' => 'Data Obat',
                 'url' => '#',
+                'bg_color' => ''
             ],
             [
                 'title' => 'Episode Perawatan',
                 'url' => '#',
+                'bg_color' => ''
             ]
         ];
         $cek = $this->cek_validitas_token();
