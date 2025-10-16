@@ -28,6 +28,9 @@ Route::middleware(['checkLogin'])->group(function () {
 
     Route::get('/satusehat/kfa-search', [App\Http\Controllers\SatusehatKfaController::class, 'search'])->name('kfa.search');
 
+    // Dashboard Obat <=> Satu Sehat
+    
+
     // Radiology
     Route::get('/master_radiology', [App\Http\Controllers\MasterRadiologyController::class, 'index'])->name('master_radiology');
     Route::post('/master_radiology/detail', [App\Http\Controllers\MasterRadiologyController::class, 'show'])->name('master_radiology.show');
@@ -121,8 +124,7 @@ Route::middleware(['checkLogin'])->group(function () {
         // Medication Request
         Route::get('/medication-request', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'index'])->name('medication-request.index');
         Route::post('/medication-request/datatable', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'datatable'])->name('medication-request.datatable');
-        Route::get('/medication-request/create', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'create'])->name('medication-request.create');
-        Route::post('/medication-request/store', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'store'])->name('medication-request.store');
+        Route::post('/medication-request/detail', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'getDetailObat'])->name('medication-request.detail');
         Route::get('/medication-request/{id}/edit', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'edit'])->name('medication-request.edit');
         Route::put('/medication-request/{id}', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'update'])->name('medication-request.update');
         Route::delete('/medication-request/{id}', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'destroy'])->name('medication-request.destroy');

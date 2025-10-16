@@ -206,12 +206,10 @@ class EncounterController extends Controller
     private function checkDateFormat($date)
     {
         try {
-            // Kalau $date sudah Carbon instance
             if ($date instanceof \Carbon\Carbon) {
                 return true;
             }
 
-            // Kalau string tapi masih bisa di-parse ke Carbon
             \Carbon\Carbon::parse($date);
             return true;
         } catch (\Exception $e) {
