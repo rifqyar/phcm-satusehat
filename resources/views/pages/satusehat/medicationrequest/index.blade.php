@@ -135,12 +135,9 @@
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>Nota</th>
                             <th>Dokter</th>
                             <th>Pasien</th>
                             <th>Tanggal</th>
-                            <th>Jam Datang</th>
-                            <th>Jam Selesai</th>
                             <th>Lihat Obat</th>
                             <th>Kirim SATUSEHAT</th>
                         </tr>
@@ -199,12 +196,9 @@
                 },
                 columns: [
                     { data: 'ID_TRANS', name: 'H.ID_TRANS' },
-                    { data: 'nota', name: 'A.nota' },
                     { data: 'DOKTER', name: 'N.nama' },
                     { data: 'PASIEN', name: 'P.nama' },
                     { data: 'tgl', name: 'A.tgl' },
-                    { data: 'jam_datang', name: 'A.jam_datang' },
-                    { data: 'jam_selesai', name: 'A.jam_selesai' },
 
                     // 👁️ kolom lihat obat
                     {
@@ -226,8 +220,8 @@
                         searchable: false,
                         render: function (data) {
                             return `
-                            <button class="btn btn-sm btn-danger" onclick="kirimSatusehat(${data.id})">
-                                <i class='fas fa-paper-plane'></i> Kirim SATUSEHAT
+                            <button class="btn btn-sm btn-primary w-100" onclick="kirimSatusehat(${data.id})">
+                                <i class='fas fa-link mr-2'></i> Kirim SATUSEHAT
                             </button>`;
                         }
                     }
@@ -296,10 +290,10 @@
                             </thead>
                             <tbody>`;
 
-                        res.data.forEach((row) => {
+                        res.data.forEach((row, index) => {
                             html += `
                             <tr>
-                                <td>${row.NO ?? '-'}</td>
+                                <td>${index + 1}</td>
                                 <td>${row.NAMA_OBAT ?? '-'}</td>
                                 <td>${row.SIGNA ?? '-'}</td>
                                 <td>${row.KET ?? '-'}</td>
