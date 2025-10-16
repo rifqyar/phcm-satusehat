@@ -79,7 +79,7 @@
                                 </div>
                             </div>
                             <div class="col-4">
-                                <div class="card card-inverse card-info card-mapping" onclick="search('rj')">
+                                <div class="card card-inverse card-info card-mapping" onclick="search('rad')">
                                     <div class="card-body">
                                         <div class="card-title">
                                             <div class="row align-items-center ml-1">
@@ -95,7 +95,7 @@
                                 </div>
                             </div>
                             <div class="col-4">
-                                <div class="card card-inverse card-warning card-mapping" onclick="search('ri')">
+                                <div class="card card-inverse card-warning card-mapping" onclick="search('lab')">
                                     <div class="card-body">
                                         <div class="card-title">
                                             <div class="row align-items-center ml-1">
@@ -266,11 +266,10 @@
             $("#search-data").on("submit", function(e) {
                 if (this.checkValidity()) {
                     e.preventDefault();
-                    $("html, body").animate({
-                            scrollTop: $("#data-section").offset().top,
-                        },
-                        1250
-                    );
+                    const section = $("#data-section");
+                    if (section.length) {
+                        $("html, body").animate({ scrollTop: section.offset().top }, 1250);
+                    }
                     table.ajax.reload();
                 }
 
@@ -281,6 +280,27 @@
                 e.stopPropagation();
             });
         })
+
+        function resetSearch() {
+            // Reset all form inputs
+            $('input[name="search"]').val('');
+            $('input[name="tgl_awal"]').val('');
+            $('input[name="tgl_akhir"]').val('');
+            $("#search-data").removeClass("was-validated");
+
+            if (typeof table !== 'undefined' && table) {
+                table.ajax.reload();
+            }
+
+            $.toast?.({
+                heading: "Pencarian direset",
+                text: "Filter pencarian telah dikosongkan.",
+                position: "top-right",
+                icon: "info",
+                hideAfter: 2000,
+            });
+        }
+
 
         function getAllData() {
             table = $('.data-table').DataTable({
@@ -360,7 +380,7 @@
                     },
                 ],
                 order: [
-                    [5, 'desc']
+                    [1, 'asc']
                 ],
                 lengthMenu: [
                     [10, 25, 50, -1],
