@@ -265,9 +265,17 @@ class ServiceRequestController extends Controller
         $dataKunjungan = $dataKunjungan->map(function ($item) use ($allTindakanIdsSS, $tindakanList) {
             $ids = array_filter(explode(',', $item->ARRAY_TINDAKAN ?? ''));
 
-            $item->AllServiceRequestExist = count($ids) > 0 && collect($ids)->every(fn($id) => in_array((int)$id, $allTindakanIdsSS)) ? 1 : 0;
+            // Check if all IDs exist
+            $allExist = count($ids) > 0 && collect($ids)->every(function ($id) use ($allTindakanIdsSS) {
+                return in_array((int)$id, $allTindakanIdsSS);
+            });
 
-            $names = array_filter(array_map(fn($id) => $tindakanList[$id] ?? null, $ids));
+            $item->AllServiceRequestExist = $allExist ? 1 : 0;
+
+            // Map NM_TINDAKAN
+            $names = array_filter(array_map(function ($id) use ($tindakanList) {
+                return $tindakanList[$id] ?? null;
+            }, $ids));
             $item->NM_TINDAKAN = implode(', ', $names);
 
             return $item;
@@ -280,7 +288,6 @@ class ServiceRequestController extends Controller
         //     }, $ids));
         //     $item->NM_TINDAKAN = implode(', ', $names);
         // }
-        // dd($dataKunjungan);
         $dataKunjungan = $dataKunjungan->sortByDesc('TANGGAL_ENTRI')->values();
         // dd($dataKunjungan);
 
