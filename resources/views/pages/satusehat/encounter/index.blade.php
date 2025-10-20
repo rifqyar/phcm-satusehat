@@ -221,9 +221,10 @@
                                 <tr>
                                     <th></th>
                                     <th>NO</th>
-                                    <th>Jenis Perawatan</th>
-                                    <th>Status Transaksi</th>
-                                    <th>Tanggal Masuk</th>
+                                    <th>Karcis</th>
+                                    <th>Perawatan</th>
+                                    <th>Status Verif</th>
+                                    <th>Tgl. Masuk</th>
                                     <th>No. Peserta</th>
                                     <th>No. RM</th>
                                     <th>Nama</th>
@@ -292,6 +293,7 @@
                 },
                 processing: true,
                 serverSide: false,
+                scrollX: true,
                 ajax: {
                     url: `{{ route('satusehat.encounter.datatable') }}`,
                     method: "POST",
@@ -315,30 +317,39 @@
                         searchable: false
                     },
                     {
+                        data: 'ID_TRANSAKSI',
+                        name: 'ID_TRANSAKSI',
+                        responsivePriority: 2
+                    },
+                    {
                         data: 'JENIS_PERAWATAN',
                         name: 'JENIS_PERAWATAN',
-                        responsivePriority: 3
+                        responsivePriority: -1
                     },
                     {
                         data: 'STATUS_SELESAI',
                         name: 'STATUS_SELESAI',
+                        responsivePriority: -1
                     },
                     {
                         data: 'TANGGAL',
                         name: 'TANGGAL',
+                        responsivePriority: 7
                     },
                     {
                         data: 'NO_PESERTA',
                         name: 'NO_PESERTA',
+                        responsivePriority: 6
                     },
                     {
                         data: 'KBUKU',
                         name: 'KBUKU',
+                        responsivePriority: 5
                     },
                     {
                         data: 'NAMA_PASIEN',
                         name: 'NAMA_PASIEN',
-                        responsivePriority: 2
+                        responsivePriority: 4
                     },
                     {
                         data: 'DOKTER',
@@ -355,7 +366,7 @@
                     {
                         data: 'status_integrasi',
                         name: 'status_integrasi',
-                        responsivePriority: 1
+                        responsivePriority: 3
                     },
                     {
                         data: 'action',

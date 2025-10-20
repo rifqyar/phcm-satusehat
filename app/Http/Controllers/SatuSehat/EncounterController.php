@@ -165,18 +165,18 @@ class EncounterController extends Controller
 
                 $btn = '';
                 if ($row->ID_PASIEN_SS == null) {
-                    $btn = '<i class="text-muted">Pasien Belum Mapping Satu Sehat</i>';
+                    $btn = '<i class="text-muted">Pasien Belum Mapping</i>';
                 } else if ($row->ID_NAKES_SS == null) {
-                    $btn .= '<i class="text-muted">Nakes Belum Mapping Satu Sehat</i>';
+                    $btn .= '<i class="text-muted">Nakes Belum Mapping</i>';
                 } else if ($row->ID_LOKASI_SS == null) {
-                    $btn .= '<i class="text-muted">Lokasi Belum Mapping Satu Sehat</i>';
+                    $btn .= '<i class="text-muted">Lokasi Belum Mapping</i>';
                 } else {
                     if ($row->JENIS_PERAWATAN == 'RAWAT_JALAN') {
                         if ($row->JUMLAH_NOTA_SATUSEHAT == 0) {
                             if ($row->STATUS_SELESAI != "9" && $row->STATUS_SELESAI != "10") {
                                 $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
                             } else {
-                                $btn .= '<i class="text-muted">Tunggu Verifikasi Pasien</i>';
+                                $btn .= '<i class="text-muted">Tunggu Verifikasi Pendaftaran</i>';
                             }
                         } else {
                             $btn = '<a href="#" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
