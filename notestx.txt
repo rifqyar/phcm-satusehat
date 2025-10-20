@@ -1,0 +1,3 @@
+Karcis pecah jadi [nomor karcis = 93945, nota = 90441]
+resep dokter IF_HTRANS_OL join detail IF_TRANS_OL [ID_TRANS in ('A20250225/000066','A20250225/000103')]
+racikan IF_HTRANS, IF_TRANS [ID_TRANS in ('A20250225/000165','A20250225/000214')]

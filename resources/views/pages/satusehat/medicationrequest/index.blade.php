@@ -55,10 +55,12 @@
                         <div class="card card-inverse card-primary card-mapping" onclick="search('all')">
                             <div class="card-body">
                                 <div class="row align-items-center ml-1">
-                                    <i class="fas fa-pills" style="font-size: 48px"></i>
+                                    <i class="fas fa-pills text-white" style="font-size: 48px"></i>
                                     <div class="ml-3">
-                                        <span style="font-size: 24px">{{ count($mergedAll ?? []) }}</span>
-                                        <h4 class="text-white">Semua Data Transaksi Obat<br>(1 bulan terakhir)</h4>
+                                        <span data-count="all" class="text-white" style="font-size: 24px">
+                                            {{ count($mergedAll ?? []) }}
+                                        </span>
+                                        <h4 class="text-white">Semua Data Transaksi Obat<br></h4>
                                     </div>
                                 </div>
                             </div>
@@ -69,10 +71,12 @@
                         <div class="card card-inverse card-success card-mapping" onclick="search('sent')">
                             <div class="card-body">
                                 <div class="row align-items-center ml-1">
-                                    <i class="fas fa-paper-plane" style="font-size: 48px"></i>
+                                    <i class="fas fa-paper-plane text-white" style="font-size: 48px"></i>
                                     <div class="ml-3">
-                                        <span style="font-size: 24px">{{ count($sentData ?? []) }}</span>
-                                        <h4 class="text-white">Data Terkirim<br>(1 bulan terakhir)</h4>
+                                        <span data-count="sent" class="text-white" style="font-size: 24px">
+                                            {{ count($sentData ?? []) }}
+                                        </span>
+                                        <h4 class="text-white">Data Terkirim<br></h4>
                                     </div>
                                 </div>
                             </div>
@@ -83,15 +87,18 @@
                         <div class="card card-inverse card-danger card-mapping" onclick="search('unsent')">
                             <div class="card-body">
                                 <div class="row align-items-center ml-1">
-                                    <i class="fas fa-clock" style="font-size: 48px"></i>
+                                    <i class="fas fa-hourglass-half text-white" style="font-size: 48px"></i>
                                     <div class="ml-3">
-                                        <span style="font-size: 24px">{{ count($unsentData ?? []) }}</span>
-                                        <h4 class="text-white">Data Belum Terkirim<br>(1 bulan terakhir)</h4>
+                                        <span data-count="unsent" class="text-white" style="font-size: 24px">
+                                            {{ count($unsentData ?? []) }}
+                                        </span>
+                                        <h4 class="text-white">Data Belum Terkirim<br></h4>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+
 
                     <!-- Filter Periode -->
                     <div class="col-12 col-md-12 mt-4">
@@ -148,17 +155,16 @@
     </div>
 
     @include('modals.modal_lihat_obat')
-
 @endsection
 
 @push('after-script')
     <script src="{{ asset('assets/plugins/moment/moment.js') }}"></script>
-    <script
-        src="{{ asset('assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js') }}"></script>
+    <script src="{{ asset('assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js') }}">
+    </script>
     <script>
         var table;
 
-        $(document).ready(function () {
+        $(document).ready(function() {
             // 🗓️ datepicker
             var endDate = moment();
             var startDate = moment().subtract(240, 'days');
@@ -187,64 +193,78 @@
                 ajax: {
                     url: '{{ route('satusehat.medication-request.datatable') }}',
                     type: 'POST',
-                    data: function (d) {
+                    data: function(d) {
                         d._token = '{{ csrf_token() }}';
                         d.start_date = $('#start_date').val();
                         d.end_date = $('#end_date').val();
                         d.search = $('input[name="search"]').val();
                     }
                 },
-                columns: [
-                    { data: 'ID_TRANS', name: 'H.ID_TRANS' },
-                    { data: 'DOKTER', name: 'N.nama' },
-                    { data: 'PASIEN', name: 'P.nama' },
-                    { data: 'tgl', name: 'A.tgl' },
-
-                    // 👁️ kolom lihat obat
+                columns: [{
+                        data: 'ID_TRANS',
+                        name: 'H.ID_TRANS'
+                    },
+                    {
+                        data: 'DOKTER',
+                        name: 'N.nama'
+                    },
+                    {
+                        data: 'PASIEN',
+                        name: 'P.nama'
+                    },
+                    {
+                        data: 'tgl',
+                        name: 'A.tgl'
+                    },
                     {
                         data: null,
                         orderable: false,
                         searchable: false,
-                        render: function (data) {
+                        render: function(data) {
                             return `
-                            <button class="btn btn-sm btn-info" onclick="lihatObat('${data.ID_TRANS}')">
-                            <i class='fas fa-eye'></i> Lihat Obat
-                        </button>`;
+                                <button class="btn btn-sm btn-info" onclick="lihatObat('${data.ID_TRANS}')">
+                                    <i class='fas fa-eye'></i> Lihat Obat
+                                </button>`;
                         }
                     },
-
-                // 📤 kolom kirim satu sehat
-                {
-                    data: null,
-                    orderable: false,
-                    searchable: false,
-                    render: function (data) {
-                        if (data.STATUS_MAPPING === '100') {
-                            // ✅ Semua obat sudah termapping → tampilkan tombol kirim
-                            return `
-                                <button class="btn btn-sm btn-primary w-100" onclick="kirimSatusehat(${data.id})">
-                                    <i class='fas fa-link mr-2'></i> Kirim SATUSEHAT
-                                </button>`;
-                        } else {
-                            // ❌ Ada obat belum termapping → tampilkan teks
-                            return `
-                                <i class="text-muted">Data obat belum termapping</i>`;
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        render: function(data) {
+                            // 📦 status mapping logic (lihat bagian 2)
+                            if (data.STATUS_MAPPING === '100') {
+                                return `
+                                    <button class="btn btn-sm btn-primary w-100" onclick="kirimSatusehat(${data.id})">
+                                        <i class='fas fa-link mr-2'></i> Kirim SATUSEHAT
+                                    </button>`;
+                            } else {
+                                return `<i class="text-muted">Data obat belum termapping</i>`;
+                            }
                         }
                     }
-                }
-
                 ],
-                order: [[0, 'desc']]
+                order: [
+                    [0, 'desc']
+                ]
+            });
+
+            table.on('xhr.dt', function(e, settings, json, xhr) {
+                if (json && json.summary) {
+                    $('span[data-count="all"]').text(json.summary.all ?? 0);
+                    $('span[data-count="sent"]').text(json.summary.sent ?? 0);
+                    $('span[data-count="unsent"]').text(json.summary.unsent ?? 0);
+                }
             });
 
             // 🔍 tombol cari
-            $("#search-data").on("submit", function (e) {
+            $("#search-data").on("submit", function(e) {
                 e.preventDefault();
                 table.ajax.reload();
             });
 
             // 🆕 tombol kirim SATUSEHAT
-            $("#btnSendSatusehat").on("click", function () {
+            $("#btnSendSatusehat").on("click", function() {
                 if (confirm("Yakin ingin mengirim data ke SATUSEHAT?")) {
                     // nanti ganti dengan ajax atau route yang sesuai
                     alert("Fungsi kirim SATUSEHAT akan ditambahkan di tahap berikutnya 🚀");
@@ -275,13 +295,13 @@
             $('#obatDetailContent').html(`<p class='text-center text-muted'>Memuat data obat...</p>`);
 
             $.ajax({
-                url: '{{ route("satusehat.medication-request.detail") }}',
+                url: '{{ route('satusehat.medication-request.detail') }}',
                 type: 'POST',
                 data: {
                     _token: '{{ csrf_token() }}',
-                    id: idTrans  // 🆕 kirim ID_TRANS
+                    id: idTrans // 🆕 kirim ID_TRANS
                 },
-                success: function (res) {
+                success: function(res) {
                     if (res.status === 'success') {
                         let html = `
                         <table class="table table-sm table-bordered">
@@ -317,12 +337,12 @@
                         $('#obatDetailContent').html(`<p class='text-danger text-center'>${res.message}</p>`);
                     }
                 },
-                error: function (err) {
-                    $('#obatDetailContent').html(`<p class='text-danger text-center'>Terjadi kesalahan saat memuat data obat.</p>`);
+                error: function(err) {
+                    $('#obatDetailContent').html(
+                        `<p class='text-danger text-center'>Terjadi kesalahan saat memuat data obat.</p>`);
                     console.error(err);
                 }
             });
         }
-
     </script>
 @endpush
