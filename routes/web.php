@@ -87,11 +87,7 @@ Route::middleware(['checkLogin'])->group(function () {
         // Allergy Intolerance
         Route::get('/allergy-intolerance', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'index'])->name('allergy-intolerance.index');
         Route::post('/allergy-intolerance/datatable', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'datatable'])->name('allergy-intolerance.datatable');
-        Route::get('/allergy-intolerance/create', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'create'])->name('allergy-intolerance.create');
-        Route::post('/allergy-intolerance/store', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'store'])->name('allergy-intolerance.store');
-        Route::get('/allergy-intolerance/{id}/edit', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'edit'])->name('allergy-intolerance.edit');
-        Route::put('/allergy-intolerance/{id}', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'update'])->name('allergy-intolerance.update');
-        Route::delete('/allergy-intolerance/{id}', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'destroy'])->name('allergy-intolerance.destroy');
+        Route::get('/encounter/lihat-alergi/{param}', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'lihatAlergi'])->name('allergy-intolerance.lihat-alergi');
 
         // Service Request
         Route::get('/service-request', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'index'])->name('service-request.index');
