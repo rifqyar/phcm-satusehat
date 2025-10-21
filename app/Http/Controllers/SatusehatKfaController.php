@@ -63,12 +63,18 @@ class SatusehatKfaController extends Controller
                     if (!$template)
                         return null;
 
+                    // Hitung jumlah zat aktif (bisa null kalau field nggak ada)
+                    $activeIngredients = $item['active_ingredients'] ?? [];
+                    $isCompound = count($activeIngredients) > 1;
+
                     return [
                         'kfa_code' => $template['kfa_code'] ?? '-',
                         'name' => $template['name'] ?? '-',
                         'display_name' => $template['display_name'] ?? '-',
                         'state' => $template['state'] ?? '-',
                         'updated_at' => $template['updated_at'] ?? null,
+                        'is_compound' => $isCompound, // <— tambahin flag ini
+                        'active_ingredients_count' => count($activeIngredients), // optional, buat debug
                     ];
                 })
                 ->filter()
@@ -77,11 +83,11 @@ class SatusehatKfaController extends Controller
                 })
                 ->sortByDesc(function ($item) use ($keyword) {
                     similar_text(strtolower($item['display_name']), $keyword, $percent);
-                    return $percent; // Semakin besar persen, semakin mirip
+                    return $percent;
                 })
-
                 ->values()
                 ->all();
+
 
 
             // Langsung return array data bersih

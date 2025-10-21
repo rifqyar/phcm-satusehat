@@ -136,6 +136,7 @@
                             <th>NAMA BARANG</th>
                             <th>KODE KFA</th>
                             <th>NAMA KFA</th>
+                            <th>JENIS</th>
                             <th>DESKRIPSI</th>
                             <th>AKSI</th>
                         </tr>
@@ -151,6 +152,7 @@
                                     {{ $obat->KD_BRG_KFA && trim($obat->KD_BRG_KFA) !== '' ? $obat->KD_BRG_KFA : 'Data Belum di-mapping' }}
                                 </td>
                                 <td>{{ $obat->NAMABRG_KFA }}</td>
+                                <td>{{ $obat->IS_COMPOUND ? 'Compound' : 'Non-compound' }}</td>
                                 <td>{{ $obat->DESCRIPTION }}</td>
                                 <td class="text-center">
                                     @if (empty($obat->KD_BRG_KFA) || trim($obat->KD_BRG_KFA) === '')
@@ -229,51 +231,51 @@
         <script>
             $('#btnSaveMapping').on('click', function () {
                 let formData = $('#formMappingObat').serialize();
+                console.log('FormData:', formData);
+                    $.ajax({
+                        url: "{{ route('master_obat.saveMapping') }}",
+                        type: "POST",
+                        data: formData,
+                        success: function (res) {
+                            if (res.success) {
+                                $.toast({
+                                    heading: 'Sukses',
+                                    text: 'Mapping berhasil disimpan.',
+                                    position: 'top-right',
+                                    loaderBg: '#51A351',
+                                    icon: 'success',
+                                    hideAfter: 1500
+                                });
 
-                $.ajax({
-                    url: "{{ route('master_obat.saveMapping') }}",
-                    type: "POST",
-                    data: formData,
-                    success: function (res) {
-                        if (res.success) {
+                                $('#modalMapping').modal('hide');
+
+                                // 🔄 reload halaman penuh setelah toast selesai
+                                setTimeout(() => {
+                                    location.reload();
+                                }, 1500);
+                            } else {
+                                $.toast({
+                                    heading: 'Gagal',
+                                    text: res.message || 'Gagal menyimpan data.',
+                                    position: 'top-right',
+                                    loaderBg: '#FF5733',
+                                    icon: 'error',
+                                    hideAfter: 4000
+                                });
+                            }
+                        },
+                        error: function (xhr) {
                             $.toast({
-                                heading: 'Sukses',
-                                text: 'Mapping berhasil disimpan.',
-                                position: 'top-right',
-                                loaderBg: '#51A351',
-                                icon: 'success',
-                                hideAfter: 1500
-                            });
-
-                            $('#modalMapping').modal('hide');
-
-                            // 🔄 reload halaman penuh setelah toast selesai
-                            setTimeout(() => {
-                                location.reload();
-                            }, 1500);
-                        } else {
-                            $.toast({
-                                heading: 'Gagal',
-                                text: res.message || 'Gagal menyimpan data.',
+                                heading: 'Error',
+                                text: 'Terjadi kesalahan saat menyimpan data.',
                                 position: 'top-right',
                                 loaderBg: '#FF5733',
                                 icon: 'error',
                                 hideAfter: 4000
                             });
+                            console.error(xhr.responseText);
                         }
-                    },
-                    error: function (xhr) {
-                        $.toast({
-                            heading: 'Error',
-                            text: 'Terjadi kesalahan saat menyimpan data.',
-                            position: 'top-right',
-                            loaderBg: '#FF5733',
-                            icon: 'error',
-                            hideAfter: 4000
-                        });
-                        console.error(xhr.responseText);
-                    }
-                });
+                    });
             });
         </script>
 
