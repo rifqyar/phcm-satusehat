@@ -60,8 +60,8 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Alergi Intoleran',
-                'url' => '#',
-                'bg_color' => ''
+                'url' => 'satusehat.allergy-intolerance.index',
+                'bg_color' => 'card-success'
             ],
             [
                 'title' => 'Radiologi',

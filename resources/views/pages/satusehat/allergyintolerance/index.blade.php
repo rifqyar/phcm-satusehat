@@ -25,6 +25,10 @@
             transition: all 0.3s ease;
             cursor: pointer
         }
+
+        tbody td {
+            vertical-align: middle !important
+        }
     </style>
     <link href="{{ asset('assets/plugins/bootstrap-material-datetimepicker/css/bootstrap-material-datetimepicker.css') }}"
         rel="stylesheet">
@@ -37,7 +41,7 @@
             <h3 class="text-themecolor">Dashboard</h3>
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-                <li class="breadcrumb-item active">Encounter</li>
+                <li class="breadcrumb-item active">Allergy Intolerance</li>
             </ol>
         </div>
         <div class="col-md-7 col-4 align-self-center">
@@ -68,8 +72,8 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-info-circle" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ count($mergedAll) }}</span>
-                                                    <h4 class="text-white">Semua Data Kunjungan <br> (1 bulan terakhir)</h4>
+                                                    <span style="font-size: 24px">{{ $result['total_semua'] }}</span>
+                                                    <h4 class="text-white">Total Data</h4>
                                                 </div>
                                             </div>
                                         </div>
@@ -77,60 +81,31 @@
                                 </div>
                             </div>
                             <div class="col-4">
-                                <div class="card card-inverse card-info card-mapping" onclick="search('rj')">
-                                    <div class="card-body">
-                                        <div class="card-title">
-                                            <div class="row align-items-center ml-1">
-                                                <i class="fas fa-hospital" style="font-size: 48px"></i>
-                                                <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ count($rjAll) }}</span>
-                                                    <h4 class="text-white">Kunjungan Rawat Jalan <br> (1 bulan terakhir)
-                                                    </h4>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="card card-inverse card-warning card-mapping" onclick="search('ri')">
-                                    <div class="card-body">
-                                        <div class="card-title">
-                                            <div class="row align-items-center ml-1">
-                                                <i class="fas fa-bed" style="font-size: 48px"></i>
-                                                <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ count($ri) }}</span>
-                                                    <h4 class="text-white">Kunjungan Rawat Inap <br> (1 bulan terakhir)</h4>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-6">
                                 <div class="card card-inverse card-info card-mapping" onclick="search('mapped')">
                                     <div class="card-body">
                                         <div class="card-title">
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-link" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ count($mergedIntegrated) }}</span>
-                                                    <h4 class="text-white">Data Termapping <br> (1 bulan terakhir)</h4>
+                                                    <span
+                                                        style="font-size: 24px">{{ $result['total_sudah_integrasi'] }}</span>
+                                                    <h4 class="text-white">Data Terintegrasi</h4>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-6">
+                            <div class="col-4">
                                 <div class="card card-inverse card-danger card-mapping" onclick="search('unmapped')">
                                     <div class="card-body">
                                         <div class="card-title">
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-unlink" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ $unmapped }}</span>
-                                                    <h4 class="text-white">Data belum mapping <br> (1 bulan terakhir)</h4>
+                                                    <span
+                                                        style="font-size: 24px">{{ $result['total_belum_integrasi'] }}</span>
+                                                    <h4 class="text-white">Data belum terintegrasi</h4>
                                                 </div>
                                             </div>
                                         </div>
@@ -222,15 +197,11 @@
                                     <th></th>
                                     <th>NO</th>
                                     <th>Karcis</th>
-                                    <th>Perawatan</th>
-                                    <th>Status Verif</th>
-                                    <th>Tgl. Masuk</th>
+                                    <th>Tgl</th>
                                     <th>No. Peserta</th>
                                     <th>No. RM</th>
                                     <th>Nama</th>
                                     <th>Dokter</th>
-                                    <th>Debitur</th>
-                                    <th>Ruangan</th>
                                     <th>Status Integrasi</th>
                                     <th></th>
                                 </tr>
@@ -243,6 +214,8 @@
             </div>
         </div>
     </div>
+
+    @include('modals.modal_lihat_alergi')
 @endsection
 
 
@@ -255,7 +228,7 @@
         $(function() {
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
-                time: false
+                time: false,
             });
             $("#end_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
@@ -293,9 +266,8 @@
                 },
                 processing: true,
                 serverSide: false,
-                scrollX: true,
                 ajax: {
-                    url: `{{ route('satusehat.encounter.datatable') }}`,
+                    url: `{{ route('satusehat.allergy-intolerance.datatable') }}`,
                     method: "POST",
                     data: function(data) {
                         data._token = `${$('meta[name="csrf-token"]').attr("content")}`;
@@ -313,28 +285,18 @@
                     }, {
                         data: 'DT_RowIndex',
                         name: 'DT_RowIndex',
-                        orderable: false,
-                        searchable: false
+                        searchable: false,
+                        responsivePriority: 1
                     },
                     {
-                        data: 'ID_TRANSAKSI',
-                        name: 'ID_TRANSAKSI',
+                        data: 'KARCIS',
+                        name: 'KARCIS',
                         responsivePriority: 2
-                    },
-                    {
-                        data: 'JENIS_PERAWATAN',
-                        name: 'JENIS_PERAWATAN',
-                        responsivePriority: -1
-                    },
-                    {
-                        data: 'STATUS_SELESAI',
-                        name: 'STATUS_SELESAI',
-                        responsivePriority: -1
                     },
                     {
                         data: 'TANGGAL',
                         name: 'TANGGAL',
-                        responsivePriority: 7
+                        responsivePriority: 3
                     },
                     {
                         data: 'NO_PESERTA',
@@ -354,14 +316,7 @@
                     {
                         data: 'DOKTER',
                         name: 'DOKTER',
-                    },
-                    {
-                        data: 'DEBITUR',
-                        name: 'DEBITUR',
-                    },
-                    {
-                        data: 'LOKASI',
-                        name: 'LOKASI',
+                        responsivePriority: 8
                     },
                     {
                         data: 'status_integrasi',
@@ -377,7 +332,7 @@
                     },
                 ],
                 order: [
-                    [5, 'desc']
+                    [3, 'desc']
                 ],
                 lengthMenu: [
                     [10, 25, 50, -1],
@@ -397,80 +352,92 @@
         }
 
         function sendSatuSehat(param) {
-            function formatNowForInput() {
-                const d = new Date();
-                const pad = (n) => n.toString().padStart(2, '0');
-                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            Swal.fire({
+                title: "Konfirmasi Pengiriman",
+                text: `Kirim data Allergy Intolerance Pasien ke SatuSehat?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Ya, kirim!",
+                cancelButtonText: "Batal",
+            }).then(async (conf) => {
+                if (conf.value || conf.isConfirmed) {
+                    await ajaxGetJson(
+                        `{{ route('satusehat.allergy-intolerance.send', '') }}/${btoa(param)}`,
+                        "input_success",
+                        ""
+                    );
+                }
+            });
+        }
+
+        function lihatDetailAlergi(param) {
+            ajaxGetJson(
+                `{{ route('satusehat.allergy-intolerance.lihat-alergi', '') }}/${btoa(param)}`,
+                "show_modal",
+                ""
+            );
+        }
+
+        function show_modal(res) {
+            const dataPasien = res.data.dataPasien
+            const dataErm = res.data.dataErm
+            const dataAlergi = res.data.dataAlergi
+
+            $('#nama_pasien').html(dataPasien.NAMA)
+            $('#no_rm').html(dataPasien.KBUKU)
+            $('#no_peserta').html(dataPasien.NO_PESERTA)
+
+            $('#no_karcis').html(dataErm.ID_TRANSAKSI)
+            $('#dokter').html(dataErm.CRTUSR)
+
+            let htmlDiag = '';
+
+            if (dataErm) {
+                htmlDiag += `<span>${dataErm.KODE_DIAGNOSA_UTAMA || '-'} - ${dataErm.DIAG_UTAMA || '-'}</span>`;
+
+                if (dataErm.KODE_DIAGNOSA_SEKUNDER || dataErm.DIAG_SEKUNDER) {
+                    htmlDiag += `<br><span>${dataErm.KODE_DIAGNOSA_SEKUNDER} - ${dataErm.DIAG_SEKUNDER}</span>`;
+                }
+
+                if (dataErm.KODE_DIAGNOSA_KOMPLIKASI || dataErm.DIAG_KOMPLIKASI) {
+                    htmlDiag += `<br><span>${dataErm.KODE_DIAGNOSA_KOMPLIKASI} - ${dataErm.DIAG_KOMPLIKASI}</span>`;
+                }
+
+                if (dataErm.KODE_DIAGNOSA_PENYEBAB || dataErm.PENYEBAB) {
+                    htmlDiag += `<br><span>${dataErm.KODE_DIAGNOSA_PENYEBAB} - ${dataErm.PENYEBAB}</span>`;
+                }
+            } else {
+                htmlDiag = `<em>Tidak ada data diagnosa</em>`;
             }
 
-            Swal.fire({
-                title: "Masukkan Tanggal & Jam Datang",
-                html: `
-                    <input type="datetime-local" id="jam_datang" class="swal2-input" value="${formatNowForInput()}" style="width:100%;box-sizing:border-box;">
-                    <div id="jam_err" style="color:#f27474;font-size:0.95rem;margin-top:6px;display:block;"></div>
-                `,
-                focusConfirm: false,
-                showCancelButton: true,
-                confirmButtonText: "Lanjut",
-                cancelButtonText: "Batal",
-                preConfirm: () => {
-                    const jamDatangEl = document.getElementById('jam_datang');
-                    const jamErrEl = document.getElementById('jam_err');
+            $('#data_diagnosa').html(htmlDiag)
 
-                    if (!jamDatangEl.value) {
-                        jamErrEl.innerHTML = "Tanggal & jam datang wajib diisi!";
-                        return false;
-                    }
-                    jamErrEl.innerHTML = "";
-                    return jamDatangEl.value;
-                },
-                onOpen: () => {
-                    const el = document.getElementById('jam_datang');
-                    if (el) el.focus();
-                }
-            }).then((timeResult) => {
-                if (!timeResult.isConfirmed && !timeResult.value) return;
+            $('#tbodyAlergi').empty();
 
-                const datetimeLocal = timeResult.value;
-                const jamDatangIso = datetimeLocal + ':00+07:00';
-
-                Swal.fire({
-                    title: "Konfirmasi Pengiriman",
-                    text: `Kirim data kunjungan dengan jam datang ${jamDatangIso}?`,
-                    icon: "question",
-                    showCancelButton: true,
-                    confirmButtonColor: "#3085d6",
-                    cancelButtonColor: "#d33",
-                    confirmButtonText: "Ya, kirim!",
-                    cancelButtonText: "Batal",
-                }).then(async (conf) => {
-                    if (conf.value || conf.isConfirmed) {
-                        await ajaxGetJson(
-                            `{{ route('satusehat.encounter.send', '') }}/${btoa(param)}?jam_datang=${encodeURIComponent(jamDatangIso)}`,
-                            "input_success",
-                            ""
-                        );
-                    }
+            if (dataAlergi && dataAlergi.length > 0) {
+                $.each(dataAlergi, function(index, item) {
+                    $('#tbodyAlergi').append(`
+                        <tr>
+                            <td>${item.JENIS || '-'}</td>
+                            <td>${item.ALERGEN || '-'}</td>
+                            <td>${item.ID_ALERGEN_SS || '-'}</td>
+                        </tr>
+                    `);
                 });
-            });
-            // Swal.fire({
-            //     title: "Apakah anda yakin ingin mengirim data kunjungan ke Satu Sehat?",
-            //     type: "question",
-            //     showCancelButton: true,
-            //     confirmButtonColor: "#3085d6",
-            //     cancelButtonColor: "#d33",
-            //     confirmButtonText: "Ya",
-            // }).then(async (conf) => {
-            //     if (conf.value == true) {
-            //         await ajaxGetJson(
-            //             `{{ route('satusehat.encounter.send', '') }}/${btoa(param)}`,
-            //             "input_success",
-            //             ""
-            //         );
-            //     } else {
-            //         return false;
-            //     }
-            // });
+            } else {
+                // Jika tidak ada data
+                $('#tbodyAlergi').append(`
+                    <tr>
+                        <td colspan="3" class="text-center text-muted">
+                            Tidak ada data alergi
+                        </td>
+                    </tr>
+                `);
+            }
+
+            $('#modalAlergi').modal('show')
         }
 
         function input_success(res) {
