@@ -489,9 +489,9 @@
                     let text = "";
                     if (res.redirect.need) {
                         text =
-                            "<h5>Berhasil input Request Receiving,<br> Mengembalikan Anda ke halaman sebelumnya...</h5>";
+                            "<h5>Berhasil Kirim Data,<br> Mengembalikan Anda ke halaman sebelumnya...</h5>";
                     } else {
-                        text = "<h5>Berhasil input Request Receiving</h5>";
+                        text = "<h5>Berhasil Kirim Data</h5>";
                     }
 
                     Swal.fire({

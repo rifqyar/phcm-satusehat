@@ -352,61 +352,23 @@
         }
 
         function sendSatuSehat(param) {
-            function formatNowForInput() {
-                const d = new Date();
-                const pad = (n) => n.toString().padStart(2, '0');
-                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-            }
-
             Swal.fire({
-                title: "Masukkan Tanggal & Jam Datang",
-                html: `
-                    <input type="datetime-local" id="jam_datang" class="swal2-input" value="${formatNowForInput()}" style="width:100%;box-sizing:border-box;">
-                    <div id="jam_err" style="color:#f27474;font-size:0.95rem;margin-top:6px;display:block;"></div>
-                `,
-                focusConfirm: false,
+                title: "Konfirmasi Pengiriman",
+                text: `Kirim data Allergy Intolerance Pasien ke SatuSehat?`,
+                icon: "question",
                 showCancelButton: true,
-                confirmButtonText: "Lanjut",
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Ya, kirim!",
                 cancelButtonText: "Batal",
-                preConfirm: () => {
-                    const jamDatangEl = document.getElementById('jam_datang');
-                    const jamErrEl = document.getElementById('jam_err');
-
-                    if (!jamDatangEl.value) {
-                        jamErrEl.innerHTML = "Tanggal & jam datang wajib diisi!";
-                        return false;
-                    }
-                    jamErrEl.innerHTML = "";
-                    return jamDatangEl.value;
-                },
-                onOpen: () => {
-                    const el = document.getElementById('jam_datang');
-                    if (el) el.focus();
+            }).then(async (conf) => {
+                if (conf.value || conf.isConfirmed) {
+                    await ajaxGetJson(
+                        `{{ route('satusehat.allergy-intolerance.send', '') }}/${btoa(param)}`,
+                        "input_success",
+                        ""
+                    );
                 }
-            }).then((timeResult) => {
-                if (!timeResult.isConfirmed && !timeResult.value) return;
-
-                const datetimeLocal = timeResult.value;
-                const jamDatangIso = datetimeLocal + ':00+07:00';
-
-                Swal.fire({
-                    title: "Konfirmasi Pengiriman",
-                    text: `Kirim data kunjungan dengan jam datang ${jamDatangIso}?`,
-                    icon: "question",
-                    showCancelButton: true,
-                    confirmButtonColor: "#3085d6",
-                    cancelButtonColor: "#d33",
-                    confirmButtonText: "Ya, kirim!",
-                    cancelButtonText: "Batal",
-                }).then(async (conf) => {
-                    if (conf.value || conf.isConfirmed) {
-                        await ajaxGetJson(
-                            `{{ route('satusehat.encounter.send', '') }}/${btoa(param)}?jam_datang=${encodeURIComponent(jamDatangIso)}`,
-                            "input_success",
-                            ""
-                        );
-                    }
-                });
             });
         }
 
@@ -494,9 +456,9 @@
                     let text = "";
                     if (res.redirect.need) {
                         text =
-                            "<h5>Berhasil input Request Receiving,<br> Mengembalikan Anda ke halaman sebelumnya...</h5>";
+                            "<h5>Berhasil Kirim Data,<br> Mengembalikan Anda ke halaman sebelumnya...</h5>";
                     } else {
-                        text = "<h5>Berhasil input Request Receiving</h5>";
+                        text = "<h5>Berhasil Kirim Data</h5>";
                     }
 
                     Swal.fire({

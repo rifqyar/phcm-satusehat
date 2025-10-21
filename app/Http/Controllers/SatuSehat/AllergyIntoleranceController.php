@@ -3,15 +3,23 @@
 namespace App\Http\Controllers\SatuSehat;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\LogTraits;
+use App\Http\Traits\SATUSEHATTraits;
 use App\Lib\LZCompressor\LZString;
+use App\Models\GlobalParameter;
+use App\Models\SATUSEHAT\SATUSEHAT_ALLERGY_INTOLERANCE;
+use App\Models\SATUSEHAT\SS_Kode_API;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Ramsey\Uuid\Uuid;
 use Yajra\DataTables\DataTables;
 
 class AllergyIntoleranceController extends Controller
 {
+    use SATUSEHATTraits, LogTraits;
     /**
      * Display a listing of the resource.
      *
@@ -162,7 +170,8 @@ class AllergyIntoleranceController extends Controller
                 $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
                 $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
                 $idEncounter = LZString::compressToEncodedURIComponent($row->id_satusehat_encounter);
-                $paramSatuSehat = LZString::compressToEncodedURIComponent($id_transaksi . '+' . $KbBuku . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $idEncounter);
+                $paramSatuSehat = "karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter";
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
                 $param = LZString::compressToEncodedURIComponent($id_transaksi . '+' . $KbBuku);
                 $btn = '';
@@ -280,6 +289,217 @@ class AllergyIntoleranceController extends Controller
                 'to' => null,
             ]
         ], 200);
+    }
+
+    public function sendSatuSehat($param)
+    {
+        $param = base64_decode($param);
+        $params = LZString::decompressFromEncodedURIComponent($param);
+        $parts = explode('&', $params);
+
+        $arrParam = [];
+        for ($i = 0; $i < count($parts); $i++) {
+            $partsParam = explode('=', $parts[$i]);
+            $key = $partsParam[0];
+            $val = $partsParam[1];
+            $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
+        }
+        $id_unit      = '001'; // session('id_klinik');
+
+        $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
+            ->where('idpx', $arrParam['id_pasien_ss'])
+            ->first();
+
+        $nakes = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
+            ->where('idnakes', $arrParam['id_nakes_ss'])
+            ->first();
+
+        $encounter = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
+            ->where('id_satusehat_encounter', $arrParam['encounter_id'])
+            ->first();
+
+        Carbon::setLocale('id');
+        $displayTextEncounter = "Kunjungan Pasien A/n $patient->nama Pada " . Carbon::parse($encounter->jam_datang)->translatedFormat('l, d F Y');
+
+        $baseurl = '';
+        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
+            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+        } else {
+            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
+            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+        }
+
+        // Get Data Alergi
+        $dataAlergi = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as eri')
+            ->select([
+                'ead.JENIS',
+                'ead.ALERGEN',
+                'ead.ID_ALERGEN_SS'
+            ])
+            ->leftJoin('E_RM_PHCM.dbo.ERM_ALERGIPX as ea', function ($join) {
+                $join->on('eri.KARCIS', '=', 'ea.KARCIS');
+            })
+            ->leftJoin('E_RM_PHCM.dbo.ERM_ALERGIPX_DTL as ead', function ($join) {
+                $join->on('ea.ID_ALERGI_PX', '=', 'ead.ID_HDR');
+            })
+            ->where('eri.KARCIS', $arrParam['karcis'])
+            ->where('ea.STATUS_AKTIF', '1')
+            ->get();
+
+        // Define Payload Alergy if Alergen > 1
+        $payloadAlergyCategory = [];
+        $payloadAlergyDetail = [];
+        $text = "Pasien A/n $patient->nama Memiliki Alergi Terhadap ";
+        foreach ($dataAlergi as $val) {
+            // Allergy Category
+            if (!in_array($val->JENIS, $payloadAlergyCategory)) {
+                array_push($payloadAlergyCategory, $val->JENIS);
+            }
+
+            //Alergy Detail
+            $codeSystem = $val->JENIS == 'food' ? 'http://snomed.info/sct' : 'http://sys-ids.kemkes.go.id/kfa';
+            $value = $val->ID_ALERGEN_SS;
+            $display = $val->ALERGEN;
+            $text .= "$display, ";
+
+            array_push($payloadAlergyDetail, [
+                "system" => "$codeSystem",
+                "code" => "$value",
+                "display" => "$display",
+            ]);
+        }
+
+        $text = rtrim($text, ', ');
+        $identifier = now()->timestamp;
+
+        try {
+            $payload = [
+                "resourceType" => "AllergyIntolerance",
+                "identifier" => [
+                    [
+                        "system" => "http://sys-ids.kemkes.go.id/allergy/$organisasi",
+                        "use" => "official",
+                        "value" => "$identifier",
+                    ],
+                ],
+                "clinicalStatus" => [
+                    "coding" => [
+                        [
+                            "system" => "http://terminology.hl7.org/CodeSystem/allergyintolerance-clinical",
+                            "code" => "active",
+                            "display" => "Active",
+                        ],
+                    ],
+                ],
+                "verificationStatus" => [
+                    "coding" => [
+                        [
+                            "system" => "http://terminology.hl7.org/CodeSystem/allergyintolerance-verification",
+                            "code" => "confirmed",
+                            "display" => "Confirmed",
+                        ],
+                    ],
+                ],
+                "category" => $payloadAlergyCategory,
+                "code" => [
+                    "coding" => $payloadAlergyDetail,
+                    "text" => "$text",
+                ],
+                "patient" => [
+                    "reference" => "Patient/" . $arrParam['id_pasien_ss'],
+                    "display" => "$patient->nama",
+                ],
+                "encounter" => [
+                    "reference" => "Encounter/" . $arrParam['encounter_id'],
+                    "display" => "$displayTextEncounter",
+                ],
+                "recordedDate" => Carbon::now('Asia/Jakarta')->toIso8601String(),
+                "recorder" => [
+                    "reference" => "Practitioner/" . $arrParam['id_nakes_ss'],
+                ],
+            ];
+
+            $login = $this->login($id_unit);
+            if ($login['metadata']['code'] != 200) {
+                $hasil = $login;
+            }
+
+            $token = $login['response']['token'];
+
+            $url = 'AllergyIntolerance';
+            $dataencounter = $this->consumeSATUSEHATAPI('POST', $baseurl, $url, $payload, true, $token);
+            $result = json_decode($dataencounter->getBody()->getContents(), true);
+            if ($dataencounter->getStatusCode() >= 400) {
+                $response = json_decode($dataencounter->getBody(), true);
+
+                $this->logError($url, 'Gagal kirim data Allergy Intolerance', [
+                    'payload' => $payload,
+                    'response' => $response,
+                    'user_id' => 'system' //Session::get('id')
+                ]);
+
+                $this->logDb(json_encode($response), $url, json_encode($payload), 'system'); //Session::get('id')
+
+                $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Encounter';
+                throw new Exception($msg, $dataencounter->getStatusCode());
+            } else {
+                DB::beginTransaction();
+                try {
+                    $dataKarcis = DB::table('RJ_KARCIS as rk')
+                        ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
+                        ->where('rk.KARCIS', $arrParam['karcis'])
+                        ->where('rk.IDUNIT', $id_unit)
+                        ->orderBy('rk.TGL', 'DESC')
+                        ->first();
+
+                    $dataPeserta = DB::table('RIRJ_MASTERPX')
+                        ->where('KBUKU', $dataKarcis->KBUKU)
+                        ->first();
+
+                    $allergy_satusehat = new SATUSEHAT_ALLERGY_INTOLERANCE();
+                    $allergy_satusehat->karcis = (int)$dataKarcis->KARCIS;
+                    $allergy_satusehat->no_peserta = $dataPeserta->NO_PESERTA;
+                    $allergy_satusehat->kbuku = $dataKarcis->KBUKU;
+                    $allergy_satusehat->id_satusehat_encounter = $arrParam['encounter_id'];
+                    $allergy_satusehat->id_allergy_intolerance = $result['id'];
+                    $allergy_satusehat->crtdt = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
+                    $allergy_satusehat->crtusr = 'system';
+                    $allergy_satusehat->status_sinkron = 1;
+                    $allergy_satusehat->sinkron_date = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
+                    $allergy_satusehat->save();
+
+                    $this->logInfo($url, 'Sukses kirim data Allergy intolerance', [
+                        'payload' => $payload,
+                        'response' => $result,
+                        'user_id' => 'system' //Session::get('id')
+                    ]);
+                    $this->logDb(json_encode($result), $url, json_encode($payload), 'system'); //Session::get('id')
+
+                    DB::commit();
+                    return response()->json([
+                        'status' => JsonResponse::HTTP_OK,
+                        'message' => 'Berhasil Kirim Data Allergy Intolerance',
+                        'redirect' => [
+                            'need' => false,
+                            'to' => null,
+                        ]
+                    ], 200);
+                } catch (Exception $th) {
+                    throw new Exception($th->getMessage(), $th->getCode());
+                }
+            }
+        } catch (Exception $th) {
+            return response()->json([
+                'status' => [
+                    'msg' => $th->getMessage() != '' ? $th->getMessage() : 'Err',
+                    'code' => $th->getCode() != '' ? $th->getCode() : 500,
+                ],
+                'data' => null,
+                'err_detail' => $th,
+                'message' => $th->getMessage() != '' ? $th->getMessage() : 'Terjadi Kesalahan Saat Kirim Data, Harap Coba lagi!'
+            ], $th->getCode() != '' ? $th->getCode() : 500);
+        }
     }
 
     /**

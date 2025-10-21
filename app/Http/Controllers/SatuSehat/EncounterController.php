@@ -400,7 +400,6 @@ class EncounterController extends Controller
                         ]
                     ], 200);
                 } catch (Exception $th) {
-                    dd($th);
                     throw new Exception($th->getMessage(), $th->getCode());
                 }
             }
