@@ -39,7 +39,7 @@
             <h3 class="text-themecolor">Dashboard</h3>
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-                <li class="breadcrumb-item active">Spesimen</li>
+                <li class="breadcrumb-item active">Service Request</li>
             </ol>
         </div>
         <div class="col-md-7 col-4 align-self-center">
@@ -214,7 +214,7 @@
                     @endif
 
                     <div class="card-title">
-                        <h4>Data Spesimen</h4>
+                        <h4>Data Service Request</h4>
                     </div>
                     <!-- 🧾 Tabel Data -->
                     <div class="table-responsive">
@@ -230,7 +230,6 @@
                                     <th>No. Peserta</th>
                                     <th>No. RM</th>
                                     <th>Tindakan</th>
-                                    <th>Specimen</th>
                                     <th>Status Integrasi</th>
                                     <th>Status Mapping</th>
                                     <th></th>
@@ -254,8 +253,6 @@
     <script>
         var table
         $(function() {
-            const today = moment().format('YYYY-MM-DD');
-            const sevenDaysAgo = moment().subtract(7, 'days').format('YYYY-MM-DD');
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
                 time: false
@@ -264,8 +261,6 @@
                 weekStart: 0,
                 time: false
             });
-            $('#start_date').val(sevenDaysAgo);
-            $('#end_date').val(today);
 
             getAllData();
             refreshSummary();
@@ -322,7 +317,7 @@
                 processing: true,
                 serverSide: false,
                 ajax: {
-                    url: `{{ route('satusehat.specimen.datatable') }}`,
+                    url: `{{ route('satusehat.service-request.datatable') }}`,
                     method: "POST",
                     data: function(data) {
                         data._token = `${$('meta[name="csrf-token"]').attr("content")}`;
@@ -376,10 +371,6 @@
                         name: 'NM_TINDAKAN',
                     },
                     {
-                        data: 'SPECIMEN_NAMES',
-                        name: 'SPECIMEN_NAMES',
-                    },
-                    {
                         data: 'status_integrasi',
                         name: 'status_integrasi',
                         responsivePriority: 1
@@ -409,7 +400,7 @@
 
         function refreshSummary() {
             $.ajax({
-                url: `{{ route('satusehat.specimen.summary') }}`,
+                url: `{{ route('satusehat.service-request.summary') }}`,
                 type: "POST",
                 data: {
                     _token: $('meta[name="csrf-token"]').attr("content"),
@@ -444,9 +435,46 @@
         }
 
         function sendSatuSehat(param) {
+            function formatNowForInput() {
+                const d = new Date();
+                const pad = (n) => n.toString().padStart(2, '0');
+                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            }
+
             Swal.fire({
+                title: "Masukkan Tanggal & Jam Datang",
+                html: `
+                    <input type="datetime-local" id="jam_datang" class="swal2-input" value="${formatNowForInput()}" style="width:100%;box-sizing:border-box;">
+                    <div id="jam_err" style="color:#f27474;font-size:0.95rem;margin-top:6px;display:block;"></div>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: "Lanjut",
+                cancelButtonText: "Batal",
+                preConfirm: () => {
+                    const jamDatangEl = document.getElementById('jam_datang');
+                    const jamErrEl = document.getElementById('jam_err');
+
+                    if (!jamDatangEl.value) {
+                        jamErrEl.innerHTML = "Tanggal & jam datang wajib diisi!";
+                        return false;
+                    }
+                    jamErrEl.innerHTML = "";
+                    return jamDatangEl.value;
+                },
+                onOpen: () => {
+                    const el = document.getElementById('jam_datang');
+                    if (el) el.focus();
+                }
+            }).then((timeResult) => {
+                if (!timeResult.isConfirmed && !timeResult.value) return;
+
+                const datetimeLocal = timeResult.value;
+                const jamDatangIso = datetimeLocal + ':00+07:00';
+
+                Swal.fire({
                     title: "Konfirmasi Pengiriman",
-                    text: `Kirim data spesimen ke SatuSehat?`,
+                    text: `Kirim data kunjungan dengan jam datang ${jamDatangIso}?`,
                     icon: "question",
                     showCancelButton: true,
                     confirmButtonColor: "#3085d6",
@@ -456,12 +484,31 @@
                 }).then(async (conf) => {
                     if (conf.value || conf.isConfirmed) {
                         await ajaxGetJson(
-                            `{{ route('satusehat.specimen.send', '') }}/${btoa(param)}`,
+                            `{{ route('satusehat.service-request.send', '') }}/${btoa(param)}?jam_datang=${encodeURIComponent(jamDatangIso)}`,
                             "input_success",
                             ""
                         );
                     }
                 });
+            });
+            // Swal.fire({
+            //     title: "Apakah anda yakin ingin mengirim data kunjungan ke Satu Sehat?",
+            //     type: "question",
+            //     showCancelButton: true,
+            //     confirmButtonColor: "#3085d6",
+            //     cancelButtonColor: "#d33",
+            //     confirmButtonText: "Ya",
+            // }).then(async (conf) => {
+            //     if (conf.value == true) {
+            //         await ajaxGetJson(
+            //             `{{ route('satusehat.encounter.send', '') }}/${btoa(param)}`,
+            //             "input_success",
+            //             ""
+            //         );
+            //     } else {
+            //         return false;
+            //     }
+            // });
         }
 
         function input_success(res) {
@@ -470,14 +517,36 @@
                 return false;
             }
 
-            table.ajax.reload();
-
             $.toast({
                 heading: "Berhasil!",
                 text: res.message,
                 position: "top-right",
                 icon: "success",
-                hideAfter: 2500
+                hideAfter: 2500,
+                beforeHide: function() {
+                    let text = "";
+                    if (res.redirect.need) {
+                        text =
+                            "<h5>Berhasil input Request Receiving,<br> Mengembalikan Anda ke halaman sebelumnya...</h5>";
+                    } else {
+                        text = "<h5>Berhasil input Request Receiving</h5>";
+                    }
+
+                    Swal.fire({
+                        html: text,
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                    });
+
+                    Swal.showLoading();
+                },
+                afterHidden: function() {
+                    if (res.redirect.need) {
+                        window.location.href = res.redirect.to;
+                    } else {
+                        Swal.close();
+                    }
+                },
             });
         }
     </script>
