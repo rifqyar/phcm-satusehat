@@ -29,8 +29,8 @@ class EncounterController extends Controller
      */
     public function index()
     {
-        $startDate = Carbon::now()->startOfDay();
-        $endDate   = Carbon::now()->endOfDay();
+        $startDate = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
+        $endDate   = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
 
         $rj = DB::table('v_kunjungan_rj as v')
             ->whereBetween('TANGGAL', [$startDate, $endDate])
@@ -72,15 +72,11 @@ class EncounterController extends Controller
         $id_unit   = '001'; // session('id_klinik');
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
-            $tgl_awal  = Carbon::now()->startOfDay();
-            $tgl_akhir = Carbon::now()->endOfDay();
+            $tgl_awal  = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
+            $tgl_akhir = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
         } else {
-            if (empty($tgl_awal)) {
-                $tgl_awal = Carbon::parse($tgl_akhir)->startOfDay();
-            }
-            if (empty($tgl_akhir)) {
-                $tgl_akhir = Carbon::parse($tgl_awal)->endOfDay();
-            }
+            $tgl_awal = Carbon::parse($tgl_awal)->startOfDay()->format('Y-m-d H:i:s');
+            $tgl_akhir = Carbon::parse($tgl_akhir)->endOfDay()->format('Y-m-d H:i:s');
         }
 
         if (!$this->checkDateFormat($tgl_awal) || !$this->checkDateFormat($tgl_akhir)) {
