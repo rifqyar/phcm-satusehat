@@ -57,7 +57,7 @@ class MedicationRequestController extends Controller
                 LOCAL_ID,
                 MAX(ID) AS MAX_ID
             FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
-            WHERE LOG_TYPE = 'MedicationRequest'
+            WHERE LOG_TYPE = 'MedicationRequest' AND STATUS = 'success'
             GROUP BY LOCAL_ID
         ) AS log_latest
     "), 'log_latest.LOCAL_ID', '=', 'a.ID_TRANS')

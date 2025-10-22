@@ -350,63 +350,79 @@
             });
         }
         // 🚀 fungsi kirim ke SATUSEHAT
-        function kirimSatusehat(idTrans) {
-            if (!idTrans) return;
+function kirimSatusehat(idTrans) {
+    if (!idTrans) return;
 
-            if (!confirm(`Yakin ingin mengirim transaksi ${idTrans} ke SATUSEHAT?`)) {
-                return;
+    if (!confirm(`Yakin ingin mengirim transaksi ${idTrans} ke SATUSEHAT?`)) {
+        return;
+    }
+
+    const btn = event.currentTarget;
+    const originalText = btn.innerHTML;
+
+    btn.disabled = true;
+    btn.innerHTML = `<i class='fas fa-spinner fa-spin'></i> Mengirim...`;
+
+    $.ajax({
+        url: '{{ route('satusehat.medication-request.sendsehat') }}',
+        type: 'GET', // karena route kamu pakai GET
+        data: {
+            id_trans: idTrans
+        },
+        success: function (res) {
+            if (res.status === 'success') {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: `Transaksi ${idTrans} berhasil dikirim ke SATUSEHAT.`,
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+            } else {
+                let msg = res.message ?? 'Tidak ada pesan dari server.';
+                let jsonBody = res.response ?? res ?? {};
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Gagal Mengirim!',
+                    html: `
+                        <div style="text-align:left; max-height:300px; overflow-y:auto; background:#f8f9fa; padding:10px; border-radius:6px;">
+                            <pre style="white-space:pre-wrap; word-wrap:break-word;">${JSON.stringify(jsonBody, null, 2)}</pre>
+                        </div>
+                    `,
+                    width: '60%',
+                });
             }
 
-            // ambil tombol yang diklik (buat ubah statusnya sementara)
-            const btn = event.currentTarget;
-            const originalText = btn.innerHTML;
+            table.ajax.reload(null, false);
+        },
+        error: function (xhr) {
+            console.error(xhr);
 
-            // ubah tampilan tombol -> loading
-            btn.disabled = true;
-            btn.innerHTML = `<i class='fas fa-spinner fa-spin'></i> Mengirim...`;
+            let json = {};
+            try {
+                json = JSON.parse(xhr.responseText);
+            } catch (e) {
+                json = { error: xhr.responseText };
+            }
 
-            $.ajax({
-                url: '{{ route('satusehat.medication-request.sendsehat') }}',
-                type: 'GET', // karena route kamu pakai GET
-                data: {
-                    id_trans: idTrans
-                },
-                success: function (res) {
-                    // tampilkan notifikasi / hasilnya
-                    if (res.status === 'success') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil!',
-                            text: `Transaksi ${idTrans} berhasil dikirim ke SATUSEHAT.`,
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Gagal!',
-                            text: res.message ?? 'Tidak ada pesan dari server.',
-                        });
-                    }
-
-                    // reload DataTable biar status jadi 200
-                    table.ajax.reload(null, false);
-                },
-                error: function (xhr) {
-                    console.error(xhr);
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error!',
-                        text: 'Terjadi kesalahan saat mengirim data ke SATUSEHAT.',
-                    });
-                },
-                complete: function () {
-                    // kembalikan tombol ke kondisi semula
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
-                }
+            Swal.fire({
+                icon: 'error',
+                title: 'Error saat mengirim!',
+                html: `
+                    <div style="text-align:left; max-height:300px; overflow-y:auto; background:#f8f9fa; padding:10px; border-radius:6px;">
+                        <pre style="white-space:pre-wrap; word-wrap:break-word;">${JSON.stringify(json, null, 2)}</pre>
+                    </div>
+                `,
+                width: '60%',
             });
+        },
+        complete: function () {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
         }
+    });
+}
 
     </script>
 @endpush
