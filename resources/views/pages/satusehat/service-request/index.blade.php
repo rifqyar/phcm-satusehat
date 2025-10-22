@@ -253,6 +253,7 @@
     <script>
         var table
         $(function() {
+            const today = moment().format('YYYY-MM-DD');
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
                 time: false
@@ -261,6 +262,8 @@
                 weekStart: 0,
                 time: false
             });
+            $('#start_date').val(today);
+            $('#end_date').val(today);
 
             getAllData();
             refreshSummary();
