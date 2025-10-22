@@ -84,6 +84,7 @@ class MasterSpecimenController extends Controller
         $groups = $groupsQuery->get();
 
         $groupIds = $groups->pluck('ID_GRUP_TIND');
+        // dd($groupIds);
 
         $tindakanQuery = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.RJ_DGRUP_TIND as a')
@@ -117,6 +118,7 @@ class MasterSpecimenController extends Controller
                 'b.NM_TIND'
             )
             ->orderByRaw('ISNULL(a.URUTAN, 99)');
+        // dd($tindakanQuery->toSql());
 
         // search filter
         if ($request->filled('cari')) {

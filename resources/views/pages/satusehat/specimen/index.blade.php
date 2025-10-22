@@ -52,7 +52,7 @@
 
     <div class="card">
         <div class="card-body">
-            <h4 class="card-title">Daftar Service Request Pasien</h4>
+            <h4 class="card-title">Daftar Spesimen Laboratory</h4>
 
             <div class="card">
                 <div class="card-body">
@@ -71,14 +71,14 @@
                                                 <i class="fas fa-info-circle" style="font-size: 48px"></i>
                                                 <div class="ml-3">
                                                     <span style="font-size: 24px" id="total_all_combined">0</span>
-                                                    <h4 class="text-white">Semua Data Service Request </h4>
+                                                    <h4 class="text-white">Semua Data Spesimen Lab </h4>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-4">
+                            {{-- <div class="col-4">
                                 <div class="card card-inverse card-info card-mapping" onclick="search('rad')">
                                     <div class="card-body">
                                         <div class="card-title">
@@ -108,8 +108,8 @@
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="col-6">
+                            </div> --}}
+                            <div class="col-4">
                                 <div class="card card-inverse card-info card-mapping" onclick="search('mapped')">
                                     <div class="card-body">
                                         <div class="card-title">
@@ -124,7 +124,7 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-6">
+                            <div class="col-4">
                                 <div class="card card-inverse card-danger card-mapping" onclick="search('unmapped')">
                                     <div class="card-body">
                                         <div class="card-title">
@@ -435,15 +435,46 @@
         }
 
         function sendSatuSehat(param) {
-            // function formatNowForInput() {
-            //     const d = new Date();
-            //     const pad = (n) => n.toString().padStart(2, '0');
-            //     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-            // }
+            function formatNowForInput() {
+                const d = new Date();
+                const pad = (n) => n.toString().padStart(2, '0');
+                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+            }
 
             Swal.fire({
+                title: "Masukkan Tanggal & Jam Datang",
+                html: `
+                    <input type="datetime-local" id="jam_datang" class="swal2-input" value="${formatNowForInput()}" style="width:100%;box-sizing:border-box;">
+                    <div id="jam_err" style="color:#f27474;font-size:0.95rem;margin-top:6px;display:block;"></div>
+                `,
+                focusConfirm: false,
+                showCancelButton: true,
+                confirmButtonText: "Lanjut",
+                cancelButtonText: "Batal",
+                preConfirm: () => {
+                    const jamDatangEl = document.getElementById('jam_datang');
+                    const jamErrEl = document.getElementById('jam_err');
+
+                    if (!jamDatangEl.value) {
+                        jamErrEl.innerHTML = "Tanggal & jam datang wajib diisi!";
+                        return false;
+                    }
+                    jamErrEl.innerHTML = "";
+                    return jamDatangEl.value;
+                },
+                onOpen: () => {
+                    const el = document.getElementById('jam_datang');
+                    if (el) el.focus();
+                }
+            }).then((timeResult) => {
+                if (!timeResult.isConfirmed && !timeResult.value) return;
+
+                const datetimeLocal = timeResult.value;
+                const jamDatangIso = datetimeLocal + ':00+07:00';
+
+                Swal.fire({
                     title: "Konfirmasi Pengiriman",
-                    text: `Kirim data service request ke SatuSehat?`,
+                    text: `Kirim data kunjungan dengan jam datang ${jamDatangIso}?`,
                     icon: "question",
                     showCancelButton: true,
                     confirmButtonColor: "#3085d6",
@@ -453,63 +484,13 @@
                 }).then(async (conf) => {
                     if (conf.value || conf.isConfirmed) {
                         await ajaxGetJson(
-                            `{{ route('satusehat.service-request.send', '') }}/${btoa(param)}`,
+                            `{{ route('satusehat.service-request.send', '') }}/${btoa(param)}?jam_datang=${encodeURIComponent(jamDatangIso)}`,
                             "input_success",
                             ""
                         );
                     }
                 });
-
-            // Swal.fire({
-            //     title: "Masukkan Tanggal & Jam Datang",
-            //     html: `
-            //         <input type="datetime-local" id="jam_datang" class="swal2-input" value="${formatNowForInput()}" style="width:100%;box-sizing:border-box;">
-            //         <div id="jam_err" style="color:#f27474;font-size:0.95rem;margin-top:6px;display:block;"></div>
-            //     `,
-            //     focusConfirm: false,
-            //     showCancelButton: true,
-            //     confirmButtonText: "Lanjut",
-            //     cancelButtonText: "Batal",
-            //     preConfirm: () => {
-            //         const jamDatangEl = document.getElementById('jam_datang');
-            //         const jamErrEl = document.getElementById('jam_err');
-
-            //         if (!jamDatangEl.value) {
-            //             jamErrEl.innerHTML = "Tanggal & jam datang wajib diisi!";
-            //             return false;
-            //         }
-            //         jamErrEl.innerHTML = "";
-            //         return jamDatangEl.value;
-            //     },
-            //     onOpen: () => {
-            //         const el = document.getElementById('jam_datang');
-            //         if (el) el.focus();
-            //     }
-            // }).then((timeResult) => {
-            //     if (!timeResult.isConfirmed && !timeResult.value) return;
-
-            //     const datetimeLocal = timeResult.value;
-            //     const jamDatangIso = datetimeLocal + ':00+07:00';
-
-            //     Swal.fire({
-            //         title: "Konfirmasi Pengiriman",
-            //         text: `Kirim data kunjungan dengan jam datang ${jamDatangIso}?`,
-            //         icon: "question",
-            //         showCancelButton: true,
-            //         confirmButtonColor: "#3085d6",
-            //         cancelButtonColor: "#d33",
-            //         confirmButtonText: "Ya, kirim!",
-            //         cancelButtonText: "Batal",
-            //     }).then(async (conf) => {
-            //         if (conf.value || conf.isConfirmed) {
-            //             await ajaxGetJson(
-            //                 `{{ route('satusehat.service-request.send', '') }}/${btoa(param)}?jam_datang=${encodeURIComponent(jamDatangIso)}`,
-            //                 "input_success",
-            //                 ""
-            //             );
-            //         }
-            //     });
-            // });
+            });
             // Swal.fire({
             //     title: "Apakah anda yakin ingin mengirim data kunjungan ke Satu Sehat?",
             //     type: "question",
@@ -536,14 +517,36 @@
                 return false;
             }
 
-            table.ajax.reload();
-
             $.toast({
                 heading: "Berhasil!",
                 text: res.message,
                 position: "top-right",
                 icon: "success",
-                hideAfter: 2500
+                hideAfter: 2500,
+                beforeHide: function() {
+                    let text = "";
+                    if (res.redirect.need) {
+                        text =
+                            "<h5>Berhasil input Request Receiving,<br> Mengembalikan Anda ke halaman sebelumnya...</h5>";
+                    } else {
+                        text = "<h5>Berhasil input Request Receiving</h5>";
+                    }
+
+                    Swal.fire({
+                        html: text,
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                    });
+
+                    Swal.showLoading();
+                },
+                afterHidden: function() {
+                    if (res.redirect.need) {
+                        window.location.href = res.redirect.to;
+                    } else {
+                        Swal.close();
+                    }
+                },
             });
         }
     </script>
