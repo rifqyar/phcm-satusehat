@@ -100,8 +100,8 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Data Obat',
-                'url' => '#',
-                'bg_color' => ''
+                'url' => 'satusehat.medication.index',
+                'bg_color' => 'card-success'
             ],
             [
                 'title' => 'Episode Perawatan',

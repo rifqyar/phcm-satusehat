@@ -367,9 +367,22 @@
         function kirimSatusehat(idTrans) {
             if (!idTrans) return;
 
-            if (!confirm(`Yakin ingin mengirim transaksi ${idTrans} ke SATUSEHAT?`)) {
-                return;
-            }
+            Swal.fire({
+                title: 'Kirim ke SATUSEHAT?',
+                text: `Yakin ingin mengirim transaksi ${idTrans} ke SATUSEHAT?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, kirim',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    // Lanjut kirim di sini
+                    kirimDataKeSatusehat(idTrans);
+                }
+            });
+
 
             const btn = event.currentTarget;
             const originalText = btn.innerHTML;
