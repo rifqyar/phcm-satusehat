@@ -208,7 +208,8 @@ class SatusehatKfaController extends Controller
                         'Authorization' => 'Bearer ' . $accessToken,
                         'Content-Type' => 'application/json'
                     ],
-                    'body' => json_encode($payload)
+                    'body' => json_encode($payload),
+                    'verify' => false
                 ]
             );
 
