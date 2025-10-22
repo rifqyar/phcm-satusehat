@@ -177,7 +177,7 @@
                                     @endif
 
                                     {{-- 🟢 Tombol Kirim / Kirim Ulang --}}
-                                    @if (empty($obat->FHIR_ID))
+                                    {{-- @if (empty($obat->FHIR_ID))
                                         <button type="button" class="btn btn-sm btn-primary btn-send-medication"
                                             data-kode="{{ $obat->KDBRG_CENTRA }}">
                                             <i class="fas fa-paper-plane"></i> Kirim Data
@@ -187,7 +187,7 @@
                                             data-kode="{{ $obat->KDBRG_CENTRA }}">
                                             <i class="fas fa-redo"></i> Kirim Ulang
                                         </button>
-                                    @endif
+                                    @endif --}}
                                 </td>
                             </tr>
                         @empty
