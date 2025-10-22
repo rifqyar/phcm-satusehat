@@ -32,86 +32,110 @@ class MedicationRequestController extends Controller
             $startDate = now()->subDays(30);
         }
 
-            $query = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as A')
-                ->join('SIRS_PHCM.dbo.IF_HTRANS as B', DB::raw('CONVERT(BIGINT, A.nota)'), '=', 'B.NOTA')
-                ->join('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as N', 'A.id_satusehat_dokter', '=', 'N.idnakes')
-                ->join('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN as P', 'A.id_satusehat_px', '=', 'P.idpx')
-                ->whereBetween('B.TGL', [$startDate, $endDate])
-                ->select(
-                    'A.id',
-                    'A.karcis',
-                    'A.nota',
-                    'A.idunit',
-                    'A.tgl',
-                    'A.id_satusehat_encounter',
-                    'A.kbuku',
-                    'A.no_peserta',
-                    'A.id_satusehat_px',
-                    'A.kddok',
-                    'A.id_satusehat_dokter',
-                    'A.kdklinik',
-                    'A.id_satusehat_klinik_location',
-                    'A.sinkron_date',
-                    'A.jam_datang',
-                    'A.jam_progress',
-                    'A.jam_selesai',
-                    'B.ID_TRANS',
-                    DB::raw('N.nama as DOKTER'),
-                    DB::raw('P.nama as PASIEN'),
+        // 🧱 Base query
+        $query = DB::table('SIRS_PHCM.dbo.IF_HTRANS_OL as a')
+    ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as b', 'a.KARCIS', '=', 'b.karcis')
+    ->leftJoin('SIRS_PHCM.dbo.v_kunjungan_rj as c', 'a.KARCIS', '=', 'c.ID_TRANSAKSI')
+    ->leftJoin(DB::raw("
+        (
+            SELECT 
+                ol.ID_TRANS,
+                CASE 
+                    WHEN COUNT(CASE WHEN kfa.KD_BRG_KFA IS NULL THEN 1 END) > 0 
+                    THEN '000'
+                    ELSE '100'
+                END AS STATUS_MAPPING
+            FROM SIRS_PHCM.dbo.IF_TRANS_OL ol
+            LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA kfa 
+                ON ol.KDBRG_CENTRA = kfa.KDBRG_CENTRA
+            GROUP BY ol.ID_TRANS
+        ) as d
+    "), 'd.ID_TRANS', '=', 'a.ID_TRANS')
+    ->leftJoin(DB::raw("
+        (
+            SELECT 
+                LOCAL_ID,
+                MAX(ID) AS MAX_ID
+            FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
+            WHERE LOG_TYPE = 'MedicationRequest' AND STATUS = 'success'
+            GROUP BY LOCAL_ID
+        ) AS log_latest
+    "), 'log_latest.LOCAL_ID', '=', 'a.ID_TRANS')
+    ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION as SSM', 'SSM.ID', '=', DB::raw('log_latest.MAX_ID'))
+    ->whereBetween(DB::raw('CAST(c.TANGGAL AS date)'), [$startDate, $endDate])
+    ->select(
+        'b.id',
+        'a.ID_TRANS',
+        DB::raw('CAST(c.TANGGAL AS date) AS TGL_KARCIS'),
+        'a.KARCIS',
+        DB::raw('c.NAMA_PASIEN AS PASIEN'),
+        DB::raw('c.DOKTER AS DOKTER'),
+        // jika ada log di SSM maka status_mapping = 200
+        DB::raw("
+            CASE 
+                WHEN SSM.ID IS NOT NULL THEN '200'
+                ELSE d.STATUS_MAPPING
+            END AS STATUS_MAPPING
+        "),
+        DB::raw('SSM.STATUS AS LOG_STATUS'),
+        DB::raw('SSM.CREATED_AT AS LOG_CREATED_AT')
+    );
 
-                    // 🧩 status mapping check
-                    DB::raw("
-                        CASE 
-                            WHEN EXISTS (
-                                SELECT 1
-                                FROM SIRS_PHCM.dbo.IF_TRANS T
-                                LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA K 
-                                    ON T.KDBRG_CENTRA = K.KDBRG_CENTRA
-                                WHERE 
-                                    T.ID_TRANS = B.ID_TRANS
-                                    AND (K.KD_BRG_KFA IS NULL OR LTRIM(RTRIM(K.KD_BRG_KFA)) = '')
-                            )
-                            THEN '000'
-                            ELSE '100'
-                        END AS STATUS_MAPPING
-                    ")
-                );
+        // ✅ Hitung total summary (sebelum filter datatable)
+        $mergedAll = $query->get(); // ambil semua dulu
+        $recordsTotal = $mergedAll->count();
 
+        // Summary berdasarkan STATUS_MAPPING
+        $sentCount = $mergedAll->where('STATUS_MAPPING', '200')->count();
+        $unsentCount = $mergedAll->where('STATUS_MAPPING', '<>', '200')->count();
 
-        return DataTables::of($query)
+        // 🧠 DataTables server-side (dengan order dan pagination)
+        $dataTable = DataTables::of($query)
             ->order(function ($query) {
-                $query->orderBy('A.id', 'desc'); // ✅ aman di sini
+                $query->orderBy('B.id', 'desc');
             })
             ->make(true);
+
+        // 🚀 Tambahkan summary ke dalam JSON response
+        $json = $dataTable->getData(true); // ubah ke array supaya bisa disisipkan
+
+        $json['summary'] = [
+            'all' => $recordsTotal,
+            'sent' => $sentCount,
+            'unsent' => $unsentCount,
+        ];
+
+        return response()->json($json);
     }
 
-public function getDetailObat(Request $request)
+
+    public function getDetailObat(Request $request)
     {
         $idTrans = $request->id; // ID_TRANS dikirim dari tombol lihatObat(id)
 
         try {
             $data = DB::select("
-                SELECT
-                    T.ID_TRANS,
-                    T.[NO],
-                    T.NAMABRG AS NAMA_OBAT,
-                    T.SIGNA2 AS SIGNA,
-                    T.KETQTY AS KET,
-                    T.JUMLAH,
-                    H.TGL AS TGL_ENTRY,
-                    T.ID_TRANS AS IDTRANS,
-                    K.KD_BRG_KFA,
-                    K.NAMABRG_KFA,
-                    T.KDBRG_CENTRA
-                FROM SIRS_PHCM..IF_HTRANS H
-                JOIN SIRS_PHCM..IF_TRANS T
-                    ON H.ID_TRANS = T.ID_TRANS
-                LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA K
-                    ON T.KDBRG_CENTRA = K.KDBRG_CENTRA
-                WHERE ISNUMERIC(NOTA) = 1
-                  AND H.ID_TRANS = :idTrans
-                  AND H.ACTIVE = 1
-                  AND H.IDUNIT = 001
+                    SELECT
+                        T.ID_TRANS,
+                        T.[NO],
+                        T.NAMABRG AS NAMA_OBAT,
+                        T.SIGNA2 AS SIGNA,
+                        T.KETQTY AS KET,
+                        T.JUMLAH,
+                        H.TGL AS TGL_ENTRY,
+                        T.ID_TRANS AS IDTRANS,
+                        K.KD_BRG_KFA,
+                        K.NAMABRG_KFA,
+                        T.KDBRG_CENTRA
+                    FROM SIRS_PHCM.dbo.IF_HTRANS_OL H
+                    JOIN SIRS_PHCM.dbo.IF_TRANS_OL T
+                        ON H.ID_TRANS = T.ID_TRANS
+                    LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA K
+                        ON T.KDBRG_CENTRA = K.KDBRG_CENTRA
+                    WHERE
+                    H.ID_TRANS = :idTrans
+                    AND H.ACTIVE = 1
+                    AND H.IDUNIT = 001
             ", ['idTrans' => $idTrans]);
 
             if (empty($data)) {
@@ -146,72 +170,250 @@ public function getDetailObat(Request $request)
         }
     }
 
-
-
-
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function create()
+    public function sendMedicationRequest(Request $request)
     {
-        //
+        try {
+            // --- ambil parameter dari request ---
+            $idTrans = $request->input('id_trans');
+
+            if (empty($idTrans)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Parameter id_trans wajib dikirim.'
+                ], 400);
+            }
+
+            $data = DB::select("
+            SELECT 
+                H.ID_TRANS, 
+                MT.FHIR_ID AS medicationReference, 
+                MT.NAMABRG_KFA, 
+                MT.KD_BRG_KFA, 
+                MT.IS_COMPOUND,
+                B.id_satusehat_encounter, 
+                P.idpx AS ID_PASIEN, 
+                P.nama AS PASIEN, 
+                N.idnakes AS ID_NAKES, 
+                N.nama AS NAKES
+            FROM SIRS_PHCM.dbo.RJ_KARCIS A
+            INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA AS B ON A.KARCIS = B.karcis
+            INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES AS N ON B.id_satusehat_dokter = N.idnakes
+            INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN AS P ON B.id_satusehat_px = P.idpx
+            INNER JOIN SIRS_PHCM.dbo.IF_HTRANS_OL H ON A.KARCIS = H.KARCIS
+            INNER JOIN SIRS_PHCM.dbo.IF_TRANS_OL T ON H.ID_TRANS = T.ID_TRANS
+            INNER JOIN SIRS_PHCM.dbo.M_TRANS_KFA MT ON T.KDBRG_CENTRA = MT.KDBRG_CENTRA
+            WHERE H.ID_TRANS = ?
+        ", [$idTrans]);
+
+            if (empty($data)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Data tidak ditemukan untuk ID_TRANS $idTrans."
+                ], 404);
+            }
+
+            // --- ambil token aktif dari tabel auth ---
+            $tokenData = DB::connection('sqlsrv')
+                ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_AUTH')
+                ->select('issued_at', 'expired_in', 'access_token')
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if (!$tokenData) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Access token tidak ditemukan di tabel RIRJ_SATUSEHAT_AUTH.'
+                ], 400);
+            }
+
+            $accessToken = $tokenData->access_token;
+            $orgId = '266bf013-b70b-4dc2-b934-40858a5658cc'; // organization ID (sandbox)
+            $client = new \GuzzleHttp\Client();
+
+            $results = [];
+
+            // --- loop setiap obat dari transaksi ---
+            foreach ($data as $index => $item) {
+                $uniqueId = date('YmdHis') . '-' . str_pad($index + 1, 3, '0', STR_PAD_LEFT);
+
+                $jenisCode = ($item->IS_COMPOUND == 1) ? 'C' : 'NC';
+                $jenisName = ($item->IS_COMPOUND == 1) ? 'Compound' : 'Non-compound';
+
+                // --- bentuk payload ---
+                $payload = [
+                    "resourceType" => "MedicationRequest",
+                    "identifier" => [
+                        [
+                            "system" => "http://sys-ids.kemkes.go.id/prescription",
+                            "use" => "official",
+                            "value" => $uniqueId
+                        ]
+                    ],
+                    "contained" => [
+                        [
+                            "resourceType" => "Medication",
+                            "meta" => [
+                                "profile" => [
+                                    "https://fhir.kemkes.go.id/r4/StructureDefinition/Medication"
+                                ]
+                            ],
+                            "id" => $uniqueId,
+                            "identifier" => [
+                                [
+                                    "system" => "http://sys-ids.kemkes.go.id/medication",
+                                    "use" => "official",
+                                    "value" => $item->KD_BRG_KFA
+                                ]
+                            ],
+                            "code" => [
+                                "coding" => [
+                                    [
+                                        "system" => "http://sys-ids.kemkes.go.id/kfa",
+                                        "code" => $item->KD_BRG_KFA,
+                                        "display" => $item->NAMABRG_KFA
+                                    ]
+                                ]
+                            ],
+                            "status" => "active",
+                            "manufacturer" => [
+                                "reference" => "Organization/" . $orgId
+                            ],
+                            "extension" => [
+                                [
+                                    "url" => "https://fhir.kemkes.go.id/r4/StructureDefinition/MedicationType",
+                                    "valueCodeableConcept" => [
+                                        "coding" => [
+                                            [
+                                                "system" => "http://terminology.kemkes.go.id/CodeSystem/medication-type",
+                                                "code" => $jenisCode,
+                                                "display" => $jenisName
+                                            ]
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ],
+                    "status" => "completed",
+                    "intent" => "order",
+                    "category" => [
+                        [
+                            "coding" => [
+                                [
+                                    "system" => "http://terminology.hl7.org/CodeSystem/medicationrequest-category",
+                                    "code" => "community",
+                                    "display" => "Community"
+                                ]
+                            ]
+                        ]
+                    ],
+                    "priority" => "routine",
+                    "medicationReference" => [
+                        "reference" => "#" . $uniqueId
+                    ],
+                    "subject" => [
+                        "reference" => "Patient/" . $item->ID_PASIEN,
+                        "display" => $item->PASIEN
+                    ],
+                    "encounter" => [
+                        "reference" => "Encounter/" . $item->id_satusehat_encounter
+                    ],
+                    "authoredOn" => now()->format('Y-m-d\TH:i:sP'),
+                    "requester" => [
+                        "reference" => "Practitioner/" . $item->ID_NAKES,
+                        "display" => $item->NAKES
+                    ]
+                ];
+
+                // --- kirim ke endpoint FHIR ---
+                $response = $client->post(
+                    'https://api-satusehat-stg.dto.kemkes.go.id/fhir-r4/v1/MedicationRequest',
+                    [
+                        'headers' => [
+                            'Authorization' => 'Bearer ' . $accessToken,
+                            'Content-Type' => 'application/json'
+                        ],
+                        'body' => json_encode($payload),
+                        'verify' => false
+                    ]
+                );
+
+                $responseBody = json_decode($response->getBody(), true);
+                $httpStatus = $response->getStatusCode();
+
+                $logData = [
+                    'LOG_TYPE' => 'MedicationRequest',
+                    'LOCAL_ID' => $idTrans,
+                    'KFA_CODE' => $item->KD_BRG_KFA,
+                    'NAMA_OBAT' => $item->NAMABRG_KFA,
+                    'FHIR_ID' => $responseBody['id'] ?? null,
+                    'FHIR_MEDICATION_ID' => $item->medicationReference ?? null,
+                    'PATIENT_ID' => $item->ID_PASIEN ?? null,
+                    'ENCOUNTER_ID' => $item->id_satusehat_encounter ?? null,
+                    'STATUS' => isset($responseBody['id']) ? 'success' : 'failed',
+                    'HTTP_STATUS' => $httpStatus,
+                    'RESPONSE_MESSAGE' => json_encode($responseBody),
+                    'CREATED_AT' => now()
+                ];
+
+                // cek apakah data sudah pernah tercatat (berdasarkan kombinasi unik)
+                $existing = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
+                    ->where('LOCAL_ID', $idTrans)
+                    ->where('KFA_CODE', $item->KD_BRG_KFA)
+                    ->where('LOG_TYPE', 'MedicationRequest')
+                    ->first();
+
+                if ($existing) {
+                    // update existing record
+                    DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
+                        ->where('ID', $existing->ID)
+                        ->update([
+                            'FHIR_ID' => $logData['FHIR_ID'],
+                            'FHIR_MEDICATION_ID' => $logData['FHIR_MEDICATION_ID'],
+                            'PATIENT_ID' => $logData['PATIENT_ID'],
+                            'ENCOUNTER_ID' => $logData['ENCOUNTER_ID'],
+                            'STATUS' => $logData['STATUS'],
+                            'HTTP_STATUS' => $logData['HTTP_STATUS'],
+                            'RESPONSE_MESSAGE' => $logData['RESPONSE_MESSAGE'],
+                            'UPDATED_AT' => now()
+                        ]);
+                } else {
+                    // insert baru
+                    DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert($logData);
+                }
+
+
+
+                $results[] = [
+                    'medication' => $item->NAMABRG_KFA,
+                    'status' => $httpStatus,
+                    'response' => $responseBody
+                ];
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Semua MedicationRequest telah diproses.',
+                'results' => $results
+            ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+        } catch (\Exception $e) {
+            DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert([
+                'LOG_TYPE' => 'MedicationRequest',
+                'LOCAL_ID' => $request->input('id_trans'),
+                'STATUS' => 'failed',
+                'HTTP_STATUS' => 500,
+                'RESPONSE_MESSAGE' => $e->getMessage(),
+                'CREATED_AT' => now()
+            ]);
+
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Exception: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
-    {
-        //
-    }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function show($id)
-    {
-        //
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function edit($id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
-    public function destroy($id)
-    {
-        //
-    }
 }
