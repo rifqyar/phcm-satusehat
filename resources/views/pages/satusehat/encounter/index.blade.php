@@ -69,7 +69,7 @@
                                                 <i class="fas fa-info-circle" style="font-size: 48px"></i>
                                                 <div class="ml-3">
                                                     <span style="font-size: 24px">{{ count($mergedAll) }}</span>
-                                                    <h4 class="text-white">Semua Data Kunjungan <br> (1 bulan terakhir)</h4>
+                                                    <h4 class="text-white">Semua Data Kunjungan <br></h4>
                                                 </div>
                                             </div>
                                         </div>
@@ -84,7 +84,7 @@
                                                 <i class="fas fa-hospital" style="font-size: 48px"></i>
                                                 <div class="ml-3">
                                                     <span style="font-size: 24px">{{ count($rjAll) }}</span>
-                                                    <h4 class="text-white">Kunjungan Rawat Jalan <br> (1 bulan terakhir)
+                                                    <h4 class="text-white">Kunjungan Rawat Jalan <br>
                                                     </h4>
                                                 </div>
                                             </div>
@@ -100,7 +100,7 @@
                                                 <i class="fas fa-bed" style="font-size: 48px"></i>
                                                 <div class="ml-3">
                                                     <span style="font-size: 24px">{{ count($ri) }}</span>
-                                                    <h4 class="text-white">Kunjungan Rawat Inap <br> (1 bulan terakhir)</h4>
+                                                    <h4 class="text-white">Kunjungan Rawat Inap <br></h4>
                                                 </div>
                                             </div>
                                         </div>
@@ -115,7 +115,7 @@
                                                 <i class="fas fa-link" style="font-size: 48px"></i>
                                                 <div class="ml-3">
                                                     <span style="font-size: 24px">{{ count($mergedIntegrated) }}</span>
-                                                    <h4 class="text-white">Data Termapping <br> (1 bulan terakhir)</h4>
+                                                    <h4 class="text-white">Data Termapping <br></h4>
                                                 </div>
                                             </div>
                                         </div>
@@ -130,7 +130,7 @@
                                                 <i class="fas fa-unlink" style="font-size: 48px"></i>
                                                 <div class="ml-3">
                                                     <span style="font-size: 24px">{{ $unmapped }}</span>
-                                                    <h4 class="text-white">Data belum mapping <br> (1 bulan terakhir)</h4>
+                                                    <h4 class="text-white">Data belum mapping <br></h4>
                                                 </div>
                                             </div>
                                         </div>
@@ -174,43 +174,8 @@
                 </div>
             </div>
 
-            <div class="card">
+            <div class="card" id="data-section">
                 <div class="card-body">
-                    @if (session('success'))
-                        @section('pages-js')
-                            <script>
-                                $(function() {
-                                    $.toast({
-                                        heading: 'Success!',
-                                        text: `{{ session('success') }}`,
-                                        position: 'top-right',
-                                        icon: 'success',
-                                        hideAfter: 3000,
-                                        stack: 6
-                                    });
-                                })
-                            </script>
-                        @endsection
-                    @endif
-
-                    @if (session('error'))
-                        @section('pages-js')
-                            <script>
-                                $(function() {
-                                    $.toast({
-                                        heading: 'Failed!',
-                                        text: `{{ session('error') }}`,
-                                        position: 'top-right',
-                                        loaderBg: '#ff6849',
-                                        icon: 'error',
-                                        hideAfter: 3000,
-                                        stack: 6
-                                    });
-                                })
-                            </script>
-                        @endsection
-                    @endif
-
                     <div class="card-title">
                         <h4>Data Kunjungan Pasien</h4>
                     </div>
@@ -253,14 +218,20 @@
     <script>
         var table
         $(function() {
+            // format tanggal sesuai dengan setting datepicker
+            const today = moment().format('YYYY-MM-DD');
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
-                time: false
+                time: false,
             });
             $("#end_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
-                time: false
+                time: false,
             });
+
+            // Set default value ke hari ini
+            $('#start_date').val(today);
+            $('#end_date').val(today);
 
             getAllData()
 
@@ -282,6 +253,13 @@
                 e.stopPropagation();
             });
         })
+
+        function resetSearch() {
+            $("#search-data").find("input.form-control").val("").trigger("blur");
+            $("#search-data").find("input.form-control").removeClass("was-validated");
+            $('input[name="search"]').val("false");
+            table.ajax.reload();
+        }
 
         function getAllData() {
             table = $('.data-table').DataTable({

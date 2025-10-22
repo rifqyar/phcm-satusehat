@@ -149,43 +149,8 @@
                 </div>
             </div>
 
-            <div class="card">
+            <div class="card" id="data-section">
                 <div class="card-body">
-                    @if (session('success'))
-                        @section('pages-js')
-                            <script>
-                                $(function() {
-                                    $.toast({
-                                        heading: 'Success!',
-                                        text: `{{ session('success') }}`,
-                                        position: 'top-right',
-                                        icon: 'success',
-                                        hideAfter: 3000,
-                                        stack: 6
-                                    });
-                                })
-                            </script>
-                        @endsection
-                    @endif
-
-                    @if (session('error'))
-                        @section('pages-js')
-                            <script>
-                                $(function() {
-                                    $.toast({
-                                        heading: 'Failed!',
-                                        text: `{{ session('error') }}`,
-                                        position: 'top-right',
-                                        loaderBg: '#ff6849',
-                                        icon: 'error',
-                                        hideAfter: 3000,
-                                        stack: 6
-                                    });
-                                })
-                            </script>
-                        @endsection
-                    @endif
-
                     <div class="row align-items-center justify-content-between m-1">
                         <div class="card-title">
                             <h4>Data Kunjungan Pasien</h4>
@@ -241,14 +206,20 @@
         var table
         let selectedIds = [];
         $(function() {
+            // format tanggal sesuai dengan setting datepicker
+            const today = moment().format('YYYY-MM-DD');
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
                 time: false,
             });
             $("#end_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
-                time: false
+                time: false,
             });
+
+            // Set default value ke hari ini
+            $('#start_date').val(today);
+            $('#end_date').val(today);
 
             getAllData()
 
@@ -270,6 +241,13 @@
                 e.stopPropagation();
             });
         })
+
+        function resetSearch() {
+            $("#search-data").find("input.form-control").val("").trigger("blur");
+            $("#search-data").find("input.form-control").removeClass("was-validated");
+            $('input[name="search"]').val("false");
+            table.ajax.reload();
+        }
 
         function getAllData() {
             table = $('.data-table').DataTable({
