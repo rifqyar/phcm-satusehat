@@ -40,7 +40,7 @@ class MasterObatController extends Controller
         $total_unmapped = MasterObat::whereNull('KD_BRG_KFA')->orWhere('KD_BRG_KFA', '')->count();
 
         // 🔽 Ambil data utama
-        $data = $query->select('ID', 'KDBRG_CENTRA', 'NAMABRG', 'KD_BRG_KFA', 'NAMABRG_KFA', 'DESCRIPTION')
+        $data = $query->select('ID', 'KDBRG_CENTRA', 'NAMABRG', 'KD_BRG_KFA', 'NAMABRG_KFA', 'IS_COMPOUND', 'DESCRIPTION','FHIR_ID')
             ->orderByRaw('CASE WHEN KD_BRG_KFA IS NULL OR KD_BRG_KFA = \'\' THEN 0 ELSE 1 END')
             ->orderBy('NAMABRG', 'asc')
             ->paginate(10)
@@ -77,6 +77,7 @@ class MasterObatController extends Controller
                 'kode_kfa' => 'nullable|string|max:100',
                 'nama_kfa' => 'nullable|string|max:255',
                 'deskripsi' => 'nullable|string|max:500',
+                'is_compound' => 'nullable|in:0,1',
             ]);
 
             $obat = MasterObat::find($validated['id']);
@@ -87,6 +88,7 @@ class MasterObatController extends Controller
             $obat->KD_BRG_KFA = $validated['kode_kfa'];
             $obat->NAMABRG_KFA = $validated['nama_kfa'];
             $obat->DESCRIPTION = $validated['deskripsi'];
+            $obat->IS_COMPOUND  = (int) $request->input('is_compound', 0);
             $obat->save();
 
             return response()->json(['success' => true]);

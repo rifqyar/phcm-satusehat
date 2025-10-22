@@ -186,8 +186,15 @@
                         @endsection
                     @endif
 
-                    <div class="card-title">
-                        <h4>Data Kunjungan Pasien</h4>
+                    <div class="row align-items-center justify-content-between m-1">
+                        <div class="card-title">
+                            <h4>Data Kunjungan Pasien</h4>
+                        </div>
+
+                        <button type="button" class="btn btn-primary btn-rounded mr-3" onclick="sendBundle()">
+                            Kirim Bundling
+                            <i class="mdi mdi-cube-send"></i>
+                        </button>
                     </div>
                     <!-- 🧾 Tabel Data -->
                     <div class="table-responsive">
@@ -195,7 +202,14 @@
                             <thead>
                                 <tr>
                                     <th></th>
-                                    <th>NO</th>
+                                    <th>#</th>
+                                    <th>
+                                        <input type="checkbox" id="selectAll" value="selected-all"
+                                            class="chk-col-purple" />
+                                        <label for="selectAll"
+                                            style="margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500">
+                                            Select All </label>
+                                    </th>
                                     <th>Karcis</th>
                                     <th>Tgl</th>
                                     <th>No. Peserta</th>
@@ -225,6 +239,7 @@
     </script>
     <script>
         var table
+        let selectedIds = [];
         $(function() {
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
@@ -266,6 +281,7 @@
                 },
                 processing: true,
                 serverSide: false,
+                scrollX: false,
                 ajax: {
                     url: `{{ route('satusehat.allergy-intolerance.datatable') }}`,
                     method: "POST",
@@ -282,10 +298,18 @@
                         searchable: false,
                         data: null,
                         defaultContent: ''
-                    }, {
+                    },
+                    {
                         data: 'DT_RowIndex',
                         name: 'DT_RowIndex',
                         searchable: false,
+                        responsivePriority: 1
+                    },
+                    {
+                        data: 'checkbox',
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-center',
                         responsivePriority: 1
                     },
                     {
@@ -332,14 +356,67 @@
                     },
                 ],
                 order: [
-                    [3, 'desc']
+                    [4, 'desc']
                 ],
                 lengthMenu: [
                     [10, 25, 50, -1],
                     [10, 25, 50, "All"]
                 ],
                 pageLength: 10,
+                drawCallback: function(settings) {
+                    $('.select-row').each(function() {
+                        const id = $(this).val();
+                        $(this).prop('checked', selectedIds.includes(id));
+                    });
+
+                    if ($('#selectAll').is(':checked')) {
+                        $('.select-row').each(function() {
+                            const id = $(this).val();
+                            $(this).prop('checked', true);
+                            if (!selectedIds.includes(id)) selectedIds.push(id);
+                        });
+                    }
+
+                    updateSelectAllCheckbox();
+                }
             })
+        }
+
+        // Select single row
+        $(document).on('change', '.select-row', function() {
+            const id = $(this).val();
+            if ($(this).is(':checked')) {
+                if (!selectedIds.includes(id)) selectedIds.push(id);
+            } else {
+                selectedIds = selectedIds.filter(item => item !== id);
+            }
+            updateSelectAllCheckbox();
+        });
+
+        // Select All (current page)
+        $('#selectAll').on('click', function() {
+            const rows = $('.select-row');
+            const checked = this.checked;
+            rows.each(function() {
+                const id = $(this).val();
+                $(this).prop('checked', checked);
+
+                if (checked) {
+                    if (!selectedIds.includes(id)) selectedIds.push(id);
+                } else {
+                    selectedIds = selectedIds.filter(item => item !== id);
+                }
+            });
+        });
+
+        // Update status checkbox selectAll
+        function updateSelectAllCheckbox() {
+            const totalCheckboxes = $('.select-row').length;
+            const checkedCount = $('.select-row:checked').length;
+
+            // centang setengah (indeterminate) kalau sebagian terpilih
+            $('#selectAll').prop('checked', checkedCount === totalCheckboxes && totalCheckboxes > 0);
+            $('#selectAll').prop('indeterminate', checkedCount > 0 && checkedCount < totalCheckboxes);
         }
 
         $('.data-table').on('click', 'button, a', function(e) {
@@ -378,6 +455,39 @@
                 "show_modal",
                 ""
             );
+        }
+
+        function sendBundle() {
+            Swal.fire({
+                title: "Konfirmasi Pengiriman Bundling",
+                text: `Kirim data yang anda pilih ke SatuSehat?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Ya, kirim!",
+                cancelButtonText: "Batal",
+            }).then(async (conf) => {
+                if (conf.value || conf.isConfirmed) {
+                    let formData = new FormData()
+                    formData.append('_token', $('meta[name="csrf-token"]').attr('content'))
+
+                    if ($('#selectAll').is(":checked")) {
+                        formData.append('selectAll', true)
+                    }
+
+                    for (let i = 0; i < selectedIds.length; i++) {
+                        const val = selectedIds[i]
+                        formData.append('karcis[]', val)
+                    }
+
+                    ajaxPostFile(
+                        `{{ route('satusehat.allergy-intolerance.send-bulking') }}`,
+                        formData,
+                        "input_success"
+                    )
+                }
+            });
         }
 
         function show_modal(res) {

@@ -122,9 +122,6 @@
                     </div>
                 </form>
             </div>
-            a
-
-
 
             <!-- 🧾 Tabel Data -->
             <div class="table-responsive">
@@ -136,6 +133,8 @@
                             <th>NAMA BARANG</th>
                             <th>KODE KFA</th>
                             <th>NAMA KFA</th>
+                            <th>JENIS</th>
+                            <th>FHIR ID</th>
                             <th>DESKRIPSI</th>
                             <th>AKSI</th>
                         </tr>
@@ -143,7 +142,6 @@
                     <tbody>
                         @forelse ($data as $index => $obat)
                             <tr>
-                                <!-- Nomor urut sesuai pagination -->
                                 <td>{{ $data->firstItem() + $index }}</td>
                                 <td>{{ $obat->KDBRG_CENTRA }}</td>
                                 <td>{{ $obat->NAMABRG }}</td>
@@ -151,8 +149,21 @@
                                     {{ $obat->KD_BRG_KFA && trim($obat->KD_BRG_KFA) !== '' ? $obat->KD_BRG_KFA : 'Data Belum di-mapping' }}
                                 </td>
                                 <td>{{ $obat->NAMABRG_KFA }}</td>
+                                <td>{{ $obat->IS_COMPOUND ? 'Compound' : 'Non-compound' }}</td>
+
+                                {{-- ✅ Tambahan kolom FHIR_ID --}}
+                                <td>
+                                    @if (!empty($obat->FHIR_ID))
+                                        <span class="badge badge-success">{{ $obat->FHIR_ID }}</span>
+                                    @else
+                                        <span class="text-muted">Belum dikirim</span>
+                                    @endif
+                                </td>
+
                                 <td>{{ $obat->DESCRIPTION }}</td>
+
                                 <td class="text-center">
+                                    {{-- Tombol Mapping / Mapping Ulang --}}
                                     @if (empty($obat->KD_BRG_KFA) || trim($obat->KD_BRG_KFA) === '')
                                         <button type="button" class="btn btn-sm btn-success" data-toggle="modal"
                                             data-target="#modalMapping" data-id="{{ $obat->ID }}">
@@ -165,17 +176,28 @@
                                         </button>
                                     @endif
 
+                                    {{-- 🟢 Tombol Kirim / Kirim Ulang --}}
+                                    @if (empty($obat->FHIR_ID))
+                                        <button type="button" class="btn btn-sm btn-primary btn-send-medication"
+                                            data-kode="{{ $obat->KDBRG_CENTRA }}">
+                                            <i class="fas fa-paper-plane"></i> Kirim Data
+                                        </button>
+                                    @else
+                                        <button type="button" class="btn btn-sm btn-info btn-send-medication"
+                                            data-kode="{{ $obat->KDBRG_CENTRA }}">
+                                            <i class="fas fa-redo"></i> Kirim Ulang
+                                        </button>
+                                    @endif
                                 </td>
-
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="text-center text-muted">Data tidak ditemukan</td>
+                                <td colspan="9" class="text-center text-muted">Data tidak ditemukan</td>
                             </tr>
                         @endforelse
                     </tbody>
-
                 </table>
+
             </div>
 
             <!-- 📄 Pagination -->
@@ -188,96 +210,86 @@
     @push('after-script')
         <script>
             $(document).ready(function () {
+                // Event kirim Medication
+                $(document).on('click', '.btn-send-medication', function () {
+                    const kode = $(this).data('kode');
 
-                // Event saat modal dibuka
-                $('#modalMapping').on('show.bs.modal', function (event) {
-                    const button = $(event.relatedTarget); // tombol yang diklik
-                    const id = button.data('id');
-
-                    // Reset form dulu
-                    $('#formMappingObat')[0].reset();
-
-                    // Simpan ID ke input hidden
-                    $('#id_obat').val(id);
-
-                    // Fetch data via POST
-                    $.ajax({
-                        url: "{{ route('master_obat.show') }}",
-                        type: "POST",
-                        data: {
-                            _token: "{{ csrf_token() }}",
-                            id: id
-                        },
-                        success: function (data) {
-                            // Isi form di modal
-                            $('#no').val(data.ID);
-                            $('#kode_barang').val(data.KDBRG_CENTRA);
-                            $('#nama_barang').val(data.NAMABRG);
-                            $('#kode_kfa').val(data.KD_BRG_KFA);
-                            $('#nama_kfa').val(data.NAMABRG_KFA);
-                            $('#deskripsi').val(data.DESCRIPTION);
-                        },
-                        error: function (xhr) {
-                            console.error(xhr.responseText);
-                            alert('Gagal mengambil data obat.');
-                        }
-                    });
-                });
-
-            });
-        </script>
-        <script>
-            $('#btnSaveMapping').on('click', function () {
-                let formData = $('#formMappingObat').serialize();
-
-                $.ajax({
-                    url: "{{ route('master_obat.saveMapping') }}",
-                    type: "POST",
-                    data: formData,
-                    success: function (res) {
-                        if (res.success) {
-                            $.toast({
-                                heading: 'Sukses',
-                                text: 'Mapping berhasil disimpan.',
-                                position: 'top-right',
-                                loaderBg: '#51A351',
-                                icon: 'success',
-                                hideAfter: 1500
-                            });
-
-                            $('#modalMapping').modal('hide');
-
-                            // 🔄 reload halaman penuh setelah toast selesai
-                            setTimeout(() => {
-                                location.reload();
-                            }, 1500);
-                        } else {
-                            $.toast({
-                                heading: 'Gagal',
-                                text: res.message || 'Gagal menyimpan data.',
-                                position: 'top-right',
-                                loaderBg: '#FF5733',
-                                icon: 'error',
-                                hideAfter: 4000
-                            });
-                        }
-                    },
-                    error: function (xhr) {
+                    if (!kode) {
                         $.toast({
                             heading: 'Error',
-                            text: 'Terjadi kesalahan saat menyimpan data.',
+                            text: 'Kode barang tidak ditemukan.',
                             position: 'top-right',
                             loaderBg: '#FF5733',
                             icon: 'error',
                             hideAfter: 4000
                         });
-                        console.error(xhr.responseText);
+                        return;
                     }
+
+                    if (!confirm(`Kirim data Medication ke SATUSEHAT?\nKode Barang: ${kode}`)) {
+                        return; // batal
+                    }
+
+                    // Tampilkan notifikasi proses
+                    $.toast({
+                        heading: 'Mengirim...',
+                        text: 'Data sedang dikirim ke SATUSEHAT.',
+                        position: 'top-right',
+                        loaderBg: '#5bc0de',
+                        icon: 'info',
+                        hideAfter: 3000
+                    });
+
+                    $.ajax({
+                        url: "{{ route('kfa.getmedicationid') }}",
+                        type: "POST",
+                        data: {
+                            _token: "{{ csrf_token() }}",
+                            kode_barang: kode
+                        },
+                        success: function (res) {
+                            if (res.status === 'success') {
+                                $.toast({
+                                    heading: 'Sukses',
+                                    text: `${res.message}<br><small>UUID: ${res.uuid}</small>`,
+                                    position: 'top-right',
+                                    loaderBg: '#51A351',
+                                    icon: 'success',
+                                    hideAfter: 4000
+                                });
+
+                                // refresh tabel setelah 2 detik
+                                setTimeout(() => {
+                                    location.reload();
+                                }, 2000);
+                            } else {
+                                $.toast({
+                                    heading: 'Gagal',
+                                    text: res.message || 'Gagal mengirim data ke SATUSEHAT.',
+                                    position: 'top-right',
+                                    loaderBg: '#FF5733',
+                                    icon: 'error',
+                                    hideAfter: 4000
+                                });
+                            }
+                        },
+                        error: function (xhr) {
+                            const errMsg = xhr.responseJSON?.message || 'Terjadi kesalahan koneksi.';
+                            $.toast({
+                                heading: 'Error',
+                                text: errMsg,
+                                position: 'top-right',
+                                loaderBg: '#FF5733',
+                                icon: 'error',
+                                hideAfter: 4000
+                            });
+                            console.error(xhr.responseText);
+                        }
+                    });
                 });
             });
         </script>
-
-
     @endpush
+
 
 @endsection

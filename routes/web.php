@@ -27,6 +27,7 @@ Route::middleware(['checkLogin'])->group(function () {
     Route::post('/master_obat/save-mapping', [App\Http\Controllers\MasterObatController::class, 'saveMapping'])->name('master_obat.saveMapping');
 
     Route::get('/satusehat/kfa-search', [App\Http\Controllers\SatusehatKfaController::class, 'search'])->name('kfa.search');
+    Route::post('/satusehat/getmedicationid', [App\Http\Controllers\SatusehatKfaController::class, 'setMedication'])->name('kfa.getmedicationid');
 
     // Dashboard Obat <=> Satu Sehat
 
@@ -88,7 +89,8 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::get('/allergy-intolerance', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'index'])->name('allergy-intolerance.index');
         Route::post('/allergy-intolerance/datatable', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'datatable'])->name('allergy-intolerance.datatable');
         Route::get('/allergy-intolerance/send/{param}', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'sendSatuSehat'])->name('allergy-intolerance.send');
-        Route::get('/encounter/lihat-alergi/{param}', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'lihatAlergi'])->name('allergy-intolerance.lihat-alergi');
+        Route::get('/allergy-intolerance/lihat-alergi/{param}', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'lihatAlergi'])->name('allergy-intolerance.lihat-alergi');
+        Route::post('/allergy-intolerance/kirim-bulking', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'sendBulking'])->name('allergy-intolerance.send-bulking');
 
         // Service Request
         Route::get('/service-request', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'index'])->name('service-request.index');
@@ -124,6 +126,7 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::get('/medication-request', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'index'])->name('medication-request.index');
         Route::post('/medication-request/datatable', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'datatable'])->name('medication-request.datatable');
         Route::post('/medication-request/detail', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'getDetailObat'])->name('medication-request.detail');
+        Route::get('/medication-request/sendsatusehat', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'sendMedicationRequest'])->name('medication-request.sendsehat');
         Route::get('/medication-request/{id}/edit', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'edit'])->name('medication-request.edit');
         Route::put('/medication-request/{id}', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'update'])->name('medication-request.update');
         Route::delete('/medication-request/{id}', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'destroy'])->name('medication-request.destroy');
