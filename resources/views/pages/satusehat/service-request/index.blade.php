@@ -254,7 +254,6 @@
         var table
         $(function() {
             const today = moment().format('YYYY-MM-DD');
-            const sevenDaysAgo = moment().subtract(7, 'days').format('YYYY-MM-DD');
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
                 time: false
@@ -263,7 +262,7 @@
                 weekStart: 0,
                 time: false
             });
-            $('#start_date').val(sevenDaysAgo);
+            $('#start_date').val(today);
             $('#end_date').val(today);
 
             getAllData();
