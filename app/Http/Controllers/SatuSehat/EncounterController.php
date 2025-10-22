@@ -29,7 +29,7 @@ class EncounterController extends Controller
      */
     public function index()
     {
-        $startDate = Carbon::now()->subDays(30)->startOfDay();
+        $startDate = Carbon::now()->startOfDay();
         $endDate   = Carbon::now()->endOfDay();
 
         $rj = DB::table('v_kunjungan_rj as v')
@@ -72,14 +72,14 @@ class EncounterController extends Controller
         $id_unit   = '001'; // session('id_klinik');
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
-            $tgl_awal  = Carbon::now()->subDays(30)->startOfDay();
+            $tgl_awal  = Carbon::now()->startOfDay();
             $tgl_akhir = Carbon::now()->endOfDay();
         } else {
             if (empty($tgl_awal)) {
-                $tgl_awal = Carbon::parse($tgl_akhir)->subDays(30)->startOfDay();
+                $tgl_awal = Carbon::parse($tgl_akhir)->startOfDay();
             }
             if (empty($tgl_akhir)) {
-                $tgl_akhir = Carbon::parse($tgl_awal)->addDays(30)->endOfDay();
+                $tgl_akhir = Carbon::parse($tgl_awal)->endOfDay();
             }
         }
 
