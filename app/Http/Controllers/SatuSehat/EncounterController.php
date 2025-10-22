@@ -120,6 +120,15 @@ class EncounterController extends Controller
             ->sortByDesc('TANGGAL')
             ->values();
 
+        $unmapped = count($mergedAll) - count($mergedIntegrated);
+        $totalData = [
+            'total_semua' => count($mergedAll),
+            'rjAll' => count($rjAll),
+            'ri' => count($ri),
+            'total_sudah_integrasi' => count($mergedIntegrated),
+            'total_belum_integrasi' => $unmapped,
+        ];
+
         if ($request->input('cari') == 'mapped') {
             $dataKunjungan = $mergedIntegrated;
         } else if ($request->input('cari') == 'unmapped') {
@@ -201,6 +210,7 @@ class EncounterController extends Controller
                 }
             })
             ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi'])
+            ->with($totalData)
             ->make(true);
     }
 

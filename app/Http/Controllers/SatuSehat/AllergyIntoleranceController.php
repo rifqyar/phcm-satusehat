@@ -150,6 +150,18 @@ class AllergyIntoleranceController extends Controller
                 'rsi.karcis'
             ]);
 
+
+        $totalData = $dataQuery->get();
+        $totalAll = $totalData->count();
+        $totalSudahIntegrasi = $totalData->where('sudah_integrasi', 1)->count();
+        $totalBelumIntegrasi = $totalAll - $totalSudahIntegrasi;
+
+        $totalData = [
+            'total_semua' => $totalAll,
+            'total_sudah_integrasi' => $totalSudahIntegrasi,
+            'total_belum_integrasi' => $totalBelumIntegrasi,
+        ];
+
         $cari = $request->input('cari');
         if ($cari === 'mapped') {
             $dataQuery->whereNotNull('rsi.karcis');
@@ -212,6 +224,7 @@ class AllergyIntoleranceController extends Controller
                 }
             })
             ->rawColumns(['action', 'status_integrasi', 'checkbox'])
+            ->with($totalData)
             ->make(true);
     }
 

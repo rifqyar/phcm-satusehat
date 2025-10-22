@@ -72,7 +72,8 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-info-circle" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ $result['total_semua'] }}</span>
+                                                    <span style="font-size: 24px"
+                                                        id="total_all">{{ $result['total_semua'] }}</span>
                                                     <h4 class="text-white">Total Data</h4>
                                                 </div>
                                             </div>
@@ -87,8 +88,8 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-link" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span
-                                                        style="font-size: 24px">{{ $result['total_sudah_integrasi'] }}</span>
+                                                    <span style="font-size: 24px"
+                                                        id="total_integrasi">{{ $result['total_sudah_integrasi'] }}</span>
                                                     <h4 class="text-white">Data Terintegrasi</h4>
                                                 </div>
                                             </div>
@@ -103,8 +104,8 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-unlink" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span
-                                                        style="font-size: 24px">{{ $result['total_belum_integrasi'] }}</span>
+                                                    <span style="font-size: 24px"
+                                                        id="total_belum_integrasi">{{ $result['total_belum_integrasi'] }}</span>
                                                     <h4 class="text-white">Data belum terintegrasi</h4>
                                                 </div>
                                             </div>
@@ -269,6 +270,13 @@
                         data.tgl_awal = $('input[name="tgl_awal"]').val();
                         data.tgl_akhir = $('input[name="tgl_akhir"]').val();
                     },
+                    dataSrc: function(json) {
+                        console.log(json)
+                        $('#total_all').text(json.total_semua);
+                        $('#total_integrasi').text(json.total_sudah_integrasi);
+                        $('#total_belum_integrasi').text(json.total_belum_integrasi);
+                        return json.data;
+                    }
                 },
                 columns: [{
                         className: 'dtr-control',
