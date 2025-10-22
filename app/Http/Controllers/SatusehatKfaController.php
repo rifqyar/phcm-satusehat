@@ -88,15 +88,189 @@ class SatusehatKfaController extends Controller
                 ->values()
                 ->all();
 
-
-
-            // Langsung return array data bersih
             return response()->json($templates);
 
         } catch (\Exception $e) {
             return response()->json([
                 'error' => true,
                 'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function setMedication(Request $request)
+    {
+        try {
+            // ambil kode dari request POST
+            $kode = $request->input('kode_barang');
+
+            if (empty($kode)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Kode barang (kode_barang) wajib dikirim.'
+                ], 400);
+            }
+
+            // query data master obat
+            $data = DB::select("
+            SELECT 
+                KDBRG_CENTRA, 
+                NAMABRG, 
+                KD_BRG_KFA, 
+                NAMABRG_KFA, 
+                IS_COMPOUND  
+            FROM SIRS_PHCM.dbo.M_TRANS_KFA
+            WHERE KDBRG_CENTRA = ?
+        ", [$kode]);
+
+            if (empty($data)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Data obat dengan kode $kode tidak ditemukan."
+                ], 404);
+            }
+
+            $obat = $data[0];
+            $orgId = '266bf013-b70b-4dc2-b934-40858a5658cc'; // hardcode sementara
+
+            // tentukan tipe racikan
+            $jenisCode = ($obat->IS_COMPOUND == 1) ? 'C' : 'NC';
+            $jenisName = ($obat->IS_COMPOUND == 1) ? 'Compound' : 'Non-compound';
+
+            // bentuk payload
+            $payload = [
+                "resourceType" => "Medication",
+                "meta" => [
+                    "profile" => [
+                        "https://fhir.kemkes.go.id/r4/StructureDefinition/Medication"
+                    ]
+                ],
+                "identifier" => [
+                    [
+                        "system" => "http://sys-ids.kemkes.go.id/medication/" . $orgId,
+                        "use" => "official",
+                        "value" => $obat->KDBRG_CENTRA
+                    ]
+                ],
+                "code" => [
+                    "coding" => [
+                        [
+                            "system" => "http://sys-ids.kemkes.go.id/kfa",
+                            "code" => $obat->KD_BRG_KFA,
+                            "display" => $obat->NAMABRG_KFA
+                        ]
+                    ],
+                    "text" => $obat->NAMABRG
+                ],
+                "status" => "active",
+                "manufacturer" => [
+                    "reference" => "Organization/" . $orgId
+                ],
+                "extension" => [
+                    [
+                        "url" => "https://fhir.kemkes.go.id/r4/StructureDefinition/MedicationType",
+                        "valueCodeableConcept" => [
+                            "coding" => [
+                                [
+                                    "system" => "http://terminology.kemkes.go.id/CodeSystem/medication-type",
+                                    "code" => $jenisCode,
+                                    "display" => $jenisName
+                                ]
+                            ]
+                        ]
+                    ]
+                ]
+            ];
+
+            // ambil token terakhir dari DB
+            $tokenData = DB::connection('sqlsrv')
+                ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_AUTH')
+                ->select('issued_at', 'expired_in', 'access_token')
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if (!$tokenData) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Access token tidak ditemukan di tabel RIRJ_SATUSEHAT_AUTH.'
+                ], 400);
+            }
+
+            $accessToken = $tokenData->access_token;
+
+            // kirim ke endpoint SATUSEHAT (staging)
+            $client = new \GuzzleHttp\Client();
+
+            $response = $client->post(
+                'https://api-satusehat-stg.dto.kemkes.go.id/fhir-r4/v1/Medication',
+                [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Content-Type' => 'application/json'
+                    ],
+                    'body' => json_encode($payload)
+                ]
+            );
+
+            $responseBody = json_decode($response->getBody(), true);
+            $httpStatus = $response->getStatusCode();
+
+            // jika sukses dan ada id dari FHIR
+            if (isset($responseBody['id'])) {
+                DB::table('SIRS_PHCM.dbo.M_TRANS_KFA')
+                    ->where('KDBRG_CENTRA', $obat->KDBRG_CENTRA)
+                    ->update(['FHIR_ID' => $responseBody['id']]);
+
+                DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert([
+                    'LOG_TYPE' => 'Medication',
+                    'LOCAL_ID' => $obat->KDBRG_CENTRA,
+                    'KFA_CODE' => $obat->KD_BRG_KFA,
+                    'NAMA_OBAT' => $obat->NAMABRG_KFA,
+                    'FHIR_ID' => $responseBody['id'],
+                    'STATUS' => 'success',
+                    'HTTP_STATUS' => $httpStatus,
+                    'RESPONSE_MESSAGE' => json_encode($responseBody),
+                    'CREATED_AT' => now()
+                ]);
+
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'Data Medication berhasil dikirim ke SATUSEHAT.',
+                    'uuid' => $responseBody['id']
+                ]);
+            }
+
+            // kalau respon gak ada id
+            DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert([
+                'LOG_TYPE' => 'Medication',
+                'LOCAL_ID' => $obat->KDBRG_CENTRA,
+                'KFA_CODE' => $obat->KD_BRG_KFA,
+                'NAMA_OBAT' => $obat->NAMABRG_KFA,
+                'STATUS' => 'failed',
+                'HTTP_STATUS' => $httpStatus,
+                'RESPONSE_MESSAGE' => json_encode($responseBody),
+                'CREATED_AT' => now()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Tidak ada ID pada response.',
+                'response' => $responseBody
+            ], $httpStatus);
+
+        } catch (\Exception $e) {
+            DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert([
+                'LOG_TYPE' => 'Medication',
+                'LOCAL_ID' => $request->input('kode_barang'),
+                'STATUS' => 'failed',
+                'HTTP_STATUS' => 500,
+                'RESPONSE_MESSAGE' => $e->getMessage(),
+                'CREATED_AT' => now()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Exception: ' . $e->getMessage()
             ], 500);
         }
     }

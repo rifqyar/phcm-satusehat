@@ -141,7 +141,8 @@
                 <table id="medicationTable" class="table table-striped table-bordered" style="width:100%">
                     <thead>
                         <tr>
-                            <th>ID</th>
+                            <th>IDTRANS</th>
+                            <th>KARCIS</th>
                             <th>Dokter</th>
                             <th>Pasien</th>
                             <th>Tanggal</th>
@@ -205,6 +206,10 @@
                         name: 'H.ID_TRANS'
                     },
                     {
+                        data: 'KARCIS',
+                        name: 'K.KARCIS'
+                    },
+                    {
                         data: 'DOKTER',
                         name: 'N.nama'
                     },
@@ -213,8 +218,8 @@
                         name: 'P.nama'
                     },
                     {
-                        data: 'tgl',
-                        name: 'A.tgl'
+                        data: 'TGL_KARCIS',
+                        name: 'A.TGL_KARCIS'
                     },
                     {
                         data: null,
@@ -232,10 +237,9 @@
                         orderable: false,
                         searchable: false,
                         render: function(data) {
-                            // 📦 status mapping logic (lihat bagian 2)
                             if (data.STATUS_MAPPING === '100') {
                                 return `
-                                    <button class="btn btn-sm btn-primary w-100" onclick="kirimSatusehat(${data.id})">
+                                    <button class="btn btn-sm btn-primary w-100" onclick="kirimSatusehat(${data.ID_TRANS})">
                                         <i class='fas fa-link mr-2'></i> Kirim SATUSEHAT
                                     </button>`;
                             } else {

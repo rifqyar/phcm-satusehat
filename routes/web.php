@@ -27,6 +27,7 @@ Route::middleware(['checkLogin'])->group(function () {
     Route::post('/master_obat/save-mapping', [App\Http\Controllers\MasterObatController::class, 'saveMapping'])->name('master_obat.saveMapping');
 
     Route::get('/satusehat/kfa-search', [App\Http\Controllers\SatusehatKfaController::class, 'search'])->name('kfa.search');
+    Route::post('/satusehat/getmedicationid', [App\Http\Controllers\SatusehatKfaController::class, 'setMedication'])->name('kfa.getmedicationid');
 
     // Dashboard Obat <=> Satu Sehat
 
