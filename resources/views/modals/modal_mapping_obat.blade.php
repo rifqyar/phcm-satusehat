@@ -118,55 +118,93 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
 
-        // fungsi dipanggil setiap kali modal mapping muncul
-        $(document).on('shown.bs.modal', '#modalMapping', function () {
-            console.log('Modal mapping aktif.');
+        /**
+         * 🟢 Saat modal dibuka (show.bs.modal)
+         * Ambil data dari tombol pemicu (data-*) dan isi form utama modal
+         */
+        $(document).on('show.bs.modal', '#modalMapping', function (event) {
+            const button = $(event.relatedTarget); // tombol yang diklik
+            const modal = $(this);
 
-            // pakai on() agar event submit tetap ke-capture meski elemen form diganti
-            $(document).off('submit', '#formCariKfa').on('submit', '#formCariKfa', function (e) {
-                e.preventDefault(); // 🔥 cegah reload halaman
-                console.log('Form cari KFA disubmit tanpa reload.');
+            // Ambil semua atribut data-* dari tombol
+            const id = button.data('id');
+            const no = button.data('no');
+            const kode = button.data('kode');
+            const nama = button.data('nama');
+            const kfa = button.data('kfa');
+            const namakfa = button.data('namakfa');
+            const jenis = button.data('jenis');
+            const isCompound = button.data('is-compound');
+            const deskripsi = button.data('deskripsi');
 
-                const tipe = $('#tipe_pencarian').val();
-                const keyword = $('#keyword_kfa').val().trim();
-                const tbody = $('#tbodyKfa');
-                const tableWrapper = $('#tableKfaWrapper');
-                const quickSearchWrapper = $('#quickSearchWrapper');
+            console.log('Modal dibuka untuk:', { id, kode, nama });
 
-                if (!keyword) {
-                    alert('Masukkan keyword atau code untuk mencari data KFA.');
-                    return;
-                }
+            // Isi field di dalam modal
+            modal.find('#id_obat').val(id || '');
+            modal.find('#no').val(no || '');
+            modal.find('#kode_barang').val(kode || '');
+            modal.find('#nama_barang').val(nama || '');
+            modal.find('#kode_kfa').val(kfa || '');
+            modal.find('#nama_kfa').val(namakfa || '');
+            modal.find('#jenis_obat').val(jenis || '');
+            modal.find('#is_compound').val(isCompound || 0);
+            modal.find('#deskripsi').val(deskripsi || '');
 
-                // tampilkan spinner loading
-                tableWrapper.show();
-                quickSearchWrapper.hide();
-                tbody.html(`
+            // Reset hasil pencarian KFA tiap kali modal baru dibuka
+            $('#tbodyKfa').empty();
+            $('#tableKfaWrapper').hide();
+            $('#quickSearchWrapper').hide();
+            $('#keyword_kfa').val('');
+        });
+
+
+        /**
+         * 🟡 Event: submit form pencarian KFA
+         * Mencegah reload, ambil data dari endpoint /satusehat/kfa-search
+         */
+        $(document).off('submit', '#formCariKfa').on('submit', '#formCariKfa', function (e) {
+            e.preventDefault();
+
+            const tipe = $('#tipe_pencarian').val();
+            const keyword = $('#keyword_kfa').val().trim();
+            const tbody = $('#tbodyKfa');
+            const tableWrapper = $('#tableKfaWrapper');
+            const quickSearchWrapper = $('#quickSearchWrapper');
+
+            if (!keyword) {
+                alert('Masukkan keyword atau code untuk mencari data KFA.');
+                return;
+            }
+
+            // tampilkan spinner loading
+            tableWrapper.show();
+            quickSearchWrapper.hide();
+            tbody.html(`
                 <tr>
-                    <td colspan="4" class="text-center py-4">
+                    <td colspan="5" class="text-center py-4">
                         <div class="spinner-border text-info" role="status"></div>
                         <div class="mt-2 text-secondary">Memuat data KFA...</div>
                     </td>
                 </tr>
             `);
 
-                const queryParam = `${tipe}=${encodeURIComponent(keyword)}`;
+            const queryParam = `${tipe}=${encodeURIComponent(keyword)}`;
 
-                // ambil data dari endpoint Laravel
-                fetch(`/satusehat/kfa-search?${queryParam}`)
-                    .then(res => res.json())
-                    .then(data => {
-                        tbody.empty();
+            // fetch data dari endpoint Laravel
+            fetch(`/satusehat/kfa-search?${queryParam}`)
+                .then(res => res.json())
+                .then(data => {
+                    tbody.empty();
 
-                        if (!Array.isArray(data) || data.length === 0) {
-                            tbody.html(`<tr><td colspan="4" class="text-center text-muted py-3">Tidak ada data ditemukan</td></tr>`);
-                            tableWrapper.show();
-                            return;
-                        }
+                    if (!Array.isArray(data) || data.length === 0) {
+                        tbody.html(`<tr><td colspan="5" class="text-center text-muted py-3">Tidak ada data ditemukan</td></tr>`);
+                        tableWrapper.show();
+                        return;
+                    }
 
-                        // render hasil
-                        data.forEach(item => {
-                            const row = `
+                    // render hasil pencarian
+                    data.forEach(item => {
+                        const row = `
                             <tr>
                                 <td>${item.kfa_code || '-'}</td>
                                 <td>${item.display_name || item.name || '-'}</td>
@@ -174,53 +212,57 @@
                                 <td>${item.is_compound === true ? 'Compound' : item.is_compound === false ? 'Non-compound' : '-'}</td>
                                 <td>
                                     <button type="button" class="btn btn-sm btn-success btnPilihKfa"
-                                        data-kfa="${item.kfa_code}"
-                                        data-nama="${item.display_name || item.name}"
+                                        data-kfa="${item.kfa_code || ''}"
+                                        data-nama="${item.display_name || item.name || ''}"
                                         data-jenis="${item.is_compound === true ? 'Compound' : item.is_compound === false ? 'Non-compound' : '-'}"
                                         data-is-compound="${item.is_compound ? 1 : 0}">
                                         Pilih
                                     </button>
-
                                 </td>
                             </tr>
                         `;
-                            tbody.append(row);
-                        });
-
-                        // tampilkan quick search
-                        quickSearchWrapper.show();
-                    })
-                    .catch(err => {
-                        console.error('Error:', err);
-                        tbody.html(`<tr><td colspan="4" class="text-center text-danger">Terjadi kesalahan saat memuat data KFA.</td></tr>`);
+                        tbody.append(row);
                     });
-            });
 
-            // filter cepat
-            $(document).off('input', '#quickSearch').on('input', '#quickSearch', function () {
-                const query = $(this).val().toLowerCase();
-                $('#tbodyKfa tr').each(function () {
-                    const nama = $(this).find('td:nth-child(2)').text().toLowerCase();
-                    $(this).toggle(nama.includes(query));
+                    quickSearchWrapper.show();
+                })
+                .catch(err => {
+                    console.error('Error:', err);
+                    tbody.html(`<tr><td colspan="5" class="text-center text-danger py-3">Terjadi kesalahan saat memuat data KFA.</td></tr>`);
                 });
+        });
+
+
+        /**
+         * 🔍 Filter cepat hasil KFA (client-side search)
+         */
+        $(document).off('input', '#quickSearch').on('input', '#quickSearch', function () {
+            const query = $(this).val().toLowerCase();
+            $('#tbodyKfa tr').each(function () {
+                const nama = $(this).find('td:nth-child(2)').text().toLowerCase();
+                $(this).toggle(nama.includes(query));
             });
-
-            // tombol pilih
-            $(document).off('click', '.btnPilihKfa').on('click', '.btnPilihKfa', function () {
-                const kode = $(this).data('kfa');
-                const nama = $(this).data('nama');
-                const jenis = $(this).data('jenis'); // ✅ ambil dari data-jenis
-                const isCompound = $(this).data('is-compound'); // ✅ ambil dari data-is-compound (1/0)
-
-                $('#kode_kfa').val(kode);
-                $('#nama_kfa').val(nama);
-                $('#jenis_obat').val(jenis);
-                $('#is_compound').val(isCompound); // ✅ tampil sekarang
-                $('#tableKfaWrapper').hide();
-                $('#quickSearchWrapper').hide();
-            });
+        });
 
 
+        /**
+         * 🟢 Tombol "Pilih" pada hasil KFA
+         * Mengisi form utama dengan data yang dipilih dari hasil pencarian
+         */
+        $(document).off('click', '.btnPilihKfa').on('click', '.btnPilihKfa', function () {
+            const kode = $(this).data('kfa');
+            const nama = $(this).data('nama');
+            const jenis = $(this).data('jenis');
+            const isCompound = $(this).data('is-compound');
+
+            $('#kode_kfa').val(kode);
+            $('#nama_kfa').val(nama);
+            $('#jenis_obat').val(jenis);
+            $('#is_compound').val(isCompound);
+
+            // Sembunyikan tabel hasil
+            $('#tableKfaWrapper').hide();
+            $('#quickSearchWrapper').hide();
         });
     });
 </script>

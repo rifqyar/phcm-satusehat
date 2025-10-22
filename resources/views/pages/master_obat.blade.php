@@ -166,27 +166,40 @@
                                     {{-- Tombol Mapping / Mapping Ulang --}}
                                     @if (empty($obat->KD_BRG_KFA) || trim($obat->KD_BRG_KFA) === '')
                                         <button type="button" class="btn btn-sm btn-success" data-toggle="modal"
-                                            data-target="#modalMapping" data-id="{{ $obat->ID }}">
+                                            data-target="#modalMapping" data-id="{{ $obat->ID }}"
+                                            data-no="{{ $data->firstItem() + $index }}" data-kode="{{ $obat->KDBRG_CENTRA }}"
+                                            data-nama="{{ $obat->NAMABRG }}" data-kfa="{{ $obat->KD_BRG_KFA }}"
+                                            data-namakfa="{{ $obat->NAMABRG_KFA }}"
+                                            data-jenis="{{ $obat->IS_COMPOUND ? 'Compound' : 'Non-compound' }}"
+                                            data-is-compound="{{ $obat->IS_COMPOUND ? 1 : 0 }}"
+                                            data-deskripsi="{{ $obat->DESCRIPTION }}">
                                             <i class="fas fa-link"></i> Mapping
                                         </button>
                                     @else
                                         <button type="button" class="btn btn-sm btn-warning" data-toggle="modal"
-                                            data-target="#modalMapping" data-id="{{ $obat->ID }}">
+                                            data-target="#modalMapping" data-id="{{ $obat->ID }}"
+                                            data-no="{{ $data->firstItem() + $index }}" data-kode="{{ $obat->KDBRG_CENTRA }}"
+                                            data-nama="{{ $obat->NAMABRG }}" data-kfa="{{ $obat->KD_BRG_KFA }}"
+                                            data-namakfa="{{ $obat->NAMABRG_KFA }}"
+                                            data-jenis="{{ $obat->IS_COMPOUND ? 'Compound' : 'Non-compound' }}"
+                                            data-is-compound="{{ $obat->IS_COMPOUND ? 1 : 0 }}"
+                                            data-deskripsi="{{ $obat->DESCRIPTION }}">
                                             <i class="fas fa-sync-alt"></i> Mapping Ulang
                                         </button>
                                     @endif
 
+
                                     {{-- 🟢 Tombol Kirim / Kirim Ulang --}}
                                     {{-- @if (empty($obat->FHIR_ID))
-                                        <button type="button" class="btn btn-sm btn-primary btn-send-medication"
-                                            data-kode="{{ $obat->KDBRG_CENTRA }}">
-                                            <i class="fas fa-paper-plane"></i> Kirim Data
-                                        </button>
+                                    <button type="button" class="btn btn-sm btn-primary btn-send-medication"
+                                        data-kode="{{ $obat->KDBRG_CENTRA }}">
+                                        <i class="fas fa-paper-plane"></i> Kirim Data
+                                    </button>
                                     @else
-                                        <button type="button" class="btn btn-sm btn-info btn-send-medication"
-                                            data-kode="{{ $obat->KDBRG_CENTRA }}">
-                                            <i class="fas fa-redo"></i> Kirim Ulang
-                                        </button>
+                                    <button type="button" class="btn btn-sm btn-info btn-send-medication"
+                                        data-kode="{{ $obat->KDBRG_CENTRA }}">
+                                        <i class="fas fa-redo"></i> Kirim Ulang
+                                    </button>
                                     @endif --}}
                                 </td>
                             </tr>
