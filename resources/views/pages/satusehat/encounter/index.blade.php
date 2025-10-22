@@ -68,7 +68,7 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-info-circle" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ count($mergedAll) }}</span>
+                                                    <span style="font-size: 24px" id="total_all">{{ count($mergedAll) }}</span>
                                                     <h4 class="text-white">Semua Data Kunjungan <br></h4>
                                                 </div>
                                             </div>
@@ -83,7 +83,7 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-hospital" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ count($rjAll) }}</span>
+                                                    <span style="font-size: 24px" id="total_rj">{{ count($rjAll) }}</span>
                                                     <h4 class="text-white">Kunjungan Rawat Jalan <br>
                                                     </h4>
                                                 </div>
@@ -99,7 +99,7 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-bed" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ count($ri) }}</span>
+                                                    <span style="font-size: 24px" id="total_ri">{{ count($ri) }}</span>
                                                     <h4 class="text-white">Kunjungan Rawat Inap <br></h4>
                                                 </div>
                                             </div>
@@ -114,7 +114,7 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-link" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ count($mergedIntegrated) }}</span>
+                                                    <span style="font-size: 24px" id="total_integrasi">{{ count($mergedIntegrated) }}</span>
                                                     <h4 class="text-white">Data Termapping <br></h4>
                                                 </div>
                                             </div>
@@ -129,7 +129,7 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-unlink" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px">{{ $unmapped }}</span>
+                                                    <span style="font-size: 24px" id="total_belum_integrasi">{{ $unmapped }}</span>
                                                     <h4 class="text-white">Data belum mapping <br></h4>
                                                 </div>
                                             </div>
@@ -281,6 +281,14 @@
                         data.tgl_awal = $('input[name="tgl_awal"]').val();
                         data.tgl_akhir = $('input[name="tgl_akhir"]').val();
                     },
+                    dataSrc: function(json){
+                        $('#total_all').text(json.total_semua)
+                        $('#total_rj').text(json.rjAll)
+                        $('#total_ri').text(json.ri)
+                        $('#total_integrasi').text(json.total_sudah_integrasi)
+                        $('#total_belum_integrasi').text(json.total_belum_integrasi)
+                        return json.data
+                    }
                 },
                 columns: [{
                         className: 'dtr-control',
