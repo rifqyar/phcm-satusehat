@@ -114,10 +114,10 @@ class ServiceRequestController extends Controller
                 $tgl_awal = Carbon::parse($tgl_akhir)->subDays(30)->startOfDay();
             }
             if (empty($tgl_akhir)) {
-                $tgl_akhir = Carbon::parse($tgl_awal)->addDays(30)->endOfDay();
+                $tgl_akhir = Carbon::now()->endOfDay();
             } else {
                 // Force the end date to be at 23:59:59 (end of that day)
-                $tgl_akhir = Carbon::parse($tgl_akhir)->endOfDay();
+                $tgl_akhir = Carbon::now()->endOfDay();
             }
         }
 
