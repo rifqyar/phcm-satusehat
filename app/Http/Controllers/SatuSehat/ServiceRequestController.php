@@ -537,6 +537,7 @@ class ServiceRequestController extends Controller
                         ->insert([
                             'karcis'                      => $karcis,
                             'nota'                        => $encounter->nota,
+                            'idriwayat'                   => $idRiwayatElab,
                             'idunit'                      => $id_unit,
                             'tgl'                         => Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d'),
                             'id_satusehat_encounter'      => $encounter->id_satusehat_encounter,
