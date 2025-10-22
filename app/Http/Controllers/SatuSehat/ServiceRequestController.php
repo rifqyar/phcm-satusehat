@@ -36,7 +36,7 @@ class ServiceRequestController extends Controller
         $endDate    = $request->input('tgl_akhir');
 
         // Set default date range if empty
-        $startDate = $startDate ? Carbon::parse($startDate)->startOfDay() : Carbon::now()->subDays(30)->startOfDay();
+        $startDate = $startDate ? Carbon::parse($startDate)->startOfDay() : Carbon::now()->startOfDay();
         $endDate   = $endDate ? Carbon::parse($endDate)->endOfDay() : Carbon::now()->endOfDay();
 
         $connection = DB::connection('sqlsrv');
@@ -107,11 +107,11 @@ class ServiceRequestController extends Controller
         // dd($request->all());
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
-            $tgl_awal  = Carbon::now()->subDays(30)->startOfDay();
+            $tgl_awal  = Carbon::now()->startOfDay();
             $tgl_akhir = Carbon::now()->endOfDay();
         } else {
             if (empty($tgl_awal)) {
-                $tgl_awal = Carbon::parse($tgl_akhir)->subDays(30)->startOfDay();
+                $tgl_awal = Carbon::parse($tgl_akhir)->startOfDay();
             }
             if (empty($tgl_akhir)) {
                 $tgl_akhir = Carbon::now()->endOfDay();
