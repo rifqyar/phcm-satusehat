@@ -161,6 +161,17 @@ class AllergyIntoleranceController extends Controller
 
         return DataTables::of($data)
             ->addIndexColumn()
+            ->addColumn('checkbox', function ($row) {
+                $checkBox = '';
+                if ($row->sudah_integrasi == '0' && ($row->ID_PASIEN_SS != null && $row->ID_NAKES_SS != null && $row->id_satusehat_encounter != null)) {
+                    $checkBox = "
+                        <input type='checkbox' class='select-row chk-col-purple' value='$row->KARCIS' id='$row->KARCIS' />
+                        <label for='$row->KARCIS' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
+                    ";
+                }
+
+                return $checkBox;
+            })
             ->editColumn('TANGGAL', function ($row) {
                 return date('Y-m-d', strtotime($row->TANGGAL));
             })
@@ -200,7 +211,7 @@ class AllergyIntoleranceController extends Controller
                     return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
                 }
             })
-            ->rawColumns(['action', 'status_integrasi'])
+            ->rawColumns(['action', 'status_integrasi', 'checkbox'])
             ->make(true);
     }
 
@@ -308,10 +319,6 @@ class AllergyIntoleranceController extends Controller
 
         $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
             ->where('idpx', $arrParam['id_pasien_ss'])
-            ->first();
-
-        $nakes = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
-            ->where('idnakes', $arrParam['id_nakes_ss'])
             ->first();
 
         $encounter = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
@@ -499,6 +506,49 @@ class AllergyIntoleranceController extends Controller
                 'err_detail' => $th,
                 'message' => $th->getMessage() != '' ? $th->getMessage() : 'Terjadi Kesalahan Saat Kirim Data, Harap Coba lagi!'
             ], $th->getCode() != '' ? $th->getCode() : 500);
+        }
+    }
+
+    public function sendBulking(Request $request)
+    {
+        $selectedAll = isset($request->selectAll) ? true : false;
+        $id_unit      = '001'; // session('id_klinik');
+        if (!$selectedAll) {
+            /**
+             * To Do
+             * - Ambil data pasien dari karcis
+             * - Ambil data pasien Mapping SS join kbuku
+             * - Ambil data E_RM_IRJA dari data karcis
+             * - Ambil data dokter dari E_RM_IRJA join ke dokter mapping SS
+             * - Ambil data Encounter sesuai karcis
+             * - Ambil data alergi join dari E_RM_IRJA
+             */
+
+            $arrKarcis = $request->karcis;
+            $dataKunjungan = DB::table('v_kunjungan_rj as vkr')
+                ->select([
+                    'vkr.ID_TRANSAKSI as KARCIS',
+                    'vkr.NO_PESERTA',
+                    'vkr.KBUKU',
+                    'vkr.NAMA_PASIEN',
+                    'vkr.ID_PASIEN_SS',
+                    'vkr.DOKTER',
+                    'vkr.ID_NAKES_SS',
+                    'rsn.id_satusehat_encounter'
+                ])
+                ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', 'vkr.ID_TRANSAKSI', 'rsn.karcis')
+                ->whereIn("vkr.ID_TRANSAKSI", $arrKarcis)
+                ->groupBy([
+                    'vkr.ID_TRANSAKSI',
+                    'vkr.NO_PESERTA',
+                    'vkr.KBUKU',
+                    'vkr.NAMA_PASIEN',
+                    'vkr.ID_PASIEN_SS',
+                    'vkr.DOKTER',
+                    'vkr.ID_NAKES_SS',
+                    'rsn.id_satusehat_encounter'
+                ])
+                ->get();
         }
     }
 
