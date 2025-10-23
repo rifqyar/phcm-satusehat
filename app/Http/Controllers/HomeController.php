@@ -75,8 +75,8 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Spesimen',
-                'url' => '#',
-                'bg_color' => ''
+                'url' => 'satusehat.specimen.index',
+                'bg_color' => 'card-success'
             ],
             [
                 'title' => 'Laporan Pemeriksaan',
