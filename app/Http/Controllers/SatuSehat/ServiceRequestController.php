@@ -63,10 +63,9 @@ class ServiceRequestController extends Controller
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'kc.karcis', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'nt.karcis', '=', 'ss.karcis')
             ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
-            ->leftJoin('SIRS_PHCM.dbo.DR_MDOKTER as dkd', 'kc.KDDOK', '=', 'dkd.kdDok')
-            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
+            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dk.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
             ->distinct()
             ->whereBetween('rd.TANGGAL_ENTRI', [$startDate, $endDate])
             ->where('rd.IDUNIT', '001')
@@ -76,7 +75,7 @@ class ServiceRequestController extends Controller
                     ->where('AKTIF', 'true')
                     ->where('IDUNIT', '001');
             })
-            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN');
+            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dk.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN');
 
         $radAll = $rad->get();
         $radIntegrasi = $rad->whereNotNull('ss.id_satusehat_servicerequest')->get();
@@ -103,15 +102,14 @@ class ServiceRequestController extends Controller
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'kc.karcis', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'nt.karcis', '=', 'ss.karcis')
             ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
-            ->leftJoin('SIRS_PHCM.dbo.DR_MDOKTER as dkd', 'kc.KDDOK', '=', 'dkd.kdDok')
-            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
+            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dk.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
             ->distinct()
             ->whereBetween('rd.TANGGAL_ENTRI', [$startDate, $endDate])
             ->where('rd.IDUNIT', '001')
             ->where('rd.KLINIK_TUJUAN', '0017')
-            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN');
+            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dk.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN');
 
         $labAll = $lab->get();
         $labIntegrasi = $lab->whereNotNull('ss.id_satusehat_servicerequest')->get();
@@ -125,9 +123,17 @@ class ServiceRequestController extends Controller
         // Calculate unmapped counts
         $total_unmapped_lab = $total_all_lab - $total_mapped_lab;
         $total_unmapped_rad = $total_all_rad - $total_mapped_rad;
+        $total_unmapped_lab = $total_all_lab - $total_mapped_lab;
+        $total_unmapped_rad = $total_all_rad - $total_mapped_rad;
 
         // Return JSON response
         return response()->json([
+            'total_all_lab' => $total_all_lab,
+            'total_all_rad' => $total_all_rad,
+            'total_all_combined' => $total_all_lab + $total_all_rad,
+            'total_mapped_lab' => $total_mapped_lab,
+            'total_mapped_rad' => $total_mapped_rad,
+            'total_mapped_combined' => $total_mapped_lab + $total_mapped_rad,
             'total_all_lab' => $total_all_lab,
             'total_all_rad' => $total_all_rad,
             'total_all_combined' => $total_all_lab + $total_all_rad,
@@ -158,7 +164,7 @@ class ServiceRequestController extends Controller
                 $tgl_akhir = Carbon::now()->endOfDay();
             } else {
                 // Force the end date to be at 23:59:59 (end of that day)
-                $tgl_akhir = Carbon::now()->endOfDay();
+                $tgl_akhir = Carbon::parse($tgl_akhir)->endOfDay();
             }
         }
 
@@ -183,18 +189,25 @@ class ServiceRequestController extends Controller
                     ->on('kc.KBUKU', '=', 'nt.kbuku')
                     ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
             })
+            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.KARCIS_RUJUKAN', '=', 'nt.karcis')
+                    ->on('kc.IDUNIT', '=', 'nt.idunit')
+                    ->on('kc.KBUKU', '=', 'nt.kbuku')
+                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            })
             ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
                 $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
                     ->on('rd.IDUNIT', '=', 'nt.idunit')
                     ->on('rd.KBUKU', '=', 'nt.kbuku')
                     ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
+                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                    ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'kc.KARCIS', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'nt.karcis', '=', 'ss.karcis')
             ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
-            ->leftJoin('SIRS_PHCM.dbo.DR_MDOKTER as dkd', 'kc.KDDOK', '=', 'dkd.kdDok')
-            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
+            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'nk.nama', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
             ->distinct()
             ->whereBetween('rd.TANGGAL_ENTRI', [$tgl_awal, $tgl_akhir])
             ->where('rd.IDUNIT', '001')
@@ -204,8 +217,8 @@ class ServiceRequestController extends Controller
                     ->where('AKTIF', 'true')
                     ->where('IDUNIT', '001');
             })
-            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
-        // dd($rad->toSql());
+            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'nk.nama', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN');
+
         $radAll = $rad->get();
         $radIntegrasi = $rad->whereNotNull('ss.id_satusehat_servicerequest')->get();
 
@@ -223,23 +236,30 @@ class ServiceRequestController extends Controller
                     ->on('kc.KBUKU', '=', 'nt.kbuku')
                     ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
             })
+            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.KARCIS_RUJUKAN', '=', 'nt.karcis')
+                    ->on('kc.IDUNIT', '=', 'nt.idunit')
+                    ->on('kc.KBUKU', '=', 'nt.kbuku')
+                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            })
             ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
                 $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
                     ->on('rd.IDUNIT', '=', 'nt.idunit')
                     ->on('rd.KBUKU', '=', 'nt.kbuku')
                     ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
+                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                    ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'kc.KARCIS', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'nt.karcis', '=', 'ss.karcis')
             ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
-            ->leftJoin('SIRS_PHCM.dbo.DR_MDOKTER as dkd', 'kc.KDDOK', '=', 'dkd.kdDok')
-            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
+            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'nk.nama', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
             ->distinct()
             ->whereBetween('rd.TANGGAL_ENTRI', [$tgl_awal, $tgl_akhir])
             ->where('rd.IDUNIT', '001')
             ->where('rd.KLINIK_TUJUAN', '0017')
-            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
+            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'nk.nama', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN');
 
         $labAll = $lab->get();
         $labIntegrasi = $lab->whereNotNull('ss.id_satusehat_servicerequest')->get();
@@ -322,7 +342,7 @@ class ServiceRequestController extends Controller
                 return date('Y-m-d H:i:s', strtotime($row->TANGGAL_ENTRI));
             })
             ->editColumn('nmDok', function ($row) {
-                return $row->nmDok ?? 'Dokter Tidak Ditemukan';
+                return $row->nama ?? 'Dokter Tidak Ditemukan';
             })
             ->addColumn('NM_TINDAKAN', function ($row) {
                 return $row->NM_TINDAKAN ?? '<span class="text-muted">-</span>';
@@ -358,6 +378,7 @@ class ServiceRequestController extends Controller
                             $btn = '<i class="text-muted">Tunggu Verifikasi Pasien</i>';
                         }
                     } else {
+                        $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                         $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                     }
                 }
