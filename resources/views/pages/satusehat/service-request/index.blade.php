@@ -110,7 +110,7 @@
                                 </div>
                             </div>
                             <div class="col-6">
-                                <div class="card card-inverse card-info card-mapping" onclick="search('mapped')">
+                                <div class="card card-inverse card-success card-mapping" onclick="search('mapped')">
                                     <div class="card-body">
                                         <div class="card-title">
                                             <div class="row align-items-center ml-1">
