@@ -95,8 +95,8 @@ class AllergyIntoleranceController extends Controller
             $tgl_awal  = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
             $tgl_akhir = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
         } else {
-            $tgl_awal = Carbon::parse($tgl_akhir)->startOfDay()->format('Y-m-d H:i:s');
-            $tgl_akhir = Carbon::parse($tgl_awal)->endOfDay()->format('Y-m-d H:i:s');
+            $tgl_awal = Carbon::parse($tgl_awal)->startOfDay()->format('Y-m-d H:i:s');
+            $tgl_akhir = Carbon::parse($tgl_akhir)->endOfDay()->format('Y-m-d H:i:s');
         }
 
         if (!$this->checkDateFormat($tgl_awal) || !$this->checkDateFormat($tgl_akhir)) {
