@@ -235,26 +235,26 @@
                         searchable: false,
                         render: function (data) {
                             const btnLihat = `
-            <br/>
-            <button class="btn btn-sm btn-info w-100" onclick="lihatObat('${data.ID_TRANS}')">
-                <i class="fas fa-eye"></i> Lihat Obat
-            </button>
-        `;
+                <br/>
+                <button class="btn btn-sm btn-info w-100" onclick="lihatObat('${data.ID_TRANS}')">
+                    <i class="fas fa-eye"></i> Lihat Obat
+                </button>
+            `;
 
                             let btnAction = '';
 
                             if (data.STATUS_MAPPING === '100') {
                                 btnAction = `
-                <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                    <i class="fas fa-link mr-2"></i> Kirim SATUSEHAT
-                </button>
-            `;
+                    <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                        <i class="fas fa-link mr-2"></i> Kirim SATUSEHAT
+                    </button>
+                `;
                             } else if (data.STATUS_MAPPING === '200') {
                                 btnAction = `
-                <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                    <i class="fas fa-link mr-2"></i> Kirim Ulang SATUSEHAT
-                </button>
-            `;
+                    <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                        <i class="fas fa-link mr-2"></i> Kirim Ulang SATUSEHAT
+                    </button>
+                `;
                             } else {
                                 btnAction = `<i class="text-muted">Data obat belum termapping</i>`;
                             }
@@ -323,31 +323,31 @@
                 success: function (res) {
                     if (res.status === 'success') {
                         let html = `
-                                <table class="table table-sm table-bordered">
-                                    <thead class="thead-light">
-                                        <tr>
-                                            <th>No</th>
-                                            <th>Nama Obat</th>
-                                            <th>Signa</th>
-                                            <th>Keterangan</th>
-                                            <th>Jumlah</th>
-                                            <th>KFA Code</th>
-                                            <th>Nama KFA</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>`;
+                                    <table class="table table-sm table-bordered">
+                                        <thead class="thead-light">
+                                            <tr>
+                                                <th>No</th>
+                                                <th>Nama Obat</th>
+                                                <th>Signa</th>
+                                                <th>Keterangan</th>
+                                                <th>Jumlah</th>
+                                                <th>KFA Code</th>
+                                                <th>Nama KFA</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>`;
 
                         res.data.forEach((row, index) => {
                             html += `
-                                    <tr>
-                                        <td>${index + 1}</td>
-                                        <td>${row.NAMA_OBAT ?? '-'}</td>
-                                        <td>${row.SIGNA ?? '-'}</td>
-                                        <td>${row.KET ?? '-'}</td>
-                                        <td>${row.JUMLAH ?? '-'}</td>
-                                        <td>${row.KD_BRG_KFA ? row.KD_BRG_KFA : '<strong>Kode KFA Belum Termapping</strong>'}</td>
-                                        <td>${row.NAMABRG_KFA ?? '-'}</td>
-                                    </tr>`;
+                                        <tr>
+                                            <td>${index + 1}</td>
+                                            <td>${row.NAMA_OBAT ?? '-'}</td>
+                                            <td>${row.SIGNA ?? '-'}</td>
+                                            <td>${row.KET ?? '-'}</td>
+                                            <td>${row.JUMLAH ?? '-'}</td>
+                                            <td>${row.KD_BRG_KFA ? row.KD_BRG_KFA : '<strong>Kode KFA Belum Termapping</strong>'}</td>
+                                            <td>${row.NAMABRG_KFA ?? '-'}</td>
+                                        </tr>`;
                         });
 
                         html += `</tbody></table>`;
@@ -364,28 +364,28 @@
             });
         }
         //function confirmKirim
-function confirmkirimSatusehat(idTrans){
-    console.log('confirmKirimSatusehat called, idTrans =', idTrans);
-    if (!idTrans) return;
+        function confirmkirimSatusehat(idTrans) {
+            console.log('confirmKirimSatusehat called, idTrans =', idTrans);
+            if (!idTrans) return;
 
-    Swal.fire({
-        title: 'Kirim ke SATUSEHAT?',
-        text: `Yakin ingin mengirim transaksi ${idTrans} ke SATUSEHAT?`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, kirim',
-        cancelButtonText: 'Batal',
-        confirmButtonColor: '#3085d6',
-        cancelButtonColor: '#d33'
-    }).then((result) => {
-    if (result) {
-        console.log("Lanjut kirim ke SATUSEHAT");
-        kirimSatusehat(idTrans);
-    } else {
-        console.log("Dibatalkan");
-    }
-    });
-}
+            Swal.fire({
+                title: 'Kirim ke SATUSEHAT?',
+                text: `Yakin ingin mengirim transaksi ${idTrans} ke SATUSEHAT?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, kirim',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33'
+            }).then((result) => {
+                if (result) {
+                    console.log("Lanjut kirim ke SATUSEHAT");
+                    kirimSatusehat(idTrans);
+                } else {
+                    console.log("Dibatalkan");
+                }
+            });
+        }
 
         // 🚀 fungsi kirim ke SATUSEHAT
         function kirimSatusehat(idTrans) {
@@ -420,10 +420,10 @@ function confirmkirimSatusehat(idTrans){
                             icon: 'warning',
                             title: 'Gagal Mengirim!',
                             html: `
-                            <div style="text-align:left; max-height:300px; overflow-y:auto; background:#f8f9fa; padding:10px; border-radius:6px;">
-                                <pre style="white-space:pre-wrap; word-wrap:break-word;">${JSON.stringify(jsonBody, null, 2)}</pre>
-                            </div>
-                        `,
+                                <div style="text-align:left; max-height:300px; overflow-y:auto; background:#f8f9fa; padding:10px; border-radius:6px;">
+                                    <pre style="white-space:pre-wrap; word-wrap:break-word;">${JSON.stringify(jsonBody, null, 2)}</pre>
+                                </div>
+                            `,
                             width: '60%',
                         });
                     }
@@ -444,10 +444,10 @@ function confirmkirimSatusehat(idTrans){
                         icon: 'error',
                         title: 'Error saat mengirim!',
                         html: `
-                        <div style="text-align:left; max-height:300px; overflow-y:auto; background:#f8f9fa; padding:10px; border-radius:6px;">
-                            <pre style="white-space:pre-wrap; word-wrap:break-word;">${JSON.stringify(json, null, 2)}</pre>
-                        </div>
-                    `,
+                            <div style="text-align:left; max-height:300px; overflow-y:auto; background:#f8f9fa; padding:10px; border-radius:6px;">
+                                <pre style="white-space:pre-wrap; word-wrap:break-word;">${JSON.stringify(json, null, 2)}</pre>
+                            </div>
+                        `,
                         width: '60%',
                     });
                 },
