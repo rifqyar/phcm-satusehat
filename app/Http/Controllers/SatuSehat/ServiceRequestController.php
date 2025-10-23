@@ -189,7 +189,7 @@ class ServiceRequestController extends Controller
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'nt.karcis', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'kc.KARCIS', '=', 'ss.karcis')
             ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
             ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'nk.nama', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
             ->distinct()
@@ -228,7 +228,7 @@ class ServiceRequestController extends Controller
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'nt.karcis', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'kc.KARCIS', '=', 'ss.karcis')
             ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
             ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'nk.nama', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
             ->distinct()
@@ -548,7 +548,7 @@ class ServiceRequestController extends Controller
             $result = json_decode($dataServiceRequest->getBody()->getContents(), true);
             if ($dataServiceRequest->getStatusCode() >= 400) {
                 $response = json_decode($dataServiceRequest->getBody(), true);
-                dd($response);
+                // dd($response);
 
                 $this->logError('servicerequest', 'Gagal kirim data service request', [
                     'payload' => $data,
@@ -578,7 +578,7 @@ class ServiceRequestController extends Controller
                     DB::connection('sqlsrv')
                         ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
                         ->insert([
-                            'karcis'                      => $karcis,
+                            'karcis'                      => $dataKarcis->KARCIS,
                             'nota'                        => $encounter->nota,
                             'idriwayat'                   => $idRiwayatElab,
                             'idunit'                      => $id_unit,
