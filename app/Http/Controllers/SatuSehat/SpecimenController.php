@@ -143,7 +143,7 @@ class SpecimenController extends Controller
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'nt.karcis', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SPECIMEN as ss', 'nt.karcis', '=', 'ss.karcis')
             ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
             ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'nk.nama', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
             ->distinct()
@@ -388,16 +388,16 @@ class SpecimenController extends Controller
             // === 🔗 Get specimen info connected to tindakan IDs ===
             $specimenList = DB::connection('sqlsrv')
                 ->table('SATUSEHAT.dbo.SATUSEHAT_SPECIMEN_MAPPING as map')
-                ->join('SATUSEHAT.dbo.SATUSEHAT_M_SPECIMEN as sp', 'map.SPECIMEN_CODE', '=', 'sp.SPECIMEN_CODE')
-                ->whereIn('map.KD_TIND', $ids)
-                ->select('sp.SPECIMEN_CODE', 'sp.SPECIMEN_NAME', 'sp.CODESYSTEM')
+                ->join('SATUSEHAT.dbo.SATUSEHAT_M_SPECIMEN as sp', 'map.KODE_SPECIMEN', '=', 'sp.CODE')
+                ->whereIn('map.KODE_TINDAKAN', $ids)
+                ->select('sp.CODE', 'sp.DISPLAY', 'sp.CODESYSTEM')
                 ->distinct()
                 ->get()
                 ->map(function ($item) {
                     return [
-                        'code' => $item->KODE_SPECIMEN,
-                        'name' => $item->DISPLAY,
-                        'codesystem' => $item->CODESYSTEM,
+                        'system' => $item->CODESYSTEM,
+                        'code' => $item->CODE,
+                        'display' => $item->DISPLAY,
                     ];
                 })
                 ->toArray();
@@ -443,7 +443,7 @@ class SpecimenController extends Controller
             $data = [
                 "resourceType" => "Specimen",
                 "identifier" => [[
-                    "system" => "http://sys-ids.kemkes.go.id/servicerequest/{$organisasi}",
+                    "system" => "http://sys-ids.kemkes.go.id/specimen/{$organisasi}",
                     "value" => "$idRiwayatElab"
                 ]],
                 "status" => "available",
@@ -467,12 +467,12 @@ class SpecimenController extends Controller
                     "reference" => "ServiceRequest/{$servicerequest->id_satusehat_servicerequest}",
                 ]],
                 "receivedTime" => $dateTimeNow,
-                "extension" => [
+                "extension" => [[
                     "url" => "https://fhir.kemkes.go.id/r4/StructureDefinition/TransportedTime",
                     "valueDateTime" => $dateTimeNow
-                ]
+                ]]
             ];
-            dd($data);
+            // dd($data);
 
             $login = $this->login($id_unit);
             if ($login['metadata']['code'] != 200) {
@@ -488,7 +488,7 @@ class SpecimenController extends Controller
             $result = json_decode($dataServiceRequest->getBody()->getContents(), true);
             if ($dataServiceRequest->getStatusCode() >= 400) {
                 $response = json_decode($dataServiceRequest->getBody(), true);
-                dd($response);
+                // dd($response);
 
                 $this->logError('specimen', 'Gagal kirim data specimen', [
                     'payload' => $data,
