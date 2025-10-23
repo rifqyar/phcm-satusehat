@@ -245,13 +245,13 @@
 
                             if (data.STATUS_MAPPING === '100') {
                                 btnAction = `
-                <button class="btn btn-sm btn-primary w-100" onclick="kirimSatusehat('${data.ID_TRANS}')">
+                <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
                     <i class="fas fa-link mr-2"></i> Kirim SATUSEHAT
                 </button>
             `;
                             } else if (data.STATUS_MAPPING === '200') {
                                 btnAction = `
-                <button class="btn btn-sm btn-warning w-100" onclick="kirimSatusehat('${data.ID_TRANS}')">
+                <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
                     <i class="fas fa-link mr-2"></i> Kirim Ulang SATUSEHAT
                 </button>
             `;
@@ -363,26 +363,33 @@
                 }
             });
         }
+        //function confirmKirim
+function confirmkirimSatusehat(idTrans){
+    console.log('confirmKirimSatusehat called, idTrans =', idTrans);
+    if (!idTrans) return;
+
+    Swal.fire({
+        title: 'Kirim ke SATUSEHAT?',
+        text: `Yakin ingin mengirim transaksi ${idTrans} ke SATUSEHAT?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, kirim',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33'
+    }).then((result) => {
+    if (result) {
+        console.log("Lanjut kirim ke SATUSEHAT");
+        kirimSatusehat(idTrans);
+    } else {
+        console.log("Dibatalkan");
+    }
+    });
+}
+
         // 🚀 fungsi kirim ke SATUSEHAT
         function kirimSatusehat(idTrans) {
             if (!idTrans) return;
-
-            Swal.fire({
-                title: 'Kirim ke SATUSEHAT?',
-                text: `Yakin ingin mengirim transaksi ${idTrans} ke SATUSEHAT?`,
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Ya, kirim',
-                cancelButtonText: 'Batal',
-                confirmButtonColor: '#3085d6',
-                cancelButtonColor: '#d33'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    // Lanjut kirim di sini
-                    kirimDataKeSatusehat(idTrans);
-                }
-            });
-
 
             const btn = event.currentTarget;
             const originalText = btn.innerHTML;
