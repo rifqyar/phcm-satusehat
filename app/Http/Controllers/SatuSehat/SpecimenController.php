@@ -347,9 +347,15 @@ class SpecimenController extends Controller
             ->where('idunit', $id_unit)
             ->first();
 
+        $riwayat = DB::connection('sqlsrv')
+            ->table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB')
+            ->where('IDUNIT', $id_unit)
+            ->where('ID_RIWAYAT_ELAB', $idRiwayatElab)
+            ->first();
+
         $servicerequest = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
-            ->where('karcis', $karcis)
+            ->where('karcis', $riwayat->KARCIS_RUJUKAN)
             ->where('idunit', $id_unit)
             ->first();
 
@@ -408,12 +414,6 @@ class SpecimenController extends Controller
         // dd($specimenList);
 
         $dateTimeNow = Carbon::now()->toIso8601String();
-
-        $riwayat = DB::connection('sqlsrv')
-            ->table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB')
-            ->where('IDUNIT', $id_unit)
-            ->where('ID_RIWAYAT_ELAB', $idRiwayatElab)
-            ->first();
 
         $jenisService = [];
         if ($klinik != null) {
@@ -506,7 +506,7 @@ class SpecimenController extends Controller
                     $dataKarcis = DB::connection('sqlsrv')
                         ->table('SIRS_PHCM.dbo.RJ_KARCIS as rk')
                         ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
-                        ->where('rk.KARCIS', $karcis)
+                        ->where('rk.KARCIS_RUJUKAN', $karcis)
                         ->where('rk.IDUNIT', $id_unit)
                         ->orderBy('rk.TGL', 'DESC')
                         ->first();
