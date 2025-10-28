@@ -63,14 +63,14 @@ class SpecimenController extends Controller
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'nt.karcis', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'kc.karcis', '=', 'ss.karcis')
             ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
-            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dk.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
+            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dk.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
             ->distinct()
             ->whereBetween('rd.TANGGAL_ENTRI', [$startDate, $endDate])
             ->where('rd.IDUNIT', '001')
             ->where('rd.KLINIK_TUJUAN', '0017')
-            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dk.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN');
+            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dk.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
 
         $labAll = $lab->get();
         $labIntegrasi = $lab->whereNotNull('ss.id_satusehat_servicerequest')->get();
@@ -143,17 +143,18 @@ class SpecimenController extends Controller
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SPECIMEN as ss', 'nt.karcis', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SPECIMEN as ss', 'kc.karcis', '=', 'ss.karcis')
             ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dkd', 'kc.KDDOK', '=', 'dkd.kdDok')
-            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
+            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
             ->distinct()
             ->whereBetween('rd.TANGGAL_ENTRI', [$tgl_awal, $tgl_akhir])
             ->where('rd.IDUNIT', '001')
             ->where('rd.KLINIK_TUJUAN', '0017')
-            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN');
-        // dd($lab->toSql());
+            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
+
         $labAll = $lab->get();
+        // dd($labAll);
         $labIntegrasi = $lab->whereNotNull('ss.id_satusehat_servicerequest')->get();
 
         if ($request->input('cari') == 'mapped') {
@@ -264,12 +265,13 @@ class SpecimenController extends Controller
                 // $param = LZString::compressToEncodedURIComponent($kdbuku . '+' . $kdDok . '+' . $kdKlinik . '+' . $idUnit);
 
                 $idRiwayatElab = LZString::compressToEncodedURIComponent($row->ID_RIWAYAT_ELAB);
-                $karcis = LZString::compressToEncodedURIComponent($row->KARCIS_ASAL);
+                $karcisAsal = LZString::compressToEncodedURIComponent($row->KARCIS_ASAL);
+                $karcisRujukan = LZString::compressToEncodedURIComponent($row->KARCIS_RUJUKAN);
                 $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
                 $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
                 // $kdPerformerSS = LZString::compressToEncodedURIComponent($row->idnakes);
                 $kdDokterSS = LZString::compressToEncodedURIComponent($row->idnakes);
-                $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcis . '+' . $kdKlinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcisAsal . '+' . $karcisRujukan . '+' . $kdKlinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
 
                 if ($row->ID_PASIEN_SS == null) {
                     $btn = '<i class="text-muted">Pasien Belum Mapping Satu Sehat</i>';
@@ -334,18 +336,20 @@ class SpecimenController extends Controller
         $parts = explode('+', $param);
 
         $idRiwayatElab = LZString::decompressFromEncodedURIComponent($parts[0]);
-        $karcis = LZString::decompressFromEncodedURIComponent($parts[1]);
-        $kdKlinik = LZString::decompressFromEncodedURIComponent($parts[2]);
-        $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[3]);
-        $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[4]);
-        $kdDokterSS = LZString::decompressFromEncodedURIComponent($parts[5]);
+        $karcisAsal = LZString::decompressFromEncodedURIComponent($parts[1]);
+        $karcisRujukan = LZString::decompressFromEncodedURIComponent($parts[2]);
+        $kdKlinik = LZString::decompressFromEncodedURIComponent($parts[3]);
+        $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[4]);
+        $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[5]);
+        $kdDokterSS = LZString::decompressFromEncodedURIComponent($parts[6]);
         $id_unit      = '001'; // session('id_klinik');
 
         $encounter = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
-            ->where('karcis', $karcis)
+            ->where('karcis', $karcisAsal)
             ->where('idunit', $id_unit)
             ->first();
+        // dd($encounter);
 
         $riwayat = DB::connection('sqlsrv')
             ->table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB')
@@ -355,7 +359,7 @@ class SpecimenController extends Controller
 
         $servicerequest = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
-            ->where('karcis', $riwayat->KARCIS_RUJUKAN)
+            ->where('karcis', $karcisRujukan)
             ->where('idunit', $id_unit)
             ->first();
 
@@ -506,7 +510,7 @@ class SpecimenController extends Controller
                     $dataKarcis = DB::connection('sqlsrv')
                         ->table('SIRS_PHCM.dbo.RJ_KARCIS as rk')
                         ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
-                        ->where('rk.KARCIS_RUJUKAN', $karcis)
+                        ->where('rk.KARCIS', $karcisRujukan)
                         ->where('rk.IDUNIT', $id_unit)
                         ->orderBy('rk.TGL', 'DESC')
                         ->first();
@@ -519,7 +523,7 @@ class SpecimenController extends Controller
                     DB::connection('sqlsrv')
                         ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SPECIMEN')
                         ->insert([
-                            'karcis'                      => $karcis,
+                            'karcis'                      => $karcisRujukan,
                             'nota'                        => $encounter->nota,
                             'idriwayat'                   => $idRiwayatElab,
                             'idunit'                      => $id_unit,
