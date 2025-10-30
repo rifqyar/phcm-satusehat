@@ -150,5 +150,9 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::get('/medication/{id}/edit', [App\Http\Controllers\SatuSehat\MedicationController::class, 'edit'])->name('medication.edit');
         Route::put('/medication/{id}', [App\Http\Controllers\SatuSehat\MedicationController::class, 'update'])->name('medication.update');
         Route::delete('/medication/{id}', [App\Http\Controllers\SatuSehat\MedicationController::class, 'destroy'])->name('medication.destroy');
+
+        // Diagnostic Report
+        Route::get('/diagnostic-report', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'index'])
+            ->name('diagnostic-report.index');
     });
 });

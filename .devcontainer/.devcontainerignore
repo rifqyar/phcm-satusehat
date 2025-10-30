@@ -1,0 +1,5 @@
+# Prevent VS Code from automatically modifying the devcontainer
+.vscode/
+.git/
+node_modules/
+vendor/
