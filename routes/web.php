@@ -154,5 +154,9 @@ Route::middleware(['checkLogin'])->group(function () {
         // Diagnostic Report
         Route::get('/diagnostic-report', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'index'])
             ->name('diagnostic-report.index');
+        Route::post('/diagnostic-report/datatable', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'datatable'])
+            ->name('diagnostic-report.datatable');
+        Route::post('/diagnostic-report/delete', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'delete'])
+            ->name('diagnostic-report.delete');
     });
 });

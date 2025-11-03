@@ -1,18 +1,15 @@
 @extends('layouts.app')
 
 @push('before-style')
-    <!-- Existing CSS links -->
-    <!-- ... -->
     <link href="{{ asset('assets/plugins/chartist-js/dist/chartist.min.css') }}" rel="stylesheet">
     <link href="{{ asset('assets/plugins/chartist-js/dist/chartist-init.css') }}" rel="stylesheet">
     <link href="{{ asset('assets/plugins/chartist-plugin-tooltip-master/dist/chartist-plugin-tooltip.css') }}"
         rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
-        integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="{{ asset('assets/css/icons/font-awesome/css/fontawesome-all.min.css') }}" />
+    <link href="{{ asset('assets/plugins/bootstrap-material-datetimepicker/css/bootstrap-material-datetimepicker.css') }}"
+        rel="stylesheet">
 
     <style>
-        /* Existing styles */
         .table-responsive {
             overflow: visible;
         }
@@ -25,16 +22,34 @@
             box-shadow: 0 14px 18px rgba(0, 0, 0, 0.473);
             transform: translateY(-5px);
             transition: all 0.3s ease;
-            cursor: pointer
+            cursor: pointer;
+        }
+
+        .card-stat {
+            transition: all 0.3s ease;
+        }
+
+        .card-stat:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .border-left-secondary {
+            border-left: 4px solid #6c757d !important;
+        }
+
+        .border-left-success {
+            border-left: 4px solid #28a745 !important;
+        }
+
+        .border-left-warning {
+            border-left: 4px solid #ffc107 !important;
         }
     </style>
-    <link href="{{ asset('assets/plugins/bootstrap-material-datetimepicker/css/bootstrap-material-datetimepicker.css') }}"
-        rel="stylesheet">
 @endpush
 
 @section('content')
     <div class="row page-titles">
-        <!-- Existing content -->
         <div class="col-md-5 col-8 align-self-center">
             <h3 class="text-themecolor">Dashboard</h3>
             <ol class="breadcrumb">
@@ -44,441 +59,271 @@
         </div>
         <div class="col-md-7 col-4 align-self-center">
             <div class="d-flex m-t-10 justify-content-end">
-                <h6>Selamat Datang <p><b>{{ Session::get('user') }}</b></p>
-                </h6>
+                <h6>Selamat Datang <b>{{ Session::get('user') }}</b></h6>
             </div>
         </div>
     </div>
 
     <div class="card">
         <div class="card-body">
-            <h4 class="card-title">Daftar Laporan Pemeriksaan</h4>
+            <h4 class="card-title">Data Laporan Pemeriksaan</h4>
+            <form action="javascript:void(0)" id="search-data" class="m-t-40">
+                <input type="hidden" name="search" value="{{ request('search') }}">
 
-            <div class="card">
-                <div class="card-body">
-                    <div class="card-title">
-                        {{-- <h4>Form Filter</h4> --}}
-                    </div>
-
-                    <form action="javascript:void(0)" id="search-data" class="m-t-40">
-                        <input type="hidden" name="search" value="{{ request('search') }}">
-                        <div class="row justify-content-center">
-                            <div class="col-4">
-                                <div class="card card-inverse card-primary card-mapping" onclick="search('all')">
-                                    <div class="card-body">
-                                        <div class="card-title">
-                                            <div class="row align-items-center ml-1">
-                                                <i class="fas fa-info-circle" style="font-size: 48px"></i>
-                                                <div class="ml-3">
-                                                    <span style="font-size: 24px" id="total_all_combined">0</span>
-                                                    <h4 class="text-white">Semua Data Laporan </h4>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {{-- <div class="col-4">
-                                <div class="card card-inverse card-info card-mapping" onclick="search('rad')">
-                                    <div class="card-body">
-                                        <div class="card-title">
-                                            <div class="row align-items-center ml-1">
-                                                <i class="fas fa-radiation" style="font-size: 48px"></i>
-                                                <div class="ml-3">
-                                                    <span style="font-size: 24px" id="total_all_rad">0</span>
-                                                    <h4 class="text-white">Radiology 
-                                                    </h4>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="card card-inverse card-warning card-mapping" onclick="search('lab')">
-                                    <div class="card-body">
-                                        <div class="card-title">
-                                            <div class="row align-items-center ml-1">
-                                                <i class="fas fa-flask" style="font-size: 48px"></i>
-                                                <div class="ml-3">
-                                                    <span style="font-size: 24px" id="total_all_lab">0</span>
-                                                    <h4 class="text-white">Laboratory </h4>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div> --}}
-                            <div class="col-4">
-                                <div class="card card-inverse card-info card-mapping" onclick="search('mapped')">
-                                    <div class="card-body">
-                                        <div class="card-title">
-                                            <div class="row align-items-center ml-1">
-                                                <i class="fas fa-link" style="font-size: 48px"></i>
-                                                <div class="ml-3">
-                                                    <span style="font-size: 24px" id="total_mapped_combined">0</span>
-                                                    <h4 class="text-white">Data Sudah Mapping </h4>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-4">
-                                <div class="card card-inverse card-danger card-mapping" onclick="search('unmapped')">
-                                    <div class="card-body">
-                                        <div class="card-title">
-                                            <div class="row align-items-center ml-1">
-                                                <i class="fas fa-unlink" style="font-size: 48px"></i>
-                                                <div class="ml-3">
-                                                    <span style="font-size: 24px" id="total_unmapped_combined">0</span>
-                                                    <h4 class="text-white">Data Belum Mapping </h4>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-12 col-md-12">
-                                <div class="form-group">
-                                    <div class="row justify-content-center align-items-end">
-                                        <div class="col-5">
-                                            <label for="start_date">Periode Tanggal Kunjungan</label>
-                                            <input type="text" class="form-control" name="tgl_awal" id="start_date">
-                                            <span class="bar"></span>
-                                        </div>
-                                        <div class="col-2 text-center">
-                                            <label>&nbsp;</label>
-                                            <small>-</small>
-                                        </div>
-                                        <div class="col-5">
-                                            <label for="end_date">&nbsp;</label>
-                                            <input type="text" class="form-control" name="tgl_akhir" id="end_date">
-                                            <span class="bar"></span>
-                                        </div>
+                <div class="row justify-content-center">
+                    <!-- Card summary -->
+                    <div class="col-4">
+                        <div class="card card-inverse card-primary card-mapping" onclick="search('all')">
+                            <div class="card-body">
+                                <div class="row align-items-center ml-1">
+                                    <i class="fas fa-file-medical text-white" style="font-size: 48px"></i>
+                                    <div class="ml-3">
+                                        <span data-count="all" class="text-white" style="font-size: 24px">
+                                            0
+                                        </span>
+                                        <h4 class="text-white">Semua Laporan Pemeriksaan<br></h4>
                                     </div>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="d-flex justify-content-end">
-                            <button type="button" class="btn btn-success btn-rounded mr-3" onclick="resetSearch()">
-                                Reset Pencarian
-                                <i class="mdi mdi-refresh"></i>
-                            </button>
-                            <button type="submit" class="btn btn-rounded btn-info">
-                                Cari Data
-                                <i class="mdi mdi-magnify"></i>
-                            </button>
+                    <div class="col-4">
+                        <div class="card card-inverse card-success card-mapping" onclick="search('sent')">
+                            <div class="card-body">
+                                <div class="row align-items-center ml-1">
+                                    <i class="fas fa-check-circle text-white" style="font-size: 48px"></i>
+                                    <div class="ml-3">
+                                        <span data-count="sent" class="text-white" style="font-size: 24px">
+                                            0
+                                        </span>
+                                        <h4 class="text-white">Data Terkirim<br></h4>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </form>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-body">
-                    @if (session('success'))
-                        @section('pages-js')
-                            <script>
-                                $(function() {
-                                    $.toast({
-                                        heading: 'Success!',
-                                        text: `{{ session('success') }}`,
-                                        position: 'top-right',
-                                        icon: 'success',
-                                        hideAfter: 3000,
-                                        stack: 6
-                                    });
-                                })
-                            </script>
-                        @endsection
-                    @endif
-
-                    @if (session('error'))
-                        @section('pages-js')
-                            <script>
-                                $(function() {
-                                    $.toast({
-                                        heading: 'Failed!',
-                                        text: `{{ session('error') }}`,
-                                        position: 'top-right',
-                                        loaderBg: '#ff6849',
-                                        icon: 'error',
-                                        hideAfter: 3000,
-                                        stack: 6
-                                    });
-                                })
-                            </script>
-                        @endsection
-                    @endif
-
-                    <div class="card-title">
-                        <h4>Data Laporan Pemeriksaan</h4>
                     </div>
-                    <!-- 🧾 Tabel Data -->
-                    <div class="table-responsive">
-                        <table class="display nowrap table data-table">
-                            <thead>
-                                <tr>
-                                    <th></th>
-                                    <th>NO</th>
-                                    <th>Jenis Penunjang Medis</th>
-                                    <th>Tanggal Masuk</th>
-                                    <th>Nama Pasien</th>
-                                    <th>Dokter</th>
-                                    <th>No. Peserta</th>
-                                    <th>No. RM</th>
-                                    <th>Tindakan</th>
-                                    <th>Specimen</th>
-                                    <th>Status Integrasi</th>
-                                    <th>Status Mapping</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                            </tbody>
-                        </table>
+
+                    <div class="col-4">
+                        <div class="card card-inverse card-danger card-mapping" onclick="search('pending')">
+                            <div class="card-body">
+                                <div class="row align-items-center ml-1">
+                                    <i class="fas fa-clock text-white" style="font-size: 48px"></i>
+                                    <div class="ml-3">
+                                        <span data-count="pending" class="text-white" style="font-size: 24px">
+                                            0
+                                        </span>
+                                        <h4 class="text-white">Data Belum Terkirim<br></h4>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <!-- Filter Periode -->
+                    <div class="col-12 col-md-12 mt-4">
+                        <div class="form-group">
+                            <div class="row justify-content-center align-items-end">
+                                <div class="col-5">
+                                    <label for="start_date">Periode Tanggal Upload</label>
+                                    <input type="text" class="form-control" id="start_date">
+                                    <span class="bar"></span>
+                                </div>
+                                <div class="col-2 text-center">
+                                    <label>&nbsp;</label>
+                                    <small>-</small>
+                                </div>
+                                <div class="col-5">
+                                    <label for="end_date">&nbsp;</label>
+                                    <input type="text" class="form-control" id="end_date">
+                                    <span class="bar"></span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Tombol Aksi -->
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-success btn-rounded mr-3" onclick="resetSearch()">
+                        Reset Pencarian <i class="mdi mdi-refresh"></i>
+                    </button>
+                    <button type="submit" class="btn btn-rounded btn-info">
+                        Cari Data <i class="mdi mdi-magnify"></i>
+                    </button>
+                </div>
+            </form>
+
+            <hr>
+
+            <!-- 🧾 Tabel Data -->
+            <div class="table-responsive">
+                <table id="diagnosticTable" class="table table-striped table-bordered" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>Pasien</th>
+                            <th>Kategori & File</th>
+                            <th>Diupload Oleh</th>
+                            <th>Tanggal Upload</th>
+                            <th width="300">Aksi</th>
+                        </tr>
+                    </thead>
+                </table>
             </div>
         </div>
     </div>
-@endsection
 
+
+@endsection
 
 @push('after-script')
     <script src="{{ asset('assets/plugins/moment/moment.js') }}"></script>
     <script src="{{ asset('assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js') }}">
     </script>
     <script>
-        var table
-        $(function() {
-            const today = moment().format('YYYY-MM-DD');
-            const sevenDaysAgo = moment().subtract(7, 'days').format('YYYY-MM-DD');
+        var table;
+
+        $(document).ready(function () {
+            // 🗓️ datepicker
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
-                time: false
+                time: false,
+                format: 'YYYY-MM-DD'
             });
+
             $("#end_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
-                time: false
-            });
-            $('#start_date').val(sevenDaysAgo);
-            $('#end_date').val(today);
-
-            getAllData();
-            refreshSummary();
-
-            $("#search-data").on("submit", function(e) {
-                if (this.checkValidity()) {
-                    e.preventDefault();
-                    const section = $("#data-section");
-                    if (section.length) {
-                        $("html, body").animate({ scrollTop: section.offset().top }, 1250);
-                    }
-                    refreshSummary();
-                    table.ajax.reload();
-                }
-
-                $(this).addClass("was-validated");
+                time: false,
+                format: 'YYYY-MM-DD'
             });
 
-            $('.data-table').on('click', 'button, a', function(e) {
-                e.stopPropagation();
-            });
-        })
+            // Leave date fields empty by default (no date filter)
+            $('#start_date').val('');
+            $('#end_date').val('');
 
-        function resetSearch() {
-            // Reset all form inputs
-            $('input[name="search"]').val('');
-            $('input[name="tgl_awal"]').val('');
-            $('input[name="tgl_akhir"]').val('');
-            $("#search-data").removeClass("was-validated");
-
-            if (typeof table !== 'undefined' && table) {
-                refreshSummary()
-                table.ajax.reload();
-            }
-
-            $.toast?.({
-                heading: "Pencarian direset",
-                text: "Filter pencarian dikosongkan.",
-                position: "top-right",
-                icon: "info",
-                textColor: "white",
-                hideAfter: 2000,
-            });
-        }
-
-        function getAllData() {
-            table = $('.data-table').DataTable({
-                responsive: {
-                    details: {
-                        type: 'column',
-                        target: 'tr'
-                    }
-                },
+            // ⚙️ DataTable
+            table = $('#diagnosticTable').DataTable({
                 processing: true,
-                serverSide: false,
+                serverSide: true,
                 ajax: {
-                    url: `{{ route('satusehat.specimen.datatable') }}`,
-                    method: "POST",
-                    data: function(data) {
-                        data._token = `${$('meta[name="csrf-token"]').attr("content")}`;
-                        data.cari = $('input[name="search"]').val();
-                        data.tgl_awal = $('input[name="tgl_awal"]').val();
-                        data.tgl_akhir = $('input[name="tgl_akhir"]').val();
-                    },
+                    url: "{{ route('satusehat.diagnostic-report.datatable') }}",
+                    type: 'POST',
+                    data: function (d) {
+                        d._token = '{{ csrf_token() }}';
+                        d.tgl_awal = $('#start_date').val();
+                        d.tgl_akhir = $('#end_date').val();
+                        d.search = $('input[name="search"]').val();
+                    }
                 },
                 columns: [
                     {
-                        className: 'dtr-control',
-                        orderable: false,
-                        searchable: false,
-                        data: null,
-                        defaultContent: ''
-                    }, 
+                        data: 'pasien',
+                        name: 'c.NAMA'
+                    },
                     {
-                        data: 'DT_RowIndex',
-                        name: 'DT_RowIndex',
-                        orderable: true,
+                        data: 'kategori_file',
+                        name: 'b.nama_kategori',
+                        orderable: false
+                    },
+                    {
+                        data: 'diupload_oleh',
+                        name: 'a.usr_crt'
+                    },
+                    {
+                        data: 'tanggal_upload',
+                        name: 'a.crt_dt',
+                        type: 'date'
+                    },
+                    {
+                        data: 'aksi',
+                        name: 'aksi',
+                        orderable: false,
                         searchable: false
-                    },
-                    {
-                        data: 'KLINIK_TUJUAN',
-                        name: 'KLINIK_TUJUAN',
-                        responsivePriority: 3
-                    },
-                    {
-                        data: 'TANGGAL_ENTRI',
-                        name: 'TANGGAL_ENTRI',
-                    },
-                    {
-                        data: 'NAMA_PASIEN',
-                        name: 'NAMA_PASIEN',
-                        responsivePriority: 2
-                    },
-                    {
-                        data: 'nmDok',
-                        name: 'nmDok',
-                    },
-                    {
-                        data: 'NO_PESERTA',
-                        name: 'NO_PESERTA',
-                    },
-                    {
-                        data: 'KBUKU',
-                        name: 'KBUKU',
-                    },
-                    {
-                        data: 'NM_TINDAKAN',
-                        name: 'NM_TINDAKAN',
-                    },
-                    {
-                        data: 'SPECIMEN_NAMES',
-                        name: 'SPECIMEN_NAMES',
-                    },
-                    {
-                        data: 'status_integrasi',
-                        name: 'status_integrasi',
-                        responsivePriority: 1
-                    },
-                    {
-                        data: 'status_mapping',
-                        name: 'status_mapping',
-                    },
-                    {
-                        data: 'action',
-                        name: 'action',
-                        orderable: false,
-                        searchable: false,
-                        responsivePriority: 1
-                    },
+                    }
                 ],
                 order: [
-                    [1, 'asc']
-                ],
-                lengthMenu: [
-                    [10, 25, 50, -1],
-                    [10, 25, 50, 100, "All"]
-                ],
-                pageLength: 10,
-            })
+                    [3, 'desc'] // Order by tanggal_upload column (index 3) descending
+                ]
+            });
+
+            table.on('xhr.dt', function (e, settings, json, xhr) {
+                if (json && json.summary) {
+                    $('span[data-count="all"]').text(json.summary.all ?? 0);
+                    $('span[data-count="sent"]').text(json.summary.sent ?? 0);
+                    $('span[data-count="pending"]').text(json.summary.pending ?? 0);
+                }
+            });
+
+            // 🔍 tombol cari
+            $("#search-data").on("submit", function (e) {
+                e.preventDefault();
+                table.ajax.reload();
+            });
+        });
+
+        // 🔄 reset filter
+        function resetSearch() {
+            $('#start_date').val('');
+            $('#end_date').val('');
+            $('input[name="search"]').val('');
+            table.ajax.reload();
         }
 
-        function refreshSummary() {
+        // 📦 filter by card
+        function search(type) {
+            $('input[name="search"]').val(type);
+            table.ajax.reload();
+        }
+
+        // 📂 Open file in new window
+        function openFile(url) {
+            window.open(url, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
+        }
+
+        // 🗑️ Confirm delete document
+        function confirmDelete(docId) {
+            if (!docId) return;
+
+            swal({
+                title: "Hapus Dokumen?",
+                text: "Yakin ingin menghapus dokumen ini? Tindakan ini tidak dapat dibatalkan.",
+                type: "warning",
+                showCancelButton: true,
+                confirmButtonColor: "#dd6b55",
+                confirmButtonText: "Ya, hapus!",
+                cancelButtonText: "Batal",
+                closeOnConfirm: false
+            }, function() {
+                deleteDocument(docId);
+            });
+        }
+
+        // 🗑️ Delete document
+        function deleteDocument(docId) {
+            if (!docId) return;
+
             $.ajax({
-                url: `{{ route('satusehat.specimen.summary') }}`,
-                type: "POST",
+                url: "{{ route('satusehat.diagnostic-report.delete') }}",
+                type: 'POST',
                 data: {
-                    _token: $('meta[name="csrf-token"]').attr("content"),
-                    tgl_awal: $('input[name="tgl_awal"]').val(),
-                    tgl_akhir: $('input[name="tgl_akhir"]').val(),
+                    _token: '{{ csrf_token() }}',
+                    id: docId
                 },
-                success: function(res) {
-                    // Update the total counters on your page
-                    $('#total_all_lab').text(res.total_all_lab);
-                    $('#total_all_rad').text(res.total_all_rad);
-                    $('#total_all_combined').text(res.total_all_combined);
-                    $('#total_mapped_lab').text(res.total_mapped_lab);
-                    $('#total_mapped_rad').text(res.total_mapped_rad);
-                    $('#total_mapped_combined').text(res.total_mapped_combined);
-                    $('#total_unmapped_lab').text(res.total_unmapped_lab);
-                    $('#total_unmapped_rad').text(res.total_unmapped_rad);
-                    $('#total_unmapped_combined').text(res.total_unmapped_combined);
+                success: function (res) {
+                    if (res.status === 'success') {
+                        swal("Berhasil!", "Dokumen berhasil dihapus.", "success");
+                        table.ajax.reload(null, false);
+                    } else {
+                        swal("Gagal!", res.message || "Terjadi kesalahan saat menghapus dokumen.", "error");
+                    }
                 },
-                error: function(err) {
-                    console.error("Failed to update summary:", err);
+                error: function (xhr) {
+                    console.error(xhr);
+                    swal("Error!", "Terjadi kesalahan saat menghapus dokumen.", "error");
                 }
             });
         }
 
-        $('.data-table').on('click', 'button, a', function(e) {
-            e.stopPropagation();
-        });
-
-        function search(type) {
-            $('input[name="search"]').val(type)
-            table.ajax.reload()
-        }
-
-        function sendSatuSehat(param) {
-            Swal.fire({
-                    title: "Konfirmasi Pengiriman",
-                    text: `Kirim data spesimen ke SatuSehat?`,
-                    icon: "question",
-                    showCancelButton: true,
-                    confirmButtonColor: "#3085d6",
-                    cancelButtonColor: "#d33",
-                    confirmButtonText: "Ya, kirim!",
-                    cancelButtonText: "Batal",
-                }).then(async (conf) => {
-                    if (conf.value || conf.isConfirmed) {
-                        await ajaxGetJson(
-                            `{{ route('satusehat.specimen.send', '') }}/${btoa(param)}`,
-                            "input_success",
-                            ""
-                        );
-                    }
-                });
-        }
-
-        function input_success(res) {
-            if (res.status != 200) {
-                input_error(res);
-                return false;
-            }
-
-            table.ajax.reload();
-
-            $.toast({
-                heading: "Berhasil!",
-                text: res.message,
-                position: "top-right",
-                icon: "success",
-                hideAfter: 2500
-            });
-        }
     </script>
 @endpush
