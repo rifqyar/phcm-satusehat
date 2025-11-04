@@ -23,6 +23,7 @@ Route::middleware(['checkLogin'])->group(function () {
 
     // mapping obat
     Route::get('/master_obat', [App\Http\Controllers\MasterObatController::class, 'index'])->name('master_obat');
+    Route::post('/master_obat/datatable', [App\Http\Controllers\MasterObatController::class, 'getData'])->name('master_obat.datatable');
     Route::post('/master_obat/detail', [App\Http\Controllers\MasterObatController::class, 'show'])->name('master_obat.show');
     Route::post('/master_obat/save-mapping', [App\Http\Controllers\MasterObatController::class, 'saveMapping'])->name('master_obat.saveMapping');
 
