@@ -134,14 +134,10 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::put('/medication-request/{id}', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'update'])->name('medication-request.update');
         Route::delete('/medication-request/{id}', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'destroy'])->name('medication-request.destroy');
 
-        // Medication Dispense
+        // Medication Dispense Tebuus
         Route::get('/medication-dispense', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'index'])->name('medication-dispense.index');
         Route::post('/medication-dispense/datatable', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'datatable'])->name('medication-dispense.datatable');
-        Route::get('/medication-dispense/create', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'create'])->name('medication-dispense.create');
-        Route::post('/medication-dispense/store', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'store'])->name('medication-dispense.store');
-        Route::get('/medication-dispense/{id}/edit', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'edit'])->name('medication-dispense.edit');
-        Route::put('/medication-dispense/{id}', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'update'])->name('medication-dispense.update');
-        Route::delete('/medication-dispense/{id}', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'destroy'])->name('medication-dispense.destroy');
+        Route::post('/medication-dispense/detail', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'getDetailObat'])->name('medication-dispense.detail');
 
         // Medication
         Route::get('/medication', [App\Http\Controllers\SatuSehat\MedicationController::class, 'index'])->name('medication.index');
