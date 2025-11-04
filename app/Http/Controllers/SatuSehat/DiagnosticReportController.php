@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\SatuSehat;
 
 use App\Http\Controllers\Controller;
+use App\Lib\LZCompressor\LZString;
+use App\Models\GlobalParameter;
+use App\Models\SATUSEHAT\SS_Kode_API;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +18,8 @@ class DiagnosticReportController extends Controller
         return view('pages.satusehat.diagnostic-report.index');
     }
 
-    public function datatable(Request $request) {
+    public function datatable(Request $request)
+    {
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
         $search = $request->input('search');
@@ -41,7 +45,7 @@ class DiagnosticReportController extends Controller
         if (!empty($tgl_awal) && !empty($tgl_akhir)) {
             $tgl_awal = Carbon::parse($tgl_awal)->format('Y-m-d');
             $tgl_akhir = Carbon::parse($tgl_akhir)->format('Y-m-d');
-            
+
             $query->whereRaw("CONVERT(date, a.crt_dt) BETWEEN ? AND ?", [
                 $tgl_awal,
                 $tgl_akhir
@@ -59,7 +63,7 @@ class DiagnosticReportController extends Controller
             }
             // For 'all', no additional filter needed
         }
-        
+
         // Get summary counts for the cards
         $baseQueryForCount = DB::connection('sqlsrv')
             ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
@@ -78,7 +82,7 @@ class DiagnosticReportController extends Controller
         $allCount = (clone $baseQueryForCount)->count();
         $sentCount = (clone $baseQueryForCount)->whereNotNull('a.file_name')->count();
         $pendingCount = (clone $baseQueryForCount)->whereNull('a.keterangan')->count();
-        
+
         // Don't add ORDER BY here - let DataTables handle it
         // $query->orderBy('a.id', 'desc');
 
@@ -103,10 +107,10 @@ class DiagnosticReportController extends Controller
                 $sendBtn = '<button class="btn btn-warning btn-sm mr-1" onclick="sendSatuSehat()">
                     <i class="fa fa-link"></i> Kirim Satu Sehat
                 </button>';
-                
+
                 return '
                     <div class="d-flex align-items-stretch">
-                        '.$openFileBtn . $sendBtn.'
+                        ' . $openFileBtn . $sendBtn . '
                     </div>
                 ';
             })
@@ -127,7 +131,7 @@ class DiagnosticReportController extends Controller
     {
         try {
             $id = $request->input('id');
-            
+
             if (!$id) {
                 return response()->json([
                     'status' => 'error',
@@ -159,15 +163,114 @@ class DiagnosticReportController extends Controller
         }
     }
 
-    private function checkDateFormat($date) {
-        try {
-            if ($date instanceof Carbon) {
-                return true;
-            }
-            Carbon::parse($date);
-            return true;
-        } catch (\Exception $e) {
-            return false;
+    public function sendSatuSehat($param)
+    {
+        $param = base64_decode($param);
+        $param = LZString::decompressFromEncodedURIComponent($param);
+        $parts = explode('+', $param);
+
+        $idRiwayatElab = LZString::decompressFromEncodedURIComponent($parts[0]);
+        $karcisAsal = LZString::decompressFromEncodedURIComponent($parts[1]);
+        $karcisRujukan = LZString::decompressFromEncodedURIComponent($parts[2]);
+        $kdKlinik = LZString::decompressFromEncodedURIComponent($parts[3]);
+        $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[4]);
+        $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[5]);
+        $kdDokterSS = LZString::decompressFromEncodedURIComponent($parts[6]);
+
+        $id_unit      = '001'; // session('id_klinik');
+        $status = '';
+
+        $categories = [
+            [
+                "coding" => [
+                    [
+                        "system" => "http://terminology.hl7.org/CodeSystem/v2-0074",
+                        "code" => "MB",
+                        "display" => "Microbiology"
+                    ]
+                ]
+            ]
+        ];
+
+        $codings = [
+            "coding" => [
+                [
+                    "system" => "http://loinc.org",
+                    "code" => "11477-7",
+                    "display" => "Microscopic observation [Identifier] in Sputum by Acid fast stain"
+                ]
+            ]
+        ];
+
+        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
+            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+        } else {
+            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
+            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
+
+        $patient = DB::connection('sqlsrv')
+            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
+            ->where('idpx', $kdPasienSS)
+            ->first();
+
+        $encounter = DB::connection('sqlsrv')
+            ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
+            ->where('karcis', $karcisAsal)
+            ->where('idunit', $id_unit)
+            ->first();
+
+        $data = [
+            "resourceType" => "DiagnosticReport",
+            "identifier" => [
+                [
+                    "system" => "http://sys-ids.kemkes.go.id/diagnostic/{$organisasi}/lab",
+                    "use" => "official",
+                    "value" => "$idRiwayatElab"
+                ]
+            ],
+            "status" => "$status",
+            "category" => $categories,
+            "code" => $codings,
+            "subject" => [
+                "reference" => "Patient/{$kdPasienSS}",
+                "display" => "$patient->nama"
+            ],
+            "encounter" => [
+                "reference" => "Encounter/{$encounter->id_satusehat_encounter}"
+            ],
+            "effectiveDateTime" => "2012-12-01T12:00:00+01:00",
+            "issued" => "2012-12-01T12:00:00+01:00",
+            "performer" => [
+                [
+                    "reference" => "Practitioner/{$kdDokterSS}",
+                ],
+                [
+                    "reference" => "Organization/{{$organisasi}}"
+                ]
+            ],
+            "result" => [
+                [
+                    "reference" => "Observation/dc0b1b9c-d2c8-4830-b8bb-d73c68174f02"
+                ]
+            ],
+            "specimen" => [
+                [
+                    "reference" => "Specimen/3095e36e-1624-487e-9ee4-737387e7b55f"
+                ]
+            ],
+            "conclusionCode" => [
+                [
+                    "coding" => [
+                        [
+                            "system" => "http://snomed.info/sct",
+                            "code" => "260347006",
+                            "display" => "+"
+                        ]
+                    ]
+                ]
+            ]
+        ];
     }
 }

@@ -185,6 +185,9 @@
         var table;
 
         $(document).ready(function () {
+            const today = moment().format('YYYY-MM-DD');
+            const sevenDaysAgo = moment().subtract(7, 'days').format('YYYY-MM-DD');
+
             // 🗓️ datepicker
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
@@ -199,8 +202,8 @@
             });
 
             // Leave date fields empty by default (no date filter)
-            $('#start_date').val('');
-            $('#end_date').val('');
+            $('#start_date').val(sevenDaysAgo);
+            $('#end_date').val(today);
 
             // ⚙️ DataTable
             table = $('#diagnosticTable').DataTable({
@@ -296,32 +299,6 @@
                 closeOnConfirm: false
             }, function() {
                 deleteDocument(docId);
-            });
-        }
-
-        // 🗑️ Delete document
-        function deleteDocument(docId) {
-            if (!docId) return;
-
-            $.ajax({
-                url: "{{ route('satusehat.diagnostic-report.delete') }}",
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    id: docId
-                },
-                success: function (res) {
-                    if (res.status === 'success') {
-                        swal("Berhasil!", "Dokumen berhasil dihapus.", "success");
-                        table.ajax.reload(null, false);
-                    } else {
-                        swal("Gagal!", res.message || "Terjadi kesalahan saat menghapus dokumen.", "error");
-                    }
-                },
-                error: function (xhr) {
-                    console.error(xhr);
-                    swal("Error!", "Terjadi kesalahan saat menghapus dokumen.", "error");
-                }
             });
         }
 
