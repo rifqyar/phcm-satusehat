@@ -35,8 +35,8 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Tindakan',
-                'url' => '#',
-                'bg_color' => ''
+                'url' => 'satusehat.procedure.index',
+                'bg_color' => 'card-success'
             ],
             [
                 'title' => 'Resume Medis',
