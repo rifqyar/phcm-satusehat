@@ -223,6 +223,13 @@
                                 <tr>
                                     <th></th>
                                     <th>NO</th>
+                                    <th>
+                                        <input type="checkbox" id="selectAll" value="selected-all"
+                                            class="chk-col-purple" />
+                                        <label for="selectAll"
+                                            style="margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500">
+                                            Select All </label>
+                                    </th>
                                     <th>Jenis Penunjang Medis</th>
                                     <th>Tanggal Masuk</th>
                                     <th>Nama Pasien</th>
@@ -252,6 +259,7 @@
     </script>
     <script>
         var table
+        let selectedIds = [];
         $(function() {
             const today = moment().format('YYYY-MM-DD');
             const sevenDaysAgo = moment().subtract(7, 'days').format('YYYY-MM-DD');
@@ -345,6 +353,13 @@
                         searchable: false
                     },
                     {
+                        data: 'checkbox',
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-center',
+                        responsivePriority: 1
+                    },
+                    {
                         data: 'KLINIK_TUJUAN',
                         name: 'KLINIK_TUJUAN',
                         responsivePriority: 3
@@ -399,8 +414,62 @@
                     [10, 25, 50, 100, "All"]
                 ],
                 pageLength: 10,
+                drawCallback: function(settings) {
+                    $('.select-row').each(function() {
+                        const id = $(this).val();
+                        $(this).prop('checked', selectedIds.includes(id));
+                    });
+
+                    if ($('#selectAll').is(':checked')) {
+                        $('.select-row').each(function() {
+                            const id = $(this).val();
+                            $(this).prop('checked', true);
+                            if (!selectedIds.includes(id)) selectedIds.push(id);
+                        });
+                    }
+
+                    updateSelectAllCheckbox();
+                }
             })
         }
+
+        // Select single row
+        $(document).on('change', '.select-row', function() {
+            const id = $(this).val();
+            if ($(this).is(':checked')) {
+                if (!selectedIds.includes(id)) selectedIds.push(id);
+            } else {
+                selectedIds = selectedIds.filter(item => item !== id);
+            }
+            updateSelectAllCheckbox();
+        });
+
+        // Select All (current page)
+        $('#selectAll').on('click', function() {
+            const rows = $('.select-row');
+            const checked = this.checked;
+            rows.each(function() {
+                const id = $(this).val();
+                $(this).prop('checked', checked);
+
+                if (checked) {
+                    if (!selectedIds.includes(id)) selectedIds.push(id);
+                } else {
+                    selectedIds = selectedIds.filter(item => item !== id);
+                }
+            });
+        });
+
+        // Update status checkbox selectAll
+        function updateSelectAllCheckbox() {
+            const totalCheckboxes = $('.select-row').length;
+            const checkedCount = $('.select-row:checked').length;
+
+            // centang setengah (indeterminate) kalau sebagian terpilih
+            $('#selectAll').prop('checked', checkedCount === totalCheckboxes && totalCheckboxes > 0);
+            $('#selectAll').prop('indeterminate', checkedCount > 0 && checkedCount < totalCheckboxes);
+        }
+
 
         function refreshSummary() {
             $.ajax({

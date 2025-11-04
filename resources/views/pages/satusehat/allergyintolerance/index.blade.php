@@ -295,7 +295,6 @@
                         data: 'checkbox',
                         orderable: false,
                         searchable: false,
-                        className: 'text-center',
                         responsivePriority: 1
                     },
                     {

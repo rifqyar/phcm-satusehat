@@ -339,6 +339,17 @@ class ServiceRequestController extends Controller
 
         return DataTables::of($dataKunjungan)
             ->addIndexColumn()
+            ->addColumn('checkbox', function ($row) {
+                $checkBox = '';
+                if ($row->SATUSEHAT == '') {
+                }
+                $checkBox = "
+                    <input type='checkbox' class='select-row chk-col-purple' value='' id='' />
+                    <label for='' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
+                ";
+
+                return $checkBox;
+            })
             ->editColumn('KLINIK_TUJUAN', function ($row) {
                 return $row->KLINIK_TUJUAN == '0017' ? '<span class="badge badge-pill badge-success p-2 w-100">Laboratory</span>' : '<span class="badge badge-pill badge-info p-2 w-100">Radiology</span>';
             })
@@ -402,7 +413,7 @@ class ServiceRequestController extends Controller
                     return '<span class="badge badge-pill badge-danger p-2 w-100">Tindakan Belum Mapping</span>';
                 }
             })
-            ->rawColumns(['KLINIK_TUJUAN', 'action', 'status_integrasi', 'status_mapping'])
+            ->rawColumns(['checkbox', 'KLINIK_TUJUAN', 'action', 'status_integrasi', 'status_mapping'])
             // ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi'])
             ->make(true);
     }
