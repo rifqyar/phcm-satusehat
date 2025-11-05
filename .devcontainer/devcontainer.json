@@ -1,0 +1,25 @@
+{
+	"name": "Laravel 7 PHP 7.4",
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "app",
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [8000, 3000],
+
+	// Configure tool-specific properties.
+	"customizations": {
+		// Configure properties specific to VS Code.
+		"vscode": {
+			"settings": {
+				"php.validate.executablePath": "/usr/local/bin/php"
+			},
+			"extensions": [
+				"bmewburn.vscode-intelephense-client",
+				"ms-vscode.vscode-json"
+			]
+		}
+	},
+
+	// Set the default location that VS Code should open when connecting to the container.
+	"workspaceFolder": "/app"
+}

@@ -213,8 +213,12 @@
                         @endsection
                     @endif
 
-                    <div class="card-title">
+                    <div class="card-title d-flex justify-content-between align-items-center">
                         <h4>Data Service Request</h4>
+                        <button type="button" class="btn btn-warning btn-rounded" onclick="bulkSend()" id="bulk-send-btn">
+                            <i class="mdi mdi-send-outline"></i>
+                            Kirim Terpilih ke SatuSehat
+                        </button>
                     </div>
                     <!-- 🧾 Tabel Data -->
                     <div class="table-responsive">
@@ -276,6 +280,9 @@
 
             getAllData();
             refreshSummary();
+            
+            // Initialize bulk send button state
+            $('#bulk-send-btn').prop('disabled', true);
 
             $("#search-data").on("submit", function(e) {
                 if (this.checkValidity()) {
@@ -303,10 +310,18 @@
             $('input[name="tgl_akhir"]').val('');
             $("#search-data").removeClass("was-validated");
 
+            // Clear selections
+            selectedIds = [];
+            $('#selectAll').prop('checked', false);
+            $('.select-row').prop('checked', false);
+
             if (typeof table !== 'undefined' && table) {
                 refreshSummary()
                 table.ajax.reload();
             }
+
+            // Update button state
+            updateSelectAllCheckbox();
 
             $.toast?.({
                 heading: "Pencarian direset",
@@ -434,7 +449,8 @@
         }
 
         // Select single row
-        $(document).on('change', '.select-row', function() {
+        $(document).on('change', '.select-row', function(e) {
+            e.stopPropagation();
             const id = $(this).val();
             if ($(this).is(':checked')) {
                 if (!selectedIds.includes(id)) selectedIds.push(id);
@@ -444,8 +460,14 @@
             updateSelectAllCheckbox();
         });
 
+        // Handle checkbox click to prevent row click propagation
+        $(document).on('click', '.select-row', function(e) {
+            e.stopPropagation();
+        });
+
         // Select All (current page)
-        $('#selectAll').on('click', function() {
+        $('#selectAll').on('click', function(e) {
+            e.stopPropagation();
             const rows = $('.select-row');
             const checked = this.checked;
             rows.each(function() {
@@ -468,6 +490,16 @@
             // centang setengah (indeterminate) kalau sebagian terpilih
             $('#selectAll').prop('checked', checkedCount === totalCheckboxes && totalCheckboxes > 0);
             $('#selectAll').prop('indeterminate', checkedCount > 0 && checkedCount < totalCheckboxes);
+            
+            // Update bulk send button state
+            const bulkSendBtn = $('#bulk-send-btn');
+            if (selectedIds.length > 0) {
+                bulkSendBtn.prop('disabled', false);
+                bulkSendBtn.html(`<i class="mdi mdi-send-outline"></i> Kirim ${selectedIds.length} Data ke SatuSehat`);
+            } else {
+                bulkSendBtn.prop('disabled', true);
+                bulkSendBtn.html('<i class="mdi mdi-send-outline"></i> Kirim Terpilih ke SatuSehat');
+            }
         }
 
 
@@ -617,6 +649,106 @@
                 position: "top-right",
                 icon: "success",
                 hideAfter: 2500
+            });
+        }
+
+        function bulkSend() {
+            if (selectedIds.length === 0) {
+                $.toast({
+                    heading: "Peringatan!",
+                    text: "Pilih data yang akan dikirim terlebih dahulu.",
+                    position: "top-right",
+                    icon: "warning",
+                    hideAfter: 3000
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: "Konfirmasi Bulk Send",
+                text: `Kirim ${selectedIds.length} data service request ke SatuSehat?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Ya, kirim semua!",
+                cancelButtonText: "Batal",
+            }).then((result) => {
+                if (result.value) {
+                    // Show loading state
+                    Swal.fire({
+                        title: 'Mengirim Data...',
+                        text: 'Mohon tunggu, sedang mengirim data ke SatuSehat',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    $.ajax({
+                        url: `{{ route('satusehat.service-request.bulk-send') }}`,
+                        type: "POST",
+                        data: {
+                            _token: $('meta[name="csrf-token"]').attr("content"),
+                            selected_ids: selectedIds
+                        },
+                        success: function(response) {
+                            Swal.close();
+                            
+                            if (response.status === 200) {
+                                $.toast({
+                                    heading: "Berhasil!",
+                                    text: response.message,
+                                    position: "top-right",
+                                    icon: "success",
+                                    hideAfter: 7000
+                                });
+                                
+                                // Show additional info about background processing
+                                setTimeout(() => {
+                                    $.toast({
+                                        heading: "Info",
+                                        text: "Data sedang diproses di background. Refresh halaman dalam beberapa menit untuk melihat hasil.",
+                                        position: "top-right",
+                                        icon: "info",
+                                        hideAfter: 5000
+                                    });
+                                }, 2000);
+                                
+                                // Clear selections and reload table
+                                selectedIds = [];
+                                $('#selectAll').prop('checked', false);
+                                $('.select-row').prop('checked', false);
+                                table.ajax.reload();
+                                refreshSummary();
+                            } else {
+                                $.toast({
+                                    heading: "Error!",
+                                    text: response.message,
+                                    position: "top-right",
+                                    icon: "error",
+                                    hideAfter: 5000
+                                });
+                            }
+                        },
+                        error: function(xhr) {
+                            Swal.close();
+                            let errorMessage = "Terjadi kesalahan saat mengirim data";
+                            
+                            if (xhr.responseJSON && xhr.responseJSON.message) {
+                                errorMessage = xhr.responseJSON.message;
+                            }
+                            
+                            $.toast({
+                                heading: "Error!",
+                                text: errorMessage,
+                                position: "top-right",
+                                icon: "error",
+                                hideAfter: 5000
+                            });
+                        }
+                    });
+                }
             });
         }
     </script>
