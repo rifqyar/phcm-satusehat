@@ -65,6 +65,7 @@ class MedicationRequestController extends Controller
     ->whereBetween(DB::raw('CAST(c.TANGGAL AS date)'), [$startDate, $endDate])
     ->select(
         'b.id',
+        'b.id_satusehat_encounter',
         'a.ID_TRANS',
         DB::raw('CAST(c.TANGGAL AS date) AS TGL_KARCIS'),
         'a.KARCIS',

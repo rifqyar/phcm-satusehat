@@ -29,11 +29,6 @@ class AllergyIntoleranceController extends Controller
     {
         $startDate = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
         $endDate   = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
-<<<<<<< HEAD
-        $startDate = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
-        $endDate   = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
-=======
->>>>>>> 011fa37 (perbaikan tgl)
 
         $data = DB::table('v_kunjungan_rj as vkr')
             ->select([
@@ -99,11 +94,6 @@ class AllergyIntoleranceController extends Controller
         if (empty($tgl_awal) && empty($tgl_akhir)) {
             $tgl_awal  = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
             $tgl_akhir = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
-<<<<<<< HEAD
-            $tgl_awal  = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
-            $tgl_akhir = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
-=======
->>>>>>> 011fa37 (perbaikan tgl)
         } else {
             $tgl_awal = Carbon::parse($tgl_akhir)->startOfDay()->format('Y-m-d H:i:s');
             $tgl_akhir = Carbon::parse($tgl_awal)->endOfDay()->format('Y-m-d H:i:s');
