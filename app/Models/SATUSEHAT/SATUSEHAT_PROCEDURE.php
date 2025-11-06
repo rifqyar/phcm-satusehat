@@ -9,7 +9,7 @@ class SATUSEHAT_PROCEDURE extends Model
     protected $connection = "dbsatusehat";
     protected $table = "RJ_SATUSEHAT_PROCEDURE";
 
-    // protected $fillable = [];
+    protected $guarded = [];
     public $timestamps = false;
     public function encounter()
     {
