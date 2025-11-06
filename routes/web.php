@@ -138,7 +138,7 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::get('/medication-dispense', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'index'])->name('medication-dispense.index');
         Route::post('/medication-dispense/datatable', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'datatable'])->name('medication-dispense.datatable');
         Route::post('/medication-dispense/detail', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'getDetailObat'])->name('medication-dispense.detail');
-        Route::get('/medication-request/sendsatusehat', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'sendMedicationDispense'])->name('medication-dispense.sendsehat');
+        Route::get('/medication-dispense/sendsatusehat', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'sendMedicationDispense'])->name('medication-dispense.sendsehat');
 
         // Medication
         Route::get('/medication', [App\Http\Controllers\SatuSehat\MedicationController::class, 'index'])->name('medication.index');
