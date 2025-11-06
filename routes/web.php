@@ -49,15 +49,12 @@ Route::middleware(['checkLogin'])->group(function () {
     Route::post('master_specimen/datatable', [App\Http\Controllers\MasterSpecimenController::class, 'datatable'])->name('master_specimen.datatable');
 
     Route::group(['prefix' => 'satu-sehat', 'as' => 'satusehat.'], function () {
+
         // Encounter
         Route::get('/encounter', [App\Http\Controllers\SatuSehat\EncounterController::class, 'index'])->name('encounter.index');
         Route::post('/encounter/datatable', [App\Http\Controllers\SatuSehat\EncounterController::class, 'datatable'])->name('encounter.datatable');
         Route::get('/encounter/send/{param}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'sendSatuSehat'])->name('encounter.send');
         Route::get('/encounter/lihat-erm/{param}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'lihatERM'])->name('encounter.lihat-erm');
-        // Route::post('/encounter/store', [App\Http\Controllers\SatuSehat\EncounterController::class, 'store'])->name('encounter.store');
-        // Route::get('/encounter/{id}/edit', [App\Http\Controllers\SatuSehat\EncounterController::class, 'edit'])->name('encounter.edit');
-        // Route::put('/encounter/{id}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'update'])->name('encounter.update');
-        // Route::delete('/encounter/{id}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'destroy'])->name('encounter.destroy');
 
         // Diagnosa
         Route::get('/diagnosa', [App\Http\Controllers\SatuSehat\DiagnosaController::class, 'index'])->name('diagnosa.index');
@@ -78,13 +75,12 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::delete('/observation/{id}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'destroy'])->name('observasi.destroy');
 
         // Tindakan
-        Route::get('/procedure', [App\Http\Controllers\SatuSehat\EncounterController::class, 'index'])->name('procedure.index');
-        Route::post('/procedure/datatable', [App\Http\Controllers\SatuSehat\EncounterController::class, 'datatable'])->name('procedure.datatable');
-        Route::get('/procedure/create', [App\Http\Controllers\SatuSehat\EncounterController::class, 'create'])->name('procedure.create');
-        Route::post('/procedure/store', [App\Http\Controllers\SatuSehat\EncounterController::class, 'store'])->name('procedure.store');
-        Route::get('/procedure/{id}/edit', [App\Http\Controllers\SatuSehat\EncounterController::class, 'edit'])->name('procedure.edit');
-        Route::put('/procedure/{id}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'update'])->name('procedure.update');
-        Route::delete('/procedure/{id}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'destroy'])->name('procedure.destroy');
+        Route::get('/procedure', [App\Http\Controllers\SatuSehat\ProcedureController::class, 'index'])->name('procedure.index');
+        Route::post('/procedure/datatable', [App\Http\Controllers\SatuSehat\ProcedureController::class, 'datatable'])->name('procedure.datatable');
+        Route::get('/procedure/lihat-detail/{param}', [App\Http\Controllers\SatuSehat\ProcedureController::class, 'lihatDetail'])->name('procedure.lihat-detail');
+        Route::get('/get-icd9', [App\Http\Controllers\SatuSehat\ProcedureController::class, 'getICD9'])->name('procedure.geticd9');
+        Route::post('/procedure/send', [App\Http\Controllers\SatuSehat\ProcedureController::class, 'sendSatuSehat'])->name('procedure.send');
+        Route::post('/procedure/save-icd', [App\Http\Controllers\SatuSehat\ProcedureController::class, 'store'])->name('procedure.saveICD9');
 
         // Allergy Intolerance
         Route::get('/allergy-intolerance', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'index'])->name('allergy-intolerance.index');
