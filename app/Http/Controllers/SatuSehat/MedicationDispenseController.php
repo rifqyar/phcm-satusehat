@@ -148,5 +148,233 @@ class MedicationDispenseController extends Controller
             ], 500);
         }
     }
+    public function sendMedicationDispense(Request $request)
+    {
+        try {
+            // --- ambil parameter dari request ---
+            $idTrans = $request->input('id_trans');
+
+            if (empty($idTrans)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Parameter id_trans wajib dikirim.'
+                ], 400);
+            }
+
+            // --- ambil data gabungan resep farmasi + dokter + pasien + FHIR log ---
+            $data = DB::select("
+            SELECT 
+                i.ID_TRANS AS ID_RESEP_FARMASI,
+                i3.ID_TRANS AS RESEP_DOKTER,
+                r4.KARCIS,
+                m.FHIR_ID AS medicationReference_reference,
+                m.NAMABRG AS medicationReference_display,
+                s.ENCOUNTER_ID,
+                s.FHIR_MEDICATION_REQUEST_ID,
+                r2.idpx,
+                r2.nama AS pasien_nama,
+                r3.idnakes,
+                r3.nama AS nakes_nama
+            FROM SIRS_PHCM.dbo.IF_HTRANS i
+            JOIN SIRS_PHCM.dbo.IF_TRANS i2 ON i.ID_TRANS = i2.ID_TRANS
+            JOIN SIRS_PHCM.dbo.RJ_KARCIS_BAYAR r4 ON i.NOTA = r4.NOTA
+            JOIN SIRS_PHCM.dbo.IF_HTRANS_OL i3 ON r4.KARCIS = i3.KARCIS
+            JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA r ON i.NOTA = r.nota
+            JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN r2 ON r.id_satusehat_px = r2.idpx
+            JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES r3 ON r.id_satusehat_dokter = r3.idnakes
+            LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA m ON i2.KDBRG_CENTRA = m.KDBRG_CENTRA
+            LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION s 
+                ON m.KD_BRG_KFA = s.KFA_CODE 
+                AND i3.ID_TRANS = s.LOCAL_ID
+            WHERE i.ID_TRANS = ?
+        ", [$idTrans]);
+
+            if (empty($data)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Data tidak ditemukan untuk ID_TRANS $idTrans."
+                ], 404);
+            }
+
+            // --- ambil token aktif dari tabel auth ---
+            $tokenData = DB::connection('sqlsrv')
+                ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_AUTH')
+                ->select('issued_at', 'expired_in', 'access_token')
+                ->orderBy('id', 'desc')
+                ->first();
+
+            if (!$tokenData) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Access token tidak ditemukan di tabel RIRJ_SATUSEHAT_AUTH.'
+                ], 400);
+            }
+
+            $accessToken = $tokenData->access_token;
+            $orgId = '266bf013-b70b-4dc2-b934-40858a5658cc'; // organization ID (sandbox)
+            $client = new \GuzzleHttp\Client();
+            $results = [];
+
+            // --- loop setiap obat di transaksi farmasi ---
+            foreach ($data as $index => $item) {
+                $uniqueId = str_replace('/', '-', $item->ID_RESEP_FARMASI);
+                $identifierValue = 'DISP-' . $uniqueId;
+
+                // --- handle authorizingPrescription wajib ---
+                if (empty($item->FHIR_MEDICATION_REQUEST_ID)) {
+                    // skip kalau data gak lengkap
+                    $results[] = [
+                        'medication' => $item->medicationReference_display ?? '-',
+                        'status' => 'skipped',
+                        'reason' => 'FHIR_MEDICATION_REQUEST_ID tidak ditemukan',
+                        'response' => null
+                    ];
+                    continue;
+                }
+
+                $authorizingPrescription = [
+                    [
+                        "reference" => "MedicationRequest/" . $item->FHIR_MEDICATION_REQUEST_ID
+                    ]
+                ];
+
+
+                // --- handle encounter (optional) ---
+                $context = null;
+                if (!empty($item->ENCOUNTER_ID)) {
+                    $context = [
+                        "reference" => "Encounter/" . $item->ENCOUNTER_ID
+                    ];
+                }
+
+                // --- bentuk payload minimum MedicationDispense ---
+                $payload = [
+                    "resourceType" => "MedicationDispense",
+                    "identifier" => [
+                        [
+                            "system" => "http://sys-ids.kemkes.go.id/prescription/" . $orgId,
+                            "use" => "official",
+                            "value" => $identifierValue
+                        ]
+                    ],
+                    "status" => "completed",
+                    "category" => [
+                        "coding" => [
+                            [
+                                "system" => "http://terminology.hl7.org/fhir/CodeSystem/medicationdispense-category",
+                                "code" => "outpatient",
+                                "display" => "Outpatient"
+                            ]
+                        ]
+                    ],
+                    "medicationReference" => [
+                        "reference" => !empty($item->medicationReference_reference)
+                            ? "Medication/" . $item->medicationReference_reference
+                            : "Medication/UNKNOWN",
+                        "display" => $item->medicationReference_display ?? "-"
+                    ],
+                    "subject" => [
+                        "reference" => "Patient/" . $item->idpx,
+                        "display" => $item->pasien_nama
+                    ],
+                    "performer" => [
+                        [
+                            "actor" => [
+                                "reference" => "Practitioner/" . $item->idnakes,
+                                "display" => $item->nakes_nama
+                            ]
+                        ]
+                    ],
+                    "authorizingPrescription" => $authorizingPrescription
+                ];
+
+                if ($context) {
+                    $payload["context"] = $context;
+                }
+
+                // --- kirim ke API MedicationDispense ---
+                $response = $client->post(
+                    'https://api-satusehat-stg.dto.kemkes.go.id/fhir-r4/v1/MedicationDispense',
+                    [
+                        'headers' => [
+                            'Authorization' => 'Bearer ' . $accessToken,
+                            'Content-Type' => 'application/json'
+                        ],
+                        'body' => json_encode($payload),
+                        'verify' => false
+                    ]
+                );
+
+                $responseBody = json_decode($response->getBody(), true);
+                $httpStatus = $response->getStatusCode();
+
+                // --- catat log hasil pengiriman ---
+                $logData = [
+                    'LOG_TYPE' => 'MedicationDispense',
+                    'LOCAL_ID' => $item->ID_RESEP_FARMASI,
+                    'KFA_CODE' => $item->medicationReference_reference ?? null,
+                    'NAMA_OBAT' => $item->medicationReference_display ?? '-',
+                    'FHIR_MEDICATION_DISPENSE_ID' => $responseBody['id'] ?? null,
+                    'FHIR_MEDICATION_REQUEST_ID' => $item->FHIR_MEDICATION_REQUEST_ID ?? null,
+                    'PATIENT_ID' => $item->idpx ?? null,
+                    'ENCOUNTER_ID' => $item->ENCOUNTER_ID ?? null,
+                    'STATUS' => isset($responseBody['id']) ? 'success' : 'failed',
+                    'HTTP_STATUS' => $httpStatus,
+                    'RESPONSE_MESSAGE' => json_encode($responseBody),
+                    'CREATED_AT' => now()
+                ];
+
+                $existing = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
+                    ->where('LOCAL_ID', $item->ID_RESEP_FARMASI)
+                    ->where('KFA_CODE', $item->medicationReference_reference)
+                    ->where('LOG_TYPE', 'MedicationDispense')
+                    ->first();
+
+                if ($existing) {
+                    DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
+                        ->where('ID', $existing->ID)
+                        ->update([
+                            'FHIR_MEDICATION_DISPENSE_ID' => $logData['FHIR_MEDICATION_DISPENSE_ID'],
+                            'FHIR_MEDICATION_REQUEST_ID' => $logData['FHIR_MEDICATION_REQUEST_ID'],
+                            'PATIENT_ID' => $logData['PATIENT_ID'],
+                            'ENCOUNTER_ID' => $logData['ENCOUNTER_ID'],
+                            'STATUS' => $logData['STATUS'],
+                            'HTTP_STATUS' => $logData['HTTP_STATUS'],
+                            'RESPONSE_MESSAGE' => $logData['RESPONSE_MESSAGE'],
+                            'UPDATED_AT' => now()
+                        ]);
+                } else {
+                    DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert($logData);
+                }
+
+                $results[] = [
+                    'medication' => $item->medicationReference_display,
+                    'status' => $httpStatus,
+                    'response' => $responseBody
+                ];
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Semua MedicationDispense telah diproses.',
+                'results' => $results
+            ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
+
+        } catch (\Exception $e) {
+            DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert([
+                'LOG_TYPE' => 'MedicationDispense',
+                'LOCAL_ID' => $request->input('id_trans'),
+                'STATUS' => 'failed',
+                'HTTP_STATUS' => 500,
+                'RESPONSE_MESSAGE' => $e->getMessage(),
+                'CREATED_AT' => now()
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Exception: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
 }

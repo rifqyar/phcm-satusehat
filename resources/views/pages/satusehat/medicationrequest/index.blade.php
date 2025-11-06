@@ -380,7 +380,7 @@
         }
         //function confirmKirim
         function confirmkirimSatusehat(idTrans) {
-            console.log('confirmKirimSatusehat called, idTrans =', idTrans);
+            // console.log('confirmKirimSatusehat called, idTrans =', idTrans);
             if (!idTrans) return;
 
             Swal.fire({

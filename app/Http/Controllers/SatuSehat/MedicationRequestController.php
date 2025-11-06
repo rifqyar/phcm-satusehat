@@ -347,6 +347,7 @@ class MedicationRequestController extends Controller
                     'LOCAL_ID' => $idTrans,
                     'KFA_CODE' => $item->KD_BRG_KFA,
                     'NAMA_OBAT' => $item->NAMABRG_KFA,
+                    'FHIR_MEDICATION_REQUEST_ID' => $responseBody['id'] ?? null,
                     'FHIR_ID' => $responseBody['id'] ?? null,
                     'FHIR_MEDICATION_ID' => $item->medicationReference ?? null,
                     'PATIENT_ID' => $item->ID_PASIEN ?? null,

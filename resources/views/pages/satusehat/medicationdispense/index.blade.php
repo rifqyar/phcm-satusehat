@@ -297,26 +297,34 @@
             });
         }
 
-        // Konfirmasi Kirim SATUSEHAT
         function confirmkirimSatusehat(idTrans) {
+            console.log('confirmKirimSatusehat called, idTrans =', idTrans);
+            if (!idTrans) return;
+
             Swal.fire({
                 title: 'Kirim ke SATUSEHAT?',
-                text: `Yakin ingin mengirim transaksi ${idTrans}?`,
+                text: `Yakin ingin mengirim transaksi ${idTrans} ke SATUSEHAT?`,
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonText: 'Ya, kirim',
-                cancelButtonText: 'Batal'
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33'
             }).then((result) => {
-                if (result.isConfirmed) {
+                if (result) {
+                    console.log("Lanjut kirim ke SATUSEHAT");
                     kirimSatusehat(idTrans);
+                } else {
+                    console.log("Dibatalkan");
                 }
             });
         }
 
         // Kirim ke SATUSEHAT
         function kirimSatusehat(idTrans) {
+            console.log('called');
             $.ajax({
-                url: '{{ route('satusehat.medication-request.sendsehat') }}', // nanti disesuaikan
+                url: '{{ route('satusehat.medication-dispense.sendsehat') }}', // nanti disesuaikan
                 type: 'GET',
                 data: { id_trans: idTrans },
                 success: function (res) {
