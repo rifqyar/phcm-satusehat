@@ -3,9 +3,11 @@
 @push('before-style')
     <link href="{{ asset('assets/plugins/chartist-js/dist/chartist.min.css') }}" rel="stylesheet">
     <link href="{{ asset('assets/plugins/chartist-js/dist/chartist-init.css') }}" rel="stylesheet">
-    <link href="{{ asset('assets/plugins/chartist-plugin-tooltip-master/dist/chartist-plugin-tooltip.css') }}" rel="stylesheet">
+    <link href="{{ asset('assets/plugins/chartist-plugin-tooltip-master/dist/chartist-plugin-tooltip.css') }}"
+        rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('assets/css/icons/font-awesome/css/fontawesome-all.min.css') }}" />
-    <link href="{{ asset('assets/plugins/bootstrap-material-datetimepicker/css/bootstrap-material-datetimepicker.css') }}" rel="stylesheet">
+    <link href="{{ asset('assets/plugins/bootstrap-material-datetimepicker/css/bootstrap-material-datetimepicker.css') }}"
+        rel="stylesheet">
 
     <style>
         .table-responsive {
@@ -155,7 +157,8 @@
 
 @push('after-script')
     <script src="{{ asset('assets/plugins/moment/moment.js') }}"></script>
-    <script src="{{ asset('assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js') }}"></script>
+    <script
+        src="{{ asset('assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js') }}"></script>
     <script>
         var table;
 
@@ -197,11 +200,11 @@
                             const karcis = data.NomorKarcis ?? '-';
                             const idTrans = data.ID_TRANS ?? '-';
                             return `
-                                <div>
-                                    <strong>${karcis}</strong><br>
-                                    <small class="text-muted">#${idTrans}</small>
-                                </div>
-                            `;
+                                    <div>
+                                        <strong>${karcis}</strong><br>
+                                        <small class="text-muted">#${idTrans}</small>
+                                    </div>
+                                `;
                         }
                     },
                     { data: 'NamaPasien', name: 'src.NamaPasien' },
@@ -213,16 +216,16 @@
                         searchable: false,
                         render: function (data) {
                             const btnLihat = `
-                                <button class="btn btn-sm btn-info w-100 mb-2" onclick="lihatObat('${data.ID_TRANS}')">
-                                    <i class="fas fa-eye"></i> Lihat Obat
-                                </button>
-                            `;
+                                    <button class="btn btn-sm btn-info w-100 mb-2" onclick="lihatObat('${data.ID_TRANS}')">
+                                        <i class="fas fa-eye"></i> Lihat Obat
+                                    </button>
+                                `;
 
                             const btnKirim = `
-                                <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                                    <i class="fas fa-paper-plane"></i> Kirim SATUSEHAT
-                                </button>
-                            `;
+                                    <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                        <i class="fas fa-paper-plane"></i> Kirim SATUSEHAT
+                                    </button>
+                                `;
 
                             return `${btnLihat}${btnKirim}`;
                         }
@@ -272,17 +275,17 @@
                 success: function (res) {
                     if (res.status === 'success') {
                         let html = `<table class="table table-sm table-bordered">
-                            <thead class="thead-light">
-                                <tr><th>No</th><th>Nama Obat</th><th>KFA Code</th><th>Nama KFA</th></tr>
-                            </thead><tbody>`;
+                                <thead class="thead-light">
+                                    <tr><th>No</th><th>Nama Obat</th><th>KFA Code</th><th>Nama KFA</th></tr>
+                                </thead><tbody>`;
 
                         res.data.forEach((row, i) => {
                             html += `<tr>
-                                <td>${i + 1}</td>
-                                <td>${row.NAMA_OBAT ?? '-'}</td>
-                                <td>${row.KD_BRG_KFA ?? '-'}</td>
-                                <td>${row.NAMABRG_KFA ?? '-'}</td>
-                            </tr>`;
+                                    <td>${i + 1}</td>
+                                    <td>${row.NAMA_OBAT ?? '-'}</td>
+                                    <td>${row.KD_BRG_KFA ?? '-'}</td>
+                                    <td>${row.NAMABRG_KFA ?? '-'}</td>
+                                </tr>`;
                         });
 
                         html += `</tbody></table>`;
@@ -324,22 +327,48 @@
         function kirimSatusehat(idTrans) {
             console.log('called');
             $.ajax({
-                url: '{{ route('satusehat.medication-dispense.sendsehat') }}', // nanti disesuaikan
+                url: '{{ route('satusehat.medication-dispense.sendsehat') }}', // sesuaikan route backend
                 type: 'GET',
                 data: { id_trans: idTrans },
                 success: function (res) {
                     if (res.status === 'success') {
-                        Swal.fire('Berhasil!', `Transaksi ${idTrans} dikirim.`, 'success');
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            html: `Transaksi <b>${idTrans}</b> berhasil dikirim.<br><br>` +
+                                `<small>${res.message || ''}</small>`,
+                            timer: 2500
+                        });
                     } else {
-                        Swal.fire('Gagal!', res.message ?? 'Gagal mengirim.', 'warning');
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Gagal!',
+                            html: `<b>Transaksi ${idTrans}</b> gagal dikirim.<br><br>` +
+                                `<pre style="text-align:left;white-space:pre-wrap;">${res.message || 'Tidak ada pesan error'}</pre>`
+                        });
                     }
                     table.ajax.reload();
                 },
-                error: function (err) {
-                    Swal.fire('Error!', 'Terjadi kesalahan server.', 'error');
-                    console.error(err);
+                error: function (xhr) {
+                    // Ambil pesan error dari response backend
+                    let errMsg = 'Terjadi kesalahan server.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errMsg = xhr.responseJSON.message;
+                    } else if (xhr.responseText) {
+                        errMsg = xhr.responseText;
+                    }
+
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        html: `<b>Transaksi ${idTrans}</b> gagal dikirim.<br><br>` +
+                            `<pre style="text-align:left;white-space:pre-wrap;">${errMsg}</pre>`
+                    });
+
+                    console.error('Error detail:', xhr);
                 }
             });
         }
+
     </script>
 @endpush
