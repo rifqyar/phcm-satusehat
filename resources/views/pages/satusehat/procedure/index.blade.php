@@ -506,6 +506,27 @@
             const tindakanRad = res.data.tindakanRad
             const tindakanOp = res.data.tindakanOp
 
+            const statusIntegrasiAnamnese = res.data.statusIntegrasiAnamnese
+            const statusIntegrasiLab = res.data.statusIntegrasiLab
+            const statusIntegrasiRad = res.data.statusIntegrasiRad
+            const statusIntegrasiOp = res.data.statusIntegrasiOp
+
+            $('#integrasi_anamnese').hide()
+            $('#success_anamnese').hide()
+            $('#failed_anamnese').hide()
+
+            $('#integrasi_lab').hide()
+            $('#success_lab').hide()
+            $('#failed_lab').hide()
+
+            $('#integrasi_rad').hide()
+            $('#success_rad').hide()
+            $('#failed_rad').hide()
+
+            $('#integrasi_op').hide()
+            $('#success_op').hide()
+            $('#failed_op').hide()
+
             $('#nama_pasien').html(dataPasien.NAMA)
             $('#no_rm').html(dataPasien.KBUKU)
             $('#no_peserta').html(dataPasien.NO_PESERTA)
@@ -579,6 +600,12 @@
                 });
             } else {
                 $('#icd9-lab').prop('required', false)
+                $('#tabel_tindakan_lab').html(`
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">Data
+                            tindakan lab belum tersedia.</td>
+                    </tr>
+                `);
             }
 
             if (dataRad.length > 0) {
@@ -606,6 +633,12 @@
                 });
             } else {
                 $('#icd9-rad').prop('required', false)
+                $('#tabel_tindakan_rad').html(`
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">Data
+                            tindakan radiologi belum tersedia.</td>
+                    </tr>
+                `);
             }
 
             if (tindakanOp.length > 0) {
@@ -637,6 +670,48 @@
                 });
             } else {
                 $('#icd9-operasi').prop('required', false)
+                $('#tabel_tindakan_op').html(`
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">Data
+                            tindakan Operasi belum tersedia.</td>
+                    </tr>
+                `);
+            }
+
+            if (statusIntegrasiAnamnese > 0) {
+                $('#integrasi_anamnese').show()
+                $('#success_anamnese').show()
+                $('#btn-simpan-pemeriksaanfisik').hide();
+            } else {
+                $('#btn-simpan-pemeriksaanfisik').show();
+                $('#failed_anamnese').show()
+            }
+
+            if (statusIntegrasiLab > 0) {
+                $('#integrasi_lab').show()
+                $('#success_lab').show()
+                $('#btn-simpan-lab').hide();
+            } else {
+                $('#btn-simpan-lab').show();
+                $('#failed_lab').show()
+            }
+
+            if (statusIntegrasiRad > 0) {
+                $('#integrasi_rad').show()
+                $('#success_rad').show()
+                $('#btn-simpan-rad').hide();
+            } else {
+                $('#btn-simpan-rad').show();
+                $('#failed_rad').show()
+            }
+
+            if (statusIntegrasiOp > 0) {
+                $('#integrasi_op').show()
+                $('#success_op').show()
+                $('#btn-simpan-op').hide();
+            } else {
+                $('#btn-simpan-op').show();
+                $('#failed_op').show()
             }
 
             $('#modalProcedure').modal('show')
@@ -785,6 +860,42 @@
                 cache: true
             }
         });
+
+        function saveICD(type) {
+            var formData = new FormData()
+            formData.append('_token', $('meta[name="csrf-token"]').attr('content'))
+            formData.append('type', type)
+            formData.append('param', paramSatuSehat)
+            if (type != 'pemeriksaanfisik') {
+                const icd9 = $(`#icd9-${type}`).val()
+                const texticd = $(`#icd9-${type}`).select2('data').map(item => item.text);
+
+                formData.append(`icd9`, JSON.stringify(icd9));
+                formData.append(`text_icd9`, JSON.stringify(texticd));
+            } else {
+                formData.append('icd9', $('input[name="sub_kd_icd_pm"]').val())
+                formData.append('text_icd9', $('input[name="icd9-pemeriksaanfisik"]').val())
+            }
+
+            Swal.fire({
+                title: "Konfirmasi Simpan Data",
+                text: `Simpan Data ICD9-CM Sementara?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Ya, Simpan!",
+                cancelButtonText: "Batal",
+            }).then(async (conf) => {
+                if (conf.value || conf.isConfirmed) {
+                    await ajaxPostFile(
+                        `{{ route('satusehat.procedure.saveICD9') }}`,
+                        formData,
+                        "input_success",
+                    );
+                }
+            });
+        }
 
         $('#btn-send-satusehat').on('click', function() {
             if (paramSatuSehat != '') {

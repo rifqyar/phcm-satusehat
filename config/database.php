@@ -89,8 +89,8 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-                'encrypt' => env('DB_ENCRYPT', 'no'),
-    'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
+            'encrypt' => env('DB_ENCRYPT', 'no'),
+            'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
         ],
 
         'dbsatusehat' => [
@@ -104,8 +104,8 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-                'encrypt' => env('DB_ENCRYPT', 'no'),
-    'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
+            'encrypt' => env('DB_ENCRYPT', 'no'),
+            'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
         ],
 
         'ermklinik' => [
@@ -119,8 +119,8 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-                'encrypt' => env('DB_ENCRYPT', 'no'),
-    'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
+            'encrypt' => env('DB_ENCRYPT', 'no'),
+            'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
         ],
 
         'dbsirs' => [
@@ -134,8 +134,8 @@ return [
             'charset' => 'utf8',
             'prefix' => '',
             'prefix_indexes' => true,
-                'encrypt' => env('DB_ENCRYPT', 'no'),
-    'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
+            'encrypt' => env('DB_ENCRYPT', 'no'),
+            'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', true),
         ],
     ],
 
@@ -169,7 +169,7 @@ return [
 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
-            'prefix' => env('REDIS_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_').'_database_'),
+            'prefix' => env('REDIS_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_') . '_database_'),
         ],
 
         'default' => [

@@ -16,6 +16,8 @@ use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Validator;
 use Yajra\DataTables\DataTables;
 
 class ProcedureController extends Controller
@@ -97,6 +99,8 @@ class ProcedureController extends Controller
 
         $dataQuery = DB::table('v_kunjungan_rj as vkr')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.KARCIS')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere', 'eri.KARCIS', 'ere.KARCIS_ASAL')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI as erflo', 'eri.KARCIS', 'erflo.KARCIS')
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
                 $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
                     ->on('vkr.KBUKU', '=', 'rsn.kbuku');
@@ -107,7 +111,7 @@ class ProcedureController extends Controller
             })
             ->where('eri.AKTIF', 1)
             ->whereBetween('vkr.TANGGAL', [$tgl_awal_db, $tgl_akhir_db])
-            ->selectRaw('
+            ->selectRaw("
                 vkr.ID_TRANSAKSI as KARCIS,
                 MAX(vkr.TANGGAL) as TANGGAL,
                 MAX(vkr.NO_PESERTA) as NO_PESERTA,
@@ -118,9 +122,27 @@ class ProcedureController extends Controller
                 MAX(vkr.ID_NAKES_SS) as ID_NAKES_SS,
                 MAX(rsn.id_satusehat_encounter) as id_satusehat_encounter,
                 MAX(rsp.ID_SATUSEHAT_PROCEDURE) as ID_SATUSEHAT_PROCEDURE,
-                CASE WHEN MAX(rsp.KARCIS) IS NOT NULL THEN 1 ELSE 0 END as sudah_integrasi,
+                CASE
+                    WHEN (
+                        -- Jika tidak ada data operasi tapi ada di erflo
+                        (EXISTS (SELECT 1 FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI erflo2
+                                WHERE erflo2.KARCIS = vkr.ID_TRANSAKSI)
+                        AND NOT EXISTS (SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp2
+                                        WHERE rsp2.KARCIS = vkr.ID_TRANSAKSI
+                                        AND rsp2.JENIS_TINDAKAN = 'operasi'))
+                        OR
+                        -- Jika tidak ada data lab/rad tapi ada di ere
+                        (EXISTS (SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB ere2
+                                WHERE ere2.KARCIS_ASAL = vkr.ID_TRANSAKSI)
+                        AND NOT EXISTS (SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp3
+                                        WHERE rsp3.KARCIS = vkr.ID_TRANSAKSI
+                                        AND rsp3.JENIS_TINDAKAN IN ('lab', 'rad')))
+                    ) THEN 0
+                    WHEN MAX(rsp.KARCIS) IS NOT NULL THEN 1
+                    ELSE 0
+                END as sudah_integrasi,
                 CASE WHEN MAX(eri.KARCIS) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
-            ')
+            ")
             ->groupBy('vkr.ID_TRANSAKSI');
 
         $totalData = $dataQuery->get();
@@ -247,6 +269,7 @@ class ProcedureController extends Controller
                 'eri.TD',
                 'eri.CRTUSR',
                 'eri.CRTDT',
+                'eri.NOMOR'
             ])
             ->leftJoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri', function ($join) {
                 $join->on('vkr.ID_TRANSAKSI', '=', 'eri.KARCIS');
@@ -259,6 +282,7 @@ class ProcedureController extends Controller
         // GET DATA ELAB
         $dataLab = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as eri')
             ->select([
+                'ere.ID_RIWAYAT_ELAB',
                 'eri.KARCIS',
                 'eri.ANAMNESE',
                 'ere.ARRAY_TINDAKAN',
@@ -273,6 +297,7 @@ class ProcedureController extends Controller
         // GET DATA ERAD
         $dataRad = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as eri')
             ->select([
+                'ere.ID_RIWAYAT_ELAB',
                 'eri.KARCIS',
                 'eri.ANAMNESE',
                 'ere.ARRAY_TINDAKAN',
@@ -315,6 +340,26 @@ class ProcedureController extends Controller
             ->where('erflo.KARCIS', $arrParam['karcis'])
             ->get();
 
+        $statusIntegrasiAnamnese = SATUSEHAT_PROCEDURE::where('KARCIS', $arrParam['karcis'])
+            ->where('ID_JENIS_TINDAKAN', $dataErm->NOMOR)
+            ->whereNotNull('ID_SATUSEHAT_PROCEDURE')
+            ->count();
+
+        $statusIntegrasiLab = SATUSEHAT_PROCEDURE::where('KARCIS', $arrParam['karcis'])
+            ->where('ID_JENIS_TINDAKAN', $dataLab->first()->ID_RIWAYAT_ELAB ?? null)
+            ->whereNotNull('ID_SATUSEHAT_PROCEDURE')
+            ->count();
+
+        $statusIntegrasiRad = SATUSEHAT_PROCEDURE::where('KARCIS', $arrParam['karcis'])
+            ->where('ID_JENIS_TINDAKAN', $dataRad->first()->ID_RIWAYAT_ELAB ?? 0)
+            ->whereNotNull('ID_SATUSEHAT_PROCEDURE')
+            ->count();
+
+        $statusIntegrasiOp = SATUSEHAT_PROCEDURE::where('KARCIS', $arrParam['karcis'])
+            ->where('ID_JENIS_TINDAKAN', $dataTindOp->first()->id_lap_operasi ?? null)
+            ->whereNotNull('ID_SATUSEHAT_PROCEDURE')
+            ->count();
+
         return response()->json([
             'status' => JsonResponse::HTTP_OK,
             'message' => 'OK',
@@ -325,7 +370,11 @@ class ProcedureController extends Controller
                 'dataRad' => $dataRad,
                 'tindakanLab' => $tindakanLab,
                 'tindakanRad' => $tindakanRad,
-                'tindakanOp' => $dataTindOp
+                'tindakanOp' => $dataTindOp,
+                'statusIntegrasiAnamnese' => $statusIntegrasiAnamnese,
+                'statusIntegrasiLab' => $statusIntegrasiLab,
+                'statusIntegrasiRad' => $statusIntegrasiRad,
+                'statusIntegrasiOp' => $statusIntegrasiOp,
             ],
             'redirect' => [
                 'need' => false,
@@ -404,7 +453,7 @@ class ProcedureController extends Controller
             $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
 
-        // try {
+        try {
             $payloadPemeriksaanFisik = $this->definePayloadAnamnese($arrParam, $patient, $request, $dataErm);
             $payloadLab = $this->definePayloadLab($arrParam, $patient, $request, $dataErm);
             $payloadRad = $this->definePayloadRad($arrParam, $patient, $request, $dataErm);
@@ -436,7 +485,7 @@ class ProcedureController extends Controller
                 throw new Exception($msg, $procedureAnamnese->getStatusCode());
             } else {
                 DB::beginTransaction();
-                // try {
+                try {
                     $dataKarcis = DB::table('RJ_KARCIS as rk')
                         ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
                         ->where('rk.KARCIS', $arrParam['karcis'])
@@ -474,7 +523,7 @@ class ProcedureController extends Controller
 
                     SendProcedureToSATUSEHAT::dispatch($payloadLab, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'lab');
                     SendProcedureToSATUSEHAT::dispatch($payloadRad, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'rad');
-                    SendProcedureToSATUSEHAT::dispatch($payloadOP, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'op');
+                    SendProcedureToSATUSEHAT::dispatch($payloadOP, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'operasi');
 
                     DB::commit();
                     return response()->json([
@@ -485,21 +534,21 @@ class ProcedureController extends Controller
                             'to' => null,
                         ]
                     ], 200);
-                // } catch (Exception $th) {
-                //     throw new Exception($th->getMessage(), $th->getCode());
-                // }
+                } catch (Exception $th) {
+                    throw new Exception($th->getMessage(), $th->getCode());
+                }
             }
-        // } catch (Exception $th) {
-        //     return response()->json([
-        //         'status' => [
-        //             'msg' => $th->getMessage() != '' ? $th->getMessage() : 'Err',
-        //             'code' => $th->getCode() != '' ? $th->getCode() : 500,
-        //         ],
-        //         'data' => null,
-        //         'err_detail' => $th,
-        //         'message' => $th->getMessage() != '' ? $th->getMessage() : 'Terjadi Kesalahan Saat Kirim Data, Harap Coba lagi!'
-        //     ], $th->getCode() != '' ? $th->getCode() : 500);
-        // }
+        } catch (Exception $th) {
+            return response()->json([
+                'status' => [
+                    'msg' => $th->getMessage() != '' ? $th->getMessage() : 'Err',
+                    'code' => $th->getCode() != '' ? $th->getCode() : 500,
+                ],
+                'data' => null,
+                'err_detail' => $th,
+                'message' => $th->getMessage() != '' ? $th->getMessage() : 'Terjadi Kesalahan Saat Kirim Data, Harap Coba lagi!'
+            ], $th->getCode() != '' ? $th->getCode() : 500);
+        }
     }
 
     private function definePayloadAnamnese($param, $patient, $request, $dataErm)
@@ -866,7 +915,175 @@ class ProcedureController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        DB::beginTransaction();
+        try {
+            $validator = Validator::make($request->all(), [
+                'icd9' => 'required',
+                'text_icd9' => 'required',
+            ], [
+                'icd9.required' => 'Harap Masukan Kode ICD9',
+                'text_icd9.required' => 'Harap Masukan Text ICD9'
+            ]);
+
+            if ($validator->fails()) {
+                throw new Exception($validator->errors()->first());
+            }
+            $id_unit = '001';
+
+            $params = LZString::decompressFromEncodedURIComponent($request->param);
+            $parts = explode('&', $params);
+
+            $arrParam = [];
+            $partsParam = explode('=', $parts[0]);
+            $arrParam[$partsParam[0]] = $partsParam[1];
+            for ($i = 1; $i < count($parts); $i++) {
+                $partsParam = explode('=', $parts[$i]);
+                $key = $partsParam[0];
+                $val = $partsParam[1];
+                $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
+            }
+
+            // Check data ICD 9 di table satusehat
+            $type = $request->type;
+            $icd9 = '';
+            $texticd9 = '';
+            switch ($type) {
+                case 'pemeriksaanfisik':
+                    $table = 'ERM_RM_IRJA';
+                    $karcisField = "KARCIS";
+                    $selectField = "NOMOR";
+                    $selectNakes = "";
+                    $icd9 = $request->icd9;
+                    $texticd9 = $request->text_icd9;
+                    $nakes = SS_Nakes::where('idnakes', $arrParam['id_nakes_ss'])->first();
+                    break;
+                case 'lab':
+                    $table = 'ERM_RIWAYAT_ELAB';
+                    $karcisField = "KARCIS_ASAL";
+                    $selectField = "ID_RIWAYAT_ELAB";
+                    $selectNakes = "KDDOK";
+                    $icd9 = json_decode($request->icd9, true);
+                    $texticd9 = json_decode($request->text_icd9, true);
+                    break;
+                case 'rad':
+                    $table = 'ERM_RIWAYAT_ELAB';
+                    $karcisField = "KARCIS_ASAL";
+                    $selectField = "ID_RIWAYAT_ELAB";
+                    $selectNakes = "KDDOK";
+                    $icd9 = json_decode($request->icd9, true);
+                    $texticd9 = json_decode($request->text_icd9, true);
+                    break;
+                case 'operasi':
+                    $table = 'ERM_RI_F_LAP_OPERASI';
+                    $karcisField = "KARCIS";
+                    $selectField = "id_lap_operasi";
+                    $selectNakes = "kddok";
+                    $icd9 = json_decode($request->icd9, true);
+                    $texticd9 = json_decode($request->text_icd9, true);
+                    break;
+                default:
+                    $table = 'ERM_RM_IRJA';
+                    $karcisField = "KARCIS";
+                    $selectField = "NOMOR";
+                    $selectNakes = "";
+                    $icd9 = $request->icd9;
+                    $texticd9 = $request->text_icd9;
+                    $nakes = SS_Nakes::where('idnakes', $arrParam['id_nakes_ss'])->first();
+                    break;
+            }
+
+            $dataErm = DB::table("E_RM_PHCM.dbo.$table")
+                ->select('*')
+                ->where($karcisField, $arrParam['karcis'])
+                ->first();
+
+            $dataSatuSehat = SATUSEHAT_PROCEDURE::where('ID_JENIS_TINDAKAN', $dataErm->{$selectField})->get();
+
+            if (count($dataSatuSehat) > 0) {
+                if ($dataSatuSehat->first()->ID_SATUSEHAT_PROCEDURE) {
+                    throw new Exception('Data tindakan ini sudah pernah kirim ke satu sehat, tidak bisa simpan ICD9', JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                }
+            }
+
+            $dataKarcis = DB::table('RJ_KARCIS as rk')
+                ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
+                ->where('rk.KARCIS', $arrParam['karcis'])
+                ->where('rk.IDUNIT', $id_unit)
+                ->orderBy('rk.TGL', 'DESC')
+                ->first();
+
+            $dataPeserta = DB::table('RIRJ_MASTERPX')
+                ->where('KBUKU', $dataKarcis->KBUKU)
+                ->first();
+
+            if ($type != 'pemeriksaanfisik') {
+                $nakes = SS_Nakes::where('kddok', $dataErm->{$selectNakes})->first();
+            }
+
+            $procedureData = [
+                'KBUKU' => $dataKarcis->KBUKU,
+                'NO_PESERTA' => $dataPeserta->NO_PESERTA,
+                'ID_SATUSEHAT_ENCOUNTER' => $arrParam['encounter_id'],
+                'ID_JENIS_TINDAKAN' => $dataErm->{$selectField},
+                'KD_ICD9' => is_array($icd9) ? implode(',', $icd9) : $icd9,
+                'DISP_ICD9' => is_array($texticd9) ? implode(',', $texticd9) : $texticd9,
+                'JENIS_TINDAKAN' => $request->type == 'pemeriksaanfisik' ? 'anamnese' : $request->type,
+                'KDDOK' => $nakes->kddok ?? null,
+            ];
+
+            $existingProcedure = SATUSEHAT_PROCEDURE::where('KARCIS', (int)$dataKarcis->KARCIS)
+                ->where('JENIS_TINDAKAN', $type == 'pemeriksaanfisik' ? 'anamnese' : $type)
+                ->first();
+
+            if ($existingProcedure) {
+                $updated = $existingProcedure->update($procedureData);
+            } else {
+                $procedureData['KARCIS'] = (int)$dataKarcis->KARCIS;
+                $procedureData['CRTDT'] = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
+                $procedureData['CRTUSER'] = 'system';
+                SATUSEHAT_PROCEDURE::create($procedureData);
+            }
+
+            $this->logInfo('Procedure', 'Sukses Simpan Data ICD 9', [
+                'payload' => [
+                    'icd9' => $icd9,
+                    'text_icd9' => $texticd9,
+                ],
+                'user_id' => 'system' //Session::get('id')
+            ]);
+
+            DB::commit();
+            return response()->json([
+                'status' => JsonResponse::HTTP_OK,
+                'message' => 'Berhasil Simpan Data ICD9',
+                'redirect' => [
+                    'need' => false,
+                    'to' => null,
+                ]
+            ], 200);
+        } catch (Exception $e) {
+            DB::rollBack();
+
+            DB::beginTransaction();
+            $this->logError('Procedure', 'Gagal Simpan Data ICD 9', [
+                'status' => [
+                    'msg' => $e->getMessage() != '' ? $e->getMessage() : 'Err',
+                    'code' => $e->getCode() != '' ? $e->getCode() : 500,
+                ],
+                'err_detail' => $e,
+                'message' => $e->getMessage() != '' ? $e->getMessage() : 'Terjadi Kesalahan Saat Kirim Data, Harap Coba lagi!'
+            ]);
+            DB::commit();
+            return response()->json([
+                'status' => [
+                    'msg' => $e->getMessage() != '' ? $e->getMessage() : 'Err',
+                    'code' => $e->getCode() != '' ? $e->getCode() : 500,
+                ],
+                'data' => null,
+                'err_detail' => $e,
+                'message' => $e->getMessage() != '' ? $e->getMessage() : 'Terjadi Kesalahan Saat Kirim Data, Harap Coba lagi!'
+            ], $e->getCode() != '' ? $e->getCode() : 500);
+        }
     }
 
     /**
