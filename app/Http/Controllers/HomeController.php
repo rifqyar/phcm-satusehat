@@ -55,8 +55,8 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Tebus Obat',
-                'url' => '#',
-                'bg_color' => ''
+                'url' => 'satusehat.medication-dispense.index',
+                'bg_color' => 'card-success'
             ],
             [
                 'title' => 'Alergi Intoleran',

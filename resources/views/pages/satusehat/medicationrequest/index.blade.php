@@ -141,11 +141,11 @@
                 <table id="medicationTable" class="table table-striped table-bordered" style="width:100%">
                     <thead>
                         <tr>
-                            <th>KARCIS</th>
+                            <th>KARCIS/ID Transaksi</th>
                             <th>Dokter</th>
                             <th>Pasien</th>
                             <th>Tanggal</th>
-                            <th>Lihat Obat</th>
+                            <th>Status Integrasi</th>
                             <th>Kirim SATUSEHAT</th>
                         </tr>
                     </thead>
@@ -202,8 +202,15 @@
                 },
                 columns: [
                     {
-                        data: 'KARCIS',
-                        name: 'K.KARCIS'
+                        data: null,
+                        name: 'K.KARCIS',
+                        render: function (data) {
+                            return `
+                                ${data.KARCIS ?? '-'}
+                                <br/>
+                                <small class="text-muted">ID: ${data.ID_TRANS ?? '-'}</small>
+                            `;
+                        }
                     },
                     {
                         data: 'DOKTER',
@@ -222,11 +229,19 @@
                         orderable: true,
                         searchable: true,
                         render: function (data) {
+                            let badge = '';
                             if (data.STATUS_MAPPING === '200') {
-                                return `<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>`;
+                                badge = `<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>`;
                             } else {
-                                return `<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>`;
+                                badge = `<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>`;
                             }
+                            const idEncounter = data.id_satusehat_encounter ? data.id_satusehat_encounter : '-';
+
+                            return `
+                                ${badge}
+                                <br/>
+                                <small class="text-muted">${idEncounter}</small>
+                            `;
                         }
                     },
                     {
@@ -365,7 +380,7 @@
         }
         //function confirmKirim
         function confirmkirimSatusehat(idTrans) {
-            console.log('confirmKirimSatusehat called, idTrans =', idTrans);
+            // console.log('confirmKirimSatusehat called, idTrans =', idTrans);
             if (!idTrans) return;
 
             Swal.fire({
