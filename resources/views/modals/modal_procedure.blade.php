@@ -237,7 +237,11 @@
                                             </div>
                                         </div>
 
-                                        <div class="form-group">
+                                        <div class="form-group" id="curr-icd9-pemeriksaanfisik" style="display: none">
+                                            <label>Kode ICD 9-CM saat ini</label>
+                                            <input type="text" disabled class="form-control">
+                                        </div>
+                                        <div class="form-group" id="form-icd-pemeriksaanfisik">
                                             <label for="icd9-pemeriksaanfisik">Kode ICD 9-CM <small
                                                     class="text-danger">*</small></label>
                                             <input type="text" class="form-control" placeholder="Cari Kode ICD 9"
@@ -304,7 +308,12 @@
                                         </div>
 
                                         <!-- Kode ICD 9 -->
-                                        <div class="form-group mt-4">
+                                        <div class="form-group" id="curr-icd9-rad" style="display: none">
+                                            <label>Kode ICD 9-CM saat ini</label>
+                                            <input type="text" disabled class="form-control">
+                                        </div>
+
+                                        <div class="form-group mt-4" id="form-icd-rad">
                                             <label for="icd9-rad">Kode ICD 9-CM <small
                                                     class="text-danger">*</small></label>
                                             <select name="icd9-rad" id="icd9-rad" class="form-control" multiple
@@ -371,7 +380,12 @@
                                         </div>
 
                                         <!-- Kode ICD 9 -->
-                                        <div class="form-group mt-4">
+                                        <div class="form-group" id="curr-icd9-lab" style="display: none">
+                                            <label>Kode ICD 9-CM saat ini</label>
+                                            <input type="text" disabled class="form-control">
+                                        </div>
+
+                                        <div class="form-group mt-4" id="form-icd-lab">
                                             <label for="icd9-lab">Kode ICD 9-CM <small
                                                     class="text-danger">*</small></label>
                                             <select name="icd9-lab" id="icd9-lab" class="form-control" multiple
@@ -453,7 +467,12 @@
                                         </div>
 
                                         <!-- Kode ICD 9 -->
-                                        <div class="form-group mt-4">
+                                        <div class="form-group" id="curr-icd9-operasi" style="display: none">
+                                            <label>Kode ICD 9-CM saat ini</label>
+                                            <input type="text" disabled class="form-control">
+                                        </div>
+
+                                        <div class="form-group mt-4" id="form-icd-operasi">
                                             <label for="icd9-operasi">Kode ICD 9-CM <small
                                                     class="text-danger">*</small></label>
                                             <select name="icd9-operasi" id="icd9-operasi" class="form-control"

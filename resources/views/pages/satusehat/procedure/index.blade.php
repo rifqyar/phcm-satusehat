@@ -510,6 +510,7 @@
             const statusIntegrasiLab = res.data.statusIntegrasiLab
             const statusIntegrasiRad = res.data.statusIntegrasiRad
             const statusIntegrasiOp = res.data.statusIntegrasiOp
+            const dataICD = res.data.dataICD
 
             $('#integrasi_anamnese').hide()
             $('#success_anamnese').hide()
@@ -575,8 +576,81 @@
             }
             $('#data_diagnosa').html(htmlDiag)
 
+            // Sudah Kirim Pemeriksaan Fisik
+            if (statusIntegrasiAnamnese > 0) {
+                $('#integrasi_anamnese').show()
+                $('#success_anamnese').show()
+                $('#btn-simpan-pemeriksaanfisik').hide();
+                $("#form-icd-pemeriksaanfisik").find('input').prop('required', false);
+                $("#form-icd-pemeriksaanfisik").hide();
+            } else {
+                $('#btn-simpan-pemeriksaanfisik').show();
+                $('#failed_anamnese').show()
+                $("#form-icd-pemeriksaanfisik").find('input').prop('required', true);
+                $("#form-icd-pemeriksaanfisik").show();
+            }
+
+            // Sudah Kirim Lab
+            if ((statusIntegrasiLab == dataLab.length) && dataLab.length > 0) {
+                $('#integrasi_lab').show()
+                $('#success_lab').show()
+                $('#btn-simpan-lab').hide();
+                $('#form-icd-lab').hide();
+            } else {
+                if (dataLab.length == 0) {
+                    $('#btn-simpan-lab').hide();
+                    $('#failed_lab').hide()
+                    $('#form-icd-lab').find('select').prop('required', false);
+                    $('#form-icd-lab').hide();
+                } else {
+                    $('#btn-simpan-lab').show();
+                    $('#failed_lab').show()
+                    $('#form-icd-lab').find('select').prop('required', true);
+                    $('#form-icd-lab').show();
+                }
+            }
+
+            // Sudah Kirim Radiologi
+            if ((statusIntegrasiRad == dataRad.length) && dataRad.length > 0) {
+                $('#integrasi_rad').show()
+                $('#success_rad').show()
+                $('#btn-simpan-rad').hide();
+                $('#form-icd-rad').hide()
+            } else {
+                if (dataRad.length == 0) {
+                    $('#btn-simpan-rad').hide();
+                    $('#failed_rad').hide()
+                    $('#form-icd-rad').find('select').prop('required', false);
+                    $('#form-icd-rad').hide();
+                } else {
+                    $('#btn-simpan-rad').show();
+                    $('#form-icd-rad').find('select').prop('required', true);
+                    $('#failed_rad').show()
+                    $('#form-icd-rad').show()
+                }
+            }
+
+            // Sudah Kirim OP
+            if ((statusIntegrasiOp == tindakanOp.length) && tindakanOp.length > 0) {
+                $('#integrasi_op').show()
+                $('#success_op').show()
+                $('#btn-simpan-op').hide();
+                $('#form-icd-operasi').hide()
+            } else {
+                if (tindakanOp.length == 0) {
+                    $('#form-icd-operasi').find('select').prop('required', false);
+                    $('#success_op').hide()
+                    $('#btn-simpan-op').hide();
+                    $('#form-icd-operasi').hide()
+                } else {
+                    $('#form-icd-operasi').find('select').prop('required', true);
+                    $('#btn-simpan-op').show();
+                    $('#failed_op').show()
+                    $('#form-icd-operasi').show()
+                }
+            }
+
             if (dataLab.length > 0) {
-                $('#icd9-lab').prop('required', true)
                 var tglLab = dataLab[0].TANGGAL_ENTRI;
                 if (tglLab) {
                     const tgl = new Date(tglLab);
@@ -599,7 +673,6 @@
                     `);
                 });
             } else {
-                $('#icd9-lab').prop('required', false)
                 $('#tabel_tindakan_lab').html(`
                     <tr>
                         <td colspan="6" class="text-center text-muted">Data
@@ -609,7 +682,6 @@
             }
 
             if (dataRad.length > 0) {
-                $('#icd9-rad').prop('required', true)
                 var tgRad = dataRad[0].TANGGAL_ENTRI;
                 if (tgRad) {
                     const tgl = new Date(tgRad);
@@ -632,7 +704,6 @@
                     `);
                 });
             } else {
-                $('#icd9-rad').prop('required', false)
                 $('#tabel_tindakan_rad').html(`
                     <tr>
                         <td colspan="6" class="text-center text-muted">Data
@@ -642,7 +713,6 @@
             }
 
             if (tindakanOp.length > 0) {
-                $('#icd9-operasi').prop('required', true)
                 var tglOP = tindakanOp[0].tanggal_operasi
                 if (tglOP) {
                     const tgl = new Date(tglOP);
@@ -669,8 +739,8 @@
                     `);
                 });
             } else {
-                $('#icd9-operasi').prop('required', false)
-                $('#tabel_tindakan_op').html(`
+                $('#laporan_operasi').html('<i> Tidak Ada Tindakan Operasi </i>')
+                $('#tabel_tindakan_operasi').html(`
                     <tr>
                         <td colspan="6" class="text-center text-muted">Data
                             tindakan Operasi belum tersedia.</td>
@@ -678,41 +748,16 @@
                 `);
             }
 
-            if (statusIntegrasiAnamnese > 0) {
-                $('#integrasi_anamnese').show()
-                $('#success_anamnese').show()
-                $('#btn-simpan-pemeriksaanfisik').hide();
-            } else {
-                $('#btn-simpan-pemeriksaanfisik').show();
-                $('#failed_anamnese').show()
-            }
-
-            if (statusIntegrasiLab > 0) {
-                $('#integrasi_lab').show()
-                $('#success_lab').show()
-                $('#btn-simpan-lab').hide();
-            } else {
-                $('#btn-simpan-lab').show();
-                $('#failed_lab').show()
-            }
-
-            if (statusIntegrasiRad > 0) {
-                $('#integrasi_rad').show()
-                $('#success_rad').show()
-                $('#btn-simpan-rad').hide();
-            } else {
-                $('#btn-simpan-rad').show();
-                $('#failed_rad').show()
-            }
-
-            if (statusIntegrasiOp > 0) {
-                $('#integrasi_op').show()
-                $('#success_op').show()
-                $('#btn-simpan-op').hide();
-            } else {
-                $('#btn-simpan-op').show();
-                $('#failed_op').show()
-            }
+            $.each(dataICD, function(index, item) {
+                if (item.length > 0) {
+                    $(`#curr-icd9-${index}`).show()
+                    $.each(item, function(x, data) {
+                        $(`#curr-icd9-${index}`).find('input').val(data.KD_ICD9 + ' - ' + data.DISP_ICD9)
+                    })
+                } else {
+                    $(`#curr-icd9-${index}`).hide()
+                }
+            })
 
             $('#modalProcedure').modal('show')
         }
@@ -908,7 +953,7 @@
             const icd9Rad = $('#icd9-rad').val();
             const icd9Operasi = $('#icd9-operasi').val();
 
-            if ($('#kd_icd_pm').val() == '') {
+            if ($('#icd9-pemeriksaanfisik').prop('required') && $('#kd_icd_pm').val() == '') {
                 $.toast({
                     heading: "Kode ICD-9 belum diisi",
                     text: 'Harap Masukan Kode Tindakan ICD-9CM untuk Pemeriksaan Fisik',
