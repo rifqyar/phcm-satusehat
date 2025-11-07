@@ -3,16 +3,22 @@
 namespace App\Http\Controllers\SatuSehat;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\LogTraits;
+use App\Http\Traits\SATUSEHATTraits;
 use App\Lib\LZCompressor\LZString;
 use App\Models\GlobalParameter;
 use App\Models\SATUSEHAT\SS_Kode_API;
 use Carbon\Carbon;
+use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Facades\DataTables;
 
 class DiagnosticReportController extends Controller
 {
+    use SATUSEHATTraits, LogTraits;
+
     public function index()
     {
         return view('pages.satusehat.diagnostic-report.index');
@@ -100,11 +106,12 @@ class DiagnosticReportController extends Controller
                 return ($row->nama_kategori ?? '') . '<br>' . ($row->keterangan ?? '') . '<br>(' . ($row->file_name ?? '') . ')';
             })
             ->addColumn('aksi', function ($row) {
+                
                 $openFileBtn = '<button type="button" class="btn btn-success btn-sm mr-1" onclick="openFile(\'' . url('assets/dokumen_px/' . $row->kbuku . '/' . $row->file_name) . '\')">
                     <i class="fa fa-search"></i> Lihat File
                 </button>';
 
-                $sendBtn = '<button class="btn btn-warning btn-sm mr-1" onclick="sendSatuSehat()">
+                $sendBtn = '<button class="btn btn-primary btn-sm mr-1" onclick="sendSatuSehat()">
                     <i class="fa fa-link"></i> Kirim Satu Sehat
                 </button>';
 
@@ -179,6 +186,8 @@ class DiagnosticReportController extends Controller
 
         $id_unit      = '001'; // session('id_klinik');
         $status = '';
+
+        $dateTimeNow = Carbon::now()->toIso8601String();
 
         $categories = [
             [
@@ -272,5 +281,50 @@ class DiagnosticReportController extends Controller
                 ]
             ]
         ];
+
+        try {
+            $login = $this->login($id_unit);
+
+            $token = $login['response']['token'];
+
+            if (!$token) {
+                throw new Exception('Gagal auth dengan satu sehat');
+            }
+
+            $data = json_decode(json_encode($data));
+
+            dd($data);
+            
+            $diagnosticReportRequest = $this->consumeSATUSEHATAPI('POST', $baseurl, 'DiagnosticReport', $data, true, $token);
+            
+            $result = json_decode($diagnosticReportRequest->getBody()->getContents(), true);
+
+            if ($diagnosticReportRequest->getStatusCode() >= 400) {
+                $response = json_decode($diagnosticReportRequest->getBody(), true);
+
+                $this->logError('DiagnosticReport', 'Gagal kirim data diagnostic report', [
+                    'payload' => $data,
+                    'response' => $response,
+                    'user_id' => 'system'
+                ]);
+
+                $this->logDb(json_encode($response), 'Specimen', json_encode($data), 'system');
+
+                $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Diagnostic Report';
+
+                throw new Exception($msg, $diagnosticReportRequest->getStatusCode());
+            } else {
+                
+            }
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => JsonResponse::HTTP_BAD_REQUEST,
+                'message' => $e->getMessage() ?? 'Gagal mengirim data laporan pemeriksaan',
+                'redirect' => [
+                    'need' => false,
+                    'to' => null,
+                ]
+            ], 400);
+        }
     }
 }

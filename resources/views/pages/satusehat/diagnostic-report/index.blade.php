@@ -166,7 +166,7 @@
                             <th>Kategori & File</th>
                             <th>Diupload Oleh</th>
                             <th>Tanggal Upload</th>
-                            <th width="300">Aksi</th>
+                            <th width="300"></th>
                         </tr>
                     </thead>
                 </table>
