@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SatuSehat;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\LogTraits;
 use App\Http\Traits\SATUSEHATTraits;
+use App\Jobs\SendSpecimenJob;
 use App\Lib\LZCompressor\LZString;
 use App\Models\GlobalParameter;
 use App\Models\SATUSEHAT\SS_Kode_API;
@@ -242,6 +243,27 @@ class SpecimenController extends Controller
 
         return DataTables::of($dataKunjungan)
             ->addIndexColumn()
+            ->addColumn('checkbox', function ($row) {
+                $idRiwayatElab = LZString::compressToEncodedURIComponent($row->ID_RIWAYAT_ELAB);
+                $karcisAsal = LZString::compressToEncodedURIComponent($row->KARCIS_ASAL);
+                $karcisRujukan = LZString::compressToEncodedURIComponent($row->KARCIS_RUJUKAN);
+                $kdKlinik = LZString::compressToEncodedURIComponent($row->KLINIK_TUJUAN);
+                $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
+                $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
+                $kdDokterSS = LZString::compressToEncodedURIComponent($row->idnakes);
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcisAsal . '+' . $karcisRujukan . '+' . $kdKlinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
+
+                $checkBox = '';
+                if (!$row->SATUSEHAT) {
+                    $uniqueId = 'checkbox_' . md5($paramSatuSehat);
+                    $checkBox = "
+                        <input type='checkbox' class='select-row chk-col-purple' value='$paramSatuSehat' id='$uniqueId' />
+                        <label for='$uniqueId' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
+                    ";
+                }
+
+                return $checkBox;
+            })
             ->editColumn('KLINIK_TUJUAN', function ($row) {
                 return $row->KLINIK_TUJUAN == '0017' ? '<span class="badge badge-pill badge-success p-2 w-100">Laboratory</span>' : '<span class="badge badge-pill badge-info p-2 w-100">Radiology</span>';
             })
@@ -308,8 +330,7 @@ class SpecimenController extends Controller
                     return '<span class="badge badge-pill badge-danger p-2 w-100">Tindakan Belum Mapping</span>';
                 }
             })
-            ->rawColumns(['KLINIK_TUJUAN', 'action', 'status_integrasi', 'status_mapping'])
-            // ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi'])
+            ->rawColumns(['checkbox', 'KLINIK_TUJUAN', 'action', 'status_integrasi', 'status_mapping'])
             ->make(true);
     }
 
@@ -573,6 +594,78 @@ class SpecimenController extends Controller
                     'to' => null,
                 ]
             ], $th->getCode() != '' ? $th->getCode() : 500);
+        }
+    }
+
+    public function bulkSendSatuSehat(Request $request)
+    {
+        try {
+            $selectedIds = $request->input('selected_ids', []);
+            
+            if (empty($selectedIds)) {
+                return response()->json([
+                    'status' => 422,
+                    'message' => 'Tidak ada data yang dipilih untuk dikirim'
+                ], 422);
+            }
+
+            $dispatched = 0;
+            $failed = 0;
+            $errors = [];
+
+            foreach ($selectedIds as $param) {
+                try {
+                    // Add base64 encoding before dispatching the job
+                    $encodedParam = base64_encode($param);
+                    
+                    // Dispatch job to queue for background processing
+                    SendSpecimenJob::dispatch($encodedParam);
+                    $dispatched++;
+                } catch (Exception $e) {
+                    $failed++;
+                    $errors[] = "Failed to dispatch param: " . substr($param, 0, 20) . "... - " . $e->getMessage();
+                    
+                    Log::error('Failed to dispatch SendSpecimenJob', [
+                        'param' => $param,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            // Log the bulk dispatch
+            Log::info('Bulk specimen jobs dispatched', [
+                'total_dispatched' => $dispatched,
+                'total_failed' => $failed,
+                'user_id' => 'system', // You can use Session::get('id') if needed
+                'params_count' => count($selectedIds)
+            ]);
+
+            $message = "Berhasil mengirim {$dispatched} specimen ke antrian untuk diproses. Pengiriman akan berlanjut di background.";
+            if ($failed > 0) {
+                $message .= " {$failed} gagal dikirim.";
+            }
+
+            return response()->json([
+                'status' => JsonResponse::HTTP_OK,
+                'message' => $message,
+                'data' => [
+                    'dispatched_count' => $dispatched,
+                    'failed_count' => $failed,
+                    'total_selected' => count($selectedIds),
+                    'errors' => array_slice($errors, 0, 3) // Show first 3 errors
+                ]
+            ], 200);
+
+        } catch (Exception $e) {
+            Log::error('Bulk specimen dispatch failed', [
+                'error' => $e->getMessage(),
+                'user_id' => 'system' // Session::get('id')
+            ]);
+
+            return response()->json([
+                'status' => 500,
+                'message' => 'Gagal mengirim ke antrian specimen: ' . $e->getMessage()
+            ], 500);
         }
     }
 
