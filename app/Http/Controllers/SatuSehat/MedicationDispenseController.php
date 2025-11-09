@@ -23,7 +23,6 @@ class MedicationDispenseController extends Controller
             $startDate = now()->subDays(30);
         }
 
-        // 🧱 Query utama Medication Dispense (sudah ditambah join dokter ac.nmDok)
         $query = DB::table(DB::raw("
         (
             SELECT DISTINCT
@@ -36,7 +35,6 @@ class MedicationDispenseController extends Controller
                 b.NAMA AS NamaPasien,
                 c.NMDEBT AS NamaDebitur,
                 b.TGL_LHR AS TanggalLahir,
-                'N' AS FlagKirim,
                 a.TGL AS TanggalKunjungan,
                 CASE 
                     WHEN k.NO_KUNJUNG IS NULL THEN 'BELUM'
@@ -48,7 +46,14 @@ class MedicationDispenseController extends Controller
                 END AS StatusPermintaanIsian,
                 aa.NOTA,
                 ab.ID_TRANS,
-                ac.nmDok AS NamaDokter
+                ac.nmDok AS NamaDokter,
+                r.id_satusehat_encounter,
+                CASE 
+                    WHEN log_disp.ID IS NOT NULL THEN '200'
+                    WHEN log_req.ID IS NOT NULL THEN '100'
+                    ELSE '000'
+                END AS STATUS_MAPPING,
+                log_disp.CREATED_AT AS WaktuKirimTerakhir
             FROM SIRS_PHCM.dbo.RJ_KARCIS a
             JOIN SIRS_PHCM.dbo.RIRJ_MASTERPX b
                 ON a.NO_PESERTA = b.NO_PESERTA
@@ -58,6 +63,8 @@ class MedicationDispenseController extends Controller
                 ON a.KARCIS = aa.KARCIS
             LEFT JOIN SIRS_PHCM.dbo.IF_HTRANS ab
                 ON aa.NOTA = ab.NOTA
+            LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA r 
+                ON ab.NOTA = r.nota
             LEFT JOIN SIRS_PHCM.dbo.DR_MDOKTER ac
                 ON a.KDDOK = ac.kdDok
             LEFT JOIN E_RM_PHCM.dbo.ERM_NOMOR_KUNJUNG j
@@ -66,44 +73,59 @@ class MedicationDispenseController extends Controller
                 ON j.NO_KUNJUNG = k.NO_KUNJUNG AND k.AKTIF = '1'
             LEFT JOIN E_RM_PHCM.dbo.ERM_PERMINTAAN_ISIAN m
                 ON j.NO_KUNJUNG = m.NO_KUNJUNG AND m.AKTIF = 'true'
+
+            -- 🧩 Cek apakah encounter sudah punya MedicationRequest
+            LEFT JOIN (
+                SELECT 
+                    ENCOUNTER_ID,
+                    MAX(ID) AS ID,
+                    MAX(CREATED_AT) AS CREATED_AT
+                FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
+                WHERE LOG_TYPE = 'MedicationRequest'
+                    AND STATUS = 'success'
+                GROUP BY ENCOUNTER_ID
+            ) AS log_req ON log_req.ENCOUNTER_ID = r.id_satusehat_encounter
+
+            -- 🧩 Cek apakah encounter sudah punya MedicationDispense
+            LEFT JOIN (
+                SELECT 
+                    ENCOUNTER_ID,
+                    MAX(ID) AS ID,
+                    MAX(CREATED_AT) AS CREATED_AT
+                FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
+                WHERE LOG_TYPE = 'MedicationDispense'
+                    AND STATUS = 'success'
+                GROUP BY ENCOUNTER_ID
+            ) AS log_disp ON log_disp.ENCOUNTER_ID = r.id_satusehat_encounter
+
             WHERE
                 ISNULL(a.SELESAI, 0) NOT IN ('9','10')
                 AND ISNULL(a.STBTL, 0) = 0
                 AND ab.ID_TRANS IS NOT NULL
+                AND r.id_satusehat_encounter IS NOT NULL
         ) AS src
     "))
             ->whereBetween(DB::raw('CONVERT(date, src.TanggalKunjungan)'), [$startDate, $endDate])
             ->select(
-                'src.KodeKlinik',
-                'src.NomorUrut',
                 'src.NomorKarcis',
-                'src.TanggalKarcis',
-                'src.KodeBuku',
-                'src.NomorPeserta',
                 'src.NamaPasien',
-                'src.NamaDebitur',
-                DB::raw("CONVERT(varchar(10), src.TanggalLahir, 105) AS TanggalLahir"),
-                'src.FlagKirim',
+                'src.NamaDokter',
                 DB::raw("CONVERT(varchar(10), src.TanggalKunjungan, 105) AS TanggalKunjungan"),
-                'src.StatusRekamMedis',
-                'src.StatusPermintaanIsian',
-                'src.NOTA',
                 'src.ID_TRANS',
-                'src.NamaDokter'
+                'src.id_satusehat_encounter',
+                'src.STATUS_MAPPING',
+                DB::raw("CONVERT(varchar(19), src.WaktuKirimTerakhir, 120) AS WaktuKirimTerakhir")
             );
 
-        // 🧮 Hitung total data (sebelum filter datatable)
         $allData = $query->get();
         $recordsTotal = $allData->count();
 
-        // 🚀 DataTables server-side
         $dataTable = DataTables::of($query)
             ->order(function ($query) {
                 $query->orderBy('src.TanggalKunjungan', 'desc');
             })
             ->make(true);
 
-        // 📦 Tambahkan summary ke JSON
         $json = $dataTable->getData(true);
         $json['summary'] = [
             'all' => $recordsTotal,
@@ -111,6 +133,7 @@ class MedicationDispenseController extends Controller
 
         return response()->json($json);
     }
+
 
     public function getDetailObat(Request $request)
     {

@@ -166,16 +166,16 @@
                 <table id="dispenseTable" class="table table-striped table-bordered" style="width:100%">
                     <thead>
                         <tr>
-                            <th class="text-center">
-                                <input type="checkbox" id="checkAll">
-                            </th>
+                            <th class="text-center"><input type="checkbox" id="checkAll"></th>
                             <th>Karcis/Nomor Transaksi</th>
                             <th>Pasien</th>
                             <th>Dokter</th>
                             <th>Tgl Kunjungan</th>
+                            <th>Status Integrasi</th>
                             <th>Aksi</th>
                         </tr>
                     </thead>
+
                 </table>
             </div>
         </div>
@@ -228,44 +228,69 @@
                         searchable: false,
                         className: 'text-center',
                         render: function (data) {
-                            return `<input type="checkbox" class="checkbox-item" value="${data.ID_TRANS}">`;
+                            if (data.STATUS_MAPPING === '100' || data.STATUS_MAPPING === '200') {
+                                return `<input type="checkbox" class="checkbox-item" value="${data.ID_TRANS}">`;
+                            } else {
+                                return `<i class="text-muted">-</i>`;
+                            }
                         }
                     },
                     {
                         data: null,
-                        name: 'src.NomorKarcis',
+                        name: 'NomorKarcis',
                         render: function (data) {
-                            const karcis = data.NomorKarcis ?? '-';
-                            const idTrans = data.ID_TRANS ?? '-';
                             return `
                     <div>
-                        <strong>${karcis}</strong><br>
-                        <small class="text-muted">#${idTrans}</small>
+                        <strong>${data.NomorKarcis}</strong><br>
+                        <small class="text-muted">#${data.ID_TRANS}</small>
                     </div>
                 `;
                         }
                     },
-                    { data: 'NamaPasien', name: 'src.NamaPasien' },
-                    { data: 'NamaDokter', name: 'src.NamaDokter' },
-                    { data: 'TanggalKunjungan', name: 'src.TanggalKunjungan' },
+                    { data: 'NamaPasien', name: 'NamaPasien' },
+                    { data: 'NamaDokter', name: 'NamaDokter' },
+                    { data: 'TanggalKunjungan', name: 'TanggalKunjungan' },
+                    {
+                        data: 'STATUS_MAPPING',
+                        className: 'text-center',
+                        render: function (status) {
+                            if (status === '200') {
+                                return `<span class="badge badge-success">Sudah Dikirim</span>`;
+                            } else if (status === '100') {
+                                return `<span class="badge badge-warning">Siap Dikirim</span>`;
+                            } else {
+                                return `<span class="badge badge-danger">Belum Integrasi</span>`;
+                            }
+                        }
+                    },
                     {
                         data: null,
                         orderable: false,
                         searchable: false,
                         render: function (data) {
-                            const btnLihat = `
-                    <button class="btn btn-sm btn-info w-100 mb-2" onclick="lihatObat('${data.ID_TRANS}')">
-                        <i class="fas fa-eye"></i> Lihat Obat
-                    </button>
-                `;
+                            let btn = `
+                                <button class="btn btn-sm btn-info w-100 mb-2" onclick="lihatObat('${data.ID_TRANS}')">
+                                    <i class="fas fa-eye"></i> Lihat Obat
+                                </button>`;
 
-                            const btnKirim = `
-                    <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                        <i class="fas fa-paper-plane"></i> Kirim SATUSEHAT
-                    </button>
-                `;
+                            if (data.STATUS_MAPPING === '100') {
+                                btn += `
+                                    <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                        <i class="fas fa-paper-plane"></i> Kirim SATUSEHAT
+                                    </button>`;
+                            } else if (data.STATUS_MAPPING === '200') {
+                                btn += `
+                                    <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                        <i class="fas fa-redo"></i> Kirim Ulang
+                                    </button>`;
+                            } else {
+                                btn += `
+                                    <span class="badge badge-secondary w-100 py-2">
+                                        <i class="fas fa-ban"></i> Belum ada MedicationRequest
+                                    </span>`;
+                            }
 
-                            return `${btnLihat}${btnKirim}`;
+                            return btn;
                         }
                     }
                 ],
@@ -367,14 +392,14 @@
 
             // 🧾 Ringkasan akhir
             let summaryHtml = `
-            <div style="text-align:left; max-height:300px; overflow-y:auto;">
-                <strong>Sukses (${successCount}):</strong><br>
-                ${successIds.length ? successIds.map(id => `✅ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
-                <br><br>
-                <strong>Gagal (${failCount}):</strong><br>
-                ${failIds.length ? failIds.map(id => `❌ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
-            </div>
-        `;
+                    <div style="text-align:left; max-height:300px; overflow-y:auto;">
+                        <strong>Sukses (${successCount}):</strong><br>
+                        ${successIds.length ? successIds.map(id => `✅ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
+                        <br><br>
+                        <strong>Gagal (${failCount}):</strong><br>
+                        ${failIds.length ? failIds.map(id => `❌ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
+                    </div>
+                `;
 
             swal({
                 title: 'Proses Selesai',
@@ -403,17 +428,17 @@
                 success: function (res) {
                     if (res.status === 'success') {
                         let html = `<table class="table table-sm table-bordered">
-                                        <thead class="thead-light">
-                                            <tr><th>No</th><th>Nama Obat</th><th>KFA Code</th><th>Nama KFA</th></tr>
-                                        </thead><tbody>`;
+                                                <thead class="thead-light">
+                                                    <tr><th>No</th><th>Nama Obat</th><th>KFA Code</th><th>Nama KFA</th></tr>
+                                                </thead><tbody>`;
 
                         res.data.forEach((row, i) => {
                             html += `<tr>
-                                            <td>${i + 1}</td>
-                                            <td>${row.NAMA_OBAT ?? '-'}</td>
-                                            <td>${row.KD_BRG_KFA ?? '-'}</td>
-                                            <td>${row.NAMABRG_KFA ?? '-'}</td>
-                                        </tr>`;
+                                                    <td>${i + 1}</td>
+                                                    <td>${row.NAMA_OBAT ?? '-'}</td>
+                                                    <td>${row.KD_BRG_KFA ?? '-'}</td>
+                                                    <td>${row.NAMABRG_KFA ?? '-'}</td>
+                                                </tr>`;
                         });
 
                         html += `</tbody></table>`;
@@ -484,30 +509,30 @@
                         }
                     },
                     error: function (xhr) {
-                    console.error(`❌ Error kirim ${idTrans}:`, xhr);
+                        console.error(`❌ Error kirim ${idTrans}:`, xhr);
 
-                    // ambil pesan dari API
-                    let errMsg = 'Terjadi kesalahan saat mengirim data.';
-                    if (xhr.responseJSON && xhr.responseJSON.message) {
-                        errMsg = xhr.responseJSON.message;
-                    } else if (xhr.responseText) {
-                        // fallback untuk response non-JSON
-                        errMsg = xhr.responseText.substring(0, 500); // biar gak kepanjangan
+                        // ambil pesan dari API
+                        let errMsg = 'Terjadi kesalahan saat mengirim data.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errMsg = xhr.responseJSON.message;
+                        } else if (xhr.responseText) {
+                            // fallback untuk response non-JSON
+                            errMsg = xhr.responseText.substring(0, 500); // biar gak kepanjangan
+                        }
+
+                        if (showSwal) {
+                            swal({
+                                title: 'Error!',
+                                html: `<b>Transaksi ${idTrans}</b> gagal dikirim.<br><br>` +
+                                    `<pre style="text-align:left;white-space:pre-wrap;">${errMsg}</pre>`,
+                                type: 'error',
+                                width: '600px',
+                                confirmButtonColor: '#d33'
+                            });
+                        }
+
+                        resolve({ success: false, id: idTrans, message: errMsg });
                     }
-
-                    if (showSwal) {
-                        swal({
-                            title: 'Error!',
-                            html: `<b>Transaksi ${idTrans}</b> gagal dikirim.<br><br>` +
-                                `<pre style="text-align:left;white-space:pre-wrap;">${errMsg}</pre>`,
-                            type: 'error',
-                            width: '600px',
-                            confirmButtonColor: '#d33'
-                        });
-                    }
-
-                    resolve({ success: false, id: idTrans, message: errMsg });
-                }
 
                 });
             });
