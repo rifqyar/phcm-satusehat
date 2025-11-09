@@ -225,42 +225,62 @@
 
             // 🚀 Fungsi utama kirim batch satu per satu
             async function sendSequential(selected) {
-                let successCount = 0;
-                let failCount = 0;
+    let successCount = 0;
+    let failCount = 0;
+    let successIds = [];
+    let failIds = [];
 
-                for (let i = 0; i < selected.length; i++) {
-                    const idTrans = selected[i];
-                    console.log(`🚀 Mengirim ${i + 1}/${selected.length}: ${idTrans}`);
+    for (let i = 0; i < selected.length; i++) {
+        const idTrans = selected[i];
+        console.log(`🚀 Mengirim ${i + 1}/${selected.length}: ${idTrans}`);
 
-                    // update status swal (progress)
-                    swal({
-                        title: 'Mengirim Data...',
-                        text: `Mengirim ${i + 1} dari ${selected.length} transaksi...`,
-                        type: 'info',
-                        showConfirmButton: false,
-                        allowOutsideClick: false
-                    });
+        // tampilkan status swal progress
+        swal({
+            title: 'Mengirim Data...',
+            text: `Mengirim ${i + 1} dari ${selected.length} transaksi...`,
+            type: 'info',
+            showConfirmButton: false,
+            allowOutsideClick: false
+        });
 
-                    try {
-                        const result = await kirimSatusehat(idTrans, null, false);
-                        if (result && result.success) successCount++;
-                        else failCount++;
-                    } catch (err) {
-                        console.error(`❌ Error kirim ${idTrans}:`, err);
-                        failCount++;
-                    }
-                }
-
-                // selesai semua
-                swal({
-                    title: 'Proses Selesai',
-                    text: `Sukses: ${successCount} | Gagal: ${failCount}`,
-                    type: failCount === 0 ? 'success' : 'warning',
-                    confirmButtonColor: failCount === 0 ? '#28a745' : '#f0ad4e'
-                }).then(function () {
-                    table.ajax.reload(null, false);
-                });
+        try {
+            const result = await kirimSatusehat(idTrans, null, false);
+            if (result && result.success) {
+                successCount++;
+                successIds.push(idTrans);
+            } else {
+                failCount++;
+                failIds.push(idTrans);
             }
+        } catch (err) {
+            console.error(`❌ Error kirim ${idTrans}:`, err);
+            failCount++;
+            failIds.push(idTrans);
+        }
+    }
+
+    // semua selesai
+    let summaryHtml = `
+        <div style="text-align:left; max-height:300px; overflow-y:auto;">
+            <strong>Sukses (${successCount}):</strong><br>
+            ${successIds.length ? successIds.map(id => `✅ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
+            <br><br>
+            <strong>Gagal (${failCount}):</strong><br>
+            ${failIds.length ? failIds.map(id => `❌ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
+        </div>
+    `;
+
+    swal({
+        title: 'Proses Selesai',
+        html: summaryHtml,
+        type: failCount === 0 ? 'success' : 'warning',
+        width: '600px',
+        confirmButtonText: 'Tutup',
+        confirmButtonColor: failCount === 0 ? '#28a745' : '#f0ad4e'
+    }).then(function () {
+        table.ajax.reload(null, false);
+    });
+}
 
 
             // ⚡ Event tombol "Kirim Dipilih"
@@ -327,9 +347,14 @@
                         searchable: false,
                         className: 'text-center',
                         render: function (data) {
-                            return `<input type="checkbox" class="checkbox-item" value="${data.ID_TRANS}">`;
+                            if (data.STATUS_MAPPING === '100' || data.STATUS_MAPPING === '200') {
+                                return `<input type="checkbox" class="checkbox-item" value="${data.ID_TRANS}">`;
+                            } else {
+                                return `<i class="text-muted">-</i>`;
+                            }
                         }
                     },
+
                     {
                         data: null,
                         name: 'K.KARCIS',
@@ -557,18 +582,28 @@
                 }
             },
             error: function (xhr) {
-                console.error(`❌ ${idTrans} error:`, xhr.responseText);
+                console.error(`❌ Error kirim ${idTrans}:`, xhr);
+
+                // Ambil pesan error dari API
+                let errMsg = 'Terjadi kesalahan saat mengirim data.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errMsg = xhr.responseJSON.message;
+                } else if (xhr.responseText) {
+                    errMsg = xhr.responseText.substring(0, 500);
+                }
 
                 if (showSwal) {
                     swal({
                         title: 'Error!',
-                        text: `Terjadi kesalahan saat mengirim transaksi ${idTrans}.`,
+                        html: `<b>Transaksi ${idTrans}</b> gagal dikirim.<br><br>` +
+                            `<pre style="text-align:left;white-space:pre-wrap;">${errMsg}</pre>`,
                         type: 'error',
+                        width: '600px',
                         confirmButtonColor: '#d33'
                     });
                 }
 
-                resolve({ success: false, id: idTrans });
+                resolve({ success: false, id: idTrans, message: errMsg });
             },
             complete: function () {
                 if (btn) {

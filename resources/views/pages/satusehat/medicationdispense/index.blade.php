@@ -24,7 +24,27 @@
             transition: all 0.3s ease;
             cursor: pointer;
         }
+
+        /* ✅ Kolom checkbox */
+        table.table th:first-child,
+        table.table td:first-child {
+            width: 50px !important;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        input[type="checkbox"],
+        .form-check-input {
+            appearance: auto !important;
+            -webkit-appearance: checkbox !important;
+            -moz-appearance: checkbox !important;
+            opacity: 1 !important;
+            position: static !important;
+            visibility: visible !important;
+            cursor: pointer;
+        }
     </style>
+
 @endpush
 
 @section('content')
@@ -136,10 +156,19 @@
             <hr>
 
             <!-- 🧾 Tabel Data -->
+            <div class="mb-3">
+                <button type="button" id="btnKirimDipilih" class="btn btn-success btn-sm">
+                    <i class="fas fa-paper-plane"></i> Kirim Dipilih
+                </button>
+            </div>
+
             <div class="table-responsive">
                 <table id="dispenseTable" class="table table-striped table-bordered" style="width:100%">
                     <thead>
                         <tr>
+                            <th class="text-center">
+                                <input type="checkbox" id="checkAll">
+                            </th>
                             <th>Karcis/Nomor Transaksi</th>
                             <th>Pasien</th>
                             <th>Dokter</th>
@@ -195,16 +224,25 @@
                 columns: [
                     {
                         data: null,
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-center',
+                        render: function (data) {
+                            return `<input type="checkbox" class="checkbox-item" value="${data.ID_TRANS}">`;
+                        }
+                    },
+                    {
+                        data: null,
                         name: 'src.NomorKarcis',
                         render: function (data) {
                             const karcis = data.NomorKarcis ?? '-';
                             const idTrans = data.ID_TRANS ?? '-';
                             return `
-                                    <div>
-                                        <strong>${karcis}</strong><br>
-                                        <small class="text-muted">#${idTrans}</small>
-                                    </div>
-                                `;
+                    <div>
+                        <strong>${karcis}</strong><br>
+                        <small class="text-muted">#${idTrans}</small>
+                    </div>
+                `;
                         }
                     },
                     { data: 'NamaPasien', name: 'src.NamaPasien' },
@@ -216,21 +254,22 @@
                         searchable: false,
                         render: function (data) {
                             const btnLihat = `
-                                    <button class="btn btn-sm btn-info w-100 mb-2" onclick="lihatObat('${data.ID_TRANS}')">
-                                        <i class="fas fa-eye"></i> Lihat Obat
-                                    </button>
-                                `;
+                    <button class="btn btn-sm btn-info w-100 mb-2" onclick="lihatObat('${data.ID_TRANS}')">
+                        <i class="fas fa-eye"></i> Lihat Obat
+                    </button>
+                `;
 
                             const btnKirim = `
-                                    <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                                        <i class="fas fa-paper-plane"></i> Kirim SATUSEHAT
-                                    </button>
-                                `;
+                    <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                        <i class="fas fa-paper-plane"></i> Kirim SATUSEHAT
+                    </button>
+                `;
 
                             return `${btnLihat}${btnKirim}`;
                         }
                     }
                 ],
+
                 order: [[3, 'desc']]
             });
 
@@ -257,6 +296,95 @@
             $('input[name="search"]').val('');
             table.ajax.reload();
         }
+        // ✅ Checkbox select all
+        $(document).on('change', '#checkAll', function () {
+            $('.checkbox-item').prop('checked', $(this).is(':checked'));
+        });
+
+        // ✅ Tombol batch send
+        $('#btnKirimDipilih').on('click', function () {
+            const selected = $('.checkbox-item:checked').map(function () {
+                return $(this).val();
+            }).get();
+
+            if (selected.length === 0) {
+                swal({
+                    title: 'Tidak ada data yang dipilih',
+                    text: 'Silakan centang transaksi yang ingin dikirim.',
+                    type: 'warning',
+                    confirmButtonColor: '#3085d6'
+                });
+                return;
+            }
+
+            swal({
+                title: 'Kirim Data Terpilih?',
+                text: `Akan mengirim ${selected.length} transaksi ke SATUSEHAT.`,
+                type: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Kirim',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#3085d6',
+                cancelButtonColor: '#d33'
+            }).then(function (result) {
+                if (!result.value) return;
+                sendSequential(selected);
+            });
+        });
+
+
+        // 🚀 Proses sequential
+        async function sendSequential(selected) {
+            let successCount = 0;
+            let failCount = 0;
+            let successIds = [];
+            let failIds = [];
+
+            for (let i = 0; i < selected.length; i++) {
+                const idTrans = selected[i];
+                swal({
+                    title: 'Mengirim Data...',
+                    text: `Mengirim ${i + 1} dari ${selected.length} transaksi...`,
+                    type: 'info',
+                    showConfirmButton: false,
+                    allowOutsideClick: false
+                });
+
+                try {
+                    const result = await kirimSatusehat(idTrans, null, false);
+                    if (result.success) {
+                        successCount++;
+                        successIds.push(idTrans);
+                    } else {
+                        failCount++;
+                        failIds.push(idTrans);
+                    }
+                } catch (err) {
+                    failCount++;
+                    failIds.push(idTrans);
+                }
+            }
+
+            // 🧾 Ringkasan akhir
+            let summaryHtml = `
+            <div style="text-align:left; max-height:300px; overflow-y:auto;">
+                <strong>Sukses (${successCount}):</strong><br>
+                ${successIds.length ? successIds.map(id => `✅ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
+                <br><br>
+                <strong>Gagal (${failCount}):</strong><br>
+                ${failIds.length ? failIds.map(id => `❌ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
+            </div>
+        `;
+
+            swal({
+                title: 'Proses Selesai',
+                html: summaryHtml,
+                type: failCount === 0 ? 'success' : 'warning',
+                width: '600px',
+                confirmButtonText: 'Tutup',
+                confirmButtonColor: failCount === 0 ? '#28a745' : '#f0ad4e'
+            }).then(() => table.ajax.reload(null, false));
+        }
 
         function search(type) {
             $('input[name="search"]').val(type);
@@ -275,17 +403,17 @@
                 success: function (res) {
                     if (res.status === 'success') {
                         let html = `<table class="table table-sm table-bordered">
-                                <thead class="thead-light">
-                                    <tr><th>No</th><th>Nama Obat</th><th>KFA Code</th><th>Nama KFA</th></tr>
-                                </thead><tbody>`;
+                                        <thead class="thead-light">
+                                            <tr><th>No</th><th>Nama Obat</th><th>KFA Code</th><th>Nama KFA</th></tr>
+                                        </thead><tbody>`;
 
                         res.data.forEach((row, i) => {
                             html += `<tr>
-                                    <td>${i + 1}</td>
-                                    <td>${row.NAMA_OBAT ?? '-'}</td>
-                                    <td>${row.KD_BRG_KFA ?? '-'}</td>
-                                    <td>${row.NAMABRG_KFA ?? '-'}</td>
-                                </tr>`;
+                                            <td>${i + 1}</td>
+                                            <td>${row.NAMA_OBAT ?? '-'}</td>
+                                            <td>${row.KD_BRG_KFA ?? '-'}</td>
+                                            <td>${row.NAMABRG_KFA ?? '-'}</td>
+                                        </tr>`;
                         });
 
                         html += `</tbody></table>`;
@@ -324,51 +452,67 @@
         }
 
         // Kirim ke SATUSEHAT
-        function kirimSatusehat(idTrans) {
-            console.log('called');
-            $.ajax({
-                url: '{{ route('satusehat.medication-dispense.sendsehat') }}', // sesuaikan route backend
-                type: 'GET',
-                data: { id_trans: idTrans },
-                success: function (res) {
-                    if (res.status === 'success') {
-                        Swal.fire({
-                            icon: 'success',
-                            title: 'Berhasil!',
-                            html: `Transaksi <b>${idTrans}</b> berhasil dikirim.<br><br>` +
-                                `<small>${res.message || ''}</small>`,
-                            timer: 2500
-                        });
-                    } else {
-                        Swal.fire({
-                            icon: 'warning',
-                            title: 'Gagal!',
-                            html: `<b>Transaksi ${idTrans}</b> gagal dikirim.<br><br>` +
-                                `<pre style="text-align:left;white-space:pre-wrap;">${res.message || 'Tidak ada pesan error'}</pre>`
-                        });
-                    }
-                    table.ajax.reload();
-                },
-                error: function (xhr) {
-                    // Ambil pesan error dari response backend
-                    let errMsg = 'Terjadi kesalahan server.';
+        function kirimSatusehat(idTrans, btn = null, showSwal = true) {
+            return new Promise((resolve, reject) => {
+                if (!idTrans) return reject('ID_TRANS kosong.');
+
+                $.ajax({
+                    url: '{{ route('satusehat.medication-dispense.sendsehat') }}',
+                    type: 'GET',
+                    data: { id_trans: idTrans },
+                    success: function (res) {
+                        if (res.status === 'success') {
+                            if (showSwal) {
+                                swal({
+                                    title: 'Berhasil!',
+                                    text: `Transaksi ${idTrans} berhasil dikirim ke SATUSEHAT.`,
+                                    type: 'success',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+                            }
+                            resolve({ success: true, id: idTrans });
+                        } else {
+                            if (showSwal) {
+                                swal({
+                                    title: 'Gagal!',
+                                    text: `Transaksi ${idTrans} gagal dikirim.\n${res.message || ''}`,
+                                    type: 'warning'
+                                });
+                            }
+                            resolve({ success: false, id: idTrans });
+                        }
+                    },
+                    error: function (xhr) {
+                    console.error(`❌ Error kirim ${idTrans}:`, xhr);
+
+                    // ambil pesan dari API
+                    let errMsg = 'Terjadi kesalahan saat mengirim data.';
                     if (xhr.responseJSON && xhr.responseJSON.message) {
                         errMsg = xhr.responseJSON.message;
                     } else if (xhr.responseText) {
-                        errMsg = xhr.responseText;
+                        // fallback untuk response non-JSON
+                        errMsg = xhr.responseText.substring(0, 500); // biar gak kepanjangan
                     }
 
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Error!',
-                        html: `<b>Transaksi ${idTrans}</b> gagal dikirim.<br><br>` +
-                            `<pre style="text-align:left;white-space:pre-wrap;">${errMsg}</pre>`
-                    });
+                    if (showSwal) {
+                        swal({
+                            title: 'Error!',
+                            html: `<b>Transaksi ${idTrans}</b> gagal dikirim.<br><br>` +
+                                `<pre style="text-align:left;white-space:pre-wrap;">${errMsg}</pre>`,
+                            type: 'error',
+                            width: '600px',
+                            confirmButtonColor: '#d33'
+                        });
+                    }
 
-                    console.error('Error detail:', xhr);
+                    resolve({ success: false, id: idTrans, message: errMsg });
                 }
+
+                });
             });
         }
+
 
     </script>
 @endpush
