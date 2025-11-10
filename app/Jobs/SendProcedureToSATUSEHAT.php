@@ -51,49 +51,71 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
     public function handle()
     {
         try {
-            $controller = app('App\\Http\\Controllers\\SatuSehat\\ProcedureController');
-            $response = $controller->consumeSATUSEHATAPI('POST', $this->baseurl, $this->url, $this->payload['payload'], true, $this->token);
+            if (count($this->payload['payload']) > 0) {
+                $procedureSatuSehat = SATUSEHAT_PROCEDURE::where('ID_JENIS_TINDAKAN', $this->payload['id_tindakan']);
+                $controller = app('App\\Http\\Controllers\\SatuSehat\\ProcedureController');
+                $response = $controller->consumeSATUSEHATAPI('POST', $this->baseurl, $this->url, $this->payload['payload'], true, $this->token);
 
-            $result = json_decode($response->getBody()->getContents(), true);
+                $result = json_decode($response->getBody()->getContents(), true);
 
-            if ($response->getStatusCode() >= 400) {
-                $res = json_decode($response->getBody(), true);
+                if ($response->getStatusCode() >= 400) {
+                    $res = json_decode($response->getBody(), true);
 
-                $this->logError($this->url, 'Gagal kirim data Procedure ' . $this->type, [
-                    'payload' => $this->payload['payload'],
-                    'response' => $res,
-                    'user_id' => 'system'
-                ]);
+                    $this->logError($this->url, 'Gagal kirim data Procedure ' . $this->type, [
+                        'payload' => $this->payload['payload'],
+                        'response' => $res,
+                        'user_id' => 'system'
+                    ]);
 
-                $this->logDb(json_encode($res), $this->url, json_encode($this->payload['payload']), 'system'); //Session::get('id')
+                    $this->logDb(json_encode($res), $this->url, json_encode($this->payload['payload']), 'system'); //Session::get('id')
 
-                $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Encounter';
-                throw new Exception($msg, $response->getStatusCode());
+                    $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Encounter';
+                    throw new Exception($msg, $response->getStatusCode());
+                } else {
+                    $procedureData = [
+                        'KBUKU' => $this->dataKarcis->KBUKU,
+                        'NO_PESERTA' => $this->dataPeserta->NO_PESERTA,
+                        'ID_SATUSEHAT_ENCOUNTER' => $this->arrParam['encounter_id'],
+                        'ID_JENIS_TINDAKAN' => $this->payload['id_tindakan'],
+                        'KD_ICD9' => $this->payload['kodeICD'],
+                        'DISP_ICD9' => $this->payload['textICD'],
+                        'JENIS_TINDAKAN' => $this->type,
+                        'KDDOK' => $this->payload['kddok'],
+                        'ID_SATUSEHAT_PROCEDURE' => $result['id'],
+                        'STATUS_SINCRON' => 1,
+                        'SINCRON_DATE' => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s')
+                    ];
+
+                    $existingProcedure = $procedureSatuSehat->where('KARCIS', (int)$this->dataKarcis->KARCIS)
+                        ->where('JENIS_TINDAKAN', $this->type)
+                        ->first();
+
+                    if ($existingProcedure) {
+                        DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE')
+                            ->where('KARCIS', $this->dataKarcis->KARCIS)
+                            ->where('JENIS_TINDAKAN', $this->type)
+                            ->update($procedureData);
+                    } else {
+                        $procedureData['KARCIS'] = (int)$this->dataKarcis->KARCIS;
+                        $procedureData['CRTDT'] = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
+                        $procedureData['CRTUSER'] = 'system';
+                        SATUSEHAT_PROCEDURE::create($procedureData);
+                    }
+
+                    $this->logInfo($this->url, 'Sukses kirim data Procedure ' . $this->type, [
+                        'payload' => $this->payload,
+                        'response' => $result,
+                        'user_id' => 'system' //Session::get('id')
+                    ]);
+
+                    $this->logDb(json_encode($result), $this->url, json_encode($this->payload), 'system'); //Session::get('id')
+                }
             } else {
-                $procedureSatuSehat = new SATUSEHAT_PROCEDURE();
-                $procedureSatuSehat->karcis = (int)$this->dataKarcis->KARCIS;
-                $procedureSatuSehat->kbuku = $this->dataKarcis->KBUKU;
-                $procedureSatuSehat->no_peserta = $this->dataPeserta->NO_PESERTA;
-                $procedureSatuSehat->id_satusehat_encounter = $this->arrParam['encounter_id'];
-                $procedureSatuSehat->id_satusehat_procedure = $result['id'];
-                $procedureSatuSehat->crtdt = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
-                $procedureSatuSehat->crtuser = 'system';
-                $procedureSatuSehat->status_sincron = 1;
-                $procedureSatuSehat->sincron_date = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
-                $procedureSatuSehat->ID_JENIS_TINDAKAN = $this->payload['id_tindakan'];
-                $procedureSatuSehat->KD_ICD9 = $this->payload['kodeICD'];
-                $procedureSatuSehat->DISP_ICD9 = $this->payload['textICD'];
-                $procedureSatuSehat->JENIS_TINDAKAN = $this->type;
-                $procedureSatuSehat->KDDOK = $this->payload['kddok'];
-                $procedureSatuSehat->save();
-
-                $this->logInfo($this->url, 'Sukses kirim data Procedure ' . $this->type, [
+                $this->logInfo($this->url, 'Sudah Integrasi ' . $this->type, [
                     'payload' => $this->payload,
-                    'response' => $result,
+                    'response' => 'Data Procedure Untuk jenis ini sudah pernah dikirim ke satusehat',
                     'user_id' => 'system' //Session::get('id')
                 ]);
-
-                $this->logDb(json_encode($result), $this->url, json_encode($this->payload), 'system'); //Session::get('id')
             }
         } catch (Exception $e) {
             $this->logError($this->url, 'Gagal kirim data Procedure ' . $this->type, [
