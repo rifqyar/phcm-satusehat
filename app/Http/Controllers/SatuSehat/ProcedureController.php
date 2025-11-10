@@ -45,7 +45,7 @@ class ProcedureController extends Controller
             })
             ->where('eri.AKTIF', 1)
             ->whereBetween('vkr.TANGGAL', [$startDate, $endDate])
-            ->selectRaw('
+            ->selectRaw("
                 vkr.ID_TRANSAKSI as KARCIS,
                 MAX(vkr.TANGGAL) as TANGGAL,
                 MAX(vkr.NO_PESERTA) as NO_PESERTA,
@@ -56,9 +56,29 @@ class ProcedureController extends Controller
                 MAX(vkr.ID_NAKES_SS) as ID_NAKES_SS,
                 MAX(rsn.id_satusehat_encounter) as id_satusehat_encounter,
                 MAX(rsp.ID_SATUSEHAT_PROCEDURE) as ID_SATUSEHAT_PROCEDURE,
-                CASE WHEN MAX(rsp.KARCIS) IS NOT NULL THEN 1 ELSE 0 END as sudah_integrasi,
+                CASE
+                    WHEN (
+                        -- Jika tidak ada data operasi tapi ada di erflo
+                        (EXISTS (SELECT 1 FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI erflo2
+                                WHERE erflo2.KARCIS = vkr.ID_TRANSAKSI)
+                        AND NOT EXISTS (SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp2
+                                        WHERE rsp2.KARCIS = vkr.ID_TRANSAKSI
+                                        AND rsp2.JENIS_TINDAKAN = 'operasi'
+                                        AND rsp2.ID_SATUSEHAT_PROCEDURE IS NOT NULL))
+                        OR
+                        -- Jika tidak ada data lab/rad tapi ada di ere
+                        (EXISTS (SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB ere2
+                                WHERE ere2.KARCIS_ASAL = vkr.ID_TRANSAKSI)
+                        AND NOT EXISTS (SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp3
+                                        WHERE rsp3.KARCIS = vkr.ID_TRANSAKSI
+                                        AND rsp3.JENIS_TINDAKAN IN ('lab', 'rad')
+                                        AND rsp3.ID_SATUSEHAT_PROCEDURE IS NOT NULL))
+                    ) THEN 0
+                    WHEN MAX(rsp.ID_SATUSEHAT_PROCEDURE) IS NOT NULL THEN 1
+                    ELSE 0
+                END as sudah_integrasi,
                 CASE WHEN MAX(eri.KARCIS) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
-            ')
+            ")
             ->groupBy('vkr.ID_TRANSAKSI')
             ->orderByDesc(DB::raw('MAX(vkr.TANGGAL)'))
             ->get();

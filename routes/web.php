@@ -66,13 +66,10 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::delete('/diagnosa/{id}', [App\Http\Controllers\SatuSehat\DiagnosaController::class, 'destroy'])->name('diagnosa.destroy');
 
         // Observasi
-        Route::get('/observation', [App\Http\Controllers\SatuSehat\EncounterController::class, 'index'])->name('observasi.index');
-        Route::post('/observation/datatable', [App\Http\Controllers\SatuSehat\EncounterController::class, 'datatable'])->name('observasi.datatable');
-        Route::get('/observation/create', [App\Http\Controllers\SatuSehat\EncounterController::class, 'create'])->name('observasi.create');
-        Route::post('/observation/store', [App\Http\Controllers\SatuSehat\EncounterController::class, 'store'])->name('observasi.store');
-        Route::get('/observation/{id}/edit', [App\Http\Controllers\SatuSehat\EncounterController::class, 'edit'])->name('observasi.edit');
-        Route::put('/observation/{id}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'update'])->name('observasi.update');
-        Route::delete('/observation/{id}', [App\Http\Controllers\SatuSehat\EncounterController::class, 'destroy'])->name('observasi.destroy');
+        Route::get('/observation', [App\Http\Controllers\SatuSehat\ObservasiController::class, 'index'])->name('observasi.index');
+        Route::post('/observation/datatable', [App\Http\Controllers\SatuSehat\ObservasiController::class, 'datatable'])->name('observasi.datatable');
+        Route::get('/observation/lihat-detail/{param}', [App\Http\Controllers\SatuSehat\ObservasiController::class, 'lihatDetail'])->name('observasi.lihat-detail');
+
 
         // Tindakan
         Route::get('/procedure', [App\Http\Controllers\SatuSehat\ProcedureController::class, 'index'])->name('procedure.index');

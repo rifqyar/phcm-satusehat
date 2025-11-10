@@ -19,7 +19,7 @@ class HomeController extends Controller
     {
         $satuSehatMenu = [
             [
-                'title' => 'Encounter / Kunjungan Pasien',
+                'title' => 'Kunjungan Pasien',
                 'url' => 'satusehat.encounter.index',
                 'bg_color' => 'card-success'
             ],
@@ -30,8 +30,8 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Observasi',
-                'url' => '#',
-                'bg_color' => ''
+                'url' => 'satusehat.observasi.index',
+                'bg_color' => 'card-warning'
             ],
             [
                 'title' => 'Tindakan',
@@ -72,6 +72,11 @@ class HomeController extends Controller
                 'title' => 'Permintaan Pemeriksaan (Penunjang Medis)',
                 'url' => 'satusehat.service-request.index',
                 'bg_color' => 'card-success'
+            ],
+            [
+                'title' => 'Impresi Klinis (ClinicalImpression)',
+                'url' => '#',
+                'bg_color' => ''
             ],
             [
                 'title' => 'Spesimen',
