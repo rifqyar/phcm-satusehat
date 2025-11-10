@@ -225,62 +225,62 @@
 
             // 🚀 Fungsi utama kirim batch satu per satu
             async function sendSequential(selected) {
-    let successCount = 0;
-    let failCount = 0;
-    let successIds = [];
-    let failIds = [];
+                let successCount = 0;
+                let failCount = 0;
+                let successIds = [];
+                let failIds = [];
 
-    for (let i = 0; i < selected.length; i++) {
-        const idTrans = selected[i];
-        console.log(`🚀 Mengirim ${i + 1}/${selected.length}: ${idTrans}`);
+                for (let i = 0; i < selected.length; i++) {
+                    const idTrans = selected[i];
+                    console.log(`🚀 Mengirim ${i + 1}/${selected.length}: ${idTrans}`);
 
-        // tampilkan status swal progress
-        swal({
-            title: 'Mengirim Data...',
-            text: `Mengirim ${i + 1} dari ${selected.length} transaksi...`,
-            type: 'info',
-            showConfirmButton: false,
-            allowOutsideClick: false
-        });
+                    // tampilkan status swal progress
+                    swal({
+                        title: 'Mengirim Data...',
+                        text: `Mengirim ${i + 1} dari ${selected.length} transaksi...`,
+                        type: 'info',
+                        showConfirmButton: false,
+                        allowOutsideClick: false
+                    });
 
-        try {
-            const result = await kirimSatusehat(idTrans, null, false);
-            if (result && result.success) {
-                successCount++;
-                successIds.push(idTrans);
-            } else {
-                failCount++;
-                failIds.push(idTrans);
+                    try {
+                        const result = await kirimSatusehat(idTrans, null, false);
+                        if (result && result.success) {
+                            successCount++;
+                            successIds.push(idTrans);
+                        } else {
+                            failCount++;
+                            failIds.push(idTrans);
+                        }
+                    } catch (err) {
+                        console.error(`❌ Error kirim ${idTrans}:`, err);
+                        failCount++;
+                        failIds.push(idTrans);
+                    }
+                }
+
+                // semua selesai
+                let summaryHtml = `
+            <div style="text-align:left; max-height:300px; overflow-y:auto;">
+                <strong>Sukses (${successCount}):</strong><br>
+                ${successIds.length ? successIds.map(id => `✅ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
+                <br><br>
+                <strong>Gagal (${failCount}):</strong><br>
+                ${failIds.length ? failIds.map(id => `❌ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
+            </div>
+        `;
+
+                swal({
+                    title: 'Proses Selesai',
+                    html: summaryHtml,
+                    type: failCount === 0 ? 'success' : 'warning',
+                    width: '600px',
+                    confirmButtonText: 'Tutup',
+                    confirmButtonColor: failCount === 0 ? '#28a745' : '#f0ad4e'
+                }).then(function () {
+                    table.ajax.reload(null, false);
+                });
             }
-        } catch (err) {
-            console.error(`❌ Error kirim ${idTrans}:`, err);
-            failCount++;
-            failIds.push(idTrans);
-        }
-    }
-
-    // semua selesai
-    let summaryHtml = `
-        <div style="text-align:left; max-height:300px; overflow-y:auto;">
-            <strong>Sukses (${successCount}):</strong><br>
-            ${successIds.length ? successIds.map(id => `✅ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
-            <br><br>
-            <strong>Gagal (${failCount}):</strong><br>
-            ${failIds.length ? failIds.map(id => `❌ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
-        </div>
-    `;
-
-    swal({
-        title: 'Proses Selesai',
-        html: summaryHtml,
-        type: failCount === 0 ? 'success' : 'warning',
-        width: '600px',
-        confirmButtonText: 'Tutup',
-        confirmButtonColor: failCount === 0 ? '#28a745' : '#f0ad4e'
-    }).then(function () {
-        table.ajax.reload(null, false);
-    });
-}
 
 
             // ⚡ Event tombol "Kirim Dipilih"
@@ -337,7 +337,6 @@
                         d._token = '{{ csrf_token() }}';
                         d.start_date = $('#start_date').val();
                         d.end_date = $('#end_date').val();
-                        d.search = $('input[name="search"]').val();
                     }
                 },
                 columns: [
@@ -354,21 +353,20 @@
                             }
                         }
                     },
-
                     {
                         data: null,
-                        name: 'K.KARCIS',
+                        name: 'a.KARCIS', // ✅ pakai alias dari backend
                         render: function (data) {
                             return `
-                                ${data.KARCIS ?? '-'}
-                                <br/>
-                                <small class="text-muted">ID: ${data.ID_TRANS ?? '-'}</small>
-                            `;
+                        ${data.KARCIS ?? '-'}
+                        <br/>
+                        <small class="text-muted">ID: ${data.ID_TRANS ?? '-'}</small>
+                    `;
                         }
                     },
-                    { data: 'DOKTER', name: 'N.nama' },
-                    { data: 'PASIEN', name: 'P.nama' },
-                    { data: 'TGL_KARCIS', name: 'A.TGL_KARCIS' },
+                    { data: 'DOKTER', name: 'c.DOKTER' }, // ✅ alias backend
+                    { data: 'PASIEN', name: 'c.NAMA_PASIEN', searchable: true }, // ✅ alias backend
+                    { data: 'TGL_KARCIS', name: 'c.TANGGAL' }, // ✅ alias backend
                     {
                         data: null,
                         render: function (data) {
@@ -385,22 +383,22 @@
                         searchable: false,
                         render: function (data) {
                             const btnLihat = `
-                                <br/>
-                                <button class="btn btn-sm btn-info w-100" onclick="lihatObat('${data.ID_TRANS}')">
-                                    <i class="fas fa-eye"></i> Lihat Obat
-                                </button>`;
+                        <br/>
+                        <button class="btn btn-sm btn-info w-100" onclick="lihatObat('${data.ID_TRANS}')">
+                            <i class="fas fa-eye"></i> Lihat Obat
+                        </button>`;
                             let btnAction = '';
 
                             if (data.STATUS_MAPPING === '100') {
                                 btnAction = `
-                                    <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                                        <i class="fas fa-link mr-2"></i> Kirim SATUSEHAT
-                                    </button>`;
+                            <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                <i class="fas fa-link mr-2"></i> Kirim SATUSEHAT
+                            </button>`;
                             } else if (data.STATUS_MAPPING === '200') {
                                 btnAction = `
-                                    <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                                        <i class="fas fa-link mr-2"></i> Kirim Ulang SATUSEHAT
-                                    </button>`;
+                            <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                <i class="fas fa-link mr-2"></i> Kirim Ulang SATUSEHAT
+                            </button>`;
                             } else {
                                 btnAction = `<i class="text-muted">Data obat belum termapping</i>`;
                             }
@@ -467,31 +465,31 @@
                 success: function (res) {
                     if (res.status === 'success') {
                         let html = `
-                                                            <table class="table table-sm table-bordered">
-                                                                <thead class="thead-light">
-                                                                    <tr>
-                                                                        <th>No</th>
-                                                                        <th>Nama Obat</th>
-                                                                        <th>Signa</th>
-                                                                        <th>Keterangan</th>
-                                                                        <th>Jumlah</th>
-                                                                        <th>KFA Code</th>
-                                                                        <th>Nama KFA</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>`;
+                                                                <table class="table table-sm table-bordered">
+                                                                    <thead class="thead-light">
+                                                                        <tr>
+                                                                            <th>No</th>
+                                                                            <th>Nama Obat</th>
+                                                                            <th>Signa</th>
+                                                                            <th>Keterangan</th>
+                                                                            <th>Jumlah</th>
+                                                                            <th>KFA Code</th>
+                                                                            <th>Nama KFA</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>`;
 
                         res.data.forEach((row, index) => {
                             html += `
-                                                                <tr>
-                                                                    <td>${index + 1}</td>
-                                                                    <td>${row.NAMA_OBAT ?? '-'}</td>
-                                                                    <td>${row.SIGNA ?? '-'}</td>
-                                                                    <td>${row.KET ?? '-'}</td>
-                                                                    <td>${row.JUMLAH ?? '-'}</td>
-                                                                    <td>${row.KD_BRG_KFA ? row.KD_BRG_KFA : '<strong>Kode KFA Belum Termapping</strong>'}</td>
-                                                                    <td>${row.NAMABRG_KFA ?? '-'}</td>
-                                                                </tr>`;
+                                                                    <tr>
+                                                                        <td>${index + 1}</td>
+                                                                        <td>${row.NAMA_OBAT ?? '-'}</td>
+                                                                        <td>${row.SIGNA ?? '-'}</td>
+                                                                        <td>${row.KET ?? '-'}</td>
+                                                                        <td>${row.JUMLAH ?? '-'}</td>
+                                                                        <td>${row.KD_BRG_KFA ? row.KD_BRG_KFA : '<strong>Kode KFA Belum Termapping</strong>'}</td>
+                                                                        <td>${row.NAMABRG_KFA ?? '-'}</td>
+                                                                    </tr>`;
                         });
 
                         html += `</tbody></table>`;
@@ -533,87 +531,87 @@
 
         // 🚀 fungsi kirim ke SATUSEHAT
         function kirimSatusehat(idTrans, btn = null, showSwal = true) {
-    return new Promise((resolve, reject) => {
-        if (!idTrans) return reject('ID_TRANS kosong.');
+            return new Promise((resolve, reject) => {
+                if (!idTrans) return reject('ID_TRANS kosong.');
 
-        if (!btn && typeof event !== 'undefined' && event.currentTarget) {
-            btn = event.currentTarget;
-        }
-
-        const originalText = btn ? btn.innerHTML : null;
-
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = `<i class='fas fa-spinner fa-spin'></i> Mengirim...`;
-        }
-
-        $.ajax({
-            url: '{{ route('satusehat.medication-request.sendsehat') }}',
-            type: 'GET',
-            data: { id_trans: idTrans },
-            success: function (res) {
-                if (res.status === 'success') {
-                    console.log(`✅ ${idTrans} sukses dikirim`);
-
-                    if (showSwal) {
-                        swal({
-                            title: 'Berhasil!',
-                            text: `Transaksi ${idTrans} berhasil dikirim ke SATUSEHAT.`,
-                            type: 'success',
-                            timer: 2000,
-                            showConfirmButton: false
-                        });
-                    }
-
-                    resolve({ success: true, id: idTrans });
-                } else {
-                    console.warn(`⚠️ ${idTrans} gagal:`, res.message);
-
-                    if (showSwal) {
-                        swal({
-                            title: 'Gagal Mengirim!',
-                            text: res.message || `Transaksi ${idTrans} gagal dikirim.`,
-                            type: 'warning',
-                            confirmButtonColor: '#f0ad4e'
-                        });
-                    }
-
-                    resolve({ success: false, id: idTrans });
-                }
-            },
-            error: function (xhr) {
-                console.error(`❌ Error kirim ${idTrans}:`, xhr);
-
-                // Ambil pesan error dari API
-                let errMsg = 'Terjadi kesalahan saat mengirim data.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errMsg = xhr.responseJSON.message;
-                } else if (xhr.responseText) {
-                    errMsg = xhr.responseText.substring(0, 500);
+                if (!btn && typeof event !== 'undefined' && event.currentTarget) {
+                    btn = event.currentTarget;
                 }
 
-                if (showSwal) {
-                    swal({
-                        title: 'Error!',
-                        html: `<b>Transaksi ${idTrans}</b> gagal dikirim.<br><br>` +
-                            `<pre style="text-align:left;white-space:pre-wrap;">${errMsg}</pre>`,
-                        type: 'error',
-                        width: '600px',
-                        confirmButtonColor: '#d33'
-                    });
-                }
+                const originalText = btn ? btn.innerHTML : null;
 
-                resolve({ success: false, id: idTrans, message: errMsg });
-            },
-            complete: function () {
                 if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = originalText;
+                    btn.disabled = true;
+                    btn.innerHTML = `<i class='fas fa-spinner fa-spin'></i> Mengirim...`;
                 }
-            }
-        });
-    });
-}
+
+                $.ajax({
+                    url: '{{ route('satusehat.medication-request.sendsehat') }}',
+                    type: 'GET',
+                    data: { id_trans: idTrans },
+                    success: function (res) {
+                        if (res.status === 'success') {
+                            console.log(`✅ ${idTrans} sukses dikirim`);
+
+                            if (showSwal) {
+                                swal({
+                                    title: 'Berhasil!',
+                                    text: `Transaksi ${idTrans} berhasil dikirim ke SATUSEHAT.`,
+                                    type: 'success',
+                                    timer: 2000,
+                                    showConfirmButton: false
+                                });
+                            }
+
+                            resolve({ success: true, id: idTrans });
+                        } else {
+                            console.warn(`⚠️ ${idTrans} gagal:`, res.message);
+
+                            if (showSwal) {
+                                swal({
+                                    title: 'Gagal Mengirim!',
+                                    text: res.message || `Transaksi ${idTrans} gagal dikirim.`,
+                                    type: 'warning',
+                                    confirmButtonColor: '#f0ad4e'
+                                });
+                            }
+
+                            resolve({ success: false, id: idTrans });
+                        }
+                    },
+                    error: function (xhr) {
+                        console.error(`❌ Error kirim ${idTrans}:`, xhr);
+
+                        // Ambil pesan error dari API
+                        let errMsg = 'Terjadi kesalahan saat mengirim data.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errMsg = xhr.responseJSON.message;
+                        } else if (xhr.responseText) {
+                            errMsg = xhr.responseText.substring(0, 500);
+                        }
+
+                        if (showSwal) {
+                            swal({
+                                title: 'Error!',
+                                html: `<b>Transaksi ${idTrans}</b> gagal dikirim.<br><br>` +
+                                    `<pre style="text-align:left;white-space:pre-wrap;">${errMsg}</pre>`,
+                                type: 'error',
+                                width: '600px',
+                                confirmButtonColor: '#d33'
+                            });
+                        }
+
+                        resolve({ success: false, id: idTrans, message: errMsg });
+                    },
+                    complete: function () {
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = originalText;
+                        }
+                    }
+                });
+            });
+        }
 
 
 
