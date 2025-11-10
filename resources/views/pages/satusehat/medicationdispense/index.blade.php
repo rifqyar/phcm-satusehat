@@ -209,94 +209,93 @@
 
             // ⚙️ DataTable
             table = $('#dispenseTable').DataTable({
-                processing: true,
-                serverSide: true,
-                ajax: {
-                    url: '{{ route('satusehat.medication-dispense.datatable') }}',
-                    type: 'POST',
-                    data: function (d) {
-                        d._token = '{{ csrf_token() }}';
-                        d.start_date = $('#start_date').val();
-                        d.end_date = $('#end_date').val();
-                        d.search = $('input[name="search"]').val();
-                    }
-                },
-                columns: [
-                    {
-                        data: null,
-                        orderable: false,
-                        searchable: false,
-                        className: 'text-center',
-                        render: function (data) {
-                            if (data.STATUS_MAPPING === '100' || data.STATUS_MAPPING === '200') {
-                                return `<input type="checkbox" class="checkbox-item" value="${data.ID_TRANS}">`;
-                            } else {
-                                return `<i class="text-muted">-</i>`;
-                            }
-                        }
-                    },
-                    {
-                        data: null,
-                        name: 'NomorKarcis',
-                        render: function (data) {
-                            return `
+    processing: true,
+    serverSide: true,
+    ajax: {
+        url: '{{ route('satusehat.medication-dispense.datatable') }}',
+        type: 'POST',
+        data: function (d) {
+            d._token = '{{ csrf_token() }}';
+            d.start_date = $('#start_date').val();
+            d.end_date = $('#end_date').val();
+            // ❌ jangan tulis: d.search = $('input[name="search"]').val();
+        }
+    },
+    columns: [
+        {
+            data: null,
+            orderable: false,
+            searchable: false,
+            className: 'text-center',
+            render: function (data) {
+                if (data.STATUS_MAPPING === '100' || data.STATUS_MAPPING === '200') {
+                    return `<input type="checkbox" class="checkbox-item" value="${data.ID_TRANS}">`;
+                } else {
+                    return `<i class="text-muted">-</i>`;
+                }
+            }
+        },
+        {
+            data: null,
+            name: 'src.NomorKarcis', // ✅ sinkron ke backend alias
+            render: function (data) {
+                return `
                     <div>
                         <strong>${data.NomorKarcis}</strong><br>
                         <small class="text-muted">#${data.ID_TRANS}</small>
-                    </div>
-                `;
-                        }
-                    },
-                    { data: 'NamaPasien', name: 'NamaPasien' },
-                    { data: 'NamaDokter', name: 'NamaDokter' },
-                    { data: 'TanggalKunjungan', name: 'TanggalKunjungan' },
-                    {
-                        data: 'STATUS_MAPPING',
-                        className: 'text-center',
-                        render: function (status) {
-                            if (status === '200') {
-                                return `<span class="badge badge-success">Sudah Dikirim</span>`;
-                            } else if (status === '100') {
-                                return `<span class="badge badge-warning">Siap Dikirim</span>`;
-                            } else {
-                                return `<span class="badge badge-danger">Belum Integrasi</span>`;
-                            }
-                        }
-                    },
-                    {
-                        data: null,
-                        orderable: false,
-                        searchable: false,
-                        render: function (data) {
-                            let btn = `
-                                <button class="btn btn-sm btn-info w-100 mb-2" onclick="lihatObat('${data.ID_TRANS}')">
-                                    <i class="fas fa-eye"></i> Lihat Obat
-                                </button>`;
+                    </div>`;
+            }
+        },
+        { data: 'NamaPasien', name: 'src.NamaPasien' },
+        { data: 'NamaDokter', name: 'src.NamaDokter' },
+        { data: 'TanggalKunjungan', name: 'src.TanggalKunjungan' },
+        {
+            data: 'STATUS_MAPPING',
+            className: 'text-center',
+            render: function (status) {
+                if (status === '200') {
+                    return `<span class="badge badge-success">Sudah Dikirim</span>`;
+                } else if (status === '100') {
+                    return `<span class="badge badge-warning">Siap Dikirim</span>`;
+                } else {
+                    return `<span class="badge badge-danger">Belum Integrasi</span>`;
+                }
+            }
+        },
+        {
+            data: null,
+            orderable: false,
+            searchable: false,
+            render: function (data) {
+                let btn = `
+                    <button class="btn btn-sm btn-info w-100 mb-2" onclick="lihatObat('${data.ID_TRANS}')">
+                        <i class="fas fa-eye"></i> Lihat Obat
+                    </button>`;
 
-                            if (data.STATUS_MAPPING === '100') {
-                                btn += `
-                                    <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                                        <i class="fas fa-paper-plane"></i> Kirim SATUSEHAT
-                                    </button>`;
-                            } else if (data.STATUS_MAPPING === '200') {
-                                btn += `
-                                    <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                                        <i class="fas fa-redo"></i> Kirim Ulang
-                                    </button>`;
-                            } else {
-                                btn += `
-                                    <span class="badge badge-secondary w-100 py-2">
-                                        <i class="fas fa-ban"></i> Belum ada MedicationRequest
-                                    </span>`;
-                            }
+                if (data.STATUS_MAPPING === '100') {
+                    btn += `
+                        <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                            <i class="fas fa-paper-plane"></i> Kirim SATUSEHAT
+                        </button>`;
+                } else if (data.STATUS_MAPPING === '200') {
+                    btn += `
+                        <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                            <i class="fas fa-redo"></i> Kirim Ulang
+                        </button>`;
+                } else {
+                    btn += `
+                        <span class="badge badge-secondary w-100 py-2">
+                            <i class="fas fa-ban"></i> Belum ada MedicationRequest
+                        </span>`;
+                }
 
-                            return btn;
-                        }
-                    }
-                ],
+                return btn;
+            }
+        }
+    ],
+    order: [[4, 'desc']]
+});
 
-                order: [[3, 'desc']]
-            });
 
             // reload summary
             table.on('xhr.dt', function (e, settings, json) {
