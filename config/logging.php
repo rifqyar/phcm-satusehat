@@ -120,6 +120,13 @@ return [
             'level' => 'info',
             'days' => 7
         ],
+
+        'Observation' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/Observation.log'),
+            'level' => 'info',
+            'days' => 7
+        ],
     ],
 
 ];
