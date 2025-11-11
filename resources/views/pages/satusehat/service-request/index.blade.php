@@ -236,6 +236,7 @@
                                     </th>
                                     <th>Jenis Penunjang Medis</th>
                                     <th>Tanggal Masuk</th>
+                                    <th>Jenis Perawatan</th>
                                     <th>Nama Pasien</th>
                                     <th>Dokter</th>
                                     <th>No. Peserta</th>
@@ -382,6 +383,10 @@
                     {
                         data: 'TANGGAL_ENTRI',
                         name: 'TANGGAL_ENTRI',
+                    },
+                    {
+                        data: 'JENIS_PERAWATAN',
+                        name: 'JENIS_PERAWATAN',
                     },
                     {
                         data: 'NAMA_PASIEN',
