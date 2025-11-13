@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SatuSehat;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\LogTraits;
 use App\Http\Traits\SATUSEHATTraits;
+use App\Jobs\SendServiceRequestJob;
 use App\Lib\LZCompressor\LZString;
 use App\Models\GlobalParameter;
 use App\Models\SATUSEHAT\SS_Kode_API;
@@ -315,6 +316,31 @@ class ServiceRequestController extends Controller
 
         return DataTables::of($dataKunjungan)
             ->addIndexColumn()
+            ->addColumn('checkbox', function ($row) {
+                $kdbuku = LZString::compressToEncodedURIComponent($row->KBUKU);
+                $kdDok = LZString::compressToEncodedURIComponent($row->kdDok);
+                $kdKlinik = LZString::compressToEncodedURIComponent($row->KLINIK_TUJUAN);
+                // $idUnit = LZString::compressToEncodedURIComponent($row->ID_UNIT);
+                // $param = LZString::compressToEncodedURIComponent($kdbuku . '+' . $kdDok . '+' . $kdKlinik . '+' . $idUnit);
+
+                $idRiwayatElab = LZString::compressToEncodedURIComponent($row->ID_RIWAYAT_ELAB);
+                $karcis = LZString::compressToEncodedURIComponent($row->KARCIS_RUJUKAN);
+                $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
+                $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
+                // $kdPerformerSS = LZString::compressToEncodedURIComponent($row->idnakes);
+                $kdDokterSS = LZString::compressToEncodedURIComponent($row->idnakes);
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcis . '+' . $kdKlinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
+
+                $checkBox = '';
+                if (!$row->SATUSEHAT) {
+                    $checkBox = "
+                        <input type='checkbox' class='select-row chk-col-purple' value='$paramSatuSehat' id='$paramSatuSehat' />
+                        <label for='$paramSatuSehat' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
+                    ";
+                }
+
+                return $checkBox;
+            })
             ->editColumn('KLINIK_TUJUAN', function ($row) {
                 return $row->KLINIK_TUJUAN == '0017' ? '<span class="badge badge-pill badge-success p-2 w-100">Laboratory</span>' : '<span class="badge badge-pill badge-info p-2 w-100">Radiology</span>';
             })
@@ -377,7 +403,7 @@ class ServiceRequestController extends Controller
                     return '<span class="badge badge-pill badge-danger p-2 w-100">Tindakan Belum Mapping</span>';
                 }
             })
-            ->rawColumns(['KLINIK_TUJUAN', 'action', 'status_integrasi', 'status_mapping'])
+            ->rawColumns(['checkbox', 'KLINIK_TUJUAN', 'action', 'status_integrasi', 'status_mapping'])
             // ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi'])
             ->make(true);
     }
@@ -400,17 +426,54 @@ class ServiceRequestController extends Controller
 
     public function sendSatuSehat(Request $request, $param)
     {
-        $param = base64_decode($param);
-        $param = LZString::decompressFromEncodedURIComponent($param);
-        $parts = explode('+', $param);
+        try {
+            $param = base64_decode($param);
+            
+            if ($param === false) {
+                throw new Exception('Invalid base64 parameter');
+            }
+            
+            $param = LZString::decompressFromEncodedURIComponent($param);
+            
+            if ($param === false || $param === null) {
+                throw new Exception('Failed to decompress parameter');
+            }
+            
+            $parts = explode('+', $param);
+            
+            if (count($parts) !== 6) {
+                throw new Exception('Parameter does not contain expected 6 parts, got: ' . count($parts));
+            }
 
-        $idRiwayatElab = LZString::decompressFromEncodedURIComponent($parts[0]);
-        $karcis = LZString::decompressFromEncodedURIComponent($parts[1]);
-        $kdKlinik = LZString::decompressFromEncodedURIComponent($parts[2]);
-        $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[3]);
-        $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[4]);
-        $kdDokterSS = LZString::decompressFromEncodedURIComponent($parts[5]);
-        $id_unit      = '001'; // session('id_klinik');
+            $idRiwayatElab = LZString::decompressFromEncodedURIComponent($parts[0]);
+            $karcis = LZString::decompressFromEncodedURIComponent($parts[1]);
+            $kdKlinik = LZString::decompressFromEncodedURIComponent($parts[2]);
+            $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[3]);
+            $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[4]);
+            $kdDokterSS = LZString::decompressFromEncodedURIComponent($parts[5]);
+            $id_unit      = '001'; // session('id_klinik');
+            
+            // Validate that all required parameters were decompressed successfully
+            if ($idRiwayatElab === false || $karcis === false || $kdKlinik === false || 
+                $kdPasienSS === false || $kdNakesSS === false || $kdDokterSS === false) {
+                throw new Exception('Failed to decompress one or more parameter parts');
+            }
+            
+        } catch (Exception $e) {
+            Log::error('Parameter parsing failed in sendSatuSehat', [
+                'param' => $param,
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'status' => 400,
+                'message' => 'Invalid parameter format: ' . $e->getMessage(),
+                'redirect' => [
+                    'need' => false,
+                    'to' => null,
+                ]
+            ], 400);
+        }
 
         $riwayatlabrad = DB::connection('sqlsrv')
             ->table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB')
@@ -639,6 +702,87 @@ class ServiceRequestController extends Controller
                     'to' => null,
                 ]
             ], $th->getCode() != '' ? $th->getCode() : 500);
+        }
+    }
+
+    public function bulkSendSatuSehat(Request $request)
+    {
+        try {
+            $selectedIds = $request->input('selected_ids', []);
+            
+            // Debug logging
+            Log::info('Bulk send request received', [
+                'selected_ids_count' => count($selectedIds),
+                'first_few_params' => array_slice($selectedIds, 0, 2),
+                'user_id' => 'system'
+            ]);
+            
+            if (empty($selectedIds)) {
+                return response()->json([
+                    'status' => 422,
+                    'message' => 'Tidak ada data yang dipilih untuk dikirim'
+                ], 422);
+            }
+
+            $dispatched = 0;
+            $errors = [];
+            
+            foreach ($selectedIds as $param) {
+                try {
+                    // Validate that param is not empty and has proper format
+                    if (empty($param) || !is_string($param)) {
+                        $errors[] = "Invalid parameter format: " . json_encode($param);
+                        continue;
+                    }
+                    
+                    // Dispatch job to queue for background processing
+                    SendServiceRequestJob::dispatch($param);
+                    $dispatched++;
+                } catch (Exception $e) {
+                    $errors[] = "Failed to dispatch job for param: " . $e->getMessage();
+                    Log::error('Failed to dispatch single job', [
+                        'param' => $param,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            // Log the bulk dispatch
+            Log::info('Bulk service request jobs dispatched', [
+                'total_dispatched' => $dispatched,
+                'total_errors' => count($errors),
+                'user_id' => 'system',
+                'params_count' => count($selectedIds)
+            ]);
+
+            $message = "Berhasil mengirim {$dispatched} service request ke antrian untuk diproses. Pengiriman akan berlanjut di background.";
+            
+            if (!empty($errors)) {
+                $message .= " " . count($errors) . " item gagal dikirim ke antrian.";
+                Log::warning('Some jobs failed to dispatch', ['errors' => $errors]);
+            }
+
+            return response()->json([
+                'status' => JsonResponse::HTTP_OK,
+                'message' => $message,
+                'data' => [
+                    'dispatched_count' => $dispatched,
+                    'error_count' => count($errors),
+                    'total_selected' => count($selectedIds),
+                    'errors' => !empty($errors) ? array_slice($errors, 0, 3) : [] // Show first 3 errors
+                ]
+            ], 200);
+
+        } catch (Exception $e) {
+            Log::error('Bulk send dispatch failed', [
+                'error' => $e->getMessage(),
+                'user_id' => 'system' // Session::get('id')
+            ]);
+
+            return response()->json([
+                'status' => 500,
+                'message' => 'Gagal mengirim ke antrian: ' . $e->getMessage()
+            ], 500);
         }
     }
 

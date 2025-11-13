@@ -91,6 +91,7 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::post('/service-request/datatable', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'datatable'])->name('service-request.datatable');
         Route::post('/service-request/summary', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'summary'])->name('service-request.summary');
         Route::get('/service-request/send/{param}', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'sendSatuSehat'])->name('service-request.send');
+        Route::post('/service-request/bulk-send', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'bulkSendSatuSehat'])->name('service-request.bulk-send');
         // Route::get('/service-request/create', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'create'])->name('service-request.create');
         // Route::post('/service-request/store', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'store'])->name('service-request.store');
         // Route::get('/service-request/{id}/edit', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'edit'])->name('service-request.edit');
@@ -111,6 +112,7 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::post('/specimen/datatable', [App\Http\Controllers\SatuSehat\SpecimenController::class, 'datatable'])->name('specimen.datatable');
         Route::post('/specimen/summary', [App\Http\Controllers\SatuSehat\SpecimenController::class, 'summary'])->name('specimen.summary');
         Route::get('/specimen/send/{param}', [App\Http\Controllers\SatuSehat\SpecimenController::class, 'sendSatuSehat'])->name('specimen.send');
+        Route::post('/specimen/bulk-send', [App\Http\Controllers\SatuSehat\SpecimenController::class, 'bulkSendSatuSehat'])->name('specimen.bulk-send');
         Route::get('/specimen/create', [App\Http\Controllers\SatuSehat\SpecimenController::class, 'create'])->name('specimen.create');
         Route::post('/specimen/store', [App\Http\Controllers\SatuSehat\SpecimenController::class, 'store'])->name('specimen.store');
         Route::get('/specimen/{id}/edit', [App\Http\Controllers\SatuSehat\SpecimenController::class, 'edit'])->name('specimen.edit');
