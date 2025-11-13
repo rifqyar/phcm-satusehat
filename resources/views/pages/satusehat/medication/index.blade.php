@@ -18,6 +18,34 @@
                 display: none;
             }
         }
+
+        /* ✅ Pastikan kolom pertama untuk checkbox terlihat */
+        table.table th:first-child,
+        table.table td:first-child {
+            width: 50px !important;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        /* ✅ Override styling Bootstrap yang kadang menyembunyikan checkbox */
+        input[type="checkbox"],
+        .form-check-input {
+            appearance: auto !important;
+            -webkit-appearance: checkbox !important;
+            -moz-appearance: checkbox !important;
+            opacity: 1 !important;
+            position: static !important;
+            visibility: visible !important;
+        }
+
+        /* ✅ Sedikit gaya tambahan biar lebih enak dilihat */
+        .form-check-input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: #0d6efd;
+            /* Bootstrap blue */
+        }
     </style>
 @endpush
 
@@ -167,11 +195,19 @@
                 </form>
             </div>
 
-            <!-- 🧾 Tabel Data -->
+            <div class="mb-2">
+                <button type="button" id="btnKirimDipilih" class="btn btn-success btn-sm">
+                    <i class="fas fa-paper-plane"></i> Kirim Dipilih
+                </button>
+            </div>
+
             <div class="table-responsive">
                 <table class="table table-striped table-bordered">
                     <thead>
                         <tr>
+                            <th class="text-center">
+                                <input type="checkbox" id="checkAll">
+                            </th>
                             <th>NO</th>
                             <th>KODE BARANG CENTRA</th>
                             <th>NAMA BARANG</th>
@@ -186,6 +222,15 @@
                     <tbody>
                         @forelse ($data as $index => $obat)
                             <tr>
+                                <td class="text-center">
+                                    <div class="form-check d-flex justify-content-center">
+                                        <input class="form-check-input checkbox-item"
+                                            type="checkbox"
+                                            value="{{ $obat->KDBRG_CENTRA }}"
+                                            data-kode="{{ $obat->KDBRG_CENTRA }}"
+                                            data-kfa="{{ $obat->KD_BRG_KFA }}">
+                                    </div>
+                                </td>
                                 <td>{{ $data->firstItem() + $index }}</td>
                                 <td>{{ $obat->KDBRG_CENTRA }}</td>
                                 <td>{{ $obat->NAMABRG }}</td>
@@ -194,8 +239,6 @@
                                 </td>
                                 <td>{{ $obat->NAMABRG_KFA }}</td>
                                 <td>{{ $obat->IS_COMPOUND ? 'Compound' : 'Non-compound' }}</td>
-
-                                {{-- ✅ Tambahan kolom FHIR_ID --}}
                                 <td>
                                     @if (!empty($obat->FHIR_ID))
                                         <span class="badge badge-success">{{ $obat->FHIR_ID }}</span>
@@ -203,41 +246,12 @@
                                         <span class="text-muted">Belum dikirim</span>
                                     @endif
                                 </td>
-
                                 <td>{{ $obat->DESCRIPTION }}</td>
-
                                 <td class="text-center">
-                                    {{-- Tombol Mapping / Mapping Ulang --}}
-                                    {{-- @if (empty($obat->KD_BRG_KFA) || trim($obat->KD_BRG_KFA) === '')
-                                    <button type="button" class="btn btn-sm btn-success" data-toggle="modal"
-                                        data-target="#modalMapping" data-id="{{ $obat->ID }}"
-                                        data-no="{{ $data->firstItem() + $index }}" data-kode="{{ $obat->KDBRG_CENTRA }}"
-                                        data-nama="{{ $obat->NAMABRG }}" data-kfa="{{ $obat->KD_BRG_KFA }}"
-                                        data-namakfa="{{ $obat->NAMABRG_KFA }}"
-                                        data-jenis="{{ $obat->IS_COMPOUND ? 'Compound' : 'Non-compound' }}"
-                                        data-is-compound="{{ $obat->IS_COMPOUND ? 1 : 0 }}"
-                                        data-deskripsi="{{ $obat->DESCRIPTION }}">
-                                        <i class="fas fa-link"></i> Mapping
-                                    </button>
-                                    @else
-                                    <button type="button" class="btn btn-sm btn-warning" data-toggle="modal"
-                                        data-target="#modalMapping" data-id="{{ $obat->ID }}"
-                                        data-no="{{ $data->firstItem() + $index }}" data-kode="{{ $obat->KDBRG_CENTRA }}"
-                                        data-nama="{{ $obat->NAMABRG }}" data-kfa="{{ $obat->KD_BRG_KFA }}"
-                                        data-namakfa="{{ $obat->NAMABRG_KFA }}"
-                                        data-jenis="{{ $obat->IS_COMPOUND ? 'Compound' : 'Non-compound' }}"
-                                        data-is-compound="{{ $obat->IS_COMPOUND ? 1 : 0 }}"
-                                        data-deskripsi="{{ $obat->DESCRIPTION }}">
-                                        <i class="fas fa-sync-alt"></i> Mapping Ulang
-                                    </button>
-                                    @endif --}}
-
-
-                                    {{-- 🟢 Tombol Kirim / Kirim Ulang --}}
                                     @if (empty($obat->FHIR_ID) && !empty($obat->KD_BRG_KFA))
                                         <button type="button" class="btn btn-sm btn-primary btn-send-medication"
                                             data-kode="{{ $obat->KDBRG_CENTRA }}">
-                                            <i class="fas fa-paper-plane"></i> Kirim Data Medication
+                                            <i class="fas fa-paper-plane"></i> Kirim Data
                                         </button>
                                     @elseif (!empty($obat->FHIR_ID))
                                         <button type="button" class="btn btn-sm btn-info btn-send-medication"
@@ -251,13 +265,13 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="text-center text-muted">Data tidak ditemukan</td>
+                                <td colspan="10" class="text-center text-muted">Data tidak ditemukan</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
-
             </div>
+
 
             <!-- 📄 Pagination -->
             <div class="d-flex justify-content-center mt-3">
@@ -267,6 +281,7 @@
     </div>
     @include('modals.modal_mapping_obat')
     @push('after-script')
+
         <script>
             $(document).ready(function () {
                 // Event kirim Medication
@@ -408,7 +423,173 @@
             });
         </script>
 
+        {{-- checkbox buat kirim --}}
+        <script>
+            $(document).ready(function () {
+
+                // ✅ Pilih semua checkbox
+                $('#checkAll').on('change', function () {
+                    $('.checkbox-item').prop('checked', $(this).is(':checked'));
+                });
+
+                // ✅ Tombol Kirim Dipilih
+                $('#btnKirimDipilih').on('click', function () {
+                    const selected = $('.checkbox-item:checked').map(function () {
+                        return {
+                            kode: $(this).data('kode'),
+                            kfa: $(this).data('kfa')
+                        };
+                    }).get();
+
+                    // Cek apakah ada data terpilih
+                    if (selected.length === 0) {
+                        $.toast({
+                            heading: 'Peringatan',
+                            text: 'Tidak ada data yang dipilih.',
+                            position: 'top-right',
+                            loaderBg: '#FF5733',
+                            icon: 'warning',
+                            hideAfter: 3000
+                        });
+                        return;
+                    }
+
+                    // SweetAlert2 v7.x syntax
+                    swal({
+                        title: 'Kirim Data Terpilih?',
+                        text: 'Akan mengirim ' + selected.length + ' data ke SATUSEHAT.',
+                        type: 'question',
+                        showCancelButton: true,
+                        confirmButtonText: 'Kirim',
+                        cancelButtonText: 'Batal',
+                        confirmButtonColor: '#3085d6',
+                        cancelButtonColor: '#d33'
+                    }).then(function (result) {
+                        if (!result.value) return; // batal
+
+                        // 🔍 Validasi KFA kosong
+                        const invalidItems = selected.filter(function (item) {
+                            const kfaVal = (item.kfa || '').toString().trim();
+                            return kfaVal === '';
+                        });
+
+                        if (invalidItems.length > 0) {
+                            swal({
+                                title: 'Data Belum Lengkap!',
+                                text: invalidItems.length + ' dari ' + selected.length +
+                                    ' data belum memiliki kode KFA.\nSilakan mapping terlebih dahulu.',
+                                type: 'warning',
+                                confirmButtonText: 'OK',
+                                confirmButtonColor: '#f0ad4e'
+                            });
+                            return;
+                        }
+
+                        // ✅ Semua siap dikirim
+                        console.log('Data siap dikirim:', selected);
+
+                        let successCount = 0;
+                        let failCount = 0;
+
+                        $.toast({
+                            heading: 'Mengirim...',
+                            text: 'Mengirim ' + selected.length + ' data ke SATUSEHAT...',
+                            position: 'top-right',
+                            loaderBg: '#5bc0de',
+                            icon: 'info',
+                            hideAfter: 3000
+                        });
+
+                        // 🚀 Kirim data satu per satu (pakai recursive loop, gak pakai async/await langsung)
+                        function sendNext(index) {
+                            if (index >= selected.length) {
+                                // Selesai semua
+                                swal({
+                                    title: 'Proses Selesai',
+                                    text: 'Sukses: ' + successCount + ' | Gagal: ' + failCount +
+                                        ' dari total ' + selected.length + ' data.',
+                                    type: (failCount === 0) ? 'success' : 'warning',
+                                    confirmButtonText: 'OK'
+                                }).then(function () {
+                                    location.reload();
+                                });
+                                return;
+                            }
+
+                            const item = selected[index];
+                            console.log('🔹 Mengirim:', item.kode, 'KFA:', item.kfa);
+
+                            $.ajax({
+                                url: "{{ route('kfa.getmedicationid') }}",
+                                type: "POST",
+                                data: {
+                                    _token: "{{ csrf_token() }}",
+                                    kode_barang: item.kode
+                                },
+                                success: function (res) {
+                                    if (res.status === 'success') {
+                                        successCount++;
+                                        console.log('✅ Sukses:', item.kode, res.uuid);
+
+                                        $.toast({
+                                            heading: 'Sukses',
+                                            text: 'Obat ' + item.kode + ' berhasil dikirim. <br><small>UUID: ' + res.uuid + '</small>',
+                                            position: 'top-right',
+                                            loaderBg: '#51A351',
+                                            icon: 'success',
+                                            hideAfter: 2500
+                                        });
+                                    } else {
+                                        failCount++;
+                                        console.warn('⚠️ Gagal:', item.kode, res.message);
+
+                                        $.toast({
+                                            heading: 'Gagal',
+                                            text: 'Obat ' + item.kode + ': ' + (res.message || 'Gagal kirim.'),
+                                            position: 'top-right',
+                                            loaderBg: '#FF5733',
+                                            icon: 'error',
+                                            hideAfter: 3000
+                                        });
+                                    }
+
+                                    // lanjut ke item berikut
+                                    setTimeout(function () {
+                                        sendNext(index + 1);
+                                    }, 500);
+                                },
+                                error: function (xhr) {
+                                    failCount++;
+                                    console.error('❌ Error:', item.kode, xhr.responseText);
+
+                                    $.toast({
+                                        heading: 'Error',
+                                        text: 'Obat ' + item.kode + ' gagal dikirim. <br><small>' +
+                                            (xhr.responseJSON?.message || 'Terjadi kesalahan koneksi.') + '</small>',
+                                        position: 'top-right',
+                                        loaderBg: '#FF5733',
+                                        icon: 'error',
+                                        hideAfter: 3500
+                                    });
+
+                                    // lanjut ke item berikut meski error
+                                    setTimeout(function () {
+                                        sendNext(index + 1);
+                                    }, 500);
+                                }
+                            });
+                        }
+
+                        // Mulai dari item pertama
+                        sendNext(0);
+                    });
+                });
+            });
+        </script>
+
+
+
     @endpush
 
 
-@endsection
+@endsection 

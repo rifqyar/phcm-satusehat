@@ -81,7 +81,7 @@
             <h3 class="text-themecolor">Dashboard</h3>
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-                <li class="breadcrumb-item active">Procedure</li>
+                <li class="breadcrumb-item active">Observation</li>
             </ol>
         </div>
         <div class="col-md-7 col-4 align-self-center">
@@ -235,7 +235,7 @@
         </div>
     </div>
 
-    @include('modals.modal_procedure')
+    @include('modals.modal_observasi')
 @endsection
 
 @push('after-script')
@@ -303,7 +303,7 @@
                 serverSide: false,
                 scrollX: false,
                 ajax: {
-                    url: `{{ route('satusehat.procedure.datatable') }}`,
+                    url: `{{ route('satusehat.observasi.datatable') }}`,
                     method: "POST",
                     data: function(data) {
                         data._token = `${$('meta[name="csrf-token"]').attr("content")}`;
@@ -312,7 +312,6 @@
                         data.tgl_akhir = $('input[name="tgl_akhir"]').val();
                     },
                     dataSrc: function(json) {
-                        console.log(json)
                         $('#total_all').text(json.total_semua);
                         $('#total_integrasi').text(json.total_sudah_integrasi);
                         $('#total_belum_integrasi').text(json.total_belum_integrasi);
@@ -458,7 +457,7 @@
         function lihatDetail(param, paramSS) {
             paramSatuSehat = paramSS
             ajaxGetJson(
-                `{{ route('satusehat.procedure.lihat-detail', '') }}/${btoa(param)}`,
+                `{{ route('satusehat.observasi.lihat-detail', '') }}/${btoa(param)}`,
                 "show_modal",
                 ""
             );
@@ -500,33 +499,10 @@
         function show_modal(res) {
             const dataPasien = res.data.dataPasien
             const dataErm = res.data.dataErm
-            const dataLab = res.data.dataLab
-            const dataRad = res.data.dataRad
-            const tindakanLab = res.data.tindakanLab
-            const tindakanRad = res.data.tindakanRad
-            const tindakanOp = res.data.tindakanOp
-
-            const statusIntegrasiAnamnese = res.data.statusIntegrasiAnamnese
-            const statusIntegrasiLab = res.data.statusIntegrasiLab
-            const statusIntegrasiRad = res.data.statusIntegrasiRad
-            const statusIntegrasiOp = res.data.statusIntegrasiOp
-            const dataICD = res.data.dataICD
 
             $('#integrasi_anamnese').hide()
             $('#success_anamnese').hide()
             $('#failed_anamnese').hide()
-
-            $('#integrasi_lab').hide()
-            $('#success_lab').hide()
-            $('#failed_lab').hide()
-
-            $('#integrasi_rad').hide()
-            $('#success_rad').hide()
-            $('#failed_rad').hide()
-
-            $('#integrasi_op').hide()
-            $('#success_op').hide()
-            $('#failed_op').hide()
 
             $('#nama_pasien').html(dataPasien.NAMA)
             $('#no_rm').html(dataPasien.KBUKU)
@@ -553,6 +529,7 @@
                 }
 
                 $.each(dataErm, function(key, value) {
+                    console.log(key, value)
                     const $el = $('#pemeriksaan_fisik #' + key);
                     if ($el.length) {
                         $el.text(value ? value : '-');
@@ -577,187 +554,13 @@
             $('#data_diagnosa').html(htmlDiag)
 
             // Sudah Kirim Pemeriksaan Fisik
-            if (statusIntegrasiAnamnese > 0) {
+            if (dataErm.sudah_integrasi > 0) {
                 $('#integrasi_anamnese').show()
                 $('#success_anamnese').show()
-                $('#btn-simpan-pemeriksaanfisik').hide();
-                $("#form-icd-pemeriksaanfisik").find('input').prop('required', false);
-                $("#form-icd-pemeriksaanfisik").hide();
             } else {
                 $('#btn-simpan-pemeriksaanfisik').show();
                 $('#failed_anamnese').show()
-                $("#form-icd-pemeriksaanfisik").find('input').prop('required', true);
-                $("#form-icd-pemeriksaanfisik").show();
             }
-
-            // Sudah Kirim Lab
-            if ((statusIntegrasiLab == dataLab.length) && dataLab.length > 0) {
-                $('#integrasi_lab').show()
-                $('#success_lab').show()
-                $('#btn-simpan-lab').hide();
-                $('#form-icd-lab').hide();
-            } else {
-                if (dataLab.length == 0) {
-                    $('#btn-simpan-lab').hide();
-                    $('#failed_lab').hide()
-                    $('#form-icd-lab').find('select').prop('required', false);
-                    $('#form-icd-lab').hide();
-                } else {
-                    $('#btn-simpan-lab').show();
-                    $('#failed_lab').show()
-                    $('#form-icd-lab').find('select').prop('required', true);
-                    $('#form-icd-lab').show();
-                }
-            }
-
-            // Sudah Kirim Radiologi
-            if ((statusIntegrasiRad == dataRad.length) && dataRad.length > 0) {
-                $('#integrasi_rad').show()
-                $('#success_rad').show()
-                $('#btn-simpan-rad').hide();
-                $('#form-icd-rad').hide()
-            } else {
-                if (dataRad.length == 0) {
-                    $('#btn-simpan-rad').hide();
-                    $('#failed_rad').hide()
-                    $('#form-icd-rad').find('select').prop('required', false);
-                    $('#form-icd-rad').hide();
-                } else {
-                    $('#btn-simpan-rad').show();
-                    $('#form-icd-rad').find('select').prop('required', true);
-                    $('#failed_rad').show()
-                    $('#form-icd-rad').show()
-                }
-            }
-
-            // Sudah Kirim OP
-            if ((statusIntegrasiOp == tindakanOp.length) && tindakanOp.length > 0) {
-                $('#integrasi_op').show()
-                $('#success_op').show()
-                $('#btn-simpan-op').hide();
-                $('#form-icd-operasi').hide()
-            } else {
-                if (tindakanOp.length == 0) {
-                    $('#form-icd-operasi').find('select').prop('required', false);
-                    $('#success_op').hide()
-                    $('#btn-simpan-op').hide();
-                    $('#form-icd-operasi').hide()
-                } else {
-                    $('#form-icd-operasi').find('select').prop('required', true);
-                    $('#btn-simpan-op').show();
-                    $('#failed_op').show()
-                    $('#form-icd-operasi').show()
-                }
-            }
-
-            if (dataLab.length > 0) {
-                var tglLab = dataLab[0].TANGGAL_ENTRI;
-                if (tglLab) {
-                    const tgl = new Date(tglLab);
-                    const formatted = tgl.toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                    });
-                    $('#TANGGAL_LAB').text(formatted);
-                }
-
-                $('#tabel_tindakan_lab').empty();
-                $.each(tindakanLab, function(index, item) {
-                    $('#tabel_tindakan_lab').append(`
-                        <tr>
-                            <td>${index + 1}</td>
-                            <td>${item.KD_TIND || '-'}</td>
-                            <td>${item.NM_TIND || '-'}</td>
-                        </tr>
-                    `);
-                });
-            } else {
-                $('#tabel_tindakan_lab').html(`
-                    <tr>
-                        <td colspan="6" class="text-center text-muted">Data
-                            tindakan lab belum tersedia.</td>
-                    </tr>
-                `);
-            }
-
-            if (dataRad.length > 0) {
-                var tgRad = dataRad[0].TANGGAL_ENTRI;
-                if (tgRad) {
-                    const tgl = new Date(tgRad);
-                    const formatted = tgl.toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                    });
-                    $('#TANGGAL_RAD').text(formatted);
-                }
-
-                $('#tabel_tindakan_rad').empty();
-                $.each(tindakanRad, function(index, item) {
-                    $('#tabel_tindakan_rad').append(`
-                        <tr>
-                            <td>${index + 1}</td>
-                            <td>${item.KD_TIND || '-'}</td>
-                            <td>${item.NM_TIND || '-'}</td>
-                        </tr>
-                    `);
-                });
-            } else {
-                $('#tabel_tindakan_rad').html(`
-                    <tr>
-                        <td colspan="6" class="text-center text-muted">Data
-                            tindakan radiologi belum tersedia.</td>
-                    </tr>
-                `);
-            }
-
-            if (tindakanOp.length > 0) {
-                var tglOP = tindakanOp[0].tanggal_operasi
-                if (tglOP) {
-                    const tgl = new Date(tglOP);
-                    const formatted = tgl.toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric'
-                    });
-                    $('#TANGGAL_OPERASI').text(formatted);
-                }
-
-                $('#tabel_tindakan_operasi').empty();
-                $('#laporan_operasi').html(tindakanOp[0].laporan_operasi)
-                $.each(tindakanOp, function(index, item) {
-                    $('#tabel_tindakan_operasi').append(`
-                        <tr>
-                            <td>${index + 1}</td>
-                            <td>${item.tind_operasi || '-'}</td>
-                            <td>${item.diag_pre_operasi || '-'}</td>
-                            <td>${item.diag_post_operasi || '-'}</td>
-                            <td>${item.nmdok || '-'}</td>
-                            <td>${item.perawat || '-'}</td>
-                        </tr>
-                    `);
-                });
-            } else {
-                $('#laporan_operasi').html('<i> Tidak Ada Tindakan Operasi </i>')
-                $('#tabel_tindakan_operasi').html(`
-                    <tr>
-                        <td colspan="6" class="text-center text-muted">Data
-                            tindakan Operasi belum tersedia.</td>
-                    </tr>
-                `);
-            }
-
-            $.each(dataICD, function(index, item) {
-                if (item.length > 0) {
-                    $(`#curr-icd9-${index}`).show()
-                    $.each(item, function(x, data) {
-                        $(`#curr-icd9-${index}`).find('input').val(data.KD_ICD9 + ' - ' + data.DISP_ICD9)
-                    })
-                } else {
-                    $(`#curr-icd9-${index}`).hide()
-                }
-            })
 
             $('#modalProcedure').modal('show')
         }
@@ -942,98 +745,25 @@
             });
         }
 
-        $('#btn-send-satusehat').on('click', function() {
-            if (paramSatuSehat != '') {
-                sendSatuSehat(paramSatuSehat)
-            }
-        })
-
         function sendSatuSehat(param) {
-            const icd9Lab = $('#icd9-lab').val();
-            const icd9Rad = $('#icd9-rad').val();
-            const icd9Operasi = $('#icd9-operasi').val();
-
-            if ($('#icd9-pemeriksaanfisik').prop('required') && $('#kd_icd_pm').val() == '') {
-                $.toast({
-                    heading: "Kode ICD-9 belum diisi",
-                    text: 'Harap Masukan Kode Tindakan ICD-9CM untuk Pemeriksaan Fisik',
-                    position: "top-right",
-                    loaderBg: "#ff6849",
-                    icon: "error",
-                    hideAfter: 3500,
-                });
-            } else if ($('#icd9-lab').prop('required') && (!icd9Lab || icd9Lab.length === 0)) {
-                $.toast({
-                    heading: "Kode ICD-9 belum diisi",
-                    text: 'Harap masukkan Kode Tindakan ICD-9CM untuk tindakan Laboratorium',
-                    position: "top-right",
-                    loaderBg: "#ff6849",
-                    icon: "error",
-                    hideAfter: 3500,
-                });
-            } else if ($('#icd9-rad').prop('required') && (!icd9Rad || icd9Rad.length === 0)) {
-                $.toast({
-                    heading: "Kode ICD-9 belum diisi",
-                    text: 'Harap masukkan Kode Tindakan ICD-9CM untuk tindakan Radiologi',
-                    position: "top-right",
-                    loaderBg: "#ff6849",
-                    icon: "error",
-                    hideAfter: 3500,
-                });
-            } else if ($('#icd9-operasi').prop('required') && (!icd9Operasi || icd9Operasi.length === 0)) {
-                $.toast({
-                    heading: "Kode ICD-9 belum diisi",
-                    text: 'Harap masukkan Kode Tindakan ICD-9CM untuk tindakan Operasi',
-                    position: "top-right",
-                    loaderBg: "#ff6849",
-                    icon: "error",
-                    hideAfter: 3500,
-                });
-            } else {
-                var formData = new FormData()
-                formData.append('_token', $('meta[name="csrf-token"]').attr('content'))
-                formData.append('param', param)
-                formData.append('icd9_pm', $('input[name="sub_kd_icd_pm"]').val())
-                formData.append('text_icd9_pm', $('input[name="icd9-pemeriksaanfisik"]').val())
-
-                let icd9LabValues = $('#icd9-lab').val() || []; // array of kode ICD
-                let icd9LabTexts = $('#icd9-lab').select2('data').map(item => item.text);
-
-                let icd9RadValues = $('#icd9-rad').val() || [];
-                let icd9RadTexts = $('#icd9-rad').select2('data').map(item => item.text);
-
-                let icd9OpValues = $('#icd9-operasi').val() || [];
-                let icd9OpTexts = $('#icd9-operasi').select2('data').map(item => item.text);
-
-                formData.append('icd9_lab', JSON.stringify(icd9LabValues));
-                formData.append('text_icd9_lab', JSON.stringify(icd9LabTexts));
-
-                formData.append('icd9_rad', JSON.stringify(icd9RadValues));
-                formData.append('text_icd9_rad', JSON.stringify(icd9RadTexts));
-
-                formData.append('icd9_op', JSON.stringify(icd9OpValues));
-                formData.append('text_icd9_op', JSON.stringify(icd9OpTexts));
-
-
-                Swal.fire({
-                    title: "Konfirmasi Pengiriman",
-                    text: `Kirim data Semua Tindakan Pasien ke SatuSehat?`,
-                    icon: "question",
-                    showCancelButton: true,
-                    confirmButtonColor: "#3085d6",
-                    cancelButtonColor: "#d33",
-                    confirmButtonText: "Ya, kirim!",
-                    cancelButtonText: "Batal",
-                }).then(async (conf) => {
-                    if (conf.value || conf.isConfirmed) {
-                        await ajaxPostFile(
-                            `{{ route('satusehat.procedure.send') }}`,
-                            formData,
-                            "input_success",
-                        );
-                    }
-                });
-            }
+            Swal.fire({
+                title: "Konfirmasi Pengiriman",
+                text: `Kirim Data Observasi Pasien ke SatuSehat?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Ya, kirim!",
+                cancelButtonText: "Batal",
+            }).then(async (conf) => {
+                if (conf.value || conf.isConfirmed) {
+                    await ajaxGetJson(
+                        `{{ route('satusehat.observasi.send', '') }}/${btoa(param)}`,
+                        "input_success",
+                        "",
+                    );
+                }
+            });
         }
 
         function input_success(res) {
