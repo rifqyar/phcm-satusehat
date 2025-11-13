@@ -78,6 +78,8 @@
                     <ul class="nav nav-tabs customtab" role="tablist">
                         <li class="nav-item">
                             <a class="nav-link active" data-toggle="tab" href="#pemeriksaan_fisik" role="tab">
+                                <i class="fas fa-check-circle text-success" id="integrasi_anamnese"
+                                    style="display: none"></i>
                                 <span>Pemeriksaan Fisik</span>
                             </a>
                         </li>
@@ -87,18 +89,23 @@
                                 <span>Penunjang Medis</span>
                             </a>
                             <div class="dropdown-menu">
-                                <a class="dropdown-item" id="rad-tab" href="#rad" role="tab" data-toggle="tab"
-                                    aria-controls="rad">
-                                    Radiologi
-                                </a>
                                 <a class="dropdown-item" id="lab-tab" href="#lab" role="tab" data-toggle="tab"
                                     aria-controls="lab">
+                                    <i class="fas fa-check-circle text-success" id="integrasi_lab"
+                                        style="display: none"></i>
                                     Laboratorium
+                                </a>
+                                <a class="dropdown-item" id="rad-tab" href="#rad" role="tab" data-toggle="tab"
+                                    aria-controls="rad">
+                                    <i class="fas fa-check-circle text-success" id="integrasi_rad"
+                                        style="display: none"></i>
+                                    Radiologi
                                 </a>
                             </div>
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" data-toggle="tab" href="#tindakan_op" role="tab">
+                                <i class="fas fa-check-circle text-success" id="integrasi_op" style="display: none"></i>
                                 <span>Tindakan OP</span>
                             </a>
                         </li>
@@ -107,7 +114,7 @@
                     <div class="tab-content">
                         <div class="tab-pane active" id="pemeriksaan_fisik" role="tabpanel">
                             <div class="p-20">
-                                <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
+                                <div class="ribbon-wrapper card shadow-lg border-0 rounded-4 overflow-hidden">
                                     <div
                                         class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
                                         <h4 class="mb-0 text-white">
@@ -118,7 +125,17 @@
                                         </span>
                                     </div>
 
-                                    <div class="card-body bg-light p-4">
+                                    <div class="ribbon ribbon-success" id="success_anamnese" style="display:none">
+                                        <i class="fas fa-check-circle text-white"></i>
+                                        Tindakan Pemeriksaan Fisik Sudah Integrasi
+                                    </div>
+
+                                    <div class="ribbon ribbon-danger" id="failed_anamnese">
+                                        <i class="fas fa-times-circle text-white"></i>
+                                        Tindakan Pemeriksaan Fisik Belum Integrasi
+                                    </div>
+
+                                    <div class="ribbon-content card-body bg-light p-4">
                                         <!-- Anamnese -->
                                         <div class="mb-4">
                                             <h6 class="text-uppercase text-secondary font-weight-bold mb-2">
@@ -220,13 +237,21 @@
                                             </div>
                                         </div>
 
-                                        <div class="form-group">
+                                        <div class="form-group" id="curr-icd9-pemeriksaanfisik" style="display: none">
+                                            <label>Kode ICD 9-CM saat ini</label>
+                                            <input type="text" disabled class="form-control">
+                                        </div>
+                                        <div class="form-group" id="form-icd-pemeriksaanfisik">
                                             <label for="icd9-pemeriksaanfisik">Kode ICD 9-CM <small
                                                     class="text-danger">*</small></label>
                                             <input type="text" class="form-control" placeholder="Cari Kode ICD 9"
                                                 name="icd9-pemeriksaanfisik" id="icd9-pemeriksaanfisik" required>
                                             <input type="hidden" name="kd_icd_pm" id="kd_icd_pm">
                                             <input type="hidden" name="sub_kd_icd_pm" id="sub_kd_icd_pm">
+                                        </div>
+
+                                        <div class="form-group" id="btn-simpan-pemeriksaanfisik">
+                                            <button class="btn btn-info" onclick="saveICD('pemeriksaanfisik')">Simpan Kode ICD 9</button>
                                         </div>
                                     </div>
                                 </div>
@@ -235,8 +260,9 @@
                         </div>
                         <div class="tab-pane" id="rad" role="tabpanel">
                             <div class="p-20">
-                                <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
-                                    <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
+                                <div class="ribbon-wrapper card shadow-lg border-0 rounded-4 overflow-hidden">
+                                    <div
+                                        class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
                                         <h4 class="mb-0 text-white">
                                             🔬 Detail Tindakan Radiologi
                                         </h4>
@@ -245,7 +271,17 @@
                                         </span>
                                     </div>
 
-                                    <div class="card-body bg-light p-4">
+                                    <div class="ribbon ribbon-success" id="success_rad" style="display:none">
+                                        <i class="fas fa-check-circle text-white"></i>
+                                        Tindakan Radiologi Sudah Integrasi
+                                    </div>
+
+                                    <div class="ribbon ribbon-danger" id="failed_rad">
+                                        <i class="fas fa-times-circle text-white"></i>
+                                        Tindakan Radiologi Belum Integrasi
+                                    </div>
+
+                                    <div class="ribbon-content card-body bg-light p-4">
                                         <!-- Daftar Tindakan Lab -->
                                         <div class="mb-4">
                                             <h6 class="text-uppercase text-secondary font-weight-bold mb-3">
@@ -263,7 +299,8 @@
                                                     </thead>
                                                     <tbody id="tabel_tindakan_rad">
                                                         <tr>
-                                                            <td colspan="6" class="text-center text-muted">Data tindakan radiologi belum tersedia.</td>
+                                                            <td colspan="6" class="text-center text-muted">Data
+                                                                tindakan radiologi belum tersedia.</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -271,15 +308,22 @@
                                         </div>
 
                                         <!-- Kode ICD 9 -->
-                                        <div class="form-group mt-4">
-                                            {{-- <label for="icd9-rad">Kode ICD 9-CM <small class="text-danger">*</small></label>
-                                            <input type="text" class="form-control" placeholder="Cari Kode ICD 9" name="icd9-rad" id="icd9-rad" required>
-                                            <input type="hidden" name="kd_icd_rad" id="kd_icd_rad" required>
-                                            <input type="hidden" name="sub_kd_icd_rad" id="sub_kd_icd_rad" required> --}}
-                                            <label for="icd9-rad">Kode ICD 9-CM <small class="text-danger">*</small></label>
-                                            <select name="icd9-rad" id="icd9-rad" class="form-control" multiple style="width: 100%">
+                                        <div class="form-group" id="curr-icd9-rad" style="display: none">
+                                            <label>Kode ICD 9-CM saat ini</label>
+                                            <input type="text" disabled class="form-control">
+                                        </div>
+
+                                        <div class="form-group mt-4" id="form-icd-rad">
+                                            <label for="icd9-rad">Kode ICD 9-CM <small
+                                                    class="text-danger">*</small></label>
+                                            <select name="icd9-rad" id="icd9-rad" class="form-control" multiple
+                                                style="width: 100%">
                                                 <option value=""></option>
                                             </select>
+                                        </div>
+
+                                        <div class="form-group" id="btn-simpan-rad">
+                                            <button class="btn btn-info" onclick="saveICD('rad')">Simpan Kode ICD 9</button>
                                         </div>
                                     </div>
                                 </div>
@@ -287,8 +331,9 @@
                         </div>
                         <div class="tab-pane" id="lab" role="tabpanel">
                             <div class="p-20">
-                                <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
-                                    <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
+                                <div class="ribbon-wrapper card shadow-lg border-0 rounded-4 overflow-hidden">
+                                    <div
+                                        class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
                                         <h4 class="mb-0 text-white">
                                             🔬 Detail Tindakan Laboratorium
                                         </h4>
@@ -297,11 +342,22 @@
                                         </span>
                                     </div>
 
-                                    <div class="card-body bg-light p-4">
+                                    <div class="ribbon ribbon-success" id="success_lab" style="display:none">
+                                        <i class="fas fa-check-circle text-white"></i>
+                                        Tindakan Laboratorium Sudah Integrasi
+                                    </div>
+
+                                    <div class="ribbon ribbon-danger" id="failed_lab">
+                                        <i class="fas fa-times-circle text-white"></i>
+                                        Tindakan Laboratorium Belum Integrasi
+                                    </div>
+
+                                    <div class="ribbon-content card-body bg-light p-4">
                                         <!-- Daftar Tindakan Lab -->
                                         <div class="mb-4">
                                             <h6 class="text-uppercase text-secondary font-weight-bold mb-3">
-                                                <i class="fa fa-flask mr-2 text-danger"></i> Daftar Tindakan Laboratorium
+                                                <i class="fa fa-flask mr-2 text-danger"></i> Daftar Tindakan
+                                                Laboratorium
                                             </h6>
 
                                             <div class="table-responsive">
@@ -315,7 +371,8 @@
                                                     </thead>
                                                     <tbody id="tabel_tindakan_lab">
                                                         <tr>
-                                                            <td colspan="6" class="text-center text-muted">Data tindakan lab belum tersedia.</td>
+                                                            <td colspan="6" class="text-center text-muted">Data
+                                                                tindakan lab belum tersedia.</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -323,11 +380,22 @@
                                         </div>
 
                                         <!-- Kode ICD 9 -->
-                                        <div class="form-group mt-4">
-                                            <label for="icd9-lab">Kode ICD 9-CM <small class="text-danger">*</small></label>
-                                            <select name="icd9-lab" id="icd9-lab" class="form-control" multiple style="width: 100%">
+                                        <div class="form-group" id="curr-icd9-lab" style="display: none">
+                                            <label>Kode ICD 9-CM saat ini</label>
+                                            <input type="text" disabled class="form-control">
+                                        </div>
+
+                                        <div class="form-group mt-4" id="form-icd-lab">
+                                            <label for="icd9-lab">Kode ICD 9-CM <small
+                                                    class="text-danger">*</small></label>
+                                            <select name="icd9-lab" id="icd9-lab" class="form-control" multiple
+                                                style="width: 100%">
                                                 <option value=""></option>
                                             </select>
+                                        </div>
+
+                                        <div class="form-group" id="btn-simpan-lab">
+                                            <button class="btn btn-info" onclick="saveICD('lab')">Simpan Kode ICD 9</button>
                                         </div>
                                     </div>
                                 </div>
@@ -335,8 +403,9 @@
                         </div>
                         <div class="tab-pane" id="tindakan_op" role="tabpanel">
                             <div class="p-20">
-                                <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
-                                    <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
+                                <div class="ribbon-wrapper card shadow-lg border-0 rounded-4 overflow-hidden">
+                                    <div
+                                        class="card-header bg-primary text-white d-flex align-items-center justify-content-between">
                                         <h4 class="mb-0 text-white">
                                             🏥 Detail Tindakan Operasi Pasien
                                         </h4>
@@ -345,7 +414,17 @@
                                         </span>
                                     </div>
 
-                                    <div class="card-body bg-light p-4">
+                                    <div class="ribbon ribbon-success" id="success_op" style="display:none">
+                                        <i class="fas fa-check-circle text-white"></i>
+                                        Tindakan Operasi Sudah Integrasi
+                                    </div>
+
+                                    <div class="ribbon ribbon-danger" id="failed_op">
+                                        <i class="fas fa-times-circle text-white"></i>
+                                        Tindakan Operasi Belum Integrasi
+                                    </div>
+
+                                    <div class="ribbon-content card-body bg-light p-4">
                                         <!-- Detail Operasi -->
                                         <div class="mb-4">
                                             <!-- Laporan Operasi -->
@@ -362,7 +441,8 @@
                                             </div>
 
                                             <h6 class="text-uppercase text-secondary font-weight-bold mb-3">
-                                                <i class="fa fa-stethoscope mr-2 text-danger"></i> Detail Tindakan Operasi
+                                                <i class="fa fa-stethoscope mr-2 text-danger"></i> Detail Tindakan
+                                                Operasi
                                             </h6>
                                             <div class="table-responsive">
                                                 <table class="table table-hover table-bordered bg-white rounded">
@@ -378,7 +458,8 @@
                                                     </thead>
                                                     <tbody id="tabel_tindakan_operasi">
                                                         <tr>
-                                                            <td colspan="6" class="text-center text-muted">Data tindakan operasi belum tersedia.</td>
+                                                            <td colspan="6" class="text-center text-muted">Data
+                                                                tindakan operasi belum tersedia.</td>
                                                         </tr>
                                                     </tbody>
                                                 </table>
@@ -386,11 +467,22 @@
                                         </div>
 
                                         <!-- Kode ICD 9 -->
-                                        <div class="form-group mt-4">
-                                            <label for="icd9-operasi">Kode ICD 9-CM <small class="text-danger">*</small></label>
-                                            <select name="icd9-operasi" id="icd9-operasi" class="form-control" multiple style="width: 100%">
+                                        <div class="form-group" id="curr-icd9-operasi" style="display: none">
+                                            <label>Kode ICD 9-CM saat ini</label>
+                                            <input type="text" disabled class="form-control">
+                                        </div>
+
+                                        <div class="form-group mt-4" id="form-icd-operasi">
+                                            <label for="icd9-operasi">Kode ICD 9-CM <small
+                                                    class="text-danger">*</small></label>
+                                            <select name="icd9-operasi" id="icd9-operasi" class="form-control"
+                                                multiple style="width: 100%">
                                                 <option value=""></option>
                                             </select>
+                                        </div>
+
+                                        <div class="form-group" id="btn-simpan-op">
+                                            <button class="btn btn-info" onclick="saveICD('operasi')">Simpan Kode ICD 9</button>
                                         </div>
                                     </div>
                                 </div>
@@ -401,7 +493,8 @@
             </div>
 
             <div class="modal-footer">
-                <a href="javascript:void(0)" class="btn btn-primary" id="btn-send-satusehat"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>
+                <a href="javascript:void(0)" class="btn btn-primary" id="btn-send-satusehat"><i
+                        class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
             </div>
         </div>

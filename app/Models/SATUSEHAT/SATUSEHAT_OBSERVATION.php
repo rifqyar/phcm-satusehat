@@ -4,10 +4,10 @@ namespace App\Models\SATUSEHAT;
 
 use Illuminate\Database\Eloquent\Model;
 
-class SATUSEHAT_PROCEDURE extends Model
+class SATUSEHAT_OBSERVATION extends Model
 {
     protected $connection = "dbsatusehat";
-    protected $table = "RJ_SATUSEHAT_PROCEDURE";
+    protected $table = "RJ_SATUSEHAT_OBSERVASI";
 
     protected $guarded = [];
     public $timestamps = false;
