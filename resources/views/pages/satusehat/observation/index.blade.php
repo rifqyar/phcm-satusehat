@@ -745,98 +745,25 @@
             });
         }
 
-        $('#btn-send-satusehat').on('click', function() {
-            if (paramSatuSehat != '') {
-                sendSatuSehat(paramSatuSehat)
-            }
-        })
-
         function sendSatuSehat(param) {
-            const icd9Lab = $('#icd9-lab').val();
-            const icd9Rad = $('#icd9-rad').val();
-            const icd9Operasi = $('#icd9-operasi').val();
-
-            if ($('#icd9-pemeriksaanfisik').prop('required') && $('#kd_icd_pm').val() == '') {
-                $.toast({
-                    heading: "Kode ICD-9 belum diisi",
-                    text: 'Harap Masukan Kode Tindakan ICD-9CM untuk Pemeriksaan Fisik',
-                    position: "top-right",
-                    loaderBg: "#ff6849",
-                    icon: "error",
-                    hideAfter: 3500,
-                });
-            } else if ($('#icd9-lab').prop('required') && (!icd9Lab || icd9Lab.length === 0)) {
-                $.toast({
-                    heading: "Kode ICD-9 belum diisi",
-                    text: 'Harap masukkan Kode Tindakan ICD-9CM untuk tindakan Laboratorium',
-                    position: "top-right",
-                    loaderBg: "#ff6849",
-                    icon: "error",
-                    hideAfter: 3500,
-                });
-            } else if ($('#icd9-rad').prop('required') && (!icd9Rad || icd9Rad.length === 0)) {
-                $.toast({
-                    heading: "Kode ICD-9 belum diisi",
-                    text: 'Harap masukkan Kode Tindakan ICD-9CM untuk tindakan Radiologi',
-                    position: "top-right",
-                    loaderBg: "#ff6849",
-                    icon: "error",
-                    hideAfter: 3500,
-                });
-            } else if ($('#icd9-operasi').prop('required') && (!icd9Operasi || icd9Operasi.length === 0)) {
-                $.toast({
-                    heading: "Kode ICD-9 belum diisi",
-                    text: 'Harap masukkan Kode Tindakan ICD-9CM untuk tindakan Operasi',
-                    position: "top-right",
-                    loaderBg: "#ff6849",
-                    icon: "error",
-                    hideAfter: 3500,
-                });
-            } else {
-                var formData = new FormData()
-                formData.append('_token', $('meta[name="csrf-token"]').attr('content'))
-                formData.append('param', param)
-                formData.append('icd9_pm', $('input[name="sub_kd_icd_pm"]').val())
-                formData.append('text_icd9_pm', $('input[name="icd9-pemeriksaanfisik"]').val())
-
-                let icd9LabValues = $('#icd9-lab').val() || []; // array of kode ICD
-                let icd9LabTexts = $('#icd9-lab').select2('data').map(item => item.text);
-
-                let icd9RadValues = $('#icd9-rad').val() || [];
-                let icd9RadTexts = $('#icd9-rad').select2('data').map(item => item.text);
-
-                let icd9OpValues = $('#icd9-operasi').val() || [];
-                let icd9OpTexts = $('#icd9-operasi').select2('data').map(item => item.text);
-
-                formData.append('icd9_lab', JSON.stringify(icd9LabValues));
-                formData.append('text_icd9_lab', JSON.stringify(icd9LabTexts));
-
-                formData.append('icd9_rad', JSON.stringify(icd9RadValues));
-                formData.append('text_icd9_rad', JSON.stringify(icd9RadTexts));
-
-                formData.append('icd9_op', JSON.stringify(icd9OpValues));
-                formData.append('text_icd9_op', JSON.stringify(icd9OpTexts));
-
-
-                Swal.fire({
-                    title: "Konfirmasi Pengiriman",
-                    text: `Kirim data Semua Tindakan Pasien ke SatuSehat?`,
-                    icon: "question",
-                    showCancelButton: true,
-                    confirmButtonColor: "#3085d6",
-                    cancelButtonColor: "#d33",
-                    confirmButtonText: "Ya, kirim!",
-                    cancelButtonText: "Batal",
-                }).then(async (conf) => {
-                    if (conf.value || conf.isConfirmed) {
-                        await ajaxPostFile(
-                            `{{ route('satusehat.procedure.send') }}`,
-                            formData,
-                            "input_success",
-                        );
-                    }
-                });
-            }
+            Swal.fire({
+                title: "Konfirmasi Pengiriman",
+                text: `Kirim Data Observasi Pasien ke SatuSehat?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Ya, kirim!",
+                cancelButtonText: "Batal",
+            }).then(async (conf) => {
+                if (conf.value || conf.isConfirmed) {
+                    await ajaxGetJson(
+                        `{{ route('satusehat.observasi.send', '') }}/${btoa(param)}`,
+                        "input_success",
+                        "",
+                    );
+                }
+            });
         }
 
         function input_success(res) {

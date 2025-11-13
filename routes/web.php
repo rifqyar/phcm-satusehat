@@ -69,6 +69,7 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::get('/observation', [App\Http\Controllers\SatuSehat\ObservasiController::class, 'index'])->name('observasi.index');
         Route::post('/observation/datatable', [App\Http\Controllers\SatuSehat\ObservasiController::class, 'datatable'])->name('observasi.datatable');
         Route::get('/observation/lihat-detail/{param}', [App\Http\Controllers\SatuSehat\ObservasiController::class, 'lihatDetail'])->name('observasi.lihat-detail');
+        Route::get('/observation/send/{param}', [App\Http\Controllers\SatuSehat\ObservasiController::class, 'sendSatuSehat'])->name('observasi.send');
 
 
         // Tindakan
