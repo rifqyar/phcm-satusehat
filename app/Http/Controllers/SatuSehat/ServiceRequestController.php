@@ -119,27 +119,20 @@ class ServiceRequestController extends Controller
 
         $lab_ri = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.v_kunjungan_ri as rj')
-            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
-                $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
-                    ->on('nt.idunit', '=', 'rj.ID_UNIT')
-                    ->on('nt.kbuku', '=', 'rj.KBUKU')
-                    ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
-            })
-            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
-                $join->on('kc.KARCIS_RUJUKAN', '=', 'nt.karcis')
-                    ->on('kc.IDUNIT', '=', 'nt.idunit')
-                    ->on('kc.KBUKU', '=', 'nt.kbuku')
-                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            ->join('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.IDUNIT', '=', 'rj.ID_UNIT')
+                    ->on('kc.KBUKU', '=', 'rj.KBUKU')
+                    ->on('kc.NO_PESERTA', '=', 'rj.NO_PESERTA');
             })
             ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
-                $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
-                    ->on('rd.IDUNIT', '=', 'nt.idunit')
-                    ->on('rd.KBUKU', '=', 'nt.kbuku')
-                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                $join->on('rd.KARCIS_RUJUKAN', '=', 'kc.KARCIS')
+                    ->on('rd.IDUNIT', '=', 'kc.IDUNIT')
+                    ->on('rd.KBUKU', '=', 'kc.KBUKU')
+                    ->on('rd.NO_PESERTA', '=', 'kc.NO_PESERTA')
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'kc.karcis', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'kc.KARCIS', '=', 'ss.karcis')
             ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
             ->leftJoin('SIRS_PHCM.dbo.DR_MDOKTER as dkd', 'kc.KDDOK', '=', 'dkd.kdDok')
             ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
@@ -147,6 +140,7 @@ class ServiceRequestController extends Controller
             ->whereBetween('rd.TANGGAL_ENTRI', [$startDate, $endDate])
             ->where('rd.IDUNIT', '001')
             ->where('rd.KLINIK_TUJUAN', '0017')
+            ->whereNull('kc.TGL_BATAL')
             ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN');
 
         $lab_ri_all = $lab_ri->get();
@@ -187,6 +181,7 @@ class ServiceRequestController extends Controller
                     ->where('AKTIF', 'true')
                     ->where('IDUNIT', '001');
             })
+            ->whereNull('kc.TGL_BATAL')
             ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.ARRAY_TINDAKAN');
 
         $rad_ri_all = $rad_ri->get();
@@ -322,23 +317,16 @@ class ServiceRequestController extends Controller
 
         $lab_ri = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.v_kunjungan_ri as rj')
-            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
-                $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
-                    ->on('nt.idunit', '=', 'rj.ID_UNIT')
-                    ->on('nt.kbuku', '=', 'rj.KBUKU')
-                    ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
-            })
-            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
-                $join->on('kc.KARCIS_RUJUKAN', '=', 'nt.karcis')
-                    ->on('kc.IDUNIT', '=', 'nt.idunit')
-                    ->on('kc.KBUKU', '=', 'nt.kbuku')
-                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            ->join('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.IDUNIT', '=', 'rj.ID_UNIT')
+                    ->on('kc.KBUKU', '=', 'rj.KBUKU')
+                    ->on('kc.NO_PESERTA', '=', 'rj.NO_PESERTA');
             })
             ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
-                $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
-                    ->on('rd.IDUNIT', '=', 'nt.idunit')
-                    ->on('rd.KBUKU', '=', 'nt.kbuku')
-                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                $join->on('rd.KARCIS_RUJUKAN', '=', 'kc.KARCIS')
+                    ->on('rd.IDUNIT', '=', 'kc.IDUNIT')
+                    ->on('rd.KBUKU', '=', 'kc.KBUKU')
+                    ->on('rd.NO_PESERTA', '=', 'kc.NO_PESERTA')
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
@@ -350,6 +338,7 @@ class ServiceRequestController extends Controller
             ->whereBetween('rd.TANGGAL_ENTRI', [$tgl_awal, $tgl_akhir])
             ->where('rd.IDUNIT', '001')
             ->where('rd.KLINIK_TUJUAN', '0017')
+            ->whereNull('kc.TGL_BATAL')
             ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
 
         $lab_ri_all = $lab_ri->get();
@@ -357,23 +346,16 @@ class ServiceRequestController extends Controller
 
         $rad_ri = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.v_kunjungan_ri as rj')
-            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
-                $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
-                    ->on('nt.idunit', '=', 'rj.ID_UNIT')
-                    ->on('nt.kbuku', '=', 'rj.KBUKU')
-                    ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
-            })
-            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
-                $join->on('kc.KARCIS_RUJUKAN', '=', 'nt.karcis')
-                    ->on('kc.IDUNIT', '=', 'nt.idunit')
-                    ->on('kc.KBUKU', '=', 'nt.kbuku')
-                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            ->join('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.IDUNIT', '=', 'rj.ID_UNIT')
+                    ->on('kc.KBUKU', '=', 'rj.KBUKU')
+                    ->on('kc.NO_PESERTA', '=', 'rj.NO_PESERTA');
             })
             ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
-                $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
-                    ->on('rd.IDUNIT', '=', 'nt.idunit')
-                    ->on('rd.KBUKU', '=', 'nt.kbuku')
-                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                $join->on('rd.KARCIS_RUJUKAN', '=', 'kc.karcis')
+                    ->on('rd.IDUNIT', '=', 'kc.idunit')
+                    ->on('rd.KBUKU', '=', 'kc.kbuku')
+                    ->on('rd.NO_PESERTA', '=', 'kc.no_peserta')
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
@@ -390,6 +372,7 @@ class ServiceRequestController extends Controller
                     ->where('AKTIF', 'true')
                     ->where('IDUNIT', '001');
             })
+            ->whereNull('kc.TGL_BATAL')
             ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
         // dd($rad->toSql());
         $rad_ri_all = $rad_ri->get();
@@ -490,11 +473,23 @@ class ServiceRequestController extends Controller
                 $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcis . '+' . $kdKlinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
 
                 $checkBox = '';
-                if (!$row->SATUSEHAT) {
-                    $checkBox = "
-                        <input type='checkbox' class='select-row chk-col-purple' value='$paramSatuSehat' id='$paramSatuSehat' />
-                        <label for='$paramSatuSehat' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
-                    ";
+                if ($row->ID_PASIEN_SS == null) {
+                    // $btn = '<i class="text-muted">Pasien Belum Mapping Satu Sehat</i>';
+                } else if ($row->ID_NAKES_SS == null) {
+                    // $btn = '<i class="text-muted">Nakes Belum Mapping Satu Sehat</i>';
+                } else if ($row->idnakes == null) {
+                    // $btn = '<i class="text-muted">Dokter Penindak Lanjut Belum Mapping Satu Sehat</i>';
+                } else if ($row->AllServiceRequestExist == 0) {
+                    // $btn = '<i class="text-muted">Tindakan Belum Mapping</i>';
+                } else {
+                    if ($row->SATUSEHAT == 0) {
+                        if ($row->STATUS_SELESAI != "9" && $row->STATUS_SELESAI != "10") {
+                            $checkBox = "
+                                <input type='checkbox' class='select-row chk-col-purple' value='$paramSatuSehat' id='$paramSatuSehat' />
+                                <label for='$paramSatuSehat' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
+                            ";
+                        }
+                    }
                 }
 
                 return $checkBox;

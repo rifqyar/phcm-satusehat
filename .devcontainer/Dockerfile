@@ -18,8 +18,9 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Microsoft ODBC Driver for SQL Server
-RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
-    && curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+    && ARCH=$(dpkg --print-architecture) \
+    && echo "deb [arch=${ARCH} signed-by=/usr/share/keyrings/microsoft-prod.gpg] https://packages.microsoft.com/debian/11/prod bullseye main" > /etc/apt/sources.list.d/mssql-release.list \
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql17 \
     && ACCEPT_EULA=Y apt-get install -y mssql-tools \
@@ -51,12 +52,8 @@ COPY php.ini /usr/local/etc/php/conf.d/custom.ini
 # Set working directory
 WORKDIR /app
 
-# Copy startup script
-COPY start.sh /usr/local/bin/start.sh
-RUN chmod +x /usr/local/bin/start.sh
-
 # Expose port 9000 for PHP-FPM
 EXPOSE 9000
 
-# Start PHP-FPM and keep container running
-CMD ["/usr/local/bin/start.sh"]
+# Start PHP-FPM directly
+CMD ["php-fpm", "-F"]
