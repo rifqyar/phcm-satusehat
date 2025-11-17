@@ -507,7 +507,6 @@
         }
         //function confirmKirim
         function confirmkirimSatusehat(idTrans) {
-            // console.log('confirmKirimSatusehat called, idTrans =', idTrans);
             if (!idTrans) return;
 
             Swal.fire({
@@ -520,7 +519,7 @@
                 confirmButtonColor: '#3085d6',
                 cancelButtonColor: '#d33'
             }).then((result) => {
-                if (result) {
+                if (result.isConfirmed) {
                     console.log("Lanjut kirim ke SATUSEHAT");
                     kirimSatusehat(idTrans);
                 } else {
