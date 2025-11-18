@@ -113,7 +113,7 @@ return [
             'url' => env('DATABASE_URL'),
             'host' => env('DB_HOST', '10.1.19.22'),
             'port' => env('DB_PORT', '1444'),
-            'database' => env('DB_DATABASE', 'E_RM_PHCM'),
+            'database' => 'E_RM_PHCM',
             'username' => env('DB_USERNAME', 'sa'),
             'password' => env('DB_PASSWORD', 'P@ssw0rd'),
             'charset' => 'utf8',

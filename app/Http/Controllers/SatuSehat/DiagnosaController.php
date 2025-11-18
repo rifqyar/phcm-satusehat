@@ -4,6 +4,7 @@ namespace App\Http\Controllers\SatuSehat;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DiagnosaController extends Controller
 {
@@ -15,6 +16,59 @@ class DiagnosaController extends Controller
     public function index()
     {
         //
+    }
+
+    public function sendSatuSehatInternal($id_unit, $idTransaksi, $kdPasienSS, $kdNakesSS, $kdLokasiSS)
+    {
+        $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as eri')
+            ->select([
+                'eri.NOMOR',
+                'eri.KODE_DIAGNOSA_UTAMA',
+                'eri.DIAG_UTAMA',
+                'eri.KODE_DIAGNOSA_SEKUNDER',
+                'eri.DIAG_SEKUNDER',
+                'eri.KODE_DIAGNOSA_KOMPLIKASI',
+                'eri.DIAG_KOMPLIKASI',
+                'eri.KODE_DIAGNOSA_PENYEBAB',
+                'eri.PENYEBAB',
+                'eri.ANAMNESE',
+            ])
+            ->where('karcis', '94131')
+            ->where('aktif', 1)
+            ->first();
+
+        $diagnosa = [];
+        if ($dataErm) {
+            if ($dataErm->KODE_DIAGNOSA_UTAMA) {
+                $diagnosa[] = [
+                    'kode' => $dataErm->KODE_DIAGNOSA_UTAMA,
+                    'keterangan' => $dataErm->DIAG_UTAMA,
+                ];
+            }
+
+            if ($dataErm->KODE_DIAGNOSA_SEKUNDER) {
+                $diagnosa[] = [
+                    'kode' => $dataErm->KODE_DIAGNOSA_SEKUNDER,
+                    'keterangan' => $dataErm->DIAG_SEKUNDER,
+                ];
+            }
+
+            if ($dataErm->KODE_DIAGNOSA_KOMPLIKASI) {
+                $diagnosa[] = [
+                    'kode' => $dataErm->KODE_DIAGNOSA_KOMPLIKASI,
+                    'keterangan' => $dataErm->DIAG_KOMPLIKASI,
+                ];
+            }
+
+            if ($dataErm->KODE_DIAGNOSA_PENYEBAB) {
+                $diagnosa[] = [
+                    'kode' => $dataErm->KODE_DIAGNOSA_PENYEBAB,
+                    'keterangan' => $dataErm->PENYEBAB,
+                ];
+            }
+        }
+
+        dd($diagnosa);
     }
 
     /**
