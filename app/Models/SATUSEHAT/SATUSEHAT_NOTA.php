@@ -8,6 +8,7 @@ class SATUSEHAT_NOTA extends Model{
     protected $connection = "dbsatusehat";
     protected $table = "RJ_SATUSEHAT_NOTA";
 
+    protected $guarded = [];
     // protected $fillable = [];
     public $timestamps = false;
     public function diagnosaNota()  {
