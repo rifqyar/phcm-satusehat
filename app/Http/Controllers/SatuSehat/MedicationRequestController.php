@@ -22,21 +22,29 @@ class MedicationRequestController extends Controller
         return response()->view('pages.satusehat.medicationrequest.index');
     }
 
-public function datatable(Request $request)
-{
-    $startDate = $request->input('start_date');
-    $endDate = $request->input('end_date');
+    public function datatable(Request $request)
+    {
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $jenis = $request->input('jenis'); // ri / rj
+        $ketLayanan = $jenis === 'ri' ? 'INAP' : 'JALAN';
 
-    if (!$startDate || !$endDate) {
-        $endDate = now();
-        $startDate = now()->subDays(30);
-    }
 
-    // 🧱 Base query
-    $query = DB::table('SIRS_PHCM.dbo.IF_HTRANS_OL as a')
-        ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as b', 'a.KARCIS', '=', 'b.karcis')
-        ->leftJoin('SIRS_PHCM.dbo.v_kunjungan_rj as c', 'a.KARCIS', '=', 'c.ID_TRANSAKSI')
-        ->leftJoin(DB::raw("
+        if (!$startDate || !$endDate) {
+            $endDate = now();
+            $startDate = now()->subDays(30);
+        }
+
+        // Tentukan tabel kunjungan berdasarkan input jenis
+        $kunjunganTable = $jenis === 'ri'
+            ? 'SIRS_PHCM.dbo.v_kunjungan_ri'
+            : 'SIRS_PHCM.dbo.v_kunjungan_rj';
+
+        // 🧱 Base query
+        $query = DB::table('SIRS_PHCM.dbo.IF_HTRANS_OL as a')
+            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as b', 'a.KARCIS', '=', 'b.karcis')
+            ->leftJoin("$kunjunganTable as c", 'a.KARCIS', '=', 'c.ID_TRANSAKSI')  // ← berubah dinamis
+            ->leftJoin(DB::raw("
             (
                 SELECT 
                     ol.ID_TRANS,
@@ -51,7 +59,7 @@ public function datatable(Request $request)
                 GROUP BY ol.ID_TRANS
             ) as d
         "), 'd.ID_TRANS', '=', 'a.ID_TRANS')
-        ->leftJoin(DB::raw("
+            ->leftJoin(DB::raw("
             (
                 SELECT 
                     LOCAL_ID,
@@ -61,83 +69,81 @@ public function datatable(Request $request)
                 GROUP BY LOCAL_ID
             ) AS log_latest
         "), 'log_latest.LOCAL_ID', '=', 'a.ID_TRANS')
-        ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION as SSM', 'SSM.ID', '=', DB::raw('log_latest.MAX_ID'))
-        ->whereBetween(DB::raw('CAST(c.TANGGAL AS date)'), [$startDate, $endDate])
-        ->select(
-            'b.id',
-            'b.id_satusehat_encounter',
-            'a.ID_TRANS',
-            DB::raw('CAST(c.TANGGAL AS date) AS TGL_KARCIS'),
-            'a.KARCIS',
-            DB::raw('c.NAMA_PASIEN AS PASIEN'),
-            DB::raw('c.DOKTER AS DOKTER'),
-            DB::raw("
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION as SSM', 'SSM.ID', '=', DB::raw('log_latest.MAX_ID'))
+            ->whereBetween(DB::raw('CAST(c.TANGGAL AS date)'), [$startDate, $endDate])
+            ->where('a.KET_LAYANAN', $ketLayanan)
+            ->select(
+                'b.id',
+                'b.id_satusehat_encounter',
+                'a.ID_TRANS',
+                DB::raw('CAST(c.TANGGAL AS date) AS TGL_KARCIS'),
+                'a.KARCIS',
+                DB::raw('c.NAMA_PASIEN AS PASIEN'),
+                DB::raw('c.DOKTER AS DOKTER'),
+                DB::raw("
                 CASE 
                     WHEN SSM.ID IS NOT NULL THEN '200'
                     ELSE d.STATUS_MAPPING
                 END AS STATUS_MAPPING
             "),
-            DB::raw('SSM.STATUS AS LOG_STATUS'),
-            DB::raw('SSM.CREATED_AT AS LOG_CREATED_AT')
-        );
+                DB::raw('SSM.STATUS AS LOG_STATUS'),
+                DB::raw('SSM.CREATED_AT AS LOG_CREATED_AT')
+            );
 
-    // 🔢 Summary count (tanpa ambil seluruh data ke memory)
-    $recordsTotal = (clone $query)->count();
+        // 🔢 Summary count
+        $recordsTotal = (clone $query)->count();
 
-    $sentCount = (clone $query)
-        ->whereRaw("
+        $sentCount = (clone $query)
+            ->whereRaw("
             CASE 
                 WHEN SSM.ID IS NOT NULL THEN '200'
                 ELSE d.STATUS_MAPPING
             END = '200'
         ")
-        ->count();
+            ->count();
 
-    $unsentCount = $recordsTotal - $sentCount;
+        $unsentCount = $recordsTotal - $sentCount;
 
-    // 🚀 DataTables server-side
-    $dataTable = DataTables::of($query)
-        // ✅ Filter kolom agar bisa search per-field
-        ->filterColumn('KARCIS', function ($query, $keyword) {
-            $query->where('a.KARCIS', 'like', "%{$keyword}%");
-        })
-        ->filterColumn('ID_TRANS', function ($query, $keyword) {
-            $query->where('a.ID_TRANS', 'like', "%{$keyword}%");
-        })
-        ->filterColumn('DOKTER', function ($query, $keyword) {
-            $query->where('c.DOKTER', 'like', "%{$keyword}%");
-        })
-        ->filterColumn('PASIEN', function ($query, $keyword) {
-            $query->where('c.NAMA_PASIEN', 'like', "%{$keyword}%");
-        })
+        // 🚀 DataTables server-side
+        $dataTable = DataTables::of($query)
+            ->filterColumn('KARCIS', function ($query, $keyword) {
+                $query->where('a.KARCIS', 'like', "%{$keyword}%");
+            })
+            ->filterColumn('ID_TRANS', function ($query, $keyword) {
+                $query->where('a.ID_TRANS', 'like', "%{$keyword}%");
+            })
+            ->filterColumn('DOKTER', function ($query, $keyword) {
+                $query->where('c.DOKTER', 'like', "%{$keyword}%");
+            })
+            ->filterColumn('PASIEN', function ($query, $keyword) {
+                $query->where('c.NAMA_PASIEN', 'like', "%{$keyword}%");
+            })
+            ->filter(function ($query) use ($request) {
+                if ($search = $request->get('search')['value']) {
+                    $query->where(function ($q) use ($search) {
+                        $q->where('a.KARCIS', 'like', "%{$search}%")
+                            ->orWhere('a.ID_TRANS', 'like', "%{$search}%")
+                            ->orWhere('c.DOKTER', 'like', "%{$search}%")
+                            ->orWhere('c.NAMA_PASIEN', 'like', "%{$search}%");
+                    });
+                }
+            })
+            ->order(function ($query) {
+                $query->orderBy('a.ID_TRANS', 'desc');
+            })
+            ->make(true);
 
-        // 🔍 Search global (input search di datatable)
-        ->filter(function ($query) use ($request) {
-            if ($search = $request->get('search')['value']) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('a.KARCIS', 'like', "%{$search}%")
-                        ->orWhere('a.ID_TRANS', 'like', "%{$search}%")
-                        ->orWhere('c.DOKTER', 'like', "%{$search}%")
-                        ->orWhere('c.NAMA_PASIEN', 'like', "%{$search}%");
-                });
-            }
-        })
+        // Tambahkan summary
+        $json = $dataTable->getData(true);
+        $json['summary'] = [
+            'all' => $recordsTotal,
+            'sent' => $sentCount,
+            'unsent' => $unsentCount,
+        ];
 
-        ->order(function ($query) {
-            $query->orderBy('a.ID_TRANS', 'desc');
-        })
-        ->make(true);
+        return response()->json($json);
+    }
 
-    // ✨ Tambahkan summary ke dalam response
-    $json = $dataTable->getData(true);
-    $json['summary'] = [
-        'all' => $recordsTotal,
-        'sent' => $sentCount,
-        'unsent' => $unsentCount,
-    ];
-
-    return response()->json($json);
-}
 
 
     public function getDetailObat(Request $request)
@@ -237,11 +243,28 @@ public function datatable(Request $request)
         ", [$idTrans]);
 
             if (empty($data)) {
+
+                // contoh: ambil KDBRG_CENTRA dari request
+                $kodeBarang = $request->input('kode_barang');
+
+                if (!$kodeBarang) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => "Data transaksi tidak ditemukan & kode_barang tidak dikirim."
+                    ], 400);
+                }
+
+                // panggil setMedication internal
+                $medResult = app(\App\Http\Controllers\SatusehatKfaController::class)
+                    ->processMedication($kodeBarang);
+
                 return response()->json([
-                    'status' => 'error',
-                    'message' => "Data tidak ditemukan untuk ID_TRANS $idTrans."
-                ], 404);
+                    'status' => 'warning',
+                    'message' => 'Transaksi tidak ditemukan. Medication dikirim sebagai master.',
+                    'medication' => $medResult
+                ]);
             }
+
 
             // --- ambil token aktif dari tabel auth ---
             $tokenData = DB::connection('sqlsrv')

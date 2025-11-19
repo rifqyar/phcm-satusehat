@@ -16,129 +16,142 @@ class MedicationDispenseController extends Controller
 public function datatable(Request $request)
 {
     $startDate = $request->input('start_date');
-    $endDate = $request->input('end_date');
+    $endDate   = $request->input('end_date');
+    $jenis     = $request->input('jenis'); // ri / rj
 
     if (!$startDate || !$endDate) {
-        $endDate = now();
+        $endDate   = now();
         $startDate = now()->subDays(30);
     }
 
-    $query = DB::table(DB::raw("
-        (
-            SELECT DISTINCT
-                a.KLINIK AS KodeKlinik,
-                a.NOURUT AS NomorUrut,
-                a.KARCIS AS NomorKarcis,
-                CONVERT(varchar(10), a.TGL, 105) AS TanggalKarcis,
-                a.KBUKU AS KodeBuku,
-                a.NO_PESERTA AS NomorPeserta,
-                b.NAMA AS NamaPasien,
-                c.NMDEBT AS NamaDebitur,
-                b.TGL_LHR AS TanggalLahir,
-                a.TGL AS TanggalKunjungan,
-                CASE 
-                    WHEN k.NO_KUNJUNG IS NULL THEN 'BELUM'
-                    ELSE 'SELESAI'
-                END AS StatusRekamMedis,
-                CASE 
-                    WHEN m.NO_KUNJUNG IS NULL THEN 'TUTUP'
-                    ELSE 'BUKA'
-                END AS StatusPermintaanIsian,
-                aa.NOTA,
-                ab.ID_TRANS,
-                ac.nmDok AS NamaDokter,
-                r.id_satusehat_encounter,
-                CASE 
-                    WHEN log_disp.ID IS NOT NULL THEN '200'
-                    WHEN log_req.ID IS NOT NULL THEN '100'
-                    ELSE '000'
-                END AS STATUS_MAPPING,
-                log_disp.CREATED_AT AS WaktuKirimTerakhir
-            FROM SIRS_PHCM.dbo.RJ_KARCIS a
-            JOIN SIRS_PHCM.dbo.RIRJ_MASTERPX b ON a.NO_PESERTA = b.NO_PESERTA
-            JOIN SIRS_PHCM.dbo.RIRJ_MDEBITUR c ON a.KDEBT = c.KDDEBT
-            LEFT JOIN SIRS_PHCM.dbo.RJ_KARCIS_BAYAR aa ON a.KARCIS = aa.KARCIS
-            LEFT JOIN SIRS_PHCM.dbo.IF_HTRANS ab ON aa.NOTA = ab.NOTA
-            LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA r ON ab.NOTA = r.nota
-            LEFT JOIN SIRS_PHCM.dbo.DR_MDOKTER ac ON a.KDDOK = ac.kdDok
-            LEFT JOIN E_RM_PHCM.dbo.ERM_NOMOR_KUNJUNG j ON a.KARCIS = j.KARCIS AND a.IDUNIT = j.IDUNIT
-            LEFT JOIN E_RM_PHCM.dbo.ERM_RM_IRJA k ON j.NO_KUNJUNG = k.NO_KUNJUNG AND k.AKTIF = '1'
-            LEFT JOIN E_RM_PHCM.dbo.ERM_PERMINTAAN_ISIAN m ON j.NO_KUNJUNG = m.NO_KUNJUNG AND m.AKTIF = 'true'
+    // pilih tabel kunjungan
+    $kunjunganTable = $jenis === 'ri'
+        ? 'SIRS_PHCM.dbo.v_kunjungan_ri'
+        : 'SIRS_PHCM.dbo.v_kunjungan_rj';
 
-            LEFT JOIN (
-                SELECT ENCOUNTER_ID, MAX(ID) AS ID, MAX(CREATED_AT) AS CREATED_AT
+    // pilih KET_LAYANAN sesuai jenis
+    $ketLayanan = $jenis === 'ri' ? 'INAP' : 'JALAN';
+
+    $query = DB::table('SIRS_PHCM.dbo.IF_HTRANS_OL as a')
+        ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as b', 'a.KARCIS', '=', 'b.karcis')
+
+        // kunjungan dinamis
+        ->leftJoin("$kunjunganTable as c", 'a.KARCIS', '=', 'c.ID_TRANSAKSI')
+
+        // join ke IF_HTRANS (untuk ambil ID_TRANS final)
+        ->join('SIRS_PHCM.dbo.IF_HTRANS as aj', 'a.ID_TRANS', '=', 'aj.ID_TRANS_OL')
+
+        // mapping status KFA
+        ->leftJoin(DB::raw("
+            (
+                SELECT 
+                    ol.ID_TRANS,
+                    CASE 
+                        WHEN COUNT(CASE WHEN kfa.KD_BRG_KFA IS NULL THEN 1 END) > 0 
+                            THEN '000'
+                        ELSE '100'
+                    END AS STATUS_MAPPING
+                FROM SIRS_PHCM.dbo.IF_TRANS_OL ol
+                LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA kfa 
+                    ON ol.KDBRG_CENTRA = kfa.KDBRG_CENTRA
+                GROUP BY ol.ID_TRANS
+            ) AS d
+        "), 'd.ID_TRANS', '=', 'a.ID_TRANS')
+
+        // LOG MedicationRequest (success)
+        ->leftJoin(DB::raw("
+            (
+                SELECT 
+                    LOCAL_ID,
+                    MAX(ID) AS MAX_ID
                 FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
-                WHERE LOG_TYPE = 'MedicationRequest' AND STATUS = 'success'
-                GROUP BY ENCOUNTER_ID
-            ) AS log_req ON log_req.ENCOUNTER_ID = r.id_satusehat_encounter
+                WHERE LOG_TYPE = 'MedicationRequest'
+                  AND STATUS = 'success'
+                GROUP BY LOCAL_ID
+            ) AS log_req
+        "), 'log_req.LOCAL_ID', '=', 'a.ID_TRANS')
 
-            LEFT JOIN (
-                SELECT ENCOUNTER_ID, MAX(ID) AS ID, MAX(CREATED_AT) AS CREATED_AT
+        ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION as SSM_REQ',
+            'SSM_REQ.ID', '=', DB::raw('log_req.MAX_ID'))
+
+        // LOG MedicationDispense (success)
+        ->leftJoin(DB::raw("
+            (
+                SELECT 
+                    LOCAL_ID,
+                    MAX(ID) AS MAX_ID
                 FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
-                WHERE LOG_TYPE = 'MedicationDispense' AND STATUS = 'success'
-                GROUP BY ENCOUNTER_ID
-            ) AS log_disp ON log_disp.ENCOUNTER_ID = r.id_satusehat_encounter
+                WHERE LOG_TYPE = 'MedicationDispense'
+                  AND STATUS = 'success'
+                GROUP BY LOCAL_ID
+            ) AS log_disp
+        "), 'log_disp.LOCAL_ID', '=', 'a.ID_TRANS')
 
-            WHERE
-                ISNULL(a.SELESAI, 0) NOT IN ('9','10')
-                AND ISNULL(a.STBTL, 0) = 0
-                AND ab.ID_TRANS IS NOT NULL
-                AND r.id_satusehat_encounter IS NOT NULL
-        ) AS src
-    "))
-        ->whereBetween(DB::raw('CONVERT(date, src.TanggalKunjungan)'), [$startDate, $endDate])
+        ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION as SSM_DISP',
+            'SSM_DISP.ID', '=', DB::raw('log_disp.MAX_ID'))
+
+        // FILTER tanggal
+        ->whereBetween(DB::raw('CAST(c.TANGGAL AS date)'), [$startDate, $endDate])
+
+        // FILTER JALAN / INAP
+        ->where('a.KET_LAYANAN', $ketLayanan)
+
         ->select(
-            'src.NomorKarcis',
-            'src.NamaPasien',
-            'src.NamaDokter',
-            DB::raw("CONVERT(varchar(10), src.TanggalKunjungan, 105) AS TanggalKunjungan"),
-            'src.ID_TRANS',
-            'src.id_satusehat_encounter',
-            'src.STATUS_MAPPING',
-            DB::raw("CONVERT(varchar(19), src.WaktuKirimTerakhir, 120) AS WaktuKirimTerakhir")
+            'b.id',
+            'b.id_satusehat_encounter',
+            'aj.ID_TRANS',
+            DB::raw('CAST(c.TANGGAL AS date) AS TGL_KARCIS'),
+            'a.KARCIS',
+            DB::raw('c.NAMA_PASIEN AS PASIEN'),
+            DB::raw('c.DOKTER AS DOKTER'),
+            DB::raw("
+                CASE 
+                    WHEN SSM_DISP.ID IS NOT NULL THEN '200'
+                    WHEN SSM_REQ.ID  IS NOT NULL THEN '100'
+                    ELSE d.STATUS_MAPPING
+                END AS STATUS_MAPPING
+            "),
+            DB::raw('SSM_DISP.STATUS AS DISP_STATUS'),
+            DB::raw('SSM_DISP.CREATED_AT AS DISP_CREATED_AT')
         );
 
+    // COUNT
     $recordsTotal = (clone $query)->count();
 
     $dataTable = DataTables::of($query)
-        // 🔍 per kolom
-        ->filterColumn('NomorKarcis', function($q, $k) {
-            $q->where('src.NomorKarcis', 'like', "%{$k}%");
-        })
-        ->filterColumn('NamaPasien', function($q, $k) {
-            $q->where('src.NamaPasien', 'like', "%{$k}%");
-        })
-        ->filterColumn('NamaDokter', function($q, $k) {
-            $q->where('src.NamaDokter', 'like', "%{$k}%");
-        })
-        ->filterColumn('TanggalKunjungan', function($q, $k) {
-            $q->where('src.TanggalKunjungan', 'like', "%{$k}%");
-        })
+    ->filterColumn('KARCIS', function($q, $k) {
+        $q->where('a.KARCIS', 'like', "%{$k}%");
+    })
+    ->filterColumn('PASIEN', function($q, $k) {
+        $q->where('c.NAMA_PASIEN', 'like', "%{$k}%");
+    })
+    ->filterColumn('DOKTER', function($q, $k) {
+        $q->where('c.DOKTER', 'like', "%{$k}%");
+    })
+    ->filter(function ($query) use ($request) {
+        $search = $request->get('search');
+        if (isset($search['value']) && $search['value'] !== '') {
+            $keyword = $search['value'];
+            $query->where(function ($q) use ($keyword) {
+                $q->where('a.KARCIS', 'like', "%{$keyword}%")
+                  ->orWhere('c.NAMA_PASIEN', 'like', "%{$keyword}%")
+                  ->orWhere('c.DOKTER', 'like', "%{$keyword}%")
+                  ->orWhere('aj.ID_TRANS', 'like', "%{$keyword}%");
+            });
+        }
+    })
+    ->order(function($q) {
+        $q->orderBy('aj.ID_TRANS', 'desc');
+    })
+    ->make(true);
 
-        // 🔎 search global
-        ->filter(function ($query) use ($request) {
-            $search = $request->get('search');
-            if (isset($search['value']) && $search['value'] !== '') {
-                $keyword = $search['value'];
-                $query->where(function ($q) use ($keyword) {
-                    $q->where('src.NomorKarcis', 'like', "%{$keyword}%")
-                      ->orWhere('src.NamaPasien', 'like', "%{$keyword}%")
-                      ->orWhere('src.NamaDokter', 'like', "%{$keyword}%")
-                      ->orWhere('src.ID_TRANS', 'like', "%{$keyword}%");
-                });
-            }
-        })
-
-        ->order(function($q) {
-            $q->orderBy('src.TanggalKunjungan', 'desc');
-        })
-        ->make(true);
 
     $json = $dataTable->getData(true);
     $json['summary'] = ['all' => $recordsTotal];
 
     return response()->json($json);
 }
+
 
 
 
