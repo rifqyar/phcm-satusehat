@@ -119,27 +119,39 @@
                     </div>
 
 
-                    <!-- Filter Periode -->
-                    <div class="col-12 col-md-12 mt-4">
+                    <!-- Filter Periode + Jenis Pelayanan -->
+                    <div class="col-12 mt-4">
                         <div class="form-group">
                             <div class="row justify-content-center align-items-end">
-                                <div class="col-5">
-                                    <label for="start_date">Periode Tanggal Transaksi</label>
+
+                                <!-- Tanggal Mulai -->
+                                <div class="col-md-4">
+                                    <label for="start_date">Periode Awal</label>
                                     <input type="text" class="form-control" id="start_date">
                                     <span class="bar"></span>
                                 </div>
-                                <div class="col-2 text-center">
-                                    <label>&nbsp;</label>
-                                    <small>-</small>
-                                </div>
-                                <div class="col-5">
-                                    <label for="end_date">&nbsp;</label>
+
+                                <!-- Tanggal Akhir -->
+                                <div class="col-md-4">
+                                    <label for="end_date">Periode Akhir</label>
                                     <input type="text" class="form-control" id="end_date">
                                     <span class="bar"></span>
                                 </div>
+
+                                <!-- Jenis Pelayanan -->
+                                <div class="col-md-4">
+                                    <label for="jenis">Jenis Pelayanan</label>
+                                    <select id="jenis" name="jenis" class="form-control">
+                                        <option value="">Rawat Jalan</option>
+                                        <option value="ri">Rawat Inap</option>
+                                    </select>
+                                    <span class="bar"></span>
+                                </div>
+
                             </div>
                         </div>
                     </div>
+
                 </div>
 
                 <!-- Tombol Aksi -->
@@ -166,6 +178,7 @@
                 <table id="medicationTable" class="table table-striped table-bordered" style="width:100%">
                     <thead>
                         <tr>
+                            <th>No</th>
                             <th class="text-center">
                                 <input type="checkbox" id="checkAll">
                             </th>
@@ -261,14 +274,14 @@
 
                 // semua selesai
                 let summaryHtml = `
-            <div style="text-align:left; max-height:300px; overflow-y:auto;">
-                <strong>Sukses (${successCount}):</strong><br>
-                ${successIds.length ? successIds.map(id => `✅ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
-                <br><br>
-                <strong>Gagal (${failCount}):</strong><br>
-                ${failIds.length ? failIds.map(id => `❌ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
-            </div>
-        `;
+                <div style="text-align:left; max-height:300px; overflow-y:auto;">
+                    <strong>Sukses (${successCount}):</strong><br>
+                    ${successIds.length ? successIds.map(id => `✅ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
+                    <br><br>
+                    <strong>Gagal (${failCount}):</strong><br>
+                    ${failIds.length ? failIds.map(id => `❌ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
+                </div>
+            `;
 
                 swal({
                     title: 'Proses Selesai',
@@ -337,9 +350,19 @@
                         d._token = '{{ csrf_token() }}';
                         d.start_date = $('#start_date').val();
                         d.end_date = $('#end_date').val();
+                        d.jenis      = $('#jenis').val();
                     }
                 },
                 columns: [
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-center',
+                        render: function (data, type, row, meta) {
+                            return meta.row + meta.settings._iDisplayStart + 1;
+                        }
+                    },
                     {
                         data: null,
                         orderable: false,
@@ -358,10 +381,10 @@
                         name: 'a.KARCIS', // ✅ pakai alias dari backend
                         render: function (data) {
                             return `
-                        ${data.KARCIS ?? '-'}
-                        <br/>
-                        <small class="text-muted">ID: ${data.ID_TRANS ?? '-'}</small>
-                    `;
+                            ${data.KARCIS ?? '-'}
+                            <br/>
+                            <small class="text-muted">ID: ${data.ID_TRANS ?? '-'}</small>
+                        `;
                         }
                     },
                     { data: 'DOKTER', name: 'c.DOKTER' }, // ✅ alias backend
@@ -383,22 +406,22 @@
                         searchable: false,
                         render: function (data) {
                             const btnLihat = `
-                        <br/>
-                        <button class="btn btn-sm btn-info w-100" onclick="lihatObat('${data.ID_TRANS}')">
-                            <i class="fas fa-eye"></i> Lihat Obat
-                        </button>`;
+                            <br/>
+                            <button class="btn btn-sm btn-info w-100" onclick="lihatObat('${data.ID_TRANS}')">
+                                <i class="fas fa-eye"></i> Lihat Obat
+                            </button>`;
                             let btnAction = '';
 
                             if (data.STATUS_MAPPING === '100') {
                                 btnAction = `
-                            <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                                <i class="fas fa-link mr-2"></i> Kirim SATUSEHAT
-                            </button>`;
+                                <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                    <i class="fas fa-link mr-2"></i> Kirim SATUSEHAT
+                                </button>`;
                             } else if (data.STATUS_MAPPING === '200') {
                                 btnAction = `
-                            <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                                <i class="fas fa-link mr-2"></i> Kirim Ulang SATUSEHAT
-                            </button>`;
+                                <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                    <i class="fas fa-link mr-2"></i> Kirim Ulang SATUSEHAT
+                                </button>`;
                             } else {
                                 btnAction = `<i class="text-muted">Data obat belum termapping</i>`;
                             }
@@ -465,31 +488,31 @@
                 success: function (res) {
                     if (res.status === 'success') {
                         let html = `
-                                                                <table class="table table-sm table-bordered">
-                                                                    <thead class="thead-light">
-                                                                        <tr>
-                                                                            <th>No</th>
-                                                                            <th>Nama Obat</th>
-                                                                            <th>Signa</th>
-                                                                            <th>Keterangan</th>
-                                                                            <th>Jumlah</th>
-                                                                            <th>KFA Code</th>
-                                                                            <th>Nama KFA</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>`;
+                                                                    <table class="table table-sm table-bordered">
+                                                                        <thead class="thead-light">
+                                                                            <tr>
+                                                                                <th>No</th>
+                                                                                <th>Nama Obat</th>
+                                                                                <th>Signa</th>
+                                                                                <th>Keterangan</th>
+                                                                                <th>Jumlah</th>
+                                                                                <th>KFA Code</th>
+                                                                                <th>Nama KFA</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody>`;
 
                         res.data.forEach((row, index) => {
                             html += `
-                                                                    <tr>
-                                                                        <td>${index + 1}</td>
-                                                                        <td>${row.NAMA_OBAT ?? '-'}</td>
-                                                                        <td>${row.SIGNA ?? '-'}</td>
-                                                                        <td>${row.KET ?? '-'}</td>
-                                                                        <td>${row.JUMLAH ?? '-'}</td>
-                                                                        <td>${row.KD_BRG_KFA ? row.KD_BRG_KFA : '<strong>Kode KFA Belum Termapping</strong>'}</td>
-                                                                        <td>${row.NAMABRG_KFA ?? '-'}</td>
-                                                                    </tr>`;
+                                                                        <tr>
+                                                                            <td>${index + 1}</td>
+                                                                            <td>${row.NAMA_OBAT ?? '-'}</td>
+                                                                            <td>${row.SIGNA ?? '-'}</td>
+                                                                            <td>${row.KET ?? '-'}</td>
+                                                                            <td>${row.JUMLAH ?? '-'}</td>
+                                                                            <td>${row.KD_BRG_KFA ? row.KD_BRG_KFA : '<strong>Kode KFA Belum Termapping</strong>'}</td>
+                                                                            <td>${row.NAMABRG_KFA ?? '-'}</td>
+                                                                        </tr>`;
                         });
 
                         html += `</tbody></table>`;
@@ -509,17 +532,17 @@
         function confirmkirimSatusehat(idTrans) {
             if (!idTrans) return;
 
-            Swal.fire({
+            swal({
                 title: 'Kirim ke SATUSEHAT?',
                 text: `Yakin ingin mengirim transaksi ${idTrans} ke SATUSEHAT?`,
-                icon: 'question',
+                type: 'question',
                 showCancelButton: true,
                 confirmButtonText: 'Ya, kirim',
                 cancelButtonText: 'Batal',
                 confirmButtonColor: '#3085d6',
                 cancelButtonColor: '#d33'
             }).then((result) => {
-                if (result.isConfirmed) {
+                if (result.value) {
                     console.log("Lanjut kirim ke SATUSEHAT");
                     kirimSatusehat(idTrans);
                 } else {
@@ -527,6 +550,7 @@
                 }
             });
         }
+
 
         // 🚀 fungsi kirim ke SATUSEHAT
         function kirimSatusehat(idTrans, btn = null, showSwal = true) {

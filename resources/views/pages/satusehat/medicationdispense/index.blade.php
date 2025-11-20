@@ -119,24 +119,35 @@
                         </div>
                     </div>
 
-                    <!-- Filter Periode -->
-                    <div class="col-12 col-md-12 mt-4">
+                    <!-- Filter Periode + Jenis Pelayanan -->
+                    <div class="col-12 mt-4">
                         <div class="form-group">
                             <div class="row justify-content-center align-items-end">
-                                <div class="col-5">
+
+                                <!-- Tanggal Mulai -->
+                                <div class="col-md-4">
                                     <label for="start_date">Periode Awal</label>
                                     <input type="text" class="form-control" id="start_date">
                                     <span class="bar"></span>
                                 </div>
-                                <div class="col-2 text-center">
-                                    <label>&nbsp;</label>
-                                    <small>-</small>
-                                </div>
-                                <div class="col-5">
+
+                                <!-- Tanggal Akhir -->
+                                <div class="col-md-4">
                                     <label for="end_date">Periode Akhir</label>
                                     <input type="text" class="form-control" id="end_date">
                                     <span class="bar"></span>
                                 </div>
+
+                                <!-- Jenis Pelayanan -->
+                                <div class="col-md-4">
+                                    <label for="jenis">Jenis Pelayanan</label>
+                                    <select id="jenis" name="jenis" class="form-control">
+                                        <option value="">Rawat Jalan</option>
+                                        <option value="ri">Rawat Inap</option>
+                                    </select>
+                                    <span class="bar"></span>
+                                </div>
+
                             </div>
                         </div>
                     </div>
@@ -166,10 +177,11 @@
                 <table id="dispenseTable" class="table table-striped table-bordered" style="width:100%">
                     <thead>
                         <tr>
+                            <th>No</th>
                             <th class="text-center"><input type="checkbox" id="checkAll"></th>
                             <th>Karcis/Nomor Transaksi</th>
-                            <th>Pasien</th>
                             <th>Dokter</th>
+                            <th>Pasien</th>
                             <th>Tgl Kunjungan</th>
                             <th>Status Integrasi</th>
                             <th>Aksi</th>
@@ -209,92 +221,101 @@
 
             // ⚙️ DataTable
             table = $('#dispenseTable').DataTable({
-    processing: true,
-    serverSide: true,
-    ajax: {
-        url: '{{ route('satusehat.medication-dispense.datatable') }}',
-        type: 'POST',
-        data: function (d) {
-            d._token = '{{ csrf_token() }}';
-            d.start_date = $('#start_date').val();
-            d.end_date = $('#end_date').val();
-            // ❌ jangan tulis: d.search = $('input[name="search"]').val();
-        }
-    },
-    columns: [
-        {
-            data: null,
-            orderable: false,
-            searchable: false,
-            className: 'text-center',
-            render: function (data) {
-                if (data.STATUS_MAPPING === '100' || data.STATUS_MAPPING === '200') {
-                    return `<input type="checkbox" class="checkbox-item" value="${data.ID_TRANS}">`;
-                } else {
-                    return `<i class="text-muted">-</i>`;
-                }
-            }
-        },
-        {
-            data: null,
-            name: 'src.NomorKarcis', // ✅ sinkron ke backend alias
-            render: function (data) {
-                return `
-                    <div>
-                        <strong>${data.NomorKarcis}</strong><br>
-                        <small class="text-muted">#${data.ID_TRANS}</small>
-                    </div>`;
-            }
-        },
-        { data: 'NamaPasien', name: 'src.NamaPasien' },
-        { data: 'NamaDokter', name: 'src.NamaDokter' },
-        { data: 'TanggalKunjungan', name: 'src.TanggalKunjungan' },
-        {
-            data: 'STATUS_MAPPING',
-            className: 'text-center',
-            render: function (status) {
-                if (status === '200') {
-                    return `<span class="badge badge-success">Sudah Dikirim</span>`;
-                } else if (status === '100') {
-                    return `<span class="badge badge-warning">Siap Dikirim</span>`;
-                } else {
-                    return `<span class="badge badge-danger">Belum Integrasi</span>`;
-                }
-            }
-        },
-        {
-            data: null,
-            orderable: false,
-            searchable: false,
-            render: function (data) {
-                let btn = `
-                    <button class="btn btn-sm btn-info w-100 mb-2" onclick="lihatObat('${data.ID_TRANS}')">
-                        <i class="fas fa-eye"></i> Lihat Obat
-                    </button>`;
-
-                if (data.STATUS_MAPPING === '100') {
-                    btn += `
-                        <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                            <i class="fas fa-paper-plane"></i> Kirim SATUSEHAT
+                processing: true,
+                serverSide: true,
+                ajax: {
+                    url: '{{ route('satusehat.medication-dispense.datatable') }}',
+                    type: 'POST',
+                    data: function (d) {
+                        d._token = '{{ csrf_token() }}';
+                        d.start_date = $('#start_date').val();
+                        d.end_date = $('#end_date').val();
+                        d.jenis      = $('#jenis').val();
+                    }
+                },
+                columns: [
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-center',
+                        render: function (data, type, row, meta) {
+                            return meta.row + meta.settings._iDisplayStart + 1;
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-center',
+                        render: function (data) {
+                            if (data.STATUS_MAPPING === '100' || data.STATUS_MAPPING === '200') {
+                                return `<input type="checkbox" class="checkbox-item" value="${data.ID_TRANS}">`;
+                            } else {
+                                return `<i class="text-muted">-</i>`;
+                            }
+                        }
+                    },
+                    {
+                        data: null,
+                        name: 'src.NomorKarcis', // ✅ sinkron ke backend alias
+                        render: function (data) {
+                            return `
+                        <div>
+                            <strong>${data.KARCIS}</strong><br>
+                            <small class="text-muted">#${data.ID_TRANS}</small>
+                        </div>`;
+                        }
+                    },
+                    { data: 'DOKTER', name: 'src.DOKTER' },
+                    { data: 'PASIEN', name: 'src.PASIEN' },
+                    { data: 'TGL_KARCIS', name: 'src.TGL_KARCIS' },
+                    {
+                        data: 'STATUS_MAPPING',
+                        className: 'text-center',
+                        render: function (status) {
+                            if (status === '200') {
+                                return `<span class="badge badge-success">Sudah Dikirim</span>`;
+                            } else if (status === '100') {
+                                return `<span class="badge badge-warning">Siap Dikirim</span>`;
+                            } else {
+                                return `<span class="badge badge-danger">Belum Integrasi</span>`;
+                            }
+                        }
+                    },
+                    {
+                        data: null,
+                        orderable: false,
+                        searchable: false,
+                        render: function (data) {
+                            let btn = `
+                        <button class="btn btn-sm btn-info w-100 mb-2" onclick="lihatObat('${data.ID_TRANS}')">
+                            <i class="fas fa-eye"></i> Lihat Obat
                         </button>`;
-                } else if (data.STATUS_MAPPING === '200') {
-                    btn += `
-                        <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                            <i class="fas fa-redo"></i> Kirim Ulang
-                        </button>`;
-                } else {
-                    btn += `
-                        <span class="badge badge-secondary w-100 py-2">
-                            <i class="fas fa-ban"></i> Belum ada MedicationRequest
-                        </span>`;
-                }
 
-                return btn;
-            }
-        }
-    ],
-    order: [[4, 'desc']]
-});
+                            if (data.STATUS_MAPPING === '100') {
+                                btn += `
+                            <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                <i class="fas fa-paper-plane"></i> Kirim SATUSEHAT
+                            </button>`;
+                            } else if (data.STATUS_MAPPING === '200') {
+                                btn += `
+                            <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                <i class="fas fa-redo"></i> Kirim Ulang
+                            </button>`;
+                            } else {
+                                btn += `
+                            <span class="badge badge-secondary w-100 py-2">
+                                <i class="fas fa-ban"></i> Belum ada MedicationRequest
+                            </span>`;
+                            }
+
+                            return btn;
+                        }
+                    }
+                ],
+                order: [[4, 'desc']]
+            });
 
 
             // reload summary
@@ -391,14 +412,14 @@
 
             // 🧾 Ringkasan akhir
             let summaryHtml = `
-                    <div style="text-align:left; max-height:300px; overflow-y:auto;">
-                        <strong>Sukses (${successCount}):</strong><br>
-                        ${successIds.length ? successIds.map(id => `✅ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
-                        <br><br>
-                        <strong>Gagal (${failCount}):</strong><br>
-                        ${failIds.length ? failIds.map(id => `❌ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
-                    </div>
-                `;
+                        <div style="text-align:left; max-height:300px; overflow-y:auto;">
+                            <strong>Sukses (${successCount}):</strong><br>
+                            ${successIds.length ? successIds.map(id => `✅ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
+                            <br><br>
+                            <strong>Gagal (${failCount}):</strong><br>
+                            ${failIds.length ? failIds.map(id => `❌ ${id}`).join('<br>') : '<i>Tidak ada</i>'}
+                        </div>
+                    `;
 
             swal({
                 title: 'Proses Selesai',
@@ -427,17 +448,17 @@
                 success: function (res) {
                     if (res.status === 'success') {
                         let html = `<table class="table table-sm table-bordered">
-                                                <thead class="thead-light">
-                                                    <tr><th>No</th><th>Nama Obat</th><th>KFA Code</th><th>Nama KFA</th></tr>
-                                                </thead><tbody>`;
+                                                    <thead class="thead-light">
+                                                        <tr><th>No</th><th>Nama Obat</th><th>KFA Code</th><th>Nama KFA</th></tr>
+                                                    </thead><tbody>`;
 
                         res.data.forEach((row, i) => {
                             html += `<tr>
-                                                    <td>${i + 1}</td>
-                                                    <td>${row.NAMA_OBAT ?? '-'}</td>
-                                                    <td>${row.KD_BRG_KFA ?? '-'}</td>
-                                                    <td>${row.NAMABRG_KFA ?? '-'}</td>
-                                                </tr>`;
+                                                        <td>${i + 1}</td>
+                                                        <td>${row.NAMA_OBAT ?? '-'}</td>
+                                                        <td>${row.KD_BRG_KFA ?? '-'}</td>
+                                                        <td>${row.NAMABRG_KFA ?? '-'}</td>
+                                                    </tr>`;
                         });
 
                         html += `</tbody></table>`;
@@ -466,7 +487,7 @@
                 confirmButtonColor: '#3085d6',
                 cancelButtonColor: '#d33'
             }).then((result) => {
-                if (result.isConfirmed) {
+                if (result.value) {
                     console.log("Lanjut kirim ke SATUSEHAT");
                     kirimSatusehat(idTrans);
                 } else {
