@@ -236,6 +236,7 @@
                                     </th>
                                     <th>Jenis Penunjang Medis</th>
                                     <th>Tanggal Masuk</th>
+                                    <th>Jenis Perawatan</th>
                                     <th>Nama Pasien</th>
                                     <th>Dokter</th>
                                     <th>No. Peserta</th>
@@ -385,6 +386,10 @@
                         name: 'TANGGAL_ENTRI',
                     },
                     {
+                        data: 'JENIS_PERAWATAN',
+                        name: 'JENIS_PERAWATAN',
+                    },
+                    {
                         data: 'NAMA_PASIEN',
                         name: 'NAMA_PASIEN',
                         responsivePriority: 2
@@ -484,7 +489,7 @@
                 } else {
                     selectedIds = selectedIds.filter(item => item !== id);
                 }
-            });
+                updateSelectAllCheckbox();
         });
 
         // Update status checkbox selectAll
