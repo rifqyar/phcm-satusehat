@@ -21,7 +21,7 @@ class HomeController extends Controller
             [
                 'title' => 'Kunjungan Pasien',
                 'url' => 'satusehat.encounter.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Diagnosis',
@@ -31,12 +31,12 @@ class HomeController extends Controller
             [
                 'title' => 'Observasi',
                 'url' => 'satusehat.observasi.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-info'
             ],
             [
                 'title' => 'Tindakan',
                 'url' => 'satusehat.procedure.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-info'
             ],
             [
                 'title' => 'Resume Medis',
@@ -51,17 +51,17 @@ class HomeController extends Controller
             [
                 'title' => 'Resep Obat',
                 'url' => 'satusehat.medication-request.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-info'
             ],
             [
                 'title' => 'Tebus Obat',
                 'url' => 'satusehat.medication-dispense.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-info'
             ],
             [
                 'title' => 'Alergi Intoleran',
                 'url' => 'satusehat.allergy-intolerance.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-info'
             ],
             [
                 'title' => 'Radiologi',
@@ -71,7 +71,7 @@ class HomeController extends Controller
             [
                 'title' => 'Permintaan Pemeriksaan (Penunjang Medis)',
                 'url' => 'satusehat.service-request.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-info'
             ],
             [
                 'title' => 'Impresi Klinis (ClinicalImpression)',
@@ -81,7 +81,7 @@ class HomeController extends Controller
             [
                 'title' => 'Spesimen',
                 'url' => 'satusehat.specimen.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-info'
             ],
             [
                 'title' => 'Laporan Pemeriksaan',
@@ -106,7 +106,7 @@ class HomeController extends Controller
             [
                 'title' => 'Data Obat',
                 'url' => 'satusehat.medication.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-info'
             ],
             [
                 'title' => 'Episode Perawatan',
