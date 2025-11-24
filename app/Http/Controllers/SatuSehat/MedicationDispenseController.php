@@ -13,36 +13,36 @@ class MedicationDispenseController extends Controller
         return response()->view('pages.satusehat.medicationdispense.index');
     }
 
-public function datatable(Request $request)
-{
-    $startDate = $request->input('start_date');
-    $endDate   = $request->input('end_date');
-    $jenis     = $request->input('jenis'); // ri / rj
+    public function datatable(Request $request)
+    {
+        $startDate = $request->input('start_date');
+        $endDate = $request->input('end_date');
+        $jenis = $request->input('jenis'); // ri / rj
 
-    if (!$startDate || !$endDate) {
-        $endDate   = now();
-        $startDate = now()->subDays(30);
-    }
+        if (!$startDate || !$endDate) {
+            $endDate = now();
+            $startDate = now()->subDays(30);
+        }
 
-    // pilih tabel kunjungan
-    $kunjunganTable = $jenis === 'ri'
-        ? 'SIRS_PHCM.dbo.v_kunjungan_ri'
-        : 'SIRS_PHCM.dbo.v_kunjungan_rj';
+        // pilih tabel kunjungan
+        $kunjunganTable = $jenis === 'ri'
+            ? 'SIRS_PHCM.dbo.v_kunjungan_ri'
+            : 'SIRS_PHCM.dbo.v_kunjungan_rj';
 
-    // pilih KET_LAYANAN sesuai jenis
-    $ketLayanan = $jenis === 'ri' ? 'INAP' : 'JALAN';
+        // pilih KET_LAYANAN sesuai jenis
+        $ketLayanan = $jenis === 'ri' ? 'INAP' : 'JALAN';
 
-    $query = DB::table('SIRS_PHCM.dbo.IF_HTRANS_OL as a')
-        ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as b', 'a.KARCIS', '=', 'b.karcis')
+        $query = DB::table('SIRS_PHCM.dbo.IF_HTRANS_OL as a')
+            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as b', 'a.KARCIS', '=', 'b.karcis')
 
-        // kunjungan dinamis
-        ->leftJoin("$kunjunganTable as c", 'a.KARCIS', '=', 'c.ID_TRANSAKSI')
+            // kunjungan dinamis
+            ->leftJoin("$kunjunganTable as c", 'a.KARCIS', '=', 'c.ID_TRANSAKSI')
 
-        // join ke IF_HTRANS (untuk ambil ID_TRANS final)
-        ->join('SIRS_PHCM.dbo.IF_HTRANS as aj', 'a.ID_TRANS', '=', 'aj.ID_TRANS_OL')
+            // join ke IF_HTRANS (untuk ambil ID_TRANS final)
+            ->join('SIRS_PHCM.dbo.IF_HTRANS as aj', 'a.ID_TRANS', '=', 'aj.ID_TRANS_OL')
 
-        // mapping status KFA
-        ->leftJoin(DB::raw("
+            // mapping status KFA
+            ->leftJoin(DB::raw("
             (
                 SELECT 
                     ol.ID_TRANS,
@@ -58,8 +58,8 @@ public function datatable(Request $request)
             ) AS d
         "), 'd.ID_TRANS', '=', 'a.ID_TRANS')
 
-        // LOG MedicationRequest (success)
-        ->leftJoin(DB::raw("
+            // LOG MedicationRequest (success)
+            ->leftJoin(DB::raw("
             (
                 SELECT 
                     LOCAL_ID,
@@ -71,11 +71,15 @@ public function datatable(Request $request)
             ) AS log_req
         "), 'log_req.LOCAL_ID', '=', 'a.ID_TRANS')
 
-        ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION as SSM_REQ',
-            'SSM_REQ.ID', '=', DB::raw('log_req.MAX_ID'))
+            ->leftJoin(
+                'SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION as SSM_REQ',
+                'SSM_REQ.ID',
+                '=',
+                DB::raw('log_req.MAX_ID')
+            )
 
-        // LOG MedicationDispense (success)
-        ->leftJoin(DB::raw("
+            // LOG MedicationDispense (success)
+            ->leftJoin(DB::raw("
             (
                 SELECT 
                     LOCAL_ID,
@@ -87,70 +91,74 @@ public function datatable(Request $request)
             ) AS log_disp
         "), 'log_disp.LOCAL_ID', '=', 'a.ID_TRANS')
 
-        ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION as SSM_DISP',
-            'SSM_DISP.ID', '=', DB::raw('log_disp.MAX_ID'))
+            ->leftJoin(
+                'SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION as SSM_DISP',
+                'SSM_DISP.ID',
+                '=',
+                DB::raw('log_disp.MAX_ID')
+            )
 
-        // FILTER tanggal
-        ->whereBetween(DB::raw('CAST(c.TANGGAL AS date)'), [$startDate, $endDate])
+            // FILTER tanggal
+            ->whereBetween(DB::raw('CAST(c.TANGGAL AS date)'), [$startDate, $endDate])
 
-        // FILTER JALAN / INAP
-        ->where('a.KET_LAYANAN', $ketLayanan)
+            // FILTER JALAN / INAP
+            ->where('a.KET_LAYANAN', $ketLayanan)
 
-        ->select(
-            'b.id',
-            'b.id_satusehat_encounter',
-            'aj.ID_TRANS',
-            DB::raw('CAST(c.TANGGAL AS date) AS TGL_KARCIS'),
-            'a.KARCIS',
-            DB::raw('c.NAMA_PASIEN AS PASIEN'),
-            DB::raw('c.DOKTER AS DOKTER'),
-            DB::raw("
+            ->select(
+                'b.id',
+                'b.id_satusehat_encounter',
+                'aj.ID_TRANS',
+                DB::raw('CAST(c.TANGGAL AS date) AS TGL_KARCIS'),
+                'a.KARCIS',
+                DB::raw('c.NAMA_PASIEN AS PASIEN'),
+                DB::raw('c.DOKTER AS DOKTER'),
+                DB::raw("
                 CASE 
                     WHEN SSM_DISP.ID IS NOT NULL THEN '200'
                     WHEN SSM_REQ.ID  IS NOT NULL THEN '100'
                     ELSE d.STATUS_MAPPING
                 END AS STATUS_MAPPING
             "),
-            DB::raw('SSM_DISP.STATUS AS DISP_STATUS'),
-            DB::raw('SSM_DISP.CREATED_AT AS DISP_CREATED_AT')
-        );
+                DB::raw('SSM_DISP.STATUS AS DISP_STATUS'),
+                DB::raw('SSM_DISP.CREATED_AT AS DISP_CREATED_AT')
+            );
 
-    // COUNT
-    $recordsTotal = (clone $query)->count();
+        // COUNT
+        $recordsTotal = (clone $query)->count();
 
-    $dataTable = DataTables::of($query)
-    ->filterColumn('KARCIS', function($q, $k) {
-        $q->where('a.KARCIS', 'like', "%{$k}%");
-    })
-    ->filterColumn('PASIEN', function($q, $k) {
-        $q->where('c.NAMA_PASIEN', 'like', "%{$k}%");
-    })
-    ->filterColumn('DOKTER', function($q, $k) {
-        $q->where('c.DOKTER', 'like', "%{$k}%");
-    })
-    ->filter(function ($query) use ($request) {
-        $search = $request->get('search');
-        if (isset($search['value']) && $search['value'] !== '') {
-            $keyword = $search['value'];
-            $query->where(function ($q) use ($keyword) {
-                $q->where('a.KARCIS', 'like', "%{$keyword}%")
-                  ->orWhere('c.NAMA_PASIEN', 'like', "%{$keyword}%")
-                  ->orWhere('c.DOKTER', 'like', "%{$keyword}%")
-                  ->orWhere('aj.ID_TRANS', 'like', "%{$keyword}%");
-            });
-        }
-    })
-    ->order(function($q) {
-        $q->orderBy('aj.ID_TRANS', 'desc');
-    })
-    ->make(true);
+        $dataTable = DataTables::of($query)
+            ->filterColumn('KARCIS', function ($q, $k) {
+                $q->where('a.KARCIS', 'like', "%{$k}%");
+            })
+            ->filterColumn('PASIEN', function ($q, $k) {
+                $q->where('c.NAMA_PASIEN', 'like', "%{$k}%");
+            })
+            ->filterColumn('DOKTER', function ($q, $k) {
+                $q->where('c.DOKTER', 'like', "%{$k}%");
+            })
+            ->filter(function ($query) use ($request) {
+                $search = $request->get('search');
+                if (isset($search['value']) && $search['value'] !== '') {
+                    $keyword = $search['value'];
+                    $query->where(function ($q) use ($keyword) {
+                        $q->where('a.KARCIS', 'like', "%{$keyword}%")
+                            ->orWhere('c.NAMA_PASIEN', 'like', "%{$keyword}%")
+                            ->orWhere('c.DOKTER', 'like', "%{$keyword}%")
+                            ->orWhere('aj.ID_TRANS', 'like', "%{$keyword}%");
+                    });
+                }
+            })
+            ->order(function ($q) {
+                $q->orderBy('aj.ID_TRANS', 'desc');
+            })
+            ->make(true);
 
 
-    $json = $dataTable->getData(true);
-    $json['summary'] = ['all' => $recordsTotal];
+        $json = $dataTable->getData(true);
+        $json['summary'] = ['all' => $recordsTotal];
 
-    return response()->json($json);
-}
+        return response()->json($json);
+    }
 
 
 
@@ -206,13 +214,17 @@ public function datatable(Request $request)
 
             // --- ambil data gabungan resep farmasi + dokter + pasien + FHIR log ---
             $data = DB::select("
-            SELECT 
+            SELECT distinct
                 i.ID_TRANS AS ID_RESEP_FARMASI,
                 i3.ID_TRANS AS RESEP_DOKTER,
-                r4.KARCIS,
+                i2.MR_LINE as urutan,
+                FORMAT(i2.INPUTDATE, 'yyyy-MM-ddTHH:mm:sszzz') as inputdate,
+                i2.ID as isRacikan,
+                i3.KARCIS,
                 m.FHIR_ID AS medicationReference_reference,
                 m.NAMABRG AS medicationReference_display,
-                s.ENCOUNTER_ID,
+                m.KD_BRG_KFA,
+                r.id_satusehat_encounter,
                 s.FHIR_MEDICATION_REQUEST_ID,
                 r2.idpx,
                 r2.nama AS pasien_nama,
@@ -220,9 +232,8 @@ public function datatable(Request $request)
                 r3.nama AS nakes_nama
             FROM SIRS_PHCM.dbo.IF_HTRANS i
             JOIN SIRS_PHCM.dbo.IF_TRANS i2 ON i.ID_TRANS = i2.ID_TRANS
-            JOIN SIRS_PHCM.dbo.RJ_KARCIS_BAYAR r4 ON i.NOTA = r4.NOTA
-            JOIN SIRS_PHCM.dbo.IF_HTRANS_OL i3 ON r4.KARCIS = i3.KARCIS
-            JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA r ON i.NOTA = r.nota
+            JOIN SIRS_PHCM.dbo.IF_HTRANS_OL i3 ON i.ID_TRANS_OL = i3.ID_TRANS
+            JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA r ON i3.KARCIS  = r.karcis 
             JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN r2 ON r.id_satusehat_px = r2.idpx
             JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES r3 ON r.id_satusehat_dokter = r3.idnakes
             LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA m ON i2.KDBRG_CENTRA = m.KDBRG_CENTRA
@@ -262,6 +273,8 @@ public function datatable(Request $request)
             foreach ($data as $index => $item) {
                 $uniqueId = str_replace('/', '-', $item->ID_RESEP_FARMASI);
                 $identifierValue = 'DISP-' . $uniqueId;
+                $jenisCode = ($item->isRacikan == 1) ? 'C' : 'NC';
+                $jenisName = ($item->isRacikan == 1) ? 'Compound' : 'Non-compound';
 
                 // --- handle authorizingPrescription wajib ---
                 if (empty($item->FHIR_MEDICATION_REQUEST_ID)) {
@@ -293,11 +306,51 @@ public function datatable(Request $request)
                 // --- bentuk payload minimum MedicationDispense ---
                 $payload = [
                     "resourceType" => "MedicationDispense",
+                    "contained" => [
+                        [
+                            "resourceType" => "Medication",
+                            "meta" => [
+                                "profile" => [
+                                    "https://fhir.kemkes.go.id/r4/StructureDefinition/Medication"
+                                ]
+                            ],
+                            "id" => $item->ID_RESEP_FARMASI . "-".$item->urutan,
+                            "identifier" => [
+                                [
+                                    "system" => "http://sys-ids.kemkes.go.id/medication/" . $orgId,
+                                    "use" => "official"
+                                ]
+                            ],
+                            "code" => [
+                                "coding" => [
+                                    [
+                                        "system" => "http://sys-ids.kemkes.go.id/kfa",
+                                        "code" => $item->KD_BRG_KFA,
+                                        "display" => $item->medicationReference_display
+                                    ]
+                                ]
+                            ],
+                            "status" => "active",
+                            "extension" => [
+                                [
+                                    "url" => "https://fhir.kemkes.go.id/r4/StructureDefinition/MedicationType",
+                                    "valueCodeableConcept" => [
+                                        "coding" => [
+                                            [
+                                                "system" => "http://terminology.kemkes.go.id/CodeSystem/medication-type",
+                                                "code" => $jenisCode,
+                                                "display" => $jenisName
+                                            ]
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ],
                     "identifier" => [
                         [
                             "system" => "http://sys-ids.kemkes.go.id/prescription/" . $orgId,
-                            "use" => "official",
-                            "value" => $identifierValue
+                            "use" => "official"
                         ]
                     ],
                     "status" => "completed",
@@ -305,21 +358,22 @@ public function datatable(Request $request)
                         "coding" => [
                             [
                                 "system" => "http://terminology.hl7.org/fhir/CodeSystem/medicationdispense-category",
-                                "code" => "outpatient",
-                                "display" => "Outpatient"
+                                "code" => "community",
+                                "display" => "Community"
                             ]
                         ]
                     ],
                     "medicationReference" => [
-                        "reference" => !empty($item->medicationReference_reference)
-                            ? "Medication/" . $item->medicationReference_reference
-                            : "Medication/UNKNOWN",
-                        "display" => $item->medicationReference_display ?? "-"
+                        "reference" => "#" . $item->ID_RESEP_FARMASI . "-".$item->urutan
                     ],
                     "subject" => [
                         "reference" => "Patient/" . $item->idpx,
                         "display" => $item->pasien_nama
                     ],
+                    "context" => [
+                        "reference" => "Encounter/" . $item->id_satusehat_encounter
+                    ],
+                    "whenPrepared" => "2023-11-13T05:35:00+00:00",
                     "performer" => [
                         [
                             "actor" => [
@@ -329,11 +383,23 @@ public function datatable(Request $request)
                         ]
                     ],
                     "authorizingPrescription" => $authorizingPrescription
+                    ,
+                    "receiver" => [
+                        [
+                            "reference" => "Patient/" . $item->idpx,
+                            "display" => $item->pasien_nama
+                        ]
+                    ],
+                    "substitution" => [
+                        "wasSubstituted" => false
+                    ]
                 ];
+
 
                 if ($context) {
                     $payload["context"] = $context;
                 }
+
 
                 // --- kirim ke API MedicationDispense ---
                 $response = $client->post(
@@ -347,7 +413,6 @@ public function datatable(Request $request)
                         'verify' => false
                     ]
                 );
-
                 $responseBody = json_decode($response->getBody(), true);
                 $httpStatus = $response->getStatusCode();
 
@@ -364,7 +429,8 @@ public function datatable(Request $request)
                     'STATUS' => isset($responseBody['id']) ? 'success' : 'failed',
                     'HTTP_STATUS' => $httpStatus,
                     'RESPONSE_MESSAGE' => json_encode($responseBody),
-                    'CREATED_AT' => now()
+                    'CREATED_AT' => now(),
+                    'PAYLOAD' => json_encode($payload)
                 ];
 
                 $existing = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
@@ -384,7 +450,8 @@ public function datatable(Request $request)
                             'STATUS' => $logData['STATUS'],
                             'HTTP_STATUS' => $logData['HTTP_STATUS'],
                             'RESPONSE_MESSAGE' => $logData['RESPONSE_MESSAGE'],
-                            'UPDATED_AT' => now()
+                            'UPDATED_AT' => now(),
+                            'PAYLOAD' => json_encode($payload)
                         ]);
                 } else {
                     DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert($logData);

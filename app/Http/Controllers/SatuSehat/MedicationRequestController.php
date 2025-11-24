@@ -528,6 +528,7 @@ class MedicationRequestController extends Controller
                 $kdbrg = $row->KDBRG;
                 $result_kirim_medication = $this->cekSudahKirimMedication($kdbrg);
 
+
                 // default hasil untuk row ini
                 $rowResult = [
                     'KDBRG' => $kdbrg,
@@ -569,8 +570,10 @@ class MedicationRequestController extends Controller
 
                     if ($decoded && isset($decoded['issue'][0]['code']) && $decoded['issue'][0]['code'] === 'duplicate') {
                         // duplicat OK => lanjut buat payload
+                        // echo $idTrans.$kdbrg; die();
                         $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg);
 
+                        // echo json_encode($payloadResult); die();    
                         $rowResult['status'] = $payloadResult['status'] ?? 'error';
                         $rowResult['message'] = $payloadResult['message'] ?? null;
                         $rowResult['idTrans'] = $payloadResult['idTrans'] ?? null;
@@ -755,7 +758,7 @@ class MedicationRequestController extends Controller
                     ],
                     "priority" => "routine",
                     "medicationReference" => [
-                        "reference" => "#" . $uniqueId
+                        "reference" => "Medication/" . $item->medicationReference
                     ],
                     "subject" => [
                         "reference" => "Patient/" . $item->ID_PASIEN,

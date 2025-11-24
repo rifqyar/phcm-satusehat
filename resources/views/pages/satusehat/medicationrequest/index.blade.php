@@ -581,7 +581,7 @@
                 }
 
                 $.ajax({
-                    url: '{{ route('satusehat.medication-request.sendsehat') }}',
+                    url: '{{ route('satusehat.medication-request.prepsatusehat') }}',
                     type: 'GET',
                     data: { id_trans: idTrans },
                     success: function (res) {
