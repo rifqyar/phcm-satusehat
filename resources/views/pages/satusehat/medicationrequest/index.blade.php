@@ -474,60 +474,72 @@
             table.ajax.reload();
         }
 
-        function lihatObat(idTrans) {
-            $('#modalObat').modal('show');
-            $('#obatDetailContent').html(`<p class='text-center text-muted'>Memuat data obat...</p>`);
+            function lihatObat(idTrans) {
+                $('#modalObat').modal('show');
+                $('#obatDetailContent').html(`<p class='text-center text-muted'>Memuat data obat...</p>`);
 
-            $.ajax({
-                url: '{{ route('satusehat.medication-request.detail') }}',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    id: idTrans // 🆕 kirim ID_TRANS
-                },
-                success: function (res) {
-                    if (res.status === 'success') {
-                        let html = `
-                                                                    <table class="table table-sm table-bordered">
-                                                                        <thead class="thead-light">
+                $.ajax({
+                    url: '{{ route('satusehat.medication-request.detail') }}',
+                    type: 'POST',
+                    data: {
+                        _token: '{{ csrf_token() }}',
+                        id: idTrans // 🆕 kirim ID_TRANS
+                    },
+                    success: function (res) {
+                        if (res.status === 'success') {
+                            let html = `
+                                                                        <table class="table table-sm table-bordered">
+                                                                            <thead class="thead-light">
+                                                                                <tr>
+                                                                                    <th>No</th>
+                                                                                    <th>Nama Obat</th>
+                                                                                    <th>Signa</th>
+                                                                                    <th>Keterangan</th>
+                                                                                    <th>Jumlah</th>
+                                                                                    <th>KFA Code</th>
+                                                                                    <th>Nama KFA</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody>`;
+
+                            res.data.forEach((row, index) => {
+                                html += `
                                                                             <tr>
-                                                                                <th>No</th>
-                                                                                <th>Nama Obat</th>
-                                                                                <th>Signa</th>
-                                                                                <th>Keterangan</th>
-                                                                                <th>Jumlah</th>
-                                                                                <th>KFA Code</th>
-                                                                                <th>Nama KFA</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody>`;
+                                                                                <td>${index + 1}</td>
+                                                                                <td>${row.NAMA_OBAT ?? '-'}</td>
+                                                                                <td>${row.SIGNA ?? '-'}</td>
+                                                                                <td>${row.KET ?? '-'}</td>
+                                                                                <td>${row.JUMLAH ?? '-'}</td>
+                                                                                <td>
+                                                                                ${
+                                                                                    row.KD_BRG_KFA 
+                                                                                        ? (
+                                                                                            row.KD_BRG_KFA === '000'
+                                                                                                ? `<span class="badge badge-warning">Non Farmasi</span>`
+                                                                                                : row.KD_BRG_KFA
+                                                                                        )
+                                                                                        : `<a href="/master_obat?kode=${row.KDBRG}" class="btn btn-sm btn-primary" target="_blank">
+                                                                                                <i class='fa fa-link'></i> Mapping
+                                                                                        </a>`
+                                                                                }
+                                                                            </td>
+                                                                                <td>${row.NAMABRG_KFA ?? '-'}</td>
+                                                                            </tr>`;
+                            });
 
-                        res.data.forEach((row, index) => {
-                            html += `
-                                                                        <tr>
-                                                                            <td>${index + 1}</td>
-                                                                            <td>${row.NAMA_OBAT ?? '-'}</td>
-                                                                            <td>${row.SIGNA ?? '-'}</td>
-                                                                            <td>${row.KET ?? '-'}</td>
-                                                                            <td>${row.JUMLAH ?? '-'}</td>
-                                                                            <td>${row.KD_BRG_KFA ? row.KD_BRG_KFA : '<strong>Kode KFA Belum Termapping</strong>'}</td>
-                                                                            <td>${row.NAMABRG_KFA ?? '-'}</td>
-                                                                        </tr>`;
-                        });
-
-                        html += `</tbody></table>`;
-                        $('#obatDetailContent').html(html);
-                    } else {
-                        $('#obatDetailContent').html(`<p class='text-danger text-center'>${res.message}</p>`);
+                            html += `</tbody></table>`;
+                            $('#obatDetailContent').html(html);
+                        } else {
+                            $('#obatDetailContent').html(`<p class='text-danger text-center'>${res.message}</p>`);
+                        }
+                    },
+                    error: function (err) {
+                        $('#obatDetailContent').html(
+                            `<p class='text-danger text-center'>Terjadi kesalahan saat memuat data obat.</p>`);
+                        console.error(err);
                     }
-                },
-                error: function (err) {
-                    $('#obatDetailContent').html(
-                        `<p class='text-danger text-center'>Terjadi kesalahan saat memuat data obat.</p>`);
-                    console.error(err);
-                }
-            });
-        }
+                });
+            }
         //function confirmKirim
         function confirmkirimSatusehat(idTrans) {
             if (!idTrans) return;

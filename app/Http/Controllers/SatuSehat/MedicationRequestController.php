@@ -8,6 +8,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Yajra\DataTables\Facades\DataTables;
+use App\Jobs\SendMedicationRequest;
 
 
 class MedicationRequestController extends Controller
@@ -144,8 +145,6 @@ class MedicationRequestController extends Controller
         return response()->json($json);
     }
 
-
-
     public function getDetailObat(Request $request)
     {
         $idTrans = $request->id; // ID_TRANS dikirim dari tombol lihatObat(id)
@@ -157,18 +156,21 @@ class MedicationRequestController extends Controller
                         T.[NO],
                         T.NAMABRG AS NAMA_OBAT,
                         T.SIGNA2 AS SIGNA,
+                        T.KDBRG,
                         T.KETQTY AS KET,
                         T.JUMLAH,
                         H.TGL AS TGL_ENTRY,
                         T.ID_TRANS AS IDTRANS,
                         K.KD_BRG_KFA,
                         K.NAMABRG_KFA,
-                        T.KDBRG_CENTRA
+                        T.KDBRG_CENTRA,
+                        LM.ID
                     FROM SIRS_PHCM.dbo.IF_HTRANS_OL H
                     JOIN SIRS_PHCM.dbo.IF_TRANS_OL T
                         ON H.ID_TRANS = T.ID_TRANS
                     LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA K
                         ON T.KDBRG_CENTRA = K.KDBRG_CENTRA
+                    LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION LM on T.ID_TRANS = LM.LOCAL_ID and K.KD_BRG_KFA = LM.KFA_CODE and status = 'success'
                     WHERE
                     H.ID_TRANS = :idTrans
                     AND H.ACTIVE = 1
@@ -470,5 +472,320 @@ class MedicationRequestController extends Controller
         }
     }
 
+    //revisi
+    public function prepMedicationRequest(Request $request)
+    {
+        try {
+            // --- ambil parameter dari request ---
+            $idTrans = $request->input('id_trans');
+
+            if (empty($idTrans)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Parameter id_trans wajib dikirim.'
+                ], 400);
+            }
+
+            $data = DB::table('SIRS_PHCM.dbo.IF_TRANS_OL as A')
+                ->leftJoin('SIRS_PHCM.dbo.M_TRANS_KFA as B', 'A.KDBRG', '=', 'B.KDBRG_CENTRA')
+                ->select(
+                    'A.ID_TRANS',
+                    'A.KDBRG',
+                    'A.NAMABRG',
+                    'B.FHIR_ID',
+                    'B.KD_BRG_KFA'
+                )
+                ->where('A.ID_TRANS', $idTrans)
+                ->get();
+
+            if ($data->isEmpty()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Data transaksi obat ' . $idTrans . ' tidak ditemukan.'
+                ], 404);
+            }
+
+            // cari row yang belum dimapping KD_BRG_KFA (jika ada -> stop, tampilkan list KDBRG)
+            $missingMapping = [];
+            foreach ($data as $row) {
+                if (empty($row->KD_BRG_KFA)) {
+                    $missingMapping[] = $row->KDBRG;
+                }
+            }
+
+            if (!empty($missingMapping)) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Kode KFA (KD_BRG_KFA) belum dimapping untuk transaksi ' . $idTrans,
+                    'missing_kdbrg' => $missingMapping
+                ], 400);
+            }
+
+            // proses setiap row: cek sudah dikirim, jika ok/duplicate -> create payload
+            $summary = []; // akan berisi hasil per KDBRG
+
+            foreach ($data as $row) {
+                $kdbrg = $row->KDBRG;
+                $result_kirim_medication = $this->cekSudahKirimMedication($kdbrg);
+
+                // default hasil untuk row ini
+                $rowResult = [
+                    'KDBRG' => $kdbrg,
+                    'NAMABRG' => $row->NAMABRG,
+                    'KD_BRG_KFA' => $row->KD_BRG_KFA,
+                    'status' => 'skipped',
+                    'message' => null,
+                    'created' => false
+                ];
+
+                // kalo success -> lanjut buat payload
+                if (isset($result_kirim_medication['status']) && $result_kirim_medication['status'] === 'success') {
+                    $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg);
+                    $rowResult['status'] = $payloadResult['status'] ?? 'error';
+                    $rowResult['message'] = $payloadResult['message'] ?? null;
+                    $rowResult['created'] = ($payloadResult['status'] ?? '') === 'success';
+                    if (($payloadResult['status'] ?? '') === 'success') {
+                        // KIRIM PAYLOAD KE JOB MEDICATION REQUEST
+                        SendMedicationRequest::dispatch(
+                            $payloadResult['payload'],
+                            [
+                                'idTrans' => $idTrans,
+                                'item' => [
+                                    'KD_BRG_KFA' => $row->KD_BRG_KFA,
+                                    'NAMABRG_KFA' => $row->NAMABRG,
+                                    'medicationReference' => $result_kirim_medication['medicationReference'] ?? null,
+                                    'ID_PASIEN' => $payloadResult['payload']['subject']['reference'] ?? null,
+                                    'id_satusehat_encounter' => $payloadResult['payload']['encounter']['reference'] ?? null,
+                                ]
+                            ]
+                        );
+                    }
+                } else {
+                    // decode message (bisa jadi JSON string dari FHIR)
+                    $decoded = null;
+                    if (isset($result_kirim_medication['message'])) {
+                        $decoded = @json_decode($result_kirim_medication['message'], true);
+                    }
+
+                    if ($decoded && isset($decoded['issue'][0]['code']) && $decoded['issue'][0]['code'] === 'duplicate') {
+                        // duplicat OK => lanjut buat payload
+                        $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg);
+
+                        $rowResult['status'] = $payloadResult['status'] ?? 'error';
+                        $rowResult['message'] = $payloadResult['message'] ?? null;
+                        $rowResult['idTrans'] = $payloadResult['idTrans'] ?? null;
+                        $rowResult['KDBRG'] = $payloadResult['KDBRG'] ?? null;
+                        $rowResult['created'] = ($payloadResult['status'] ?? '') === 'success';
+                        $rowResult['payload'] = $payloadResult['payload'] ?? null;
+                        $rowResult['note'] = 'previously duplicate'; // simpan catatan
+
+                        // ==========================================
+                        //  DISPATCH JOB di sini (duplicate case)
+                        // ==========================================
+                        if (($payloadResult['status'] ?? '') === 'success') {
+
+                            SendMedicationRequest::dispatch(
+                                $payloadResult['payload'],
+                                [
+                                    'idTrans' => $idTrans,
+                                    'item' => [
+                                        'KD_BRG_KFA' => $row->KD_BRG_KFA,
+                                        'NAMABRG_KFA' => $row->NAMABRG,
+                                        'medicationReference' => $row->FHIR_ID ?? null,
+                                        'ID_PASIEN' => $payloadResult['payload']['subject']['reference'] ?? null,
+                                        'id_satusehat_encounter' => $payloadResult['payload']['encounter']['reference'] ?? null,
+                                    ],
+                                ]
+                            );
+                        }
+
+                    } else {
+                        // error lain -> jangan lanjut untuk row ini
+                        $rowResult['status'] = 'error';
+                        $rowResult['message'] = $result_kirim_medication['message'] ?? 'Gagal Kirim Medication';
+                    }
+
+                }
+
+                $summary[] = $rowResult;
+            }
+
+            // hitung ringkasan
+            $createdCount = 0;
+            $errorCount = 0;
+            foreach ($summary as $s) {
+                if (isset($s['created']) && $s['created'])
+                    $createdCount++;
+                if ($s['status'] === 'error')
+                    $errorCount++;
+            }
+
+            return response()->json([
+                'status' => ($errorCount === 0) ? 'success' : (($createdCount > 0) ? 'partial' : 'error'),
+                'message' => ($errorCount === 0) ? 'Semua row diproses' : 'Sebagian row diproses, ada error pada beberapa row',
+                'summary' => [
+                    'total_rows' => count($summary),
+                    'created' => $createdCount,
+                    'errors' => $errorCount
+                ],
+                'results' => $summary
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Exception: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    // biar singkat ngecek kirim medication sekalian biar bisa dipanggil di fungsi lain
+    function cekSudahKirimMedication($kdbrg)
+    {
+        $kdbrg_centra = $kdbrg;
+        $medResult = app(\App\Http\Controllers\SatusehatKfaController::class)
+            ->processMedication($kdbrg_centra);
+
+        return $medResult;
+    }
+
+    // create payload sekalian kirim melalui job
+    function createMedicationRequestPayload($idTrans, $kdbrg)
+    {
+        try {
+
+
+
+            $data = DB::select("
+            SELECT 
+                H.ID_TRANS, 
+                MT.FHIR_ID AS medicationReference, 
+                T.ID as 'fl_racik',
+                MT.NAMABRG_KFA, 
+                MT.KD_BRG_KFA, 
+                MT.IS_COMPOUND,
+                B.id_satusehat_encounter, 
+                P.idpx AS ID_PASIEN, 
+                P.nama AS PASIEN, 
+                N.idnakes AS ID_NAKES, 
+                N.nama AS NAKES
+            FROM SIRS_PHCM.dbo.RJ_KARCIS A
+            INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA AS B ON A.KARCIS = B.karcis
+            INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES AS N ON B.id_satusehat_dokter = N.idnakes
+            INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN AS P ON B.id_satusehat_px = P.idpx
+            INNER JOIN SIRS_PHCM.dbo.IF_HTRANS_OL H ON A.KARCIS = H.KARCIS
+            INNER JOIN SIRS_PHCM.dbo.IF_TRANS_OL T ON H.ID_TRANS = T.ID_TRANS
+            INNER JOIN SIRS_PHCM.dbo.M_TRANS_KFA MT ON T.KDBRG_CENTRA = MT.KDBRG_CENTRA
+            WHERE H.ID_TRANS = ? and T.KDBRG_CENTRA = ?
+        ", [$idTrans, $kdbrg]);
+
+            $orgId = '266bf013-b70b-4dc2-b934-40858a5658cc';
+            foreach ($data as $index => $item) {
+                $uniqueId = date('YmdHis') . '-' . str_pad($index + 1, 3, '0', STR_PAD_LEFT);
+
+                $jenisCode = ($item->fl_racik == 1) ? 'C' : 'NC';
+                $jenisName = ($item->fl_racik == 1) ? 'Compound' : 'Non-compound';
+
+                // --- bentuk payload ---
+                $payload = [
+                    "resourceType" => "MedicationRequest",
+                    "identifier" => [
+                        [
+                            "system" => "http://sys-ids.kemkes.go.id/prescription",
+                            "use" => "official",
+                            "value" => $uniqueId
+                        ]
+                    ],
+                    "contained" => [
+                        [
+                            "resourceType" => "Medication",
+                            "meta" => [
+                                "profile" => [
+                                    "https://fhir.kemkes.go.id/r4/StructureDefinition/Medication"
+                                ]
+                            ],
+                            "id" => $uniqueId,
+                            "identifier" => [
+                                [
+                                    "system" => "http://sys-ids.kemkes.go.id/medication",
+                                    "use" => "official",
+                                    "value" => $item->KD_BRG_KFA
+                                ]
+                            ],
+                            "code" => [
+                                "coding" => [
+                                    [
+                                        "system" => "http://sys-ids.kemkes.go.id/kfa",
+                                        "code" => $item->KD_BRG_KFA,
+                                        "display" => $item->NAMABRG_KFA
+                                    ]
+                                ]
+                            ],
+                            "status" => "active",
+                            "manufacturer" => [
+                                "reference" => "Organization/" . $orgId
+                            ],
+                            "extension" => [
+                                [
+                                    "url" => "https://fhir.kemkes.go.id/r4/StructureDefinition/MedicationType",
+                                    "valueCodeableConcept" => [
+                                        "coding" => [
+                                            [
+                                                "system" => "http://terminology.kemkes.go.id/CodeSystem/medication-type",
+                                                "code" => $jenisCode,
+                                                "display" => $jenisName
+                                            ]
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ],
+                    "status" => "completed",
+                    "intent" => "order",
+                    "category" => [
+                        [
+                            "coding" => [
+                                [
+                                    "system" => "http://terminology.hl7.org/CodeSystem/medicationrequest-category",
+                                    "code" => "community",
+                                    "display" => "Community"
+                                ]
+                            ]
+                        ]
+                    ],
+                    "priority" => "routine",
+                    "medicationReference" => [
+                        "reference" => "#" . $uniqueId
+                    ],
+                    "subject" => [
+                        "reference" => "Patient/" . $item->ID_PASIEN,
+                        "display" => $item->PASIEN
+                    ],
+                    "encounter" => [
+                        "reference" => "Encounter/" . $item->id_satusehat_encounter
+                    ],
+                    "authoredOn" => now()->format('Y-m-d\TH:i:sP'),
+                    "requester" => [
+                        "reference" => "Practitioner/" . $item->ID_NAKES,
+                        "display" => $item->NAKES
+                    ]
+                ];
+            }
+
+            return [
+                'status' => 'success',
+                'message' => 'Payload dibuat untuk KDBRG ' . $kdbrg,
+                'idTrans' => $idTrans,
+                'KDBRG' => $kdbrg,
+                'payload' => $payload
+            ];
+
+        } catch (\Exception $e) {
+            return [
+                'status' => 'error',
+                'message' => 'createMedicationRequestPayload exception: ' . $e->getMessage()
+            ];
+        }
+    }
 
 }
