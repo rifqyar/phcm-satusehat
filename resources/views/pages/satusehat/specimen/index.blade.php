@@ -489,7 +489,8 @@
                 } else {
                     selectedIds = selectedIds.filter(item => item !== id);
                 }
-                updateSelectAllCheckbox();
+            });
+            updateSelectAllCheckbox();
         });
 
         // Update status checkbox selectAll
