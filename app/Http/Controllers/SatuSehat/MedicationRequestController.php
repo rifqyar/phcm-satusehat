@@ -43,6 +43,7 @@ class MedicationRequestController extends Controller
 
         // 🧱 Base query
         $query = DB::table('SIRS_PHCM.dbo.IF_HTRANS_OL as a')
+        ->distinct()
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as b', 'a.KARCIS', '=', 'b.karcis')
             ->leftJoin("$kunjunganTable as c", 'a.KARCIS', '=', 'c.ID_TRANSAKSI')  // ← berubah dinamis
             ->leftJoin(DB::raw("
