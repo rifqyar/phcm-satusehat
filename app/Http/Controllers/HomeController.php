@@ -61,7 +61,7 @@ class HomeController extends Controller
             [
                 'title' => 'Alergi Intoleran',
                 'url' => 'satusehat.allergy-intolerance.index',
-                'bg_color' => 'card-info'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Radiologi',
@@ -71,7 +71,7 @@ class HomeController extends Controller
             [
                 'title' => 'Permintaan Pemeriksaan (Penunjang Medis)',
                 'url' => 'satusehat.service-request.index',
-                'bg_color' => 'card-info'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Impresi Klinis (ClinicalImpression)',
@@ -81,7 +81,7 @@ class HomeController extends Controller
             [
                 'title' => 'Spesimen',
                 'url' => 'satusehat.specimen.index',
-                'bg_color' => 'card-info'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Laporan Pemeriksaan',
@@ -106,7 +106,7 @@ class HomeController extends Controller
             [
                 'title' => 'Data Obat',
                 'url' => 'satusehat.medication.index',
-                'bg_color' => 'card-info'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Episode Perawatan',
