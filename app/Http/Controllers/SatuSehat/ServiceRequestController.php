@@ -203,9 +203,17 @@ class ServiceRequestController extends Controller
         // Calculate unmapped counts
         $total_unmapped_lab = $total_all_lab - $total_mapped_lab;
         $total_unmapped_rad = $total_all_rad - $total_mapped_rad;
+        $total_unmapped_lab = $total_all_lab - $total_mapped_lab;
+        $total_unmapped_rad = $total_all_rad - $total_mapped_rad;
 
         // Return JSON response
         return response()->json([
+            'total_all_lab' => $total_all_lab,
+            'total_all_rad' => $total_all_rad,
+            'total_all_combined' => $total_all_lab + $total_all_rad,
+            'total_mapped_lab' => $total_mapped_lab,
+            'total_mapped_rad' => $total_mapped_rad,
+            'total_mapped_combined' => $total_mapped_lab + $total_mapped_rad,
             'total_all_lab' => $total_all_lab,
             'total_all_rad' => $total_all_rad,
             'total_all_combined' => $total_all_lab + $total_all_rad,
@@ -261,10 +269,18 @@ class ServiceRequestController extends Controller
                     ->on('kc.KBUKU', '=', 'nt.kbuku')
                     ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
             })
+            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.KARCIS_RUJUKAN', '=', 'nt.karcis')
+                    ->on('kc.IDUNIT', '=', 'nt.idunit')
+                    ->on('kc.KBUKU', '=', 'nt.kbuku')
+                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            })
             ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
                 $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
                     ->on('rd.IDUNIT', '=', 'nt.idunit')
                     ->on('rd.KBUKU', '=', 'nt.kbuku')
+                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                    ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
                     ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
@@ -301,10 +317,18 @@ class ServiceRequestController extends Controller
                     ->on('kc.KBUKU', '=', 'nt.kbuku')
                     ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
             })
+            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.KARCIS_RUJUKAN', '=', 'nt.karcis')
+                    ->on('kc.IDUNIT', '=', 'nt.idunit')
+                    ->on('kc.KBUKU', '=', 'nt.kbuku')
+                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            })
             ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
                 $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
                     ->on('rd.IDUNIT', '=', 'nt.idunit')
                     ->on('rd.KBUKU', '=', 'nt.kbuku')
+                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                    ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
                     ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
@@ -561,6 +585,7 @@ class ServiceRequestController extends Controller
                             $btn = '<i class="text-muted">Tunggu Verifikasi Pasien</i>';
                         }
                     } else {
+                        $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                         $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                     }
                 }

@@ -246,7 +246,19 @@ class SatusehatKfaController extends Controller
                 'data' => $body
             ];
 
+        } catch (\GuzzleHttp\Exception\RequestException $e) {
+
+            $fullError = $e->hasResponse()
+                ? $e->getResponse()->getBody()->getContents()
+                : $e->getMessage();
+
+            return [
+                'status' => 'error',
+                'message' => $fullError
+            ];
+
         } catch (\Exception $e) {
+
             return [
                 'status' => 'error',
                 'message' => $e->getMessage()

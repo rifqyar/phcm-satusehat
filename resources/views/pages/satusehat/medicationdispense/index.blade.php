@@ -206,7 +206,7 @@
         $(document).ready(function () {
             // 🗓️ inisialisasi datepicker
             var endDate = moment();
-            var startDate = moment().subtract(30, 'days');
+            var startDate = moment().subtract(280, 'days');
 
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0, time: false, format: 'YYYY-MM-DD', defaultDate: startDate

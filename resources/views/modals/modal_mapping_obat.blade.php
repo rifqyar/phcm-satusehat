@@ -52,6 +52,14 @@
                         <textarea class="form-control" id="deskripsi" name="deskripsi" rows="3"
                             placeholder="Tambahkan deskripsi..."></textarea>
                     </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="is_non_farmasi" name="is_non_farmasi"
+                            value="1">
+                        <label class="form-check-label" for="is_non_farmasi">
+                            Tandai sebagai Non Farmasi
+                        </label>
+                    </div>
                 </form>
 
                 <hr>
@@ -149,6 +157,17 @@
             modal.find('#jenis_obat').val(jenis || '');
             modal.find('#is_compound').val(isCompound || 0);
             modal.find('#deskripsi').val(deskripsi || '');
+            modal.find('#is_non_farmasi').prop('checked', kfa === '000');
+            if (kfa === '000') {
+                $('#keyword_kfa').prop('disabled', true);
+                $('#tipe_pencarian').prop('disabled', true);
+                $('#btnCariKfa').prop('disabled', true);
+            } else {
+                $('#keyword_kfa').prop('disabled', false);
+                $('#tipe_pencarian').prop('disabled', false);
+                $('#btnCariKfa').prop('disabled', false);
+            }
+
 
             // Reset hasil pencarian KFA tiap kali modal baru dibuka
             $('#tbodyKfa').empty();
@@ -156,6 +175,27 @@
             $('#quickSearchWrapper').hide();
             $('#keyword_kfa').val('');
         });
+
+        $('#is_non_farmasi').on('change', function () {
+            if ($(this).is(':checked')) {
+                $('#kode_kfa').val('000');
+                $('#nama_kfa').val('Non Farmasi');
+                $('#jenis_obat').val('-');
+                $('#is_compound').val(0);
+
+                // 🔒 disable pencarian KFA
+                $('#keyword_kfa').prop('disabled', true);
+                $('#tipe_pencarian').prop('disabled', true);
+                $('#btnCariKfa').prop('disabled', true);
+            } else {
+                // 🔓 enable kembali
+                $('#keyword_kfa').prop('disabled', false);
+                $('#tipe_pencarian').prop('disabled', false);
+                $('#btnCariKfa').prop('disabled', false);
+            }
+        });
+
+
 
 
         /**
@@ -266,4 +306,3 @@
         });
     });
 </script>
-

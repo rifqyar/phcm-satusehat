@@ -9,56 +9,11 @@ use DB;
 
 class MasterObatController extends Controller
 {
-    // public function index(Request $request)
-    // {
-    //     $query = MasterObat::query();
 
-    //     // 🔍 Filter pencarian
-    //     if ($request->filled('search')) {
-    //         $search = $request->get('search');
-    //         $query->where(function ($q) use ($search) {
-    //             $q->where('KDBRG_CENTRA', 'like', "%{$search}%")
-    //                 ->orWhere('NAMABRG', 'like', "%{$search}%")
-    //                 ->orWhere('KD_BRG_KFA', 'like', "%{$search}%")
-    //                 ->orWhere('NAMABRG_KFA', 'like', "%{$search}%");
-    //         });
-    //     }
-
-    //     // 🧩 Filter status mapping
-    //     $status = $request->get('status', 'all'); // default: semua
-
-    //     if ($status === 'mapped') {
-    //         $query->whereNotNull('KD_BRG_KFA')->where('KD_BRG_KFA', '<>', '');
-    //     } elseif ($status === 'unmapped') {
-    //         $query->where(function ($q) {
-    //             $q->whereNull('KD_BRG_KFA')->orWhere('KD_BRG_KFA', '');
-    //         });
-    //     }
-
-    //     // 🔢 Hitung total
-    //     $total_all = MasterObat::count();
-    //     $total_mapped = MasterObat::whereNotNull('KD_BRG_KFA')->where('KD_BRG_KFA', '<>', '')->count();
-    //     $total_unmapped = MasterObat::whereNull('KD_BRG_KFA')->orWhere('KD_BRG_KFA', '')->count();
-
-    //     // 🔽 Ambil data utama
-    //     $data = $query->select('ID', 'KDBRG_CENTRA', 'NAMABRG', 'KD_BRG_KFA', 'NAMABRG_KFA', 'IS_COMPOUND', 'DESCRIPTION','FHIR_ID')
-    //         ->orderByRaw('CASE WHEN KD_BRG_KFA IS NULL OR KD_BRG_KFA = \'\' THEN 0 ELSE 1 END')
-    //         ->orderBy('NAMABRG', 'asc')
-    //         ->paginate(10)
-    //         ->appends(['search' => $request->search, 'status' => $status]);
-
-    //     return view('pages.master_obat', compact(
-    //         'data',
-    //         'status',
-    //         'total_all',
-    //         'total_mapped',
-    //         'total_unmapped'
-    //     ));
-    // }
-
-    public function index()
+    public function index(Request $request)
     {
-        // Hitung summary (boleh async juga nanti)
+
+        $kode = $request->get('kode');
         $total_all = MasterObat::count();
         $total_mapped = MasterObat::whereNotNull('KD_BRG_KFA')->where('KD_BRG_KFA', '<>', '')->count();
         $total_unmapped = MasterObat::whereNull('KD_BRG_KFA')->orWhere('KD_BRG_KFA', '')->count();
@@ -66,29 +21,63 @@ class MasterObatController extends Controller
         return view('pages.master_obat', compact(
             'total_all',
             'total_mapped',
-            'total_unmapped'
+            'total_unmapped',
+            'kode'
         ));
+
     }
     public function getData(Request $request)
     {
         $query = MasterObat::query();
 
-        // 🧩 Filter status mapping
+        /**
+         * ===========================
+         *  Filter status mapping
+         * ===========================
+         */
         $status = $request->get('status', 'all');
+
         if ($status === 'mapped') {
-            $query->whereNotNull('KD_BRG_KFA')->where('KD_BRG_KFA', '<>', '');
+            $query->whereNotNull('KD_BRG_KFA')
+                ->where('KD_BRG_KFA', '<>', '');
         } elseif ($status === 'unmapped') {
             $query->where(function ($q) {
-                $q->whereNull('KD_BRG_KFA')->orWhere('KD_BRG_KFA', '');
+                $q->whereNull('KD_BRG_KFA')
+                    ->orWhere('KD_BRG_KFA', '');
             });
         }
 
+        /**
+         * ===========================
+         *  Filter berdasarkan kode obat (URL)
+         *  contoh → /master_obat?kode=FAR000123
+         * ===========================
+         */
+        $kode = trim($request->get('kode'));
+
+        if (!empty($kode)) {
+            // Kamu bisa sesuaikan ke kolom KDBRG_CENTRA atau KODE lainnya
+            $query->where('KDBRG_CENTRA', $kode);
+        }
+
+        /**
+         * ===========================
+         *  Return DataTables
+         * ===========================
+         */
         return DataTables::of($query)
             ->addColumn('status_mapping', function ($row) {
-                return $row->KD_BRG_KFA
-                    ? '<span class="badge badge-success">Mapped</span>'
-                    : '<span class="badge badge-danger">Unmapped</span>';
+                if (empty($row->KD_BRG_KFA)) {
+                    return '<span class="badge badge-danger">Unmapped</span>';
+                }
+                if ($row->KD_BRG_KFA === '000') {
+                    return '<span class="badge badge-secondary">Non Farmasi</span>';
+                }
+                return '<span class="badge badge-success">Mapped</span>';
             })
+
+
+            // Kolom aksi (button Mapping)
             ->addColumn('action', function ($row) {
                 $isMapped = !empty($row->KD_BRG_KFA);
                 $btnClass = $isMapped ? 'btn-warning' : 'btn-success';
@@ -96,26 +85,28 @@ class MasterObatController extends Controller
                 $label = $isMapped ? 'Mapping Ulang' : 'Mapping';
 
                 return "
-        <button type='button' 
-            class='btn btn-sm $btnClass btnMappingObat'
-            data-toggle='modal'
-            data-target='#modalMapping'
-            data-id='{$row->ID}'
-            data-kode='{$row->KDBRG_CENTRA}'
-            data-nama='{$row->NAMABRG}'
-            data-kfa='{$row->KD_BRG_KFA}'
-            data-namakfa='{$row->NAMABRG_KFA}'
-            data-jenis='" . ($row->IS_COMPOUND ? 'Compound' : 'Non-compound') . "'
-            data-is-compound='" . ($row->IS_COMPOUND ? 1 : 0) . "'
-            data-deskripsi='{$row->DESCRIPTION}'
-        >
-            <i class='fas $icon'></i> $label
-        </button>";
+                <button type='button'
+                    class='btn btn-sm $btnClass btnMappingObat'
+                    data-toggle='modal'
+                    data-target='#modalMapping'
+                    data-id='{$row->ID}'
+                    data-kode='{$row->KDBRG_CENTRA}'
+                    data-nama='{$row->NAMABRG}'
+                    data-kfa='{$row->KD_BRG_KFA}'
+                    data-namakfa='{$row->NAMABRG_KFA}'
+                    data-jenis='" . ($row->IS_COMPOUND ? 'Compound' : 'Non-compound') . "'
+                    data-is-compound='" . ($row->IS_COMPOUND ? 1 : 0) . "'
+                    data-deskripsi='{$row->DESCRIPTION}'
+                >
+                    <i class='fas $icon'></i> $label
+                </button>
+            ";
             })
+
             ->rawColumns(['status_mapping', 'action'])
             ->make(true);
-
     }
+
     public function show(Request $request)
     {
         $id = $request->input('id');
