@@ -119,23 +119,16 @@ class ServiceRequestController extends Controller
 
         $lab_ri = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.v_kunjungan_ri as rj')
-            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
-                $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
-                    ->on('nt.idunit', '=', 'rj.ID_UNIT')
-                    ->on('nt.kbuku', '=', 'rj.KBUKU')
-                    ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
-            })
-            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
-                $join->on('kc.noreg', '=', 'nt.karcis')
-                    ->on('kc.IDUNIT', '=', 'nt.idunit')
-                    ->on('kc.KBUKU', '=', 'nt.kbuku')
-                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            ->join('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.IDUNIT', '=', 'rj.ID_UNIT')
+                    ->on('kc.KBUKU', '=', 'rj.KBUKU')
+                    ->on('kc.NO_PESERTA', '=', 'rj.NO_PESERTA');
             })
             ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
-                $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
-                    ->on('rd.IDUNIT', '=', 'nt.idunit')
-                    ->on('rd.KBUKU', '=', 'nt.kbuku')
-                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                $join->on('rd.KARCIS_RUJUKAN', '=', 'kc.KARCIS')
+                    ->on('rd.IDUNIT', '=', 'kc.IDUNIT')
+                    ->on('rd.KBUKU', '=', 'kc.KBUKU')
+                    ->on('rd.NO_PESERTA', '=', 'kc.NO_PESERTA')
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
@@ -162,7 +155,7 @@ class ServiceRequestController extends Controller
                     ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
             })
             ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
-                $join->on('kc.noreg', '=', 'nt.karcis')
+                $join->on('kc.KARCIS_RUJUKAN', '=', 'nt.karcis')
                     ->on('kc.IDUNIT', '=', 'nt.idunit')
                     ->on('kc.KBUKU', '=', 'nt.kbuku')
                     ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
@@ -203,17 +196,9 @@ class ServiceRequestController extends Controller
         // Calculate unmapped counts
         $total_unmapped_lab = $total_all_lab - $total_mapped_lab;
         $total_unmapped_rad = $total_all_rad - $total_mapped_rad;
-        $total_unmapped_lab = $total_all_lab - $total_mapped_lab;
-        $total_unmapped_rad = $total_all_rad - $total_mapped_rad;
 
         // Return JSON response
         return response()->json([
-            'total_all_lab' => $total_all_lab,
-            'total_all_rad' => $total_all_rad,
-            'total_all_combined' => $total_all_lab + $total_all_rad,
-            'total_mapped_lab' => $total_mapped_lab,
-            'total_mapped_rad' => $total_mapped_rad,
-            'total_mapped_combined' => $total_mapped_lab + $total_mapped_rad,
             'total_all_lab' => $total_all_lab,
             'total_all_rad' => $total_all_rad,
             'total_all_combined' => $total_all_lab + $total_all_rad,
@@ -269,18 +254,10 @@ class ServiceRequestController extends Controller
                     ->on('kc.KBUKU', '=', 'nt.kbuku')
                     ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
             })
-            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
-                $join->on('kc.KARCIS_RUJUKAN', '=', 'nt.karcis')
-                    ->on('kc.IDUNIT', '=', 'nt.idunit')
-                    ->on('kc.KBUKU', '=', 'nt.kbuku')
-                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
-            })
             ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
                 $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
                     ->on('rd.IDUNIT', '=', 'nt.idunit')
                     ->on('rd.KBUKU', '=', 'nt.kbuku')
-                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
-                    ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
                     ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
@@ -317,18 +294,10 @@ class ServiceRequestController extends Controller
                     ->on('kc.KBUKU', '=', 'nt.kbuku')
                     ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
             })
-            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
-                $join->on('kc.KARCIS_RUJUKAN', '=', 'nt.karcis')
-                    ->on('kc.IDUNIT', '=', 'nt.idunit')
-                    ->on('kc.KBUKU', '=', 'nt.kbuku')
-                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
-            })
             ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
                 $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
                     ->on('rd.IDUNIT', '=', 'nt.idunit')
                     ->on('rd.KBUKU', '=', 'nt.kbuku')
-                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
-                    ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
                     ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
@@ -348,23 +317,16 @@ class ServiceRequestController extends Controller
 
         $lab_ri = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.v_kunjungan_ri as rj')
-            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
-                $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
-                    ->on('nt.idunit', '=', 'rj.ID_UNIT')
-                    ->on('nt.kbuku', '=', 'rj.KBUKU')
-                    ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
-            })
-            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
-                $join->on('kc.noreg', '=', 'nt.karcis')
-                    ->on('kc.IDUNIT', '=', 'nt.idunit')
-                    ->on('kc.KBUKU', '=', 'nt.kbuku')
-                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            ->join('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.IDUNIT', '=', 'rj.ID_UNIT')
+                    ->on('kc.KBUKU', '=', 'rj.KBUKU')
+                    ->on('kc.NO_PESERTA', '=', 'rj.NO_PESERTA');
             })
             ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
-                $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
-                    ->on('rd.IDUNIT', '=', 'nt.idunit')
-                    ->on('rd.KBUKU', '=', 'nt.kbuku')
-                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                $join->on('rd.KARCIS_ASAL', '=', 'kc.KARCIS')
+                    ->on('rd.IDUNIT', '=', 'kc.IDUNIT')
+                    ->on('rd.KBUKU', '=', 'kc.KBUKU')
+                    ->on('rd.NO_PESERTA', '=', 'kc.NO_PESERTA')
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK_TUJUAN', '=', 'dk.kdDok')
@@ -384,23 +346,16 @@ class ServiceRequestController extends Controller
 
         $rad_ri = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.v_kunjungan_ri as rj')
-            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
-                $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
-                    ->on('nt.idunit', '=', 'rj.ID_UNIT')
-                    ->on('nt.kbuku', '=', 'rj.KBUKU')
-                    ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
-            })
-            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
-                $join->on('kc.noreg', '=', 'nt.karcis')
-                    ->on('kc.IDUNIT', '=', 'nt.idunit')
-                    ->on('kc.KBUKU', '=', 'nt.kbuku')
-                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            ->join('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.IDUNIT', '=', 'rj.ID_UNIT')
+                    ->on('kc.KBUKU', '=', 'rj.KBUKU')
+                    ->on('kc.NO_PESERTA', '=', 'rj.NO_PESERTA');
             })
             ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
-                $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
-                    ->on('rd.IDUNIT', '=', 'nt.idunit')
-                    ->on('rd.KBUKU', '=', 'nt.kbuku')
-                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                $join->on('rd.KARCIS_RUJUKAN', '=', 'kc.karcis')
+                    ->on('rd.IDUNIT', '=', 'kc.idunit')
+                    ->on('rd.KBUKU', '=', 'kc.kbuku')
+                    ->on('rd.NO_PESERTA', '=', 'kc.no_peserta')
                     ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
             })
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK_TUJUAN', '=', 'dk.kdDok')
@@ -445,9 +400,9 @@ class ServiceRequestController extends Controller
                 return $item->SATUSEHAT == '0';
             })->values();
         } else if ($request->input('cari') == 'rad') {
-            $dataKunjungan = $radAll->merge($rad_ri_all);
+            $dataKunjungan = $radAll;
         } else if ($request->input('cari') == 'lab') {
-            $dataKunjungan = $labAll->merge($lab_ri_all);
+            $dataKunjungan = $labAll;
         } else {
             $dataKunjungan = $mergedAll;
         }
@@ -585,7 +540,6 @@ class ServiceRequestController extends Controller
                             $btn = '<i class="text-muted">Tunggu Verifikasi Pasien</i>';
                         }
                     } else {
-                        $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                         $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                     }
                 }
