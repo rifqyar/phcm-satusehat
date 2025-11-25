@@ -244,9 +244,6 @@ class ServiceRequestController extends Controller
             return DataTables::of([])->make(true);
         }
 
-        // $tgl_awal_db  = Carbon::parse($tgl_awal)->format('Y-m-d H:i:s');
-        // $tgl_akhir_db = Carbon::parse($tgl_akhir)->format('Y-m-d H:i:s');
-
         $rad = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.v_kunjungan_rj as rj')
             ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
