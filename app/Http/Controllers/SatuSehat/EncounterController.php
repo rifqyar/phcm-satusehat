@@ -7,7 +7,9 @@ use App\Http\Traits\LogTraits;
 use App\Http\Traits\SATUSEHATTraits;
 use App\Lib\LZCompressor\LZString;
 use App\Models\GlobalParameter;
+use App\Models\Karcis;
 use App\Models\SATUSEHAT\SATUSEHAT_NOTA;
+use App\Models\SATUSEHAT\SATUSEHAT_NOTA_DIAGNOSA;
 use App\Models\SATUSEHAT\SS_Kode_API;
 use Carbon\Carbon;
 use Exception;
@@ -104,8 +106,19 @@ class EncounterController extends Controller
 
         $rjIntegrasi = $rj->whereNotNull('n.ID_SATUSEHAT_ENCOUNTER')->get();
 
-        $ri = DB::table('v_kunjungan_ri')
+        $ri = DB::table('v_kunjungan_ri as v')
             ->whereBetween('TANGGAL', [$tgl_awal_db, $tgl_akhir_db])
+            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as n', function ($join) {
+                $join->on('n.KARCIS', '=', 'v.ID_TRANSAKSI')
+                    ->on('n.IDUNIT', '=', 'v.ID_UNIT')
+                    ->on('n.KBUKU', '=', 'v.KBUKU')
+                    ->on('n.NO_PESERTA', '=', 'v.NO_PESERTA');
+            })
+            ->select(
+                'v.*',
+                DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
+            )
+            ->groupBy('v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_LOKASI', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN')
             ->get();
 
         $mergedAll = $rjAll->merge($ri)
@@ -151,7 +164,7 @@ class EncounterController extends Controller
                         return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Verif</span>';
                     }
                 } else {
-                    return $row->STATUS_SELESAI == 1 ? 'Selesai' : 'Belum Selesai';
+                    return $row->STATUS_SELESAI == 1 ? '<span class="badge badge-pill badge-success p-2 w-100">Sudah Pulang</span>' : '<span class="badge badge-pill badge-secondary p-2 w-100">Belum Pulang</span>';
                 }
             })
             ->addColumn('action', function ($row) {
@@ -166,11 +179,14 @@ class EncounterController extends Controller
                 $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
                 $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
                 $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
-                $paramSatuSehat = LZString::compressToEncodedURIComponent($jenisPerawatan . ' + ' . $id_transaksi . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' .  $kdLokasiSS);
+                $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
                 $btn = '';
                 if ($row->ID_PASIEN_SS == null) {
                     $btn = '<i class="text-muted">Pasien Belum Mapping</i>';
+                } else if (($row->DOKTER == null || $row->KODE_DOKTER == null) && $row->JENIS_PERAWATAN == 'RAWAT_INAP') {
+                    $btn .= '<i class="text-muted">Dokter DPJP Belum Dipilih</i>';
                 } else if ($row->ID_NAKES_SS == null) {
                     $btn .= '<i class="text-muted">Nakes Belum Mapping</i>';
                 } else if ($row->ID_LOKASI_SS == null) {
@@ -184,10 +200,14 @@ class EncounterController extends Controller
                                 $btn .= '<i class="text-muted">Tunggu Verifikasi Pendaftaran</i>';
                             }
                         } else {
-                            $btn = '<a href="#" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                            $btn = '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                         }
                     } else {
-                        // return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
+                        if ($row->JUMLAH_NOTA_SATUSEHAT == 0) {
+                            $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
+                        } else {
+                            $btn = '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                        }
                     }
                 }
                 // $btn .= '<br>';
@@ -195,14 +215,10 @@ class EncounterController extends Controller
                 return $btn;
             })
             ->addColumn('status_integrasi', function ($row) {
-                if ($row->JENIS_PERAWATAN == 'RAWAT_JALAN') {
-                    if ($row->JUMLAH_NOTA_SATUSEHAT > 0) {
-                        return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
-                    } else {
-                        return '<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>';
-                    }
-                } else {
+                if ($row->JUMLAH_NOTA_SATUSEHAT > 0) {
                     return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
+                } else {
+                    return '<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>';
                 }
             })
             ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi'])
@@ -236,32 +252,68 @@ class EncounterController extends Controller
         return view('pages.satusehat.encounter.lihat-erm', compact('kdbuku', 'kdDok', 'kdKlinik', 'idUnit'));
     }
 
-    public function sendSatuSehat(Request $request, $param)
+    public function sendSatuSehat($param, $resend = false)
     {
-        $param = base64_decode($param);
-        $param = LZString::decompressFromEncodedURIComponent($param);
-        $parts = explode('+', $param);
+        $params = base64_decode($param);
+        $params = LZString::decompressFromEncodedURIComponent($params);
+        $parts = explode('&', $params);
 
-        $jenisPerawatan = trim($parts[0]);
-        $idTransaksi = LZString::decompressFromEncodedURIComponent(trim($parts[1]));
-        $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[2]);
-        $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[3]);
-        $kdLokasiSS = LZString::decompressFromEncodedURIComponent($parts[4]);
+        $arrParam = [];
+        $partsParam = explode('=', $parts[0]);
+        $arrParam[$partsParam[0]] = $partsParam[1];
+        for ($i = 1; $i < count($parts); $i++) {
+            $partsParam = explode('=', $parts[$i]);
+            $key = $partsParam[0];
+            $val = $partsParam[1];
+            $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
+        }
+
+        $jenisPerawatan = $arrParam['jenis_perawatan'];
+        $idTransaksi = $arrParam['id_transaksi'];
+        $kdPasienSS = $arrParam['kd_pasien_ss'];
+        $kdNakesSS = $arrParam['kd_nakes_ss'];
+        $kdLokasiSS = $arrParam['kd_lokasi_ss'];
         $id_unit      = '001'; // session('id_klinik');
 
-        $jenisEncounter = [];
+        $dataKarcis = Karcis::join('RJ_KARCIS_BAYAR AS KarcisBayar', function ($query) use ($arrParam, $id_unit) {
+            $query->on('RJ_KARCIS.KARCIS', '=', 'KarcisBayar.KARCIS')
+                ->on('RJ_KARCIS.IDUNIT', '=', 'KarcisBayar.IDUNIT')
+                ->whereRaw('ISNULL(KarcisBayar.STBTL,0) = 0');
+        })->with([
+            'ermkunjung' => function ($query) use ($arrParam, $id_unit) {
+                $query->select('KARCIS', 'NO_KUNJUNG', 'CRTDT AS WAKTU_ERM')
+                    ->where('IDUNIT', $id_unit);
+            }
+        ])
+            ->with('inap')
+            ->select('RJ_KARCIS.NOREG', 'RJ_KARCIS.KARCIS', 'RJ_KARCIS.KBUKU', 'RJ_KARCIS.NO_PESERTA', 'RJ_KARCIS.KLINIK', 'RJ_KARCIS.KDDOK', 'RJ_KARCIS.TGL_VERIF_KARCIS', 'RJ_KARCIS.CRTDT AS WAKTU_BUAT_KARCIS', 'KarcisBayar.TGL_CETAK AS WAKTU_NOTA', 'KarcisBayar.NOTA', 'RJ_KARCIS.TGL')
+            ->where(function ($query) use ($arrParam) {
+                if ($arrParam['jenis_perawatan'] == 'RI') {
+                    $query->where('RJ_KARCIS.NOREG', $arrParam['id_transaksi']);
+                } else {
+                    $query->where('RJ_KARCIS.KARCIS', $arrParam['id_transaksi']);
+                }
+            })
+            ->where('KarcisBayar.IDUNIT', $id_unit)
+            ->first();
+
+        /**
+         * Cek Status Kiriman Diagnosis dlu sebelum kirim encounter discharge
+         * jika tidak ada otomatis kirim Encounter arrived dulu
+         */
+        $diagnosisSatuSehat = SATUSEHAT_NOTA_DIAGNOSA::where('karcis', (int)$idTransaksi)
+            ->where('idunit', $id_unit)
+            ->first();
+
+        $status = 'finished';
+        if ($diagnosisSatuSehat == null) {
+            $status = 'arrived';
+        }
+
         if ($jenisPerawatan == 'RJ') {
-            $jenisEncounter = [
-                "system" => "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-                "code" => "AMB",
-                "display" => "ambulatory"
-            ];
+            $payloadRJ = $this->definePayloadRawatJalan($dataKarcis, $arrParam, $id_unit, $diagnosisSatuSehat);
         } else {
-            $jenisEncounter = [
-                "system" => "http://terminology.hl7.org/CodeSystem/v3-ActCode",
-                "code" => "IMP",
-                "display" => "inpatient"
-            ];
+            $payloadRI = $this->definePayloadRawatInap($dataKarcis, $arrParam, $id_unit, $diagnosisSatuSehat);
         }
 
         $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
@@ -285,13 +337,10 @@ class EncounterController extends Controller
             $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
 
-        $jam_datang = Carbon::parse($request->jam_datang, 'Asia/Jakarta')->toIso8601String();
-
         try {
             $payload = [
+                "status" => $status,
                 "resourceType" => "Encounter",
-                "status" => "arrived",
-                "class" => $jenisEncounter,
                 "subject" => [
                     "reference" => "Patient/{$kdPasienSS}",
                     "display" => $patient->nama,
@@ -309,19 +358,10 @@ class EncounterController extends Controller
                         "display" => $nakes->nama,
                     ]
                 ]],
-                "period" => [
-                    "start" => $jam_datang,
-                ],
                 "location" => [[
                     "location" => [
                         "reference" => "Location/{$kdLokasiSS}",
                         "display" => $location->name,
-                    ]
-                ]],
-                "statusHistory" => [[
-                    "status" => "arrived",
-                    "period" => [
-                        "start" => $jam_datang,
                     ]
                 ]],
                 "serviceProvider" => [
@@ -329,9 +369,18 @@ class EncounterController extends Controller
                 ],
                 "identifier" => [[
                     "system" => "http://sys-ids.kemkes.go.id/encounter/{$organisasi}",
-                    "value" => (string)$idTransaksi
+                    "value" => $arrParam['id_transaksi']
                 ]]
             ];
+
+            if ($resend) {
+                $encounterId = SATUSEHAT_NOTA::where('karcis', (int)$idTransaksi)
+                    ->select('*')
+                    ->first();
+                $payload['id'] = $encounterId->id_satusehat_encounter;
+            }
+
+            $payload = array_merge($payload, $jenisPerawatan == 'RJ' ? $payloadRJ : $payloadRI);
 
             $login = $this->login($id_unit);
             if ($login['metadata']['code'] != 200) {
@@ -340,9 +389,10 @@ class EncounterController extends Controller
 
             $token = $login['response']['token'];
 
-            $url = 'Encounter';
-            $dataencounter = $this->consumeSATUSEHATAPI('POST', $baseurl, $url, $payload, true, $token);
+            $url = $resend ? 'Encounter/' . $encounterId->id_satusehat_encounter : 'Encounter';
+            $dataencounter = $this->consumeSATUSEHATAPI($resend ? 'PUT' : 'POST', $baseurl, $url, $payload, true, $token);
             $result = json_decode($dataencounter->getBody()->getContents(), true);
+
             if ($dataencounter->getStatusCode() >= 400) {
                 $response = json_decode($dataencounter->getBody(), true);
 
@@ -359,9 +409,25 @@ class EncounterController extends Controller
             } else {
                 DB::beginTransaction();
                 try {
+                    $historyTime = $arrParam['jenis_perawatan'] == 'RJ' ? $this->getHistoryTime($dataKarcis) : $this->getHistoryTimeInap($dataKarcis);
+                    $jam_start = $historyTime['jam_start'];
+                    $jam_progress = $historyTime['jam_progress'];
+                    $jam_finish = $historyTime['jam_finish'];
+
                     $dataKarcis = DB::table('RJ_KARCIS as rk')
-                        ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
-                        ->where('rk.KARCIS', $idTransaksi)
+                        ->leftJoin('RJ_KARCIS_BAYAR as rkb', function ($join) {
+                            $join->on('rk.KARCIS', '=', 'rkb.KARCIS')
+                                ->on('rk.IDUNIT', '=', 'rkb.IDUNIT')
+                                ->whereRaw('ISNULL(rkb.STBTL,0) = 0');
+                        })
+                        ->select('rk.KARCIS', 'rk.NOREG', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU', 'rkb.NOTA')
+                        ->where(function ($query) use ($arrParam) {
+                            if ($arrParam['jenis_perawatan'] == 'RI') {
+                                $query->where('rk.NOREG', $arrParam['id_transaksi']);
+                            } else {
+                                $query->where('rk.KARCIS', $arrParam['id_transaksi']);
+                            }
+                        })
                         ->where('rk.IDUNIT', $id_unit)
                         ->orderBy('rk.TGL', 'DESC')
                         ->first();
@@ -370,24 +436,62 @@ class EncounterController extends Controller
                         ->where('KBUKU', $dataKarcis->KBUKU)
                         ->first();
 
-                    $nota_satusehat = new SATUSEHAT_NOTA();
-                    $nota_satusehat->id_satusehat_encounter = $result['id'];
-                    $nota_satusehat->karcis = (int)$dataKarcis->KARCIS;
-                    $nota_satusehat->idunit = $id_unit;
-                    $nota_satusehat->tgl = Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d');
-                    $nota_satusehat->kbuku = $dataPeserta->KBUKU;
-                    $nota_satusehat->no_peserta = $dataPeserta->NO_PESERTA;
+                    $nota_satusehat = SATUSEHAT_NOTA::firstOrCreate(
+                        [
+                            'karcis' => $arrParam['jenis_perawatan'] == 'RJ' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG,
+                        ],
+                        [
+                            'id_satusehat_encounter' => $result['id'],
+                            'crtusr' => 'system',
+                            'crtdt' => now('Asia/Jakarta')->format('Y-m-d H:i:s'),
+                        ]
+                    );
+
+                    if ($nota_satusehat->wasRecentlyCreated === false) {
+                        $nota_satusehat->encounter_pulang = $result['id'];
+                    }
+
+                    $nota_satusehat->nota        = (int)$dataKarcis->NOTA;
+                    $nota_satusehat->idunit      = $id_unit;
+                    $nota_satusehat->tgl         = Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d');
+                    $nota_satusehat->kbuku       = $dataPeserta->KBUKU;
+                    $nota_satusehat->no_peserta  = $dataPeserta->NO_PESERTA;
                     $nota_satusehat->id_satusehat_px = $kdPasienSS;
-                    $nota_satusehat->kddok = $dataKarcis->KDDOK;
+                    $nota_satusehat->kddok       = $dataKarcis->KDDOK;
                     $nota_satusehat->id_satusehat_dokter = $kdNakesSS;
-                    $nota_satusehat->kdklinik = $dataKarcis->KLINIK;
+                    $nota_satusehat->kdklinik    = $dataKarcis->KLINIK;
                     $nota_satusehat->id_satusehat_klinik_location = $kdLokasiSS;
-                    $nota_satusehat->crtdt = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
-                    $nota_satusehat->crtusr = 'system';
-                    $nota_satusehat->jam_datang = Carbon::parse($jam_datang, 'Asia/Jakarta')->format('Y-m-d H:i:s');
+
+                    $nota_satusehat->jam_datang    = Carbon::parse($jam_start, 'Asia/Jakarta')->format('Y-m-d H:i:s');
+                    $nota_satusehat->jam_progress  = Carbon::parse($jam_progress, 'Asia/Jakarta')->format('Y-m-d H:i:s');
+                    $nota_satusehat->jam_selesai   = $jam_finish != null ? Carbon::parse($jam_finish, 'Asia/Jakarta')->format('Y-m-d H:i:s') : null;
                     $nota_satusehat->status_sinkron = 1;
-                    $nota_satusehat->sinkron_date = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
+                    $nota_satusehat->sinkron_date   = now('Asia/Jakarta')->format('Y-m-d H:i:s');
+
                     $nota_satusehat->save();
+
+
+                    // $nota_satusehat = new SATUSEHAT_NOTA();
+                    // $nota_satusehat->id_satusehat_encounter = $result['id'];
+                    // $nota_satusehat->karcis = (int)$dataKarcis->KARCIS;
+                    // $nota_satusehat->nota = (int)$dataKarcis->NOTA;
+                    // $nota_satusehat->idunit = $id_unit;
+                    // $nota_satusehat->tgl = Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d');
+                    // $nota_satusehat->kbuku = $dataPeserta->KBUKU;
+                    // $nota_satusehat->no_peserta = $dataPeserta->NO_PESERTA;
+                    // $nota_satusehat->id_satusehat_px = $kdPasienSS;
+                    // $nota_satusehat->kddok = $dataKarcis->KDDOK;
+                    // $nota_satusehat->id_satusehat_dokter = $kdNakesSS;
+                    // $nota_satusehat->kdklinik = $dataKarcis->KLINIK;
+                    // $nota_satusehat->id_satusehat_klinik_location = $kdLokasiSS;
+                    // $nota_satusehat->crtdt = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
+                    // $nota_satusehat->crtusr = 'system';
+                    // $nota_satusehat->jam_datang = Carbon::parse($jam_start, 'Asia/Jakarta')->format('Y-m-d H:i:s');
+                    // $nota_satusehat->jam_progress = Carbon::parse($jam_progress, 'Asia/Jakarta')->format('Y-m-d H:i:s');
+                    // $nota_satusehat->jam_selesai = Carbon::parse($jam_finish, 'Asia/Jakarta')->format('Y-m-d H:i:s');
+                    // $nota_satusehat->status_sinkron = 1;
+                    // $nota_satusehat->sinkron_date = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
+                    // $nota_satusehat->save();
 
                     $this->logInfo('encounter', 'Sukses kirim data encounter', [
                         'payload' => $payload,
@@ -420,6 +524,276 @@ class EncounterController extends Controller
                 'message' => $th->getMessage() != '' ? $th->getMessage() : 'Terjadi Kesalahan Saat Kirim Data, Harap Coba lagi!'
             ], $th->getCode() != '' ? $th->getCode() : 500);
         }
+    }
+
+    public function resendSatuSehat($param)
+    {
+        return $this->sendSatuSehat($param, true);
+    }
+
+    private function definePayloadRawatJalan($dataKarcis, $param, $id_unit, $diagnosisSatuSehat)
+    {
+        $jenisEncounter = [
+            "class" => [
+                "system" => "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                "code" => "AMB",
+                "display" => "ambulatory"
+            ]
+        ];
+
+        $historyTime = $this->getHistoryTime($dataKarcis);
+        $jam_start = $historyTime['jam_start'];
+        $jam_progress = $historyTime['jam_progress'];
+        $jam_finish = $historyTime['jam_finish'];
+
+        $statusHistory = [
+            'statusHistory' => [
+                [
+                    'status' => 'arrived',
+                    'period' => [
+                        'start' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_start)->toIso8601String(),
+                        'end' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_progress)->toIso8601String(),
+                    ],
+                ],
+
+            ],
+        ];
+
+        $dischargeType = [];
+        if ($diagnosisSatuSehat != null) {
+            array_push(
+                $statusHistory['statusHistory'],
+                [
+                    'status' => 'in-progress',
+                    'period' => [
+                        'start' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_progress)->toIso8601String(),
+                        'end' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_finish)->toIso8601String(),
+                    ],
+                ],
+                [
+                    'status' => 'finished',
+                    'period' => [
+                        'start' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_finish)->toIso8601String(),
+                        'end' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_finish)->toIso8601String(),
+                    ],
+                ]
+            );
+
+            $textDischage = $dataKarcis->NOREG == null ? "Anjuran dokter untuk pulang" : "Pasien dirujuk ke rawat inap untuk perawatan lebih lanjut";
+            $dischargeType = [
+                "hospitalization" => [
+                    "dischargeDisposition" => [
+                        "coding" => [
+                            [
+                                "system" => "http://terminology.hl7.org/CodeSystem/discharge-disposition",
+                                "code" => $dataKarcis->NOREG == null ? "home" : "long",
+                                "display" => $dataKarcis->NOREG == null ? "Home" : "Long-term care"
+                            ]
+                        ],
+                        "text" => $textDischage
+                    ]
+                ],
+            ];
+        }
+
+        $period = [
+            "period" => [
+                "start" => $jam_start->toIso8601String(),
+                "end" => $jam_finish->toIso8601String(),
+            ],
+        ];
+
+        $payload = array_merge($jenisEncounter, $statusHistory, $period, $dischargeType);
+        return $payload;
+    }
+
+    private function definePayloadRawatInap($dataKarcis, $param, $id_unit, $diagnosisSatuSehat)
+    {
+        $jenisEncounter = [
+            "class" => [
+                "system" => "http://terminology.hl7.org/CodeSystem/v3-ActCode",
+                "code" => "IMP",
+                "display" => "inpatient"
+            ]
+        ];
+
+        $historyTime = $this->getHistoryTimeInap($dataKarcis);
+        $jam_start = $historyTime['jam_start'];
+        $jam_progress = $historyTime['jam_progress'];
+        $jam_finish = $historyTime['jam_finish'];
+
+        $statusHistory = [
+            'statusHistory' => [
+                [
+                    'status' => 'arrived',
+                    'period' => [
+                        'start' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_start)->toIso8601String(),
+                        'end' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_progress)->toIso8601String(),
+                    ],
+                ],
+
+            ],
+        ];
+
+        $dischargeType = [];
+        if ($diagnosisSatuSehat != null) {
+            if ($jam_finish != null) {
+                array_push(
+                    $statusHistory['statusHistory'],
+                    [
+                        'status' => 'in-progress',
+                        'period' => [
+                            'start' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_progress)->toIso8601String(),
+                            'end' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_finish)->toIso8601String(),
+                        ],
+                    ],
+                    [
+                        'status' => 'finished',
+                        'period' => [
+                            'start' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_finish)->toIso8601String(),
+                            'end' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_finish)->toIso8601String(),
+                        ],
+                    ]
+                );
+
+                $textDischage = "Anjuran dokter untuk pulang";
+                $dischargeType = [
+                    "hospitalization" => [
+                        "dischargeDisposition" => [
+                            "coding" => [
+                                [
+                                    "system" => "http://terminology.hl7.org/CodeSystem/discharge-disposition",
+                                    "code" => "home",
+                                    "display" => "Home"
+                                ]
+                            ],
+                            "text" => $textDischage
+                        ]
+                    ],
+                ];
+            } else {
+                array_push(
+                    $statusHistory['statusHistory'],
+                    [
+                        'status' => 'in-progress',
+                        'period' => [
+                            'start' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_progress)->toIso8601String(),
+                            'end' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_progress)->toIso8601String(),
+                        ],
+                    ]
+                );
+            }
+        }
+
+        $period = [
+            "period" => [
+                "start" => $jam_start->toIso8601String(),
+                "end" => $jam_finish != null ? $jam_finish->toIso8601String() : $jam_progress->toIso8601String(),
+            ],
+        ];
+
+        $payload = array_merge($jenisEncounter, $statusHistory, $period, $dischargeType);
+        return $payload;
+    }
+
+    private function getHistoryTimeInap($dataKarcis)
+    {
+        $waktu_buat_karcis = null;
+        $waktu_verif_karcis = null;
+        $waktu_nota = null;
+        $waktu_erm = null;
+
+        if ($dataKarcis->WAKTU_BUAT_KARCIS != null)
+            $waktu_buat_karcis = Carbon::parse($dataKarcis->WAKTU_BUAT_KARCIS, 'Asia/Jakarta');
+        if ($dataKarcis->inap->tgmas != null)
+            $waktu_verif_karcis = Carbon::parse($dataKarcis->inap->tgmas, 'Asia/Jakarta')->setTimeFromTimeString($dataKarcis->inap->jamas);
+        if ($dataKarcis->inap->tgl_plng != null)
+            $waktu_nota = Carbon::parse($dataKarcis->inap->tgl_plng, 'Asia/Jakarta')->setTimeFromTimeString($dataKarcis->inap->jam_plng);
+        if ($dataKarcis->ermkunjung != null) {
+            if ($dataKarcis->ermkunjung->WAKTU_ERM != null)
+                $waktu_erm = Carbon::parse($dataKarcis->ermkunjung->WAKTU_ERM, 'Asia/Jakarta');
+        }
+
+        $jam_start = null;
+        $jam_progress = null;
+        $jam_finish = null;
+        if ($waktu_verif_karcis != null && $waktu_verif_karcis >= $waktu_buat_karcis)
+            $jam_start = $waktu_verif_karcis;
+        else
+            $jam_start = $waktu_buat_karcis;
+
+        $jam_progress = $waktu_erm;
+        if ($jam_progress == $waktu_erm)
+            $jam_finish = $waktu_nota;
+        else {
+            if ($jam_progress != null) {
+                $jam_finish = Carbon::parse($jam_progress->toDateTimeString(), 'Asia/Jakarta');
+                $jam_finish->addMinutes(rand(3, 6));
+            }
+        }
+
+        if ($jam_progress < $jam_start)
+            $jam_start->addMinutes(-1 * (($jam_start->diff($jam_progress)->format('%i')) + rand(3, 6)));
+
+        if ($jam_finish <= $jam_progress && $jam_finish != null)
+            $jam_finish->addMinutes((($jam_finish->diff($jam_progress)->format('%i')) + rand(6, 10)));
+
+        return [
+            'jam_start' => $jam_start,
+            'jam_progress' => $jam_progress,
+            'jam_finish' => $jam_finish
+        ];
+    }
+
+    private function getHistoryTime($dataKarcis)
+    {
+        $waktu_buat_karcis = null;
+        $waktu_verif_karcis = null;
+        $waktu_nota = null;
+        $waktu_erm = null;
+
+        if ($dataKarcis->WAKTU_BUAT_KARCIS != null)
+            $waktu_buat_karcis = Carbon::parse($dataKarcis->WAKTU_BUAT_KARCIS, 'Asia/Jakarta');
+        if ($dataKarcis->TGL_VERIF_KARCIS != null)
+            $waktu_verif_karcis = Carbon::parse($dataKarcis->TGL_VERIF_KARCIS, 'Asia/Jakarta');
+        if ($dataKarcis->WAKTU_NOTA != null)
+            $waktu_nota = Carbon::parse($dataKarcis->WAKTU_NOTA, 'Asia/Jakarta');
+        if ($dataKarcis->ermkunjung != null) {
+            if ($dataKarcis->ermkunjung->WAKTU_ERM != null)
+                $waktu_erm = Carbon::parse($dataKarcis->ermkunjung->WAKTU_ERM, 'Asia/Jakarta');
+        }
+
+        $jam_start = null;
+        $jam_progress = null;
+        $jam_finish = null;
+        if ($waktu_verif_karcis != null && $waktu_verif_karcis >= $waktu_buat_karcis)
+            $jam_start = $waktu_verif_karcis;
+        else
+            $jam_start = $waktu_buat_karcis;
+
+        if ($waktu_erm != null && $waktu_erm <= $waktu_nota)
+            $jam_progress = $waktu_erm;
+        else
+            $jam_progress = $waktu_nota;
+
+        if ($jam_progress == $waktu_erm)
+            $jam_finish = $waktu_nota;
+        else {
+            $jam_finish = Carbon::parse($jam_progress->toDateTimeString(), 'Asia/Jakarta');
+            $jam_finish->addMinutes(rand(3, 6));
+        }
+
+        if ($jam_progress < $jam_start)
+            $jam_start->addMinutes(-1 * (($jam_start->diff($jam_progress)->format('%i')) + rand(3, 6)));
+
+        if ($jam_finish <= $jam_progress)
+            $jam_finish->addMinutes((($jam_finish->diff($jam_progress)->format('%i')) + rand(6, 10)));
+
+        return [
+            'jam_start' => $jam_start,
+            'jam_progress' => $jam_progress,
+            'jam_finish' => $jam_finish
+        ];
     }
     /**
      * Show the form for creating a new resource.

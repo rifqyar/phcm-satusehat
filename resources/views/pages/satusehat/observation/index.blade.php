@@ -34,6 +34,46 @@
         rel="stylesheet">
 @endpush
 
+@push('after-style')
+    <link href="{{ asset('assets/plugins/select2/dist/css/select2.min.css') }}" rel="stylesheet" />
+    <style>
+        .icon-circle {
+            width: 55px;
+            height: 55px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .ui-autocomplete-loading {
+            background: white url("/assets/images/animated_loading.gif") right center no-repeat;
+            background-repeat: no-repeat;
+            background-position: center right calc(.375em + .1875rem);
+            padding-right: calc(1.5em + 0.75rem);
+        }
+
+        /* Biar select2 di dalam modal dan form-group tetap rapi */
+        .select2-container {
+            width: 100% !important;
+        }
+
+        /* Biar area input Select2 multiple bisa diketik lebar penuh */
+        .select2-container--classic .select2-selection--multiple .select2-search--inline .select2-search__field {
+            width: 100% !important;
+        }
+
+        /* Sedikit perbaikan tampilan biar selaras dengan form Bootstrap */
+        .select2-container--classic .select2-selection--multiple {
+            border: 1px solid #ced4da;
+            min-height: calc(1.5em + .75rem + 2px);
+            padding: .375rem .75rem;
+            border-radius: .25rem;
+        }
+    </style>
+@endpush
+
 @section('content')
     <div class="row page-titles">
         <!-- Existing content -->
@@ -41,7 +81,7 @@
             <h3 class="text-themecolor">Dashboard</h3>
             <ol class="breadcrumb">
                 <li class="breadcrumb-item"><a href="{{ route('home') }}">Dashboard</a></li>
-                <li class="breadcrumb-item active">Allergy Intolerance</li>
+                <li class="breadcrumb-item active">Observation</li>
             </ol>
         </div>
         <div class="col-md-7 col-4 align-self-center">
@@ -195,17 +235,18 @@
         </div>
     </div>
 
-    @include('modals.modal_lihat_alergi')
+    @include('modals.modal_observasi')
 @endsection
-
 
 @push('after-script')
     <script src="{{ asset('assets/plugins/moment/moment.js') }}"></script>
     <script src="{{ asset('assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js') }}">
     </script>
+    <script src="{{ asset('assets/plugins/select2/dist/js/select2.min.js') }}"></script>
     <script>
         var table
         let selectedIds = [];
+        var paramSatuSehat = '';
         $(function() {
             // format tanggal sesuai dengan setting datepicker
             const today = moment().format('YYYY-MM-DD');
@@ -262,7 +303,7 @@
                 serverSide: false,
                 scrollX: false,
                 ajax: {
-                    url: `{{ route('satusehat.allergy-intolerance.datatable') }}`,
+                    url: `{{ route('satusehat.observasi.datatable') }}`,
                     method: "POST",
                     data: function(data) {
                         data._token = `${$('meta[name="csrf-token"]').attr("content")}`;
@@ -271,7 +312,6 @@
                         data.tgl_akhir = $('input[name="tgl_akhir"]').val();
                     },
                     dataSrc: function(json) {
-                        console.log(json)
                         $('#total_all').text(json.total_semua);
                         $('#total_integrasi').text(json.total_sudah_integrasi);
                         $('#total_belum_integrasi').text(json.total_belum_integrasi);
@@ -295,6 +335,7 @@
                         data: 'checkbox',
                         orderable: false,
                         searchable: false,
+                        className: 'text-center',
                         responsivePriority: 1
                     },
                     {
@@ -413,30 +454,10 @@
             table.ajax.reload()
         }
 
-        function sendSatuSehat(param) {
-            Swal.fire({
-                title: "Konfirmasi Pengiriman",
-                text: `Kirim data Allergy Intolerance Pasien ke SatuSehat?`,
-                icon: "question",
-                showCancelButton: true,
-                confirmButtonColor: "#3085d6",
-                cancelButtonColor: "#d33",
-                confirmButtonText: "Ya, kirim!",
-                cancelButtonText: "Batal",
-            }).then(async (conf) => {
-                if (conf.value || conf.isConfirmed) {
-                    await ajaxGetJson(
-                        `{{ route('satusehat.allergy-intolerance.send', '') }}/${btoa(param)}`,
-                        "input_success",
-                        ""
-                    );
-                }
-            });
-        }
-
-        function lihatDetailAlergi(param) {
+        function lihatDetail(param, paramSS) {
+            paramSatuSehat = paramSS
             ajaxGetJson(
-                `{{ route('satusehat.allergy-intolerance.lihat-alergi', '') }}/${btoa(param)}`,
+                `{{ route('satusehat.observasi.lihat-detail', '') }}/${btoa(param)}`,
                 "show_modal",
                 ""
             );
@@ -478,7 +499,10 @@
         function show_modal(res) {
             const dataPasien = res.data.dataPasien
             const dataErm = res.data.dataErm
-            const dataAlergi = res.data.dataAlergi
+
+            $('#integrasi_anamnese').hide()
+            $('#success_anamnese').hide()
+            $('#failed_anamnese').hide()
 
             $('#nama_pasien').html(dataPasien.NAMA)
             $('#no_rm').html(dataPasien.KBUKU)
@@ -503,36 +527,243 @@
                 if (dataErm.KODE_DIAGNOSA_PENYEBAB || dataErm.PENYEBAB) {
                     htmlDiag += `<br><span>${dataErm.KODE_DIAGNOSA_PENYEBAB} - ${dataErm.PENYEBAB}</span>`;
                 }
+
+                $.each(dataErm, function(key, value) {
+                    console.log(key, value)
+                    const $el = $('#pemeriksaan_fisik #' + key);
+                    if ($el.length) {
+                        $el.text(value ? value : '-');
+                    }
+                });
+
+                const tglRaw = dataErm.CRTDT;
+                if (tglRaw) {
+                    const tgl = new Date(tglRaw);
+                    const formatted = tgl.toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                    });
+                    $('#pemeriksaan_fisik #TANGGAL').text(formatted);
+                }
+
+                hitungIMT(dataErm.TB, dataErm.BB)
             } else {
                 htmlDiag = `<em>Tidak ada data diagnosa</em>`;
             }
-
             $('#data_diagnosa').html(htmlDiag)
 
-            $('#tbodyAlergi').empty();
-
-            if (dataAlergi && dataAlergi.length > 0) {
-                $.each(dataAlergi, function(index, item) {
-                    $('#tbodyAlergi').append(`
-                        <tr>
-                            <td>${item.JENIS || '-'}</td>
-                            <td>${item.ALERGEN || '-'}</td>
-                            <td>${item.ID_ALERGEN_SS || '-'}</td>
-                        </tr>
-                    `);
-                });
+            // Sudah Kirim Pemeriksaan Fisik
+            if (dataErm.sudah_integrasi > 0) {
+                $('#integrasi_anamnese').show()
+                $('#success_anamnese').show()
             } else {
-                // Jika tidak ada data
-                $('#tbodyAlergi').append(`
-                    <tr>
-                        <td colspan="3" class="text-center text-muted">
-                            Tidak ada data alergi
-                        </td>
-                    </tr>
-                `);
+                $('#btn-simpan-pemeriksaanfisik').show();
+                $('#failed_anamnese').show()
             }
 
-            $('#modalAlergi').modal('show')
+            $('#modalProcedure').modal('show')
+        }
+
+        function hitungIMT(tinggi, berat) {
+            const imtInput = $('#IMT');
+
+            if (tinggi > 0 && berat > 0) {
+                const tinggiMeter = tinggi / 100; // ubah cm ke meter
+                const imt = berat / (tinggiMeter * tinggiMeter);
+                let kategori = '';
+
+                // Tentukan kategori IMT
+                if (imt < 18.5) kategori = 'Kurus';
+                else if (imt < 25) kategori = 'Normal';
+                else if (imt < 30) kategori = 'Berat badan berlebih';
+                else kategori = 'Obesitas';
+
+                $('#IMT').text(`${imt.toFixed(1)} (${kategori})`);
+            } else {
+                $('#IMT').text(``);
+            }
+        }
+
+        var cacheIcd9 = {};
+        $("#icd9-pemeriksaanfisik").autocomplete({
+            minLength: 2,
+            delay: 300,
+            appendTo: "#modalProcedure",
+            source: function(request, response) {
+                var term = request.term;
+                if (term in cacheIcd9) {
+                    response(cacheIcd9[term]);
+                    return;
+                }
+
+                $.ajax({
+                    url: `{{ route('satusehat.procedure.geticd9') }}`,
+                    type: "GET",
+                    dataType: "json",
+                    data: {
+                        search: request.term,
+                    },
+                    success: function(data) {
+                        response(
+                            data.map(function(value) {
+                                return {
+                                    label: value.DIAGNOSA,
+                                    kd_icd: value.KODE,
+                                    kd_sub_icd: value.KODE_SUB,
+                                };
+                            })
+                        );
+                    },
+                });
+            },
+            select: function(event, ui) {
+                $("#icd9-pemeriksaanfisik").val(ui.item.label);
+                $("#kd_icd_pm").val(ui.item.kd_icd);
+                $("#sub_kd_icd_pm").val(ui.item.kd_sub_icd);
+                return false;
+            },
+        });
+
+        $('#icd9-lab').select2({
+            width: '100%',
+            theme: "classic",
+            placeholder: 'Cari kode ICD-9...',
+            minimumInputLength: 2,
+            ajax: {
+                url: `{{ route('satusehat.procedure.geticd9') }}`,
+                dataType: 'json',
+                delay: 300,
+                data: function(params) {
+                    return {
+                        search: params.term
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data.map(function(value) {
+                            return {
+                                id: value.KODE_SUB,
+                                text: value.DIAGNOSA,
+                            };
+                        })
+                    };
+                },
+                cache: true
+            }
+        });
+
+        $('#icd9-rad').select2({
+            width: '100%',
+            theme: "classic",
+            placeholder: 'Cari kode ICD-9...',
+            minimumInputLength: 2,
+            ajax: {
+                url: `{{ route('satusehat.procedure.geticd9') }}`,
+                dataType: 'json',
+                delay: 300,
+                data: function(params) {
+                    return {
+                        search: params.term
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data.map(function(value) {
+                            return {
+                                id: value.KODE_SUB,
+                                text: value.DIAGNOSA,
+                            };
+                        })
+                    };
+                },
+                cache: true
+            }
+        });
+
+        $('#icd9-operasi').select2({
+            width: '100%',
+            theme: "classic",
+            placeholder: 'Cari kode ICD-9...',
+            minimumInputLength: 2,
+            ajax: {
+                url: `{{ route('satusehat.procedure.geticd9') }}`,
+                dataType: 'json',
+                delay: 300,
+                data: function(params) {
+                    return {
+                        search: params.term
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data.map(function(value) {
+                            return {
+                                id: value.KODE_SUB,
+                                text: value.DIAGNOSA,
+                            };
+                        })
+                    };
+                },
+                cache: true
+            }
+        });
+
+        function saveICD(type) {
+            var formData = new FormData()
+            formData.append('_token', $('meta[name="csrf-token"]').attr('content'))
+            formData.append('type', type)
+            formData.append('param', paramSatuSehat)
+            if (type != 'pemeriksaanfisik') {
+                const icd9 = $(`#icd9-${type}`).val()
+                const texticd = $(`#icd9-${type}`).select2('data').map(item => item.text);
+
+                formData.append(`icd9`, JSON.stringify(icd9));
+                formData.append(`text_icd9`, JSON.stringify(texticd));
+            } else {
+                formData.append('icd9', $('input[name="sub_kd_icd_pm"]').val())
+                formData.append('text_icd9', $('input[name="icd9-pemeriksaanfisik"]').val())
+            }
+
+            Swal.fire({
+                title: "Konfirmasi Simpan Data",
+                text: `Simpan Data ICD9-CM Sementara?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Ya, Simpan!",
+                cancelButtonText: "Batal",
+            }).then(async (conf) => {
+                if (conf.value || conf.isConfirmed) {
+                    await ajaxPostFile(
+                        `{{ route('satusehat.procedure.saveICD9') }}`,
+                        formData,
+                        "input_success",
+                    );
+                }
+            });
+        }
+
+        function sendSatuSehat(param) {
+            Swal.fire({
+                title: "Konfirmasi Pengiriman",
+                text: `Kirim Data Observasi Pasien ke SatuSehat?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Ya, kirim!",
+                cancelButtonText: "Batal",
+            }).then(async (conf) => {
+                if (conf.value || conf.isConfirmed) {
+                    await ajaxGetJson(
+                        `{{ route('satusehat.observasi.send', '') }}/${btoa(param)}`,
+                        "input_success",
+                        "",
+                    );
+                }
+            });
         }
 
         function input_success(res) {
@@ -572,6 +803,17 @@
                         table.ajax.reload()
                     }
                 },
+            });
+        }
+
+        function input_error(err) {
+            console.log(err);
+            $.toast({
+                heading: "Gagal memproses data!",
+                text: err.message,
+                position: "top-right",
+                icon: "error",
+                hideAfter: 5000,
             });
         }
     </script>

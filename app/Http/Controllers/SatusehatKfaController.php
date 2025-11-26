@@ -100,17 +100,24 @@ class SatusehatKfaController extends Controller
 
     public function setMedication(Request $request)
     {
+        $kode = $request->input('kode_barang');
+
+        if (empty($kode)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Kode barang wajib dikirim.'
+            ], 400);
+        }
+
+        $result = $this->processMedication($kode);
+
+        return response()->json($result);
+    }
+
+
+    public function processMedication($kodeBarang)
+    {
         try {
-            // ambil kode dari request POST
-            $kode = $request->input('kode_barang');
-
-            if (empty($kode)) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Kode barang (kode_barang) wajib dikirim.'
-                ], 400);
-            }
-
             // query data master obat
             $data = DB::select("
             SELECT 
@@ -121,23 +128,23 @@ class SatusehatKfaController extends Controller
                 IS_COMPOUND  
             FROM SIRS_PHCM.dbo.M_TRANS_KFA
             WHERE KDBRG_CENTRA = ?
-        ", [$kode]);
+        ", [$kodeBarang]);
 
             if (empty($data)) {
-                return response()->json([
+                return [
                     'status' => 'error',
-                    'message' => "Data obat dengan kode $kode tidak ditemukan."
-                ], 404);
+                    'message' => "Data obat dengan kode $kodeBarang tidak ditemukan."
+                ];
             }
 
             $obat = $data[0];
-            $orgId = '266bf013-b70b-4dc2-b934-40858a5658cc'; // hardcode sementara
+            $orgId = '266bf013-b70b-4dc2-b934-40858a5658cc';
 
             // tentukan tipe racikan
             $jenisCode = ($obat->IS_COMPOUND == 1) ? 'C' : 'NC';
             $jenisName = ($obat->IS_COMPOUND == 1) ? 'Compound' : 'Non-compound';
 
-            // bentuk payload
+            // payload Medication
             $payload = [
                 "resourceType" => "Medication",
                 "meta" => [
@@ -182,30 +189,27 @@ class SatusehatKfaController extends Controller
                 ]
             ];
 
-            // ambil token terakhir dari DB
+            // ambil access token
             $tokenData = DB::connection('sqlsrv')
                 ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_AUTH')
-                ->select('issued_at', 'expired_in', 'access_token')
+                ->select('access_token')
                 ->orderBy('id', 'desc')
                 ->first();
 
             if (!$tokenData) {
-                return response()->json([
+                return [
                     'status' => 'error',
-                    'message' => 'Access token tidak ditemukan di tabel RIRJ_SATUSEHAT_AUTH.'
-                ], 400);
+                    'message' => 'Token tidak ditemukan.'
+                ];
             }
 
-            $accessToken = $tokenData->access_token;
-
-            // kirim ke endpoint SATUSEHAT (staging)
             $client = new \GuzzleHttp\Client();
 
             $response = $client->post(
                 'https://api-satusehat-stg.dto.kemkes.go.id/fhir-r4/v1/Medication',
                 [
                     'headers' => [
-                        'Authorization' => 'Bearer ' . $accessToken,
+                        'Authorization' => 'Bearer ' . $tokenData->access_token,
                         'Content-Type' => 'application/json'
                     ],
                     'body' => json_encode($payload),
@@ -213,66 +217,52 @@ class SatusehatKfaController extends Controller
                 ]
             );
 
-            $responseBody = json_decode($response->getBody(), true);
-            $httpStatus = $response->getStatusCode();
+            $body = json_decode($response->getBody(), true);
+            $status = $response->getStatusCode();
 
-            // jika sukses dan ada id dari FHIR
-            if (isset($responseBody['id'])) {
-                DB::table('SIRS_PHCM.dbo.M_TRANS_KFA')
-                    ->where('KDBRG_CENTRA', $obat->KDBRG_CENTRA)
-                    ->update(['FHIR_ID' => $responseBody['id']]);
-
-                DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert([
-                    'LOG_TYPE' => 'Medication',
-                    'LOCAL_ID' => $obat->KDBRG_CENTRA,
-                    'KFA_CODE' => $obat->KD_BRG_KFA,
-                    'NAMA_OBAT' => $obat->NAMABRG_KFA,
-                    'FHIR_ID' => $responseBody['id'],
-                    'STATUS' => 'success',
-                    'HTTP_STATUS' => $httpStatus,
-                    'RESPONSE_MESSAGE' => json_encode($responseBody),
-                    'CREATED_AT' => now()
-                ]);
-
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Data Medication berhasil dikirim ke SATUSEHAT.',
-                    'uuid' => $responseBody['id']
-                ]);
-            }
-
-            // kalau respon gak ada id
+            // LOGGING
             DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert([
                 'LOG_TYPE' => 'Medication',
                 'LOCAL_ID' => $obat->KDBRG_CENTRA,
                 'KFA_CODE' => $obat->KD_BRG_KFA,
                 'NAMA_OBAT' => $obat->NAMABRG_KFA,
-                'STATUS' => 'failed',
-                'HTTP_STATUS' => $httpStatus,
-                'RESPONSE_MESSAGE' => json_encode($responseBody),
+                'FHIR_ID' => $body['id'] ?? null,
+                'STATUS' => isset($body['id']) ? 'success' : 'failed',
+                'HTTP_STATUS' => $status,
+                'RESPONSE_MESSAGE' => json_encode($body),
                 'CREATED_AT' => now()
             ]);
 
-            return response()->json([
+            // update master
+            if (isset($body['id'])) {
+                DB::table('SIRS_PHCM.dbo.M_TRANS_KFA')
+                    ->where('KDBRG_CENTRA', $obat->KDBRG_CENTRA)
+                    ->update(['FHIR_ID' => $body['id']]);
+            }
+
+            return [
+                'status' => isset($body['id']) ? 'success' : 'error',
+                'message' => isset($body['id']) ? 'OK' : 'Tidak ada ID pada response',
+                'data' => $body
+            ];
+
+        } catch (\GuzzleHttp\Exception\RequestException $e) {
+
+            $fullError = $e->hasResponse()
+                ? $e->getResponse()->getBody()->getContents()
+                : $e->getMessage();
+
+            return [
                 'status' => 'error',
-                'message' => 'Tidak ada ID pada response.',
-                'response' => $responseBody
-            ], $httpStatus);
+                'message' => $fullError
+            ];
 
         } catch (\Exception $e) {
-            DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert([
-                'LOG_TYPE' => 'Medication',
-                'LOCAL_ID' => $request->input('kode_barang'),
-                'STATUS' => 'failed',
-                'HTTP_STATUS' => 500,
-                'RESPONSE_MESSAGE' => $e->getMessage(),
-                'CREATED_AT' => now()
-            ]);
 
-            return response()->json([
+            return [
                 'status' => 'error',
-                'message' => 'Exception: ' . $e->getMessage()
-            ], 500);
+                'message' => $e->getMessage()
+            ];
         }
     }
 

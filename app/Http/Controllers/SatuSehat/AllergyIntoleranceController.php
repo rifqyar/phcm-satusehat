@@ -293,6 +293,11 @@ class AllergyIntoleranceController extends Controller
                 $join->on('ea.ID_ALERGI_PX', '=', 'ead.ID_HDR');
             })
             ->where('eri.KARCIS', $karcis)
+            ->groupBy([
+                'ead.JENIS',
+                'ead.ALERGEN',
+                'ead.ID_ALERGEN_SS'
+            ])
             ->where('ea.STATUS_AKTIF', '1')
             ->get();
 

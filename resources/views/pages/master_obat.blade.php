@@ -104,6 +104,7 @@
                     data: function (d) {
                         d._token = "{{ csrf_token() }}";
                         d.status = $('#status').val();
+                        d.kode = "{{ $kode ?? '' }}";
                     }
                 },
                 columns: [

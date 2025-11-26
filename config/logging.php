@@ -106,6 +106,27 @@ return [
             'level' => 'info',
             'days' => 7
         ],
+
+        'AllergyIntolerance' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/AllergyIntolerance.log'),
+            'level' => 'info',
+            'days' => 7
+        ],
+
+        'Procedure' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/Procedure.log'),
+            'level' => 'info',
+            'days' => 7
+        ],
+
+        'Observation' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/Observation.log'),
+            'level' => 'info',
+            'days' => 7
+        ],
     ],
 
 ];

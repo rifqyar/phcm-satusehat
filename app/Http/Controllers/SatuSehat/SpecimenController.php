@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SatuSehat;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\LogTraits;
 use App\Http\Traits\SATUSEHATTraits;
+use App\Jobs\SendSpecimenJob;
 use App\Lib\LZCompressor\LZString;
 use App\Models\GlobalParameter;
 use App\Models\SATUSEHAT\SS_Kode_API;
@@ -75,8 +76,43 @@ class SpecimenController extends Controller
         $labAll = $lab->get();
         $labIntegrasi = $lab->whereNotNull('ss.id_satusehat_servicerequest')->get();
 
-        $total_all_lab = $labAll->count();
-        $total_mapped_lab = $labIntegrasi->count();
+        $lab_ri = $connection
+            ->table('SIRS_PHCM.dbo.v_kunjungan_ri as rj')
+            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
+                $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
+                    ->on('nt.idunit', '=', 'rj.ID_UNIT')
+                    ->on('nt.kbuku', '=', 'rj.KBUKU')
+                    ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
+            })
+            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.noreg', '=', 'nt.karcis')
+                    ->on('kc.IDUNIT', '=', 'nt.idunit')
+                    ->on('kc.KBUKU', '=', 'nt.kbuku')
+                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            })
+            ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
+                $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
+                    ->on('rd.IDUNIT', '=', 'nt.idunit')
+                    ->on('rd.KBUKU', '=', 'nt.kbuku')
+                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                    ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
+            })
+            ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'kc.karcis', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
+            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dk.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
+            ->distinct()
+            ->whereBetween('rd.TANGGAL_ENTRI', [$startDate, $endDate])
+            ->where('rd.IDUNIT', '001')
+            ->where('rd.KLINIK_TUJUAN', '0017')
+            ->whereNull('kc.TGL_BATAL')
+            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dk.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
+
+        $lab_ri_all = $lab_ri->get();
+        $lab_ri_integrasi = $lab_ri->whereNotNull('ss.id_satusehat_servicerequest')->get();
+
+        $total_all_lab = $labAll->count() + $lab_ri_all->count();
+        $total_mapped_lab = $labIntegrasi->count() + $lab_ri_integrasi->count();
 
         // Calculate unmapped counts
         $total_unmapped_lab = $total_all_lab - $total_mapped_lab;
@@ -146,7 +182,7 @@ class SpecimenController extends Controller
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SPECIMEN as ss', 'kc.karcis', '=', 'ss.karcis')
             ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
             ->join('SIRS_PHCM.dbo.DR_MDOKTER as dkd', 'kc.KDDOK', '=', 'dkd.kdDok')
-            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
+            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT'), DB::raw("'RAWAT JALAN' as JENIS_PERAWATAN")])
             ->distinct()
             ->whereBetween('rd.TANGGAL_ENTRI', [$tgl_awal, $tgl_akhir])
             ->where('rd.IDUNIT', '001')
@@ -157,14 +193,57 @@ class SpecimenController extends Controller
         // dd($labAll);
         $labIntegrasi = $lab->whereNotNull('ss.id_satusehat_servicerequest')->get();
 
+        $lab_ri = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.v_kunjungan_ri as rj')
+            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
+                $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
+                    ->on('nt.idunit', '=', 'rj.ID_UNIT')
+                    ->on('nt.kbuku', '=', 'rj.KBUKU')
+                    ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
+            })
+            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.noreg', '=', 'nt.karcis')
+                    ->on('kc.IDUNIT', '=', 'nt.idunit')
+                    ->on('kc.KBUKU', '=', 'nt.kbuku')
+                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            })
+            ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
+                $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
+                    ->on('rd.IDUNIT', '=', 'nt.idunit')
+                    ->on('rd.KBUKU', '=', 'nt.kbuku')
+                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                    ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
+            })
+            ->join('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as sr', 'kc.karcis', '=', 'sr.karcis')
+            ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SPECIMEN as ss', 'kc.karcis', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
+            ->join('SIRS_PHCM.dbo.DR_MDOKTER as dkd', 'kc.KDDOK', '=', 'dkd.kdDok')
+            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT'), DB::raw("'RAWAT INAP' as JENIS_PERAWATAN")])
+            ->distinct()
+            ->whereBetween('rd.TANGGAL_ENTRI', [$tgl_awal, $tgl_akhir])
+            ->where('rd.IDUNIT', '001')
+            ->where('rd.KLINIK_TUJUAN', '0017')
+            ->whereNull('kc.TGL_BATAL')
+            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
+
+            // dd($lab_ri->toSql());
+
+        $lab_ri_all = $lab_ri->get();
+        $lab_ri_integrasi = $lab_ri->whereNotNull('ss.id_satusehat_servicerequest')->get();
+
+        // Merge outpatient and inpatient data
+        $mergedAll = $labAll->merge($lab_ri_all)->sortByDesc('TANGGAL_ENTRI')->values();
+        $mergedIntegrated = $labIntegrasi->merge($lab_ri_integrasi)->sortByDesc('TANGGAL_ENTRI')->values();
+
         if ($request->input('cari') == 'mapped') {
-            $dataKunjungan = $labIntegrasi;
+            $dataKunjungan = $mergedIntegrated;
         } else if ($request->input('cari') == 'unmapped') {
-            $dataKunjungan = $labAll->filter(function ($item) {
+            $dataKunjungan = $mergedAll->filter(function ($item) {
                 return $item->SATUSEHAT == '0';
             })->values();
         } else {
-            $dataKunjungan = $labAll;
+            $dataKunjungan = $mergedAll;
         }
         // dd($dataKunjungan);
 
@@ -242,6 +321,39 @@ class SpecimenController extends Controller
 
         return DataTables::of($dataKunjungan)
             ->addIndexColumn()
+            ->addColumn('checkbox', function ($row) {
+                $idRiwayatElab = LZString::compressToEncodedURIComponent($row->ID_RIWAYAT_ELAB);
+                $karcisAsal = LZString::compressToEncodedURIComponent($row->KARCIS_ASAL);
+                $karcisRujukan = LZString::compressToEncodedURIComponent($row->KARCIS_RUJUKAN);
+                $kdKlinik = LZString::compressToEncodedURIComponent($row->KLINIK_TUJUAN);
+                $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
+                $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
+                $kdDokterSS = LZString::compressToEncodedURIComponent($row->idnakes);
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcisAsal . '+' . $karcisRujukan . '+' . $kdKlinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
+
+                $checkBox = '';
+                if ($row->ID_PASIEN_SS == null) {
+                    $btn = '<i class="text-muted">Pasien Belum Mapping Satu Sehat</i>';
+                } else if ($row->ID_NAKES_SS == null) {
+                    $btn = '<i class="text-muted">Nakes Belum Mapping Satu Sehat</i>';
+                } else if ($row->idnakes == null) {
+                    $btn = '<i class="text-muted">Dokter Penindak Lanjut Belum Mapping Satu Sehat</i>';
+                } else if ($row->AllServiceRequestExist == 0) {
+                    $btn = '<i class="text-muted">Tindakan Belum Mapping</i>';
+                } else {
+                    if ($row->SATUSEHAT == 0) {
+                        if ($row->STATUS_SELESAI != "9" && $row->STATUS_SELESAI != "10") {
+                            $uniqueId = 'checkbox_' . md5($paramSatuSehat);
+                            $checkBox = "
+                        <input type='checkbox' class='select-row chk-col-purple' value='$paramSatuSehat' id='$uniqueId' />
+                        <label for='$uniqueId' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
+                    ";
+                        }
+                    }
+                }
+
+                return $checkBox;
+            })
             ->editColumn('KLINIK_TUJUAN', function ($row) {
                 return $row->KLINIK_TUJUAN == '0017' ? '<span class="badge badge-pill badge-success p-2 w-100">Laboratory</span>' : '<span class="badge badge-pill badge-info p-2 w-100">Radiology</span>';
             })
@@ -256,6 +368,9 @@ class SpecimenController extends Controller
             })
             ->addColumn('SPECIMEN_NAMES', function ($row) {
                 return $row->SPECIMEN_NAMES ?? 'Specimen tidak ditemukan';
+            })
+            ->editColumn('JENIS_PERAWATAN', function ($row) {
+                return $row->JENIS_PERAWATAN;
             })
             ->addColumn('action', function ($row) {
                 $kdbuku = LZString::compressToEncodedURIComponent($row->KBUKU);
@@ -308,8 +423,7 @@ class SpecimenController extends Controller
                     return '<span class="badge badge-pill badge-danger p-2 w-100">Tindakan Belum Mapping</span>';
                 }
             })
-            ->rawColumns(['KLINIK_TUJUAN', 'action', 'status_integrasi', 'status_mapping'])
-            // ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi'])
+            ->rawColumns(['checkbox', 'KLINIK_TUJUAN', 'JENIS_PERAWATAN', 'action', 'status_integrasi', 'status_mapping'])
             ->make(true);
     }
 
@@ -477,7 +591,6 @@ class SpecimenController extends Controller
                     "valueDateTime" => $dateTimeNow
                 ]]
             ];
-            // dd($data);
 
             $login = $this->login($id_unit);
             if ($login['metadata']['code'] != 200) {
@@ -573,6 +686,77 @@ class SpecimenController extends Controller
                     'to' => null,
                 ]
             ], $th->getCode() != '' ? $th->getCode() : 500);
+        }
+    }
+
+    public function bulkSendSatuSehat(Request $request)
+    {
+        try {
+            $selectedIds = $request->input('selected_ids', []);
+
+            if (empty($selectedIds)) {
+                return response()->json([
+                    'status' => 422,
+                    'message' => 'Tidak ada data yang dipilih untuk dikirim'
+                ], 422);
+            }
+
+            $dispatched = 0;
+            $failed = 0;
+            $errors = [];
+
+            foreach ($selectedIds as $param) {
+                try {
+                    // Add base64 encoding before dispatching the job
+                    $encodedParam = base64_encode($param);
+
+                    // Dispatch job to queue for background processing
+                    SendSpecimenJob::dispatch($encodedParam);
+                    $dispatched++;
+                } catch (Exception $e) {
+                    $failed++;
+                    $errors[] = "Failed to dispatch param: " . substr($param, 0, 20) . "... - " . $e->getMessage();
+
+                    Log::error('Failed to dispatch SendSpecimenJob', [
+                        'param' => $param,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            // Log the bulk dispatch
+            Log::info('Bulk specimen jobs dispatched', [
+                'total_dispatched' => $dispatched,
+                'total_failed' => $failed,
+                'user_id' => 'system', // You can use Session::get('id') if needed
+                'params_count' => count($selectedIds)
+            ]);
+
+            $message = "Berhasil mengirim {$dispatched} specimen ke antrian untuk diproses. Pengiriman akan berlanjut di background.";
+            if ($failed > 0) {
+                $message .= " {$failed} gagal dikirim.";
+            }
+
+            return response()->json([
+                'status' => JsonResponse::HTTP_OK,
+                'message' => $message,
+                'data' => [
+                    'dispatched_count' => $dispatched,
+                    'failed_count' => $failed,
+                    'total_selected' => count($selectedIds),
+                    'errors' => array_slice($errors, 0, 3) // Show first 3 errors
+                ]
+            ], 200);
+        } catch (Exception $e) {
+            Log::error('Bulk specimen dispatch failed', [
+                'error' => $e->getMessage(),
+                'user_id' => 'system' // Session::get('id')
+            ]);
+
+            return response()->json([
+                'status' => 500,
+                'message' => 'Gagal mengirim ke antrian specimen: ' . $e->getMessage()
+            ], 500);
         }
     }
 
