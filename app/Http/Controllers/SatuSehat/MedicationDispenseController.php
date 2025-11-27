@@ -7,7 +7,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
 use App\Jobs\SendMedicationdispense;
-use App\Jobs\SendMedicationDispense as JobsSendMedicationDispense;
+use App\Jobs\SendMedicationRequest as JobsSendMedicationRequest;
 
 class MedicationDispenseController extends Controller
 {
@@ -176,7 +176,9 @@ class MedicationDispenseController extends Controller
                 m.KD_BRG_KFA,
                 m.NAMABRG_KFA,
                 iho.ID_TRANS as 'ID_TRANS_DOKTER',
-                slm1.STATUS as 'STATUS_KIRIM_MEDICATION_REQUEST',
+                COALESCE(slm11.STATUS, slm1.STATUS) AS STATUS_KIRIM_MEDICATION_REQUEST,
+                slm1.STATUS as 'STATUS_KIRIM_MEDICATION_REQUEST_N',
+                slm11.STATUS as 'STATUS_KIRIM_MEDICATION_REQUEST_F_DISPENSE',
                 slm2.STATUS as 'STATUS_KIRIM_MEDICATION_DISPENSE'
             FROM SIRS_PHCM.dbo.IF_TRANS i
             join SIRS_PHCM.dbo.IF_HTRANS ih ON I.ID_TRANS = ih.ID_TRANS
@@ -184,8 +186,9 @@ class MedicationDispenseController extends Controller
             LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA m 
                 ON i.KDBRG_CENTRA = m.KDBRG_CENTRA
             left join SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm1 on iho.ID_TRANS = slm1.LOCAL_ID and slm1.LOG_TYPE = 'MedicationRequest' and slm1.KFA_CODE = m.KD_BRG_KFA and slm1.STATUS = 'success'
+            left join SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm11 on ih.ID_TRANS = slm11.LOCAL_ID and slm11.LOG_TYPE = 'MedicationRequestFromDispense' and slm11.KFA_CODE = m.KD_BRG_KFA and slm11.STATUS = 'success'
             left join SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm2 on ih.ID_TRANS = slm2.LOCAL_ID and slm2.LOG_TYPE = 'MedicationDispense'and slm2.KFA_CODE = m.KD_BRG_KFA and slm2.STATUS = 'success'
-            WHERE i.ID_TRANS = :idTrans
+           WHERE i.ID_TRANS = :idTrans
         ", ['idTrans' => $idTrans]);
 
             if (empty($data)) {
@@ -837,7 +840,7 @@ class MedicationDispenseController extends Controller
                 ];
             }
 
-            JobsSendMedicationDispense::dispatch(
+            JobsSendMedicationRequest::dispatch(
                 $payload,
                 [
                     'idTrans' => $idTrans,
@@ -847,6 +850,7 @@ class MedicationDispenseController extends Controller
                         'medicationReference' => $row->FHIR_ID ?? null,
                         'ID_PASIEN' => $payload['payload']['subject']['reference'] ?? null,
                         'id_satusehat_encounter' => $payload['payload']['encounter']['reference'] ?? null,
+                        'FROM' => 'MedicationRequestFromDispense'
                     ],
                 ]
             );

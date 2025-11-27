@@ -105,8 +105,9 @@ class SendMedicationRequest implements ShouldQueue
         $idTrans = $meta['idTrans'] ?? null;
         $item = $meta['item'] ?? null;
 
+
         $logData = [
-            'LOG_TYPE' => 'MedicationRequest',
+            'LOG_TYPE' => $item['FROM'] ?? 'MedicationRequest',
             'LOCAL_ID' => $idTrans,
             'KFA_CODE' => $item['KD_BRG_KFA'] ?? null,
             'NAMA_OBAT' => $item['NAMABRG_KFA'] ?? null,
