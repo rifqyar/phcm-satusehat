@@ -449,15 +449,23 @@
                     if (res.status === 'success') {
                         let html = `<table class="table table-sm table-bordered">
                                                     <thead class="thead-light">
-                                                        <tr><th>No</th><th>Nama Obat</th><th>KFA Code</th><th>Nama KFA</th></tr>
+                                                        <tr><th>No</th><th>Nama Obat</th><th>KFA Code</th><th>Nama KFA</th><th>Status Medication Request</th><th>Status Medication Dispense</th></tr>
                                                     </thead><tbody>`;
-
                         res.data.forEach((row, i) => {
+                            const reqStatus = row.STATUS_KIRIM_MEDICATION_REQUEST === 'success'
+                                ? `<span class="badge bg-success">Sukses</span>`
+                                : `-`;
+
+                            const dispStatus = row.STATUS_KIRIM_MEDICATION_DISPENSE === 'success'
+                                ? `<span class="badge bg-success">Sukses</span>`
+                                : `-`;
                             html += `<tr>
                                                         <td>${i + 1}</td>
                                                         <td>${row.NAMA_OBAT ?? '-'}</td>
                                                         <td>${row.KD_BRG_KFA ?? '-'}</td>
                                                         <td>${row.NAMABRG_KFA ?? '-'}</td>
+                                                        <td>${reqStatus}</td>
+                                                        <td>${dispStatus}</td>
                                                     </tr>`;
                         });
 

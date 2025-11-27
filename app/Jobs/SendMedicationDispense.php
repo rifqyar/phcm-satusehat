@@ -13,7 +13,7 @@ use App\Models\SATUSEHAT\SS_Kode_API;
 use Illuminate\Support\Facades\DB;
 
 
-class SendMedicationRequest implements ShouldQueue
+class SendMedicationDispense implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, LogTraits;
 
@@ -66,8 +66,8 @@ class SendMedicationRequest implements ShouldQueue
             $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
         //
-        $url = 'MedicationRequest';
-        
+        $url = 'MedicationDispense';
+
         try {
             $client = new \GuzzleHttp\Client();
 
@@ -81,13 +81,12 @@ class SendMedicationRequest implements ShouldQueue
                     ],
                     'body' => json_encode($payload),
                     'verify' => false,
-                    'timeout' => 30 
+                    'timeout' => 30
                 ]
             );
 
             $responseBody = json_decode($response->getBody(), true);
             $httpStatus = $response->getStatusCode();
-
         } catch (\GuzzleHttp\Exception\RequestException $e) {
             // request ke API gagal (timeout / 500 / dns error / dsb)
             throw $e; // lempar biar Laravel retry otomatis
@@ -106,44 +105,47 @@ class SendMedicationRequest implements ShouldQueue
         $item = $meta['item'] ?? null;
 
         $logData = [
-            'LOG_TYPE' => 'MedicationRequest',
-            'LOCAL_ID' => $idTrans,
-            'KFA_CODE' => $item['KD_BRG_KFA'] ?? null,
-            'NAMA_OBAT' => $item['NAMABRG_KFA'] ?? null,
-            'FHIR_MEDICATION_REQUEST_ID' => $responseBody['id'] ?? null,
-            'FHIR_ID' => $responseBody['id'] ?? null,
-            'FHIR_MEDICATION_ID' => $item['medicationReference'] ?? null,
-            'PATIENT_ID' => $item['ID_PASIEN'] ?? null,
-            'ENCOUNTER_ID' => $item['id_satusehat_encounter'] ?? null,
+            'LOG_TYPE' => 'MedicationDispense',
+            'LOCAL_ID' => $item->ID_RESEP_FARMASI,
+            'FHIR_MEDICATION_ID' => $item->medicationReference_reference ?? null,
+            'NAMA_OBAT' => $item->medicationReference_display ?? '-',
+            'KFA_CODE' => $item->KD_BRG_KFA ?? '-',
+            'FHIR_MEDICATION_DISPENSE_ID' => $responseBody['id'] ?? null,
+            'FHIR_MEDICATION_REQUEST_ID' => $item->FHIR_MEDICATION_REQUEST_ID ?? null,
+            'PATIENT_ID' => $item->idpx ?? null,
+            'ENCOUNTER_ID' => $item->ENCOUNTER_ID ?? null,
             'STATUS' => isset($responseBody['id']) ? 'success' : 'failed',
             'HTTP_STATUS' => $httpStatus,
             'RESPONSE_MESSAGE' => json_encode($responseBody),
-            'CREATED_AT' => now()
+            'CREATED_AT' => now(),
+            'PAYLOAD' => json_encode($payload)
         ];
 
         $existing = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
-            ->where('LOCAL_ID', $idTrans)
-            ->where('KFA_CODE', $item['KD_BRG_KFA'] ?? null)
-            ->where('LOG_TYPE', 'MedicationRequest')
+            ->where('LOCAL_ID', $item->ID_RESEP_FARMASI)
+            ->where('FHIR_MEDICATION_ID', $item->medicationReference_reference)
+            ->where('LOG_TYPE', 'MedicationDispense')
             ->first();
 
         if ($existing) {
             DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
                 ->where('ID', $existing->ID)
                 ->update([
-                    'FHIR_ID' => $logData['FHIR_ID'],
-                    'FHIR_MEDICATION_ID' => $logData['FHIR_MEDICATION_ID'],
+                    'FHIR_MEDICATION_DISPENSE_ID' => $logData['FHIR_MEDICATION_DISPENSE_ID'],
+                    'FHIR_MEDICATION_REQUEST_ID' => $logData['FHIR_MEDICATION_REQUEST_ID'],
+                    'FHIR_MEDICATION_ID' => $item->medicationReference_reference ?? null,
                     'PATIENT_ID' => $logData['PATIENT_ID'],
                     'ENCOUNTER_ID' => $logData['ENCOUNTER_ID'],
+                    'KFA_CODE' => $item->KD_BRG_KFA ?? '-',
                     'STATUS' => $logData['STATUS'],
                     'HTTP_STATUS' => $logData['HTTP_STATUS'],
                     'RESPONSE_MESSAGE' => $logData['RESPONSE_MESSAGE'],
-                    'UPDATED_AT' => now()
+                    'UPDATED_AT' => now(),
+                    'PAYLOAD' => json_encode($payload)
                 ]);
         } else {
             DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert($logData);
         }
-
     }
 
     /**
@@ -157,22 +159,23 @@ class SendMedicationRequest implements ShouldQueue
         $idTrans = $meta['idTrans'] ?? null;
         $item = $meta['item'] ?? null;
 
-        // Save failed log
         DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert([
-            'LOG_TYPE' => 'MedicationRequest',
+            'LOG_TYPE' => 'MedicationDispense',
             'LOCAL_ID' => $idTrans,
-            'KFA_CODE' => $item['KD_BRG_KFA'] ?? null,
-            'NAMA_OBAT' => $item['NAMABRG_KFA'] ?? null,
+            'KFA_CODE' => $item->KD_BRG_KFA ?? null,
+            'NAMA_OBAT' => $item->NAMABRG_KFA ?? null,
             'FHIR_ID' => null,
             'FHIR_MEDICATION_ID' => null,
-            'PATIENT_ID' => $item['ID_PASIEN'] ?? null,
-            'ENCOUNTER_ID' => $item['id_satusehat_encounter'] ?? null,
+            'PATIENT_ID' => $item->idpx ?? null,
+            'ENCOUNTER_ID' => $item->id_satusehat_encounter ?? null,
             'STATUS' => 'failed-permanent',
             'HTTP_STATUS' => null,
+            'PAYLOAD' => json_encode($this->payload),
             'RESPONSE_MESSAGE' => $exception->getMessage(),
             'CREATED_AT' => now()
         ]);
     }
+
 
     private function getAccessToken()
     {
@@ -184,5 +187,4 @@ class SendMedicationRequest implements ShouldQueue
 
         return $tokenData->access_token ?? null;
     }
-
 }
