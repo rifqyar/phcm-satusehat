@@ -138,6 +138,8 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::post('/medication-dispense/detail', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'getDetailObat'])->name('medication-dispense.detail');
         Route::get('/medication-dispense/sendsatusehat', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'prepMedicationDispense'])->name('medication-dispense.sendsehat');
         Route::get('/medication-dispense/requestfromdispense', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'createMedicationRequestPayloadfromDispense'])->name('medication-dispense.payloadDispensetoreq');
+        Route::post('/medication-dispense/cekDispenseExist', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'cekBelumMedicationRequest'])->name('medication-dispense.cekDispenseExist');
+
 
 
         // Medication

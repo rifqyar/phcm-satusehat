@@ -44,7 +44,6 @@
             cursor: pointer;
         }
     </style>
-
 @endpush
 
 @section('content')
@@ -198,22 +197,28 @@
 
 @push('after-script')
     <script src="{{ asset('assets/plugins/moment/moment.js') }}"></script>
-    <script
-        src="{{ asset('assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js') }}"></script>
+    <script src="{{ asset('assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js') }}">
+    </script>
     <script>
         var table;
 
-        $(document).ready(function () {
+        $(document).ready(function() {
             // 🗓️ inisialisasi datepicker
             var endDate = moment();
             var startDate = moment().subtract(280, 'days');
 
             $("#start_date").bootstrapMaterialDatePicker({
-                weekStart: 0, time: false, format: 'YYYY-MM-DD', defaultDate: startDate
+                weekStart: 0,
+                time: false,
+                format: 'YYYY-MM-DD',
+                defaultDate: startDate
             });
 
             $("#end_date").bootstrapMaterialDatePicker({
-                weekStart: 0, time: false, format: 'YYYY-MM-DD', defaultDate: endDate
+                weekStart: 0,
+                time: false,
+                format: 'YYYY-MM-DD',
+                defaultDate: endDate
             });
 
             $('#start_date').val(startDate.format('YYYY-MM-DD'));
@@ -226,20 +231,19 @@
                 ajax: {
                     url: '{{ route('satusehat.medication-dispense.datatable') }}',
                     type: 'POST',
-                    data: function (d) {
+                    data: function(d) {
                         d._token = '{{ csrf_token() }}';
                         d.start_date = $('#start_date').val();
                         d.end_date = $('#end_date').val();
-                        d.jenis      = $('#jenis').val();
+                        d.jenis = $('#jenis').val();
                     }
                 },
-                columns: [
-                    {
+                columns: [{
                         data: null,
                         orderable: false,
                         searchable: false,
                         className: 'text-center',
-                        render: function (data, type, row, meta) {
+                        render: function(data, type, row, meta) {
                             return meta.row + meta.settings._iDisplayStart + 1;
                         }
                     },
@@ -248,7 +252,7 @@
                         orderable: false,
                         searchable: false,
                         className: 'text-center',
-                        render: function (data) {
+                        render: function(data) {
                             if (data.STATUS_MAPPING === '100' || data.STATUS_MAPPING === '200') {
                                 return `<input type="checkbox" class="checkbox-item" value="${data.ID_TRANS}">`;
                             } else {
@@ -259,7 +263,7 @@
                     {
                         data: null,
                         name: 'src.NomorKarcis', // ✅ sinkron ke backend alias
-                        render: function (data) {
+                        render: function(data) {
                             return `
                         <div>
                             <strong>${data.KARCIS}</strong><br>
@@ -267,13 +271,22 @@
                         </div>`;
                         }
                     },
-                    { data: 'DOKTER', name: 'src.DOKTER' },
-                    { data: 'PASIEN', name: 'src.PASIEN' },
-                    { data: 'TGL_KARCIS', name: 'src.TGL_KARCIS' },
+                    {
+                        data: 'DOKTER',
+                        name: 'src.DOKTER'
+                    },
+                    {
+                        data: 'PASIEN',
+                        name: 'src.PASIEN'
+                    },
+                    {
+                        data: 'TGL_KARCIS',
+                        name: 'src.TGL_KARCIS'
+                    },
                     {
                         data: 'STATUS_MAPPING',
                         className: 'text-center',
-                        render: function (status) {
+                        render: function(status) {
                             if (status === '200') {
                                 return `<span class="badge badge-success">Sudah Dikirim</span>`;
                             } else if (status === '100') {
@@ -287,7 +300,7 @@
                         data: null,
                         orderable: false,
                         searchable: false,
-                        render: function (data) {
+                        render: function(data) {
                             let btn = `
                         <button class="btn btn-sm btn-info w-100 mb-2" onclick="lihatObat('${data.ID_TRANS}')">
                             <i class="fas fa-eye"></i> Lihat Obat
@@ -314,12 +327,14 @@
                         }
                     }
                 ],
-                order: [[4, 'desc']]
+                order: [
+                    [4, 'desc']
+                ]
             });
 
 
             // reload summary
-            table.on('xhr.dt', function (e, settings, json) {
+            table.on('xhr.dt', function(e, settings, json) {
                 if (json && json.summary) {
                     $('span[data-count="all"]').text(json.summary.all ?? 0);
                     $('span[data-count="sent"]').text(json.summary.sent ?? 0);
@@ -327,7 +342,7 @@
                 }
             });
 
-            $("#search-data").on("submit", function (e) {
+            $("#search-data").on("submit", function(e) {
                 e.preventDefault();
                 table.ajax.reload();
             });
@@ -342,13 +357,13 @@
             table.ajax.reload();
         }
         // ✅ Checkbox select all
-        $(document).on('change', '#checkAll', function () {
+        $(document).on('change', '#checkAll', function() {
             $('.checkbox-item').prop('checked', $(this).is(':checked'));
         });
 
         // ✅ Tombol batch send
-        $('#btnKirimDipilih').on('click', function () {
-            const selected = $('.checkbox-item:checked').map(function () {
+        $('#btnKirimDipilih').on('click', function() {
+            const selected = $('.checkbox-item:checked').map(function() {
                 return $(this).val();
             }).get();
 
@@ -371,7 +386,7 @@
                 cancelButtonText: 'Batal',
                 confirmButtonColor: '#3085d6',
                 cancelButtonColor: '#d33'
-            }).then(function (result) {
+            }).then(function(result) {
                 if (!result.value) return;
                 sendSequential(selected);
             });
@@ -444,41 +459,122 @@
             $.ajax({
                 url: '{{ route('satusehat.medication-dispense.detail') }}',
                 type: 'POST',
-                data: { _token: '{{ csrf_token() }}', id: idTrans },
-                success: function (res) {
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    id: idTrans
+                },
+                success: function(res) {
                     if (res.status === 'success') {
                         let html = `<table class="table table-sm table-bordered">
-                                                    <thead class="thead-light">
-                                                        <tr><th>No</th><th>Nama Obat</th><th>KFA Code</th><th>Nama KFA</th><th>Status Medication Request</th><th>Status Medication Dispense</th></tr>
-                                                    </thead><tbody>`;
-                        res.data.forEach((row, i) => {
-                            const reqStatus = row.STATUS_KIRIM_MEDICATION_REQUEST === 'success'
-                                ? `<span class="badge bg-success">Sukses</span>`
-                                : `-`;
+                    <thead class="thead-light">
+                        <tr>
+                            <th>No</th><th>Nama Obat</th><th>KFA Code</th><th>Nama KFA</th>
+                            <th>Status Medication Request</th><th>Status Medication Dispense</th>
+                        </tr>
+                    </thead><tbody>`;
 
-                            const dispStatus = row.STATUS_KIRIM_MEDICATION_DISPENSE === 'success'
-                                ? `<span class="badge bg-success">Sukses</span>`
-                                : `-`;
-                            html += `<tr>
-                                                        <td>${i + 1}</td>
-                                                        <td>${row.NAMA_OBAT ?? '-'}</td>
-                                                        <td>${row.KD_BRG_KFA ?? '-'}</td>
-                                                        <td>${row.NAMABRG_KFA ?? '-'}</td>
-                                                        <td>${reqStatus}</td>
-                                                        <td>${dispStatus}</td>
-                                                    </tr>`;
+                        res.data.forEach((row, i) => {
+                            const reqStatus = row.STATUS_KIRIM_MEDICATION_REQUEST === 'success' ?
+                                `<span class="badge bg-success">Sukses</span>` :
+                                `-`;
+
+                            const dispStatus = row.STATUS_KIRIM_MEDICATION_DISPENSE === 'success' ?
+                                `<span class="badge bg-success">Sukses</span>` :
+                                `-`;
+
+                            html += `<tr id="row-${i}">
+                                <td>${i + 1}</td>
+                                <td>${row.NAMA_OBAT ?? '-'}</td>
+                                <td>${row.KD_BRG_KFA ?? '-'}</td>
+                                <td>${row.NAMABRG_KFA ?? '-'}</td>
+                                <td class="col-mr" data-id="${row.ID_TRANS}" data-kfa="${row.KDBRG_CENTRA}">
+                                    ${reqStatus}
+                                </td>
+                                <td>${dispStatus}</td>
+                            </tr>`;
                         });
 
                         html += `</tbody></table>`;
                         $('#obatDetailContent').html(html);
+
+                        const idTrans = res.data[0]?.ID_TRANS;
+
+                        // 🔥 cek hanya sekali
+                        $.ajax({
+                            url: '/satu-sehat/medication-dispense/cekDispenseExist',
+                            method: 'POST',
+                            data: {
+                                id_trans: idTrans,
+                                _token: $('meta[name="csrf-token"]').attr('content')
+                            },
+                            success: (cek) => {
+                                const list = cek.data;
+
+                                $('.col-mr').each(function() {
+                                    const td = $(this);
+                                    const kfa = td.data('kfa');
+                                    const statusMR = td.text().includes('Sukses');
+
+                                    // kalau sudah MR sukses → tidak ada tombol
+                                    if (statusMR) return;
+
+                                    // belum sukses → tampilkan tombol
+                                    td.html(
+                                        `<button class="btn btn-sm btn-primary btnKirimDispense"
+                        data-id="${idTrans}" data-kfa="${kfa}">
+                        Kirim Dispense sebagai Request
+                    </button>`
+                                    );
+                                });
+                            },
+                            error: () => {
+                                $('.col-mr:not(:contains("Sukses"))').html(
+                                    `<span class="text-danger">Error</span>`
+                                );
+                            }
+                        });
                     } else {
                         $('#obatDetailContent').html(`<p class='text-danger text-center'>${res.message}</p>`);
                     }
                 },
-                error: function () {
-                    $('#obatDetailContent').html(`<p class='text-danger text-center'>Gagal memuat data obat.</p>`);
+                error: function() {
+                    $('#obatDetailContent').html(
+                        `<p class='text-danger text-center'>Gagal memuat data obat.</p>`);
                 }
             });
+                $(document).on('click', '.btnKirimDispense', function (e) {
+                    e.preventDefault();
+
+                    const btn    = $(this);
+                    const idTrans = btn.data('id');
+                    const kfa     = btn.data('kfa');
+
+                    btn.prop('disabled', true).text('Mengirim...');
+
+                    $.ajax({
+                        url: '/satu-sehat/medication-dispense/requestfromdispense',
+                        method: 'GET', // sesuai route kamu sekarang
+                        data: {
+                            idTrans: idTrans,
+                            kdbrg: kfa
+                        },
+                        success: function (res) {
+                            if (res.status === 'success') {
+                                // ganti tombol dengan badge sukses di kolom Status Medication Request
+                                btn.closest('td').html(
+                                    '<span class="badge bg-success">Sukses</span>'
+                                );
+                            } else {
+                                alert(res.message || 'Gagal mengirim Medication Request');
+                                btn.prop('disabled', false).text('Kirim Dispense sebagai Request');
+                            }
+                        },
+                        error: function (xhr) {
+                            alert('Terjadi kesalahan saat mengirim Medication Request');
+                            btn.prop('disabled', false).text('Kirim Dispense sebagai Request');
+                        }
+                    });
+                });
         }
 
         function confirmkirimSatusehat(idTrans) {
@@ -512,8 +608,10 @@
                 $.ajax({
                     url: '{{ route('satusehat.medication-dispense.sendsehat') }}',
                     type: 'GET',
-                    data: { id_trans: idTrans },
-                    success: function (res) {
+                    data: {
+                        id_trans: idTrans
+                    },
+                    success: function(res) {
                         if (res.status === 'success') {
                             if (showSwal) {
                                 swal({
@@ -524,7 +622,10 @@
                                     showConfirmButton: false
                                 });
                             }
-                            resolve({ success: true, id: idTrans });
+                            resolve({
+                                success: true,
+                                id: idTrans
+                            });
                         } else {
                             if (showSwal) {
                                 swal({
@@ -533,10 +634,13 @@
                                     type: 'warning'
                                 });
                             }
-                            resolve({ success: false, id: idTrans });
+                            resolve({
+                                success: false,
+                                id: idTrans
+                            });
                         }
                     },
-                    error: function (xhr) {
+                    error: function(xhr) {
                         console.error(`❌ Error kirim ${idTrans}:`, xhr);
 
                         // ambil pesan dari API
@@ -559,13 +663,15 @@
                             });
                         }
 
-                        resolve({ success: false, id: idTrans, message: errMsg });
+                        resolve({
+                            success: false,
+                            id: idTrans,
+                            message: errMsg
+                        });
                     }
 
                 });
             });
         }
-
-
     </script>
 @endpush
