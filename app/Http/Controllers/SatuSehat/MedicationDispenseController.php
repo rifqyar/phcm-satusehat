@@ -568,23 +568,18 @@ class MedicationDispenseController extends Controller
     public function prepMedicationDispense(Request $request)
     {
         try {
-            // --- ambil parameter ---
             $idTrans = $request->input('id_trans');
             if (empty($idTrans)) {
-                return response()->json(
-                    [
-                        'status' => 'error',
-                        'message' => 'Parameter id_trans wajib dikirim.',
-                    ],
-                    400,
-                );
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Parameter id_trans wajib dikirim.'
+                ], 400);
             }
 
-            // --- ambil data gabungan resep farmasi + dokter + pasien + FHIR log ---
-            $data = DB::select(
-                "
+            $data = DB::select("
             SELECT DISTINCT
                 i.ID_TRANS AS ID_RESEP_FARMASI,
+                slm1.ID as STATUS_KIRIM,
                 i3.ID_TRANS AS RESEP_DOKTER,
                 i2.MR_LINE as urutan,
                 i2.ID as isRacikan,
@@ -592,11 +587,12 @@ class MedicationDispenseController extends Controller
                 m.NAMABRG AS medicationReference_display,
                 m.KD_BRG_KFA,
                 r.id_satusehat_encounter,
-                COALESCE(s.FHIR_MEDICATION_REQUEST_ID,slm.FHIR_MEDICATION_REQUEST_ID) AS FHIR_MEDICATION_REQUEST_ID,
+                COALESCE(s.FHIR_MEDICATION_REQUEST_ID, slm.FHIR_MEDICATION_REQUEST_ID) AS FHIR_MEDICATION_REQUEST_ID,
                 r2.idpx,
                 r2.nama AS pasien_nama,
                 r3.idnakes,
-                r3.nama AS nakes_nama
+                r3.nama AS nakes_nama,
+                i.INPUTDATE
             FROM SIRS_PHCM.dbo.IF_HTRANS i
             JOIN SIRS_PHCM.dbo.IF_TRANS i2 ON i.ID_TRANS = i2.ID_TRANS
             JOIN SIRS_PHCM.dbo.IF_HTRANS_OL i3 ON i.ID_TRANS_OL = i3.ID_TRANS
@@ -608,70 +604,83 @@ class MedicationDispenseController extends Controller
                 ON m.KD_BRG_KFA = s.KFA_CODE
                 AND i3.ID_TRANS = s.LOCAL_ID
                 and s.LOG_TYPE = 'MedicationRequest'
-			LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm 
-				on m.KD_BRG_KFA = slm.KFA_CODE and i.ID_TRANS = slm.LOCAL_ID and slm.LOG_TYPE = 'MedicationRequestFromDispense'
+            LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm 
+                on m.KD_BRG_KFA = slm.KFA_CODE and i.ID_TRANS = slm.LOCAL_ID and slm.LOG_TYPE = 'MedicationRequestFromDispense'
+            LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm1
+                ON i.ID_TRANS = slm1.LOCAL_ID and slm1.LOG_TYPE = 'MedicationDispense'
+                AND m.KD_BRG_KFA = slm1.KFA_CODE AND slm1.STATUS = 'success'
             WHERE i.ID_TRANS = ?
-        ",
-                [$idTrans],
-            );
+        ", [$idTrans]);
 
             if (empty($data)) {
-                return response()->json(
-                    [
-                        'status' => 'error',
-                        'message' => "Data tidak ditemukan untuk ID_TRANS $idTrans.",
-                    ],
-                    404,
-                );
+                return response()->json([
+                    'status' => 'error',
+                    'message' => "Data tidak ditemukan untuk ID_TRANS $idTrans"
+                ], 404);
             }
 
             $summary = [];
+            $total = count($data);
+            $alreadySent = 0;
 
             foreach ($data as $item) {
-                // Wajib ada MedicationRequest untuk bisa membuat MedicationDispense
+
+                // 💥 Jika sudah berhasil dikirim sebelumnya → skip
+                if (!empty($item->STATUS_KIRIM)) {
+                    $summary[] = [
+                        'medication' => $item->medicationReference_display,
+                        'status' => 'already_sent'
+                    ];
+                    $alreadySent++;
+                    continue;
+                }
+
+                // 💥 Jika belum ada MedicationRequest → skip
                 if (empty($item->FHIR_MEDICATION_REQUEST_ID)) {
                     $summary[] = [
                         'medication' => $item->medicationReference_display,
                         'status' => 'skipped',
-                        'reason' => 'MedicationRequest belum terkirim',
+                        'reason' => 'MedicationRequest belum terkirim'
                     ];
                     continue;
                 }
 
-                // --- build payload MedicationDispense ---
+                // 🚀 Build & queue payload
                 $payload = $this->createMedicationDispensePayload($item);
 
-                // --- push to queue job ---
                 SendMedicationDispense::dispatch($payload, [
                     'idTrans' => $idTrans,
-                    'item' => $item, // penting! job membutuhkan object ini
+                    'item' => $item
                 ]);
 
                 $summary[] = [
                     'medication' => $item->medicationReference_display,
-                    'status' => 'queued',
-                    'payload' => $payload,
+                    'status' => 'queued'
                 ];
             }
 
-            return response()->json(
-                [
+            // 💡 Jika 100% sudah pernah dikirim → return jelas
+            if ($alreadySent === $total) {
+                return response()->json([
                     'status' => 'success',
-                    'message' => 'Payload dibuat. Semua pengiriman MedicationDispense diproses melalui queue.',
-                    'results' => $summary,
-                ],
-                200,
-            );
+                    'message' => 'Transaksi ' . $idTrans . ' Sudah Terkirim.',
+                    'results' => $summary
+                ], 200);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'MedicationDispense diproses via queue.',
+                'results' => $summary
+            ], 200);
         } catch (\Exception $e) {
-            return response()->json(
-                [
-                    'status' => 'error',
-                    'message' => 'Exception: ' . $e->getMessage(),
-                ],
-                500,
-            );
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Exception: ' . $e->getMessage()
+            ], 500);
         }
     }
+
 
     //buat payload dispense
     private function createMedicationDispensePayload($item)

@@ -616,7 +616,7 @@
                             if (showSwal) {
                                 swal({
                                     title: 'Berhasil!',
-                                    text: `Transaksi ${idTrans} berhasil dikirim ke SATUSEHAT.`,
+                                    text: res.message,
                                     type: 'success',
                                     timer: 2000,
                                     showConfirmButton: false
