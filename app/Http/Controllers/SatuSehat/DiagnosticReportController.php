@@ -107,9 +107,11 @@ class DiagnosticReportController extends Controller
             })
             ->addColumn('aksi', function ($row) {
                 
-                $openFileBtn = '<button type="button" class="btn btn-success btn-sm mr-1" onclick="openFile(\'' . url('assets/dokumen_px/' . $row->kbuku . '/' . $row->file_name) . '\')">
-                    <i class="fa fa-search"></i> Lihat File
-                </button>';
+                // $openFileBtn = '<button type="button" class="btn btn-success btn-sm mr-1" onclick="openFile(\'' . url('assets/dokumen_px/' . $row->kbuku . '/' . $row->file_name) . '\')">
+                //     <i class="fa fa-search"></i> Lihat File
+                // </button>';
+
+                $openFileBtn = '';
 
                 $sendBtn = '<button class="btn btn-primary btn-sm mr-1" onclick="sendSatuSehat()">
                     <i class="fa fa-link"></i> Kirim Satu Sehat
