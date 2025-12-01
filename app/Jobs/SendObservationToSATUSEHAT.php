@@ -73,10 +73,17 @@ class SendObservationToSATUSEHAT implements ShouldQueue
                     $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Encounter';
                     throw new Exception($msg, $response->getStatusCode());
                 } else {
-                    $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA')
-                        ->where('KARCIS', (int)$this->dataKarcis->KARCIS)
-                        ->where('AKTIF', 1)
-                        ->first();
+                    if ($this->arrParam['jenis_pemeriksaan'] == 'RAWAT_JALAN') {
+                        $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA')
+                            ->where('KARCIS', (int)$this->dataKarcis->KARCIS)
+                            ->where('AKTIF', 1)
+                            ->first();
+                    } else {
+                        $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD')
+                            ->where('NOREG', (int)$this->dataKarcis->KARCIS)
+                            ->where('AKTIF', 1)
+                            ->first();
+                    }
 
                     $observasiData = [
                         'KBUKU' => $this->dataKarcis->KBUKU,
@@ -97,7 +104,7 @@ class SendObservationToSATUSEHAT implements ShouldQueue
                     if ($existingObservasi) {
                         DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI')
                             ->where('KARCIS', $this->dataKarcis->KARCIS)
-                            ->where('JENIS_TINDAKAN', $this->type)
+                            ->where('JENIS', $this->type)
                             ->update($observasiData);
                     } else {
                         $observasiData['KARCIS'] = (int)$this->dataKarcis->KARCIS;
