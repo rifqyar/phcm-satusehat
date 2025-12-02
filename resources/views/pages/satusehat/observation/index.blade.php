@@ -229,9 +229,10 @@
                             <h4>Data Kunjungan Pasien</h4>
                         </div>
 
-                        <button type="button" class="btn btn-primary btn-rounded mr-3" onclick="sendBundle()">
-                            Kirim Bundling
-                            <i class="mdi mdi-cube-send"></i>
+                        <button type="button" class="btn btn-warning btn-rounded" onclick="bulkSend()"
+                            id="bulk-send-btn">
+                            <i class="mdi mdi-send-outline"></i>
+                            Kirim Terpilih ke SatuSehat
                         </button>
                     </div>
                     <!-- 🧾 Tabel Data -->
@@ -279,6 +280,7 @@
     <script>
         var table
         let selectedIds = [];
+        let selectedJp = [];
         var paramSatuSehat = '';
         $(function() {
             // format tanggal sesuai dengan setting datepicker
@@ -297,6 +299,8 @@
             $('#end_date').val(today);
 
             getAllData()
+
+            $('#bulk-send-btn').prop('disabled', true);
 
             $("#search-data").on("submit", function(e) {
                 if (this.checkValidity()) {
@@ -438,8 +442,14 @@
                     if ($('#selectAll').is(':checked')) {
                         $('.select-row').each(function() {
                             const id = $(this).val();
+                            const param = $(this).data('param');
                             $(this).prop('checked', true);
-                            if (!selectedIds.includes(id)) selectedIds.push(id);
+                            if (!selectedIds.includes(id)) {
+                                selectedIds.push({
+                                    id: id,
+                                    param: param
+                                });
+                            }
                         });
                     }
 
@@ -449,33 +459,53 @@
         }
 
         // Select single row
-        $(document).on('change', '.select-row', function() {
+        $(document).on('change', '.select-row', function(e) {
+            e.stopPropagation();
             const id = $(this).val();
+            const param = $(this).data('param');
+
             if ($(this).is(':checked')) {
-                if (!selectedIds.includes(id)) selectedIds.push(id);
+                if (!selectedIds.includes(id)) {
+                    selectedIds.push({
+                        id: id,
+                        param: param
+                    });
+                }
             } else {
                 selectedIds = selectedIds.filter(item => item !== id);
             }
             updateSelectAllCheckbox();
         });
 
+        $(document).on('click', '.select-row', function(e) {
+            e.stopPropagation();
+        });
+
         // Select All (current page)
-        $('#selectAll').on('click', function() {
+        $('#selectAll').on('click', function(e) {
+            e.stopPropagation();
             const rows = $('.select-row');
             const checked = this.checked;
             rows.each(function() {
                 const id = $(this).val();
+                const param = $(this).data('param');
                 $(this).prop('checked', checked);
 
                 if (checked) {
-                    if (!selectedIds.includes(id)) selectedIds.push(id);
+                    if (!selectedIds.includes(id)) {
+                        selectedIds.push({
+                            id: id,
+                            param: param
+                        });
+                    }
                 } else {
                     selectedIds = selectedIds.filter(item => item !== id);
                 }
+
+                updateSelectAllCheckbox();
             });
         });
 
-        // Update status checkbox selectAll
         function updateSelectAllCheckbox() {
             const totalCheckboxes = $('.select-row').length;
             const checkedCount = $('.select-row:checked').length;
@@ -483,6 +513,16 @@
             // centang setengah (indeterminate) kalau sebagian terpilih
             $('#selectAll').prop('checked', checkedCount === totalCheckboxes && totalCheckboxes > 0);
             $('#selectAll').prop('indeterminate', checkedCount > 0 && checkedCount < totalCheckboxes);
+
+            // Update bulk send button state
+            const bulkSendBtn = $('#bulk-send-btn');
+            if (selectedIds.length > 0) {
+                bulkSendBtn.prop('disabled', false);
+                bulkSendBtn.html(`<i class="mdi mdi-send-outline"></i> Kirim ${selectedIds.length} Data ke SatuSehat`);
+            } else {
+                bulkSendBtn.prop('disabled', true);
+                bulkSendBtn.html('<i class="mdi mdi-send-outline"></i> Kirim Terpilih ke SatuSehat');
+            }
         }
 
         $('.data-table').on('click', 'button, a', function(e) {
@@ -501,39 +541,6 @@
                 "show_modal",
                 ""
             );
-        }
-
-        function sendBundle() {
-            Swal.fire({
-                title: "Konfirmasi Pengiriman Bundling",
-                text: `Kirim data yang anda pilih ke SatuSehat?`,
-                icon: "question",
-                showCancelButton: true,
-                confirmButtonColor: "#3085d6",
-                cancelButtonColor: "#d33",
-                confirmButtonText: "Ya, kirim!",
-                cancelButtonText: "Batal",
-            }).then(async (conf) => {
-                if (conf.value || conf.isConfirmed) {
-                    let formData = new FormData()
-                    formData.append('_token', $('meta[name="csrf-token"]').attr('content'))
-
-                    if ($('#selectAll').is(":checked")) {
-                        formData.append('selectAll', true)
-                    }
-
-                    for (let i = 0; i < selectedIds.length; i++) {
-                        const val = selectedIds[i]
-                        formData.append('karcis[]', val)
-                    }
-
-                    ajaxPostFile(
-                        `{{ route('satusehat.allergy-intolerance.send-bulking') }}`,
-                        formData,
-                        "input_success"
-                    )
-                }
-            });
         }
 
         function show_modal(res) {
@@ -710,6 +717,37 @@
                         "input_success",
                         "",
                     );
+                }
+            });
+        }
+
+        function bulkSend() {
+            if (selectedIds.length === 0) {
+                $.toast({
+                    heading: "Peringatan!",
+                    text: "Pilih data yang akan dikirim terlebih dahulu.",
+                    position: "top-right",
+                    icon: "warning",
+                    hideAfter: 3000
+                });
+                return;
+            }
+
+            Swal.fire({
+                title: "Konfirmasi Bulk Send",
+                text: `Kirim ${selectedIds.length} data Observasi ke SatuSehat?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Ya, kirim semua!",
+                cancelButtonText: "Batal",
+            }).then(async (result) => {
+                if (result.value) {
+                    await ajaxPostJson(`{{ route('satusehat.observasi.bulk-send') }}`, {
+                        _token: $('meta[name="csrf-token"]').attr("content"),
+                        selected_ids: selectedIds
+                    }, "input_success", "");
                 }
             });
         }

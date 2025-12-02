@@ -99,7 +99,7 @@ class ObservasiController extends Controller
                         FROM SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI rso2
                         WHERE rso2.KARCIS = vkr.ID_TRANSAKSI
                         AND rso2.ID_ERM = eri.id_asuhan_header
-                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 18
+                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 19
                     ) THEN 1
                     ELSE 0
                 END as sudah_integrasi,
@@ -221,7 +221,7 @@ class ObservasiController extends Controller
                         FROM SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI rso2
                         WHERE rso2.KARCIS = vkr.ID_TRANSAKSI
                         AND rso2.ID_ERM = eri.id_asuhan_header
-                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 18
+                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 19
                     ) THEN 1
                     ELSE 0
                 END as sudah_integrasi,
@@ -276,9 +276,17 @@ class ObservasiController extends Controller
             })
             ->addColumn('checkbox', function ($row) {
                 $checkBox = '';
+                $id_transaksi = LZString::compressToEncodedURIComponent($row->KARCIS);
+                $KbBuku = LZString::compressToEncodedURIComponent($row->KBUKU);
+                $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
+                $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
+                $idEncounter = LZString::compressToEncodedURIComponent($row->id_satusehat_encounter);
+                $paramSatuSehat = "sudah_integrasi=$row->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=" . LZString::compressToEncodedURIComponent($row->JENIS_PERAWATAN);
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+
                 if ($row->sudah_integrasi == '0' && ($row->ID_PASIEN_SS != null && $row->ID_NAKES_SS != null && $row->id_satusehat_encounter != null)) {
                     $checkBox = "
-                        <input type='checkbox' class='select-row chk-col-purple' value='$row->KARCIS' id='$row->KARCIS' />
+                        <input type='checkbox' class='select-row chk-col-purple' value='$row->KARCIS' data-param='$paramSatuSehat' id='$row->KARCIS' />
                         <label for='$row->KARCIS' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
                     ";
                 }
@@ -479,7 +487,7 @@ class ObservasiController extends Controller
                             FROM SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI rso2
                             WHERE rso2.KARCIS = vkr.ID_TRANSAKSI
                             AND rso2.ID_ERM = h.id_asuhan_header
-                            AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 18
+                            AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 19
                         ) THEN 1
                         ELSE 0
                     END as sudah_integrasi,
@@ -637,13 +645,13 @@ class ObservasiController extends Controller
                         }
 
                         if ($key == 'TD') {
+                            $basePayloadSystolic = $basePayload;
+                            $basePayloadDiastolic = $basePayload;
                             if ($resend) {
-                                $basePayloadSystolic = $basePayload;
                                 $basePayloadSystolic['id'] = $dataObsSistolik ? $dataObsSistolik->ID_SATUSEHAT_OBSERVASI : null;
-
-                                $basePayloadDiastolic = $basePayload;
                                 $basePayloadDiastolic['id'] = $dataObsDiastolik ? $dataObsDiastolik->ID_SATUSEHAT_OBSERVASI : null;
                             }
+
                             $payloadSystolic = array_merge($basePayloadSystolic, $payload[0]);
                             $payloadDiastolic = array_merge($basePayloadDiastolic, $payload[1]);
                             $payloadObservations[] = ['payload' => $payloadSystolic, 'type' => strtolower($key) . '_sistolik'];
@@ -863,13 +871,14 @@ class ObservasiController extends Controller
                         }
 
                         if ($key == 'TD') {
-                            if ($resend) {
-                                $basePayloadSystolic = $basePayload;
-                                $basePayloadSystolic['id'] = $dataObsSistolik ? $dataObsSistolik->ID_SATUSEHAT_OBSERVASI : null;
+                            $basePayloadSystolic = $basePayload;
+                            $basePayloadDiastolic = $basePayload;
 
-                                $basePayloadDiastolic = $basePayload;
+                            if ($resend) {
+                                $basePayloadSystolic['id'] = $dataObsSistolik ? $dataObsSistolik->ID_SATUSEHAT_OBSERVASI : null;
                                 $basePayloadDiastolic['id'] = $dataObsDiastolik ? $dataObsDiastolik->ID_SATUSEHAT_OBSERVASI : null;
                             }
+
                             $payloadSystolic = array_merge($basePayloadSystolic, $payload[0]);
                             $payloadDiastolic = array_merge($basePayloadDiastolic, $payload[1]);
                             $payloadObservations[] = ['payload' => $payloadSystolic, 'type' => strtolower($key) . '_sistolik'];
@@ -979,6 +988,17 @@ class ObservasiController extends Controller
     public function resendSatuSehat($param)
     {
         return $this->sendSatuSehat($param, true);
+    }
+
+    public function bulkSend(Request $request)
+    {
+        $resp = null;
+        foreach ($request->selected_ids as $selected) {
+            $param = $selected['param'];
+            $resp = $this->sendSatuSehat(base64_encode($param), false);
+        }
+
+        return $resp;
     }
 
     private function definePayloadDJ($dataErm, $organisasi)
