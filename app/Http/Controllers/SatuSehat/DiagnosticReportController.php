@@ -35,15 +35,18 @@ class DiagnosticReportController extends Controller
             ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX_KATEGORI as b'), 'a.id_kategori', '=', 'b.id')
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MASTERPX as c'), 'a.kbuku', '=', 'c.kbuku')
+            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as m'), 'a.kd_tindakan', '=', 'm.KD_TIND')
             ->select([
                 'a.id',
                 'a.kbuku',
                 'c.NAMA as NM_PASIEN',
+                'm.NM_TIND as NM_TIND',
                 'a.file_name',
                 'a.keterangan',
                 'b.nama_kategori',
                 'a.usr_crt',
-                'a.crt_dt'
+                'a.crt_dt',
+                DB::raw('0 as SATUSEHAT'), // Placeholder for SATUSEHAT status
             ])
             ->where('a.AKTIF', 1);
 
@@ -61,20 +64,21 @@ class DiagnosticReportController extends Controller
         // Apply search filter if provided
         if (!empty($search)) {
             if ($search === 'sent') {
-                // Assume documents with certain criteria are "sent" - you can modify this logic
-                $query->whereNotNull('a.file_name');
+                // Documents that have been integrated to SatuSehat
+                $query->where(DB::raw('0'), '>', 0); // Using placeholder logic for SATUSEHAT > 0
             } elseif ($search === 'pending') {
-                // Assume documents with certain criteria are "pending"
-                $query->whereNull('a.keterangan');
+                // Documents that haven't been integrated to SatuSehat
+                $query->where(DB::raw('0'), '=', 0); // Using placeholder logic for SATUSEHAT = 0
             }
             // For 'all', no additional filter needed
         }
 
-        // Get summary counts for the cards
+        // Get summary counts for the cards - using same base query as DataTable
         $baseQueryForCount = DB::connection('sqlsrv')
             ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX_KATEGORI as b'), 'a.id_kategori', '=', 'b.id')
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MASTERPX as c'), 'a.kbuku', '=', 'c.kbuku')
+            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as m'), 'a.kd_tindakan', '=', 'm.KD_TIND')
             ->where('a.AKTIF', 1);
 
         // Apply same date filter for counts
@@ -86,15 +90,27 @@ class DiagnosticReportController extends Controller
         }
 
         $allCount = (clone $baseQueryForCount)->count();
-        $sentCount = (clone $baseQueryForCount)->whereNotNull('a.file_name')->count();
-        $pendingCount = (clone $baseQueryForCount)->whereNull('a.keterangan')->count();
+        // Sent: documents that have been integrated (SATUSEHAT > 0)
+        $sentCount = (clone $baseQueryForCount)->where(DB::raw('0'), '>', 0)->count(); // Using placeholder logic
+        // Pending: documents that haven't been integrated (SATUSEHAT = 0)
+        $pendingCount = (clone $baseQueryForCount)->where(DB::raw('0'), '=', 0)->count(); // Using placeholder logic
 
         // Don't add ORDER BY here - let DataTables handle it
         // $query->orderBy('a.id', 'desc');
 
         $dataTable = DataTables::of($query)
+            ->addIndexColumn()
             ->addColumn('pasien', function ($row) {
                 return $row->NM_PASIEN ?? '-';
+            })
+            ->addColumn('checkbox', function ($row) {
+                return '
+                    <input type="checkbox"  class="select-row chk-col-purple" value="' . $row->id . '" id="checkbox_' . $row->id . '" />
+                    <label for="checkbox_' . $row->id . '"></label>
+                ';
+            })
+            ->addColumn('item_lab', function ($row) {
+                return $row->NM_TIND ?? '-';
             })
             ->addColumn('diupload_oleh', function ($row) {
                 return $row->usr_crt ?? '-';
@@ -102,28 +118,36 @@ class DiagnosticReportController extends Controller
             ->addColumn('tanggal_upload', function ($row) {
                 return $row->crt_dt ? Carbon::parse($row->crt_dt)->format('d-m-Y H:i:s') : '-';
             })
-            ->addColumn('kategori_file', function ($row) {
-                return ($row->nama_kategori ?? '') . '<br>' . ($row->keterangan ?? '') . '<br>(' . ($row->file_name ?? '') . ')';
+            ->addColumn('kategori', function ($row) {
+                return $row->nama_kategori ?? '-';
+            })
+            ->addColumn('file', function ($row) {
+                return ($row->file_name ?? '-') . '<br>' . ($row->keterangan ?? '');
+            })
+            ->addColumn('status_integrasi', function ($row) {
+                if ($row->SATUSEHAT > 0) {
+                    return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
+                } else {
+                    return '<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>';
+                }
             })
             ->addColumn('aksi', function ($row) {
-                
+
                 // $openFileBtn = '<button type="button" class="btn btn-success btn-sm mr-1" onclick="openFile(\'' . url('assets/dokumen_px/' . $row->kbuku . '/' . $row->file_name) . '\')">
                 //     <i class="fa fa-search"></i> Lihat File
                 // </button>';
 
                 $openFileBtn = '';
 
-                $sendBtn = '<button class="btn btn-primary btn-sm mr-1" onclick="sendSatuSehat()">
-                    <i class="fa fa-link"></i> Kirim Satu Sehat
-                </button>';
+                if ($row->SATUSEHAT == 0) {
+                    $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $row->id . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
+                } else {
+                    $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $row->id . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                }
 
-                return '
-                    <div class="d-flex align-items-stretch">
-                        ' . $openFileBtn . $sendBtn . '
-                    </div>
-                ';
+                return $btn;
             })
-            ->rawColumns(['kategori_file', 'aksi'])
+            ->rawColumns(['kategori', 'file', 'aksi', 'checkbox', 'status_integrasi'])
             ->with([
                 'summary' => [
                     'all' => $allCount,
@@ -172,46 +196,131 @@ class DiagnosticReportController extends Controller
         }
     }
 
-    public function sendSatuSehat($param)
+    /**
+     * Handler for bulk sending multiple DiagnosticReport documents.
+     * This is a stub/handler only — business logic should be implemented later.
+     */
+    public function bulkSend(Request $request)
     {
-        $param = base64_decode($param);
-        $param = LZString::decompressFromEncodedURIComponent($param);
-        $parts = explode('+', $param);
+        $ids = $request->input('ids', []);
 
-        $idRiwayatElab = LZString::decompressFromEncodedURIComponent($parts[0]);
-        $karcisAsal = LZString::decompressFromEncodedURIComponent($parts[1]);
-        $karcisRujukan = LZString::decompressFromEncodedURIComponent($parts[2]);
-        $kdKlinik = LZString::decompressFromEncodedURIComponent($parts[3]);
-        $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[4]);
-        $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[5]);
-        $kdDokterSS = LZString::decompressFromEncodedURIComponent($parts[6]);
+        // For now just return the received IDs and a success message.
+        return response()->json([
+            'status' => JsonResponse::HTTP_OK,
+            'message' => 'Received ids for bulk send (handler stub).',
+            'data' => $ids,
+        ], 200);
+    }
+
+    public function sendSatuSehat($idDokumenPx)
+    {
 
         $id_unit      = '001'; // session('id_klinik');
-        $status = '';
+        $status = 'final';
+
+        $dokumen_px =  DB::connection('sqlsrv')
+            ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
+            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX_KATEGORI as b'), 'a.id_kategori', '=', 'b.id')
+            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MASTERPX as c'), 'a.kbuku', '=', 'c.kbuku')
+            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as m'), 'a.kd_tindakan', '=', 'm.KD_TIND')
+            ->select([
+                'a.*',
+                'b.nama_kategori',
+                DB::raw('0 as SATUSEHAT'), // Placeholder for SATUSEHAT status
+            ])
+            ->where('a.AKTIF', 1)
+            ->where('a.id', $idDokumenPx)
+            ->first();
+
+        $riwayat = DB::connection('sqlsrv')
+            ->table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB')
+            ->where('IDUNIT', $id_unit)
+            ->where('KARCIS_ASAL', $dokumen_px->karcis)
+            ->first();
+
+        $dokumen_px_codings = DB::connection('sqlsrv')
+            ->table(DB::raw('SATUSEHAT.dbo.DIAGNOSTIC_REPORT_CODINGS as a'))
+            ->select('a.*')
+            ->where('a.id_dokumen_px', $idDokumenPx)
+            ->get();
+
+        $patient = DB::connection('sqlsrv')
+            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN_MAPPING as a')
+            ->join('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN as b', 'a.idpx', '=', 'b.idpx')
+            ->select('a.idpx', 'b.nama', 'b.no_peserta')
+            ->where('a.no_peserta', $dokumen_px->no_peserta)
+            ->first();
+
+        $dokter = (object)[
+            'id_dokter' => ''
+        ];
+
+        $encounter = DB::connection('sqlsrv')
+            ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
+            ->where('karcis', $dokumen_px->karcis)
+            ->where('idunit', $id_unit)
+            ->first();
+
+        $observation = DB::connection('sqlsrv')
+            ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI')
+            ->where('KARCIS', $dokumen_px->karcis)
+            ->where('KBUKU', $dokumen_px->kbuku)
+            ->first();
+
 
         $dateTimeNow = Carbon::now()->toIso8601String();
+        $categories = [];
 
-        $categories = [
-            [
-                "coding" => [
-                    [
-                        "system" => "http://terminology.hl7.org/CodeSystem/v2-0074",
-                        "code" => "MB",
-                        "display" => "Microbiology"
+        if ($dokumen_px->nama_kategori === 'HASIL LAB') {
+            $categories = [
+                [
+                    "coding" => [
+                        [
+                            "system" => "http://terminology.hl7.org/CodeSystem/v2-0074",
+                            "code" => "LAB",
+                            "display" => "Laboratory"
+                        ]
                     ]
                 ]
-            ]
-        ];
+            ];
+        } else if ($dokumen_px->nama_kategori === 'HASIL RADIOLOGI') {
+            $categories = [
+                [
+                    "coding" => [
+                        [
+                            "system" => "http://terminology.hl7.org/CodeSystem/v2-0074",
+                            "code" => "RAD",
+                            "display" => "Radiology"
+                        ]
+                    ]
+                ]
+            ];
+        } else {
+            $categories = [
+                [
+                    "coding" => [
+                        [
+                            "system" => "http://terminology.hl7.org/CodeSystem/v2-0074",
+                            "code" => "OTH",
+                            "display" => "Other"
+                        ]
+                    ]
+                ]
+            ];
+        }
+
 
         $codings = [
-            "coding" => [
-                [
-                    "system" => "http://loinc.org",
-                    "code" => "11477-7",
-                    "display" => "Microscopic observation [Identifier] in Sputum by Acid fast stain"
-                ]
-            ]
+            "coding" => []
         ];
+
+        foreach ($dokumen_px_codings as $coding) {
+            $codings['coding'][] = [
+                "system" => "http://loinc.org",
+                "code" => $coding->loinc_num,
+                "display" => $coding->loinc_common_name
+            ];
+        }
 
         if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
@@ -221,68 +330,70 @@ class DiagnosticReportController extends Controller
             $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
 
-        $patient = DB::connection('sqlsrv')
-            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
-            ->where('idpx', $kdPasienSS)
-            ->first();
-
-        $encounter = DB::connection('sqlsrv')
-            ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
-            ->where('karcis', $karcisAsal)
-            ->where('idunit', $id_unit)
-            ->first();
-
         $data = [
             "resourceType" => "DiagnosticReport",
             "identifier" => [
                 [
                     "system" => "http://sys-ids.kemkes.go.id/diagnostic/{$organisasi}/lab",
                     "use" => "official",
-                    "value" => "$idRiwayatElab"
+                    "value" => "$riwayat->ID_RIWAYAT_ELAB"
                 ]
             ],
             "status" => "$status",
             "category" => $categories,
             "code" => $codings,
             "subject" => [
-                "reference" => "Patient/{$kdPasienSS}",
+                "reference" => "Patient/{$patient->idpx}",
                 "display" => "$patient->nama"
             ],
             "encounter" => [
                 "reference" => "Encounter/{$encounter->id_satusehat_encounter}"
             ],
-            "effectiveDateTime" => "2012-12-01T12:00:00+01:00",
-            "issued" => "2012-12-01T12:00:00+01:00",
+            // "effectiveDateTime" => "2012-12-01T12:00:00+01:00",
+            // "issued" => "2012-12-01T12:00:00+01:00",
             "performer" => [
                 [
-                    "reference" => "Practitioner/{$kdDokterSS}",
+                    "reference" => "Practitioner/{$dokter->id_dokter}",
                 ],
                 [
-                    "reference" => "Organization/{{$organisasi}}"
+                    "reference" => "Organization/{$organisasi}"
                 ]
             ],
+            // "imagingStudy" => [
+            //     [
+            //         "reference" => "ImagingStudy/{{ImagingStudy_id}}"
+            //     ]
+            // ],
             "result" => [
                 [
-                    "reference" => "Observation/dc0b1b9c-d2c8-4830-b8bb-d73c68174f02"
+                    "reference" => "Observation/$observation->ID_SATUSEHAT_OBSERVASI",
                 ]
             ],
-            "specimen" => [
-                [
-                    "reference" => "Specimen/3095e36e-1624-487e-9ee4-737387e7b55f"
-                ]
-            ],
-            "conclusionCode" => [
-                [
-                    "coding" => [
-                        [
-                            "system" => "http://snomed.info/sct",
-                            "code" => "260347006",
-                            "display" => "+"
-                        ]
-                    ]
-                ]
-            ]
+            // "basedOn" => [
+            //     [
+            //         "reference" => "ServiceRequest/{{ServiceRequest_Rad}}"
+            //     ]
+            // ],
+            'conclusion' => $dokumen_px->keterangan ?? '',
+            // "specimen" => [
+            //     [
+            //         "reference" => "Specimen/3095e36e-1624-487e-9ee4-737387e7b55f"
+            //     ]
+            // ],
+            // "conclusionCode" => [
+            //     [
+            //         "coding" => [
+            //             [
+            //                 "system" => "http://snomed.info/sct",
+            //                 "code" => "260347006",
+            //                 "display" => "+"
+            //             ]
+            //         ]
+            //     ]
+            // ]
         ];
+
+        dd($data);
 
         try {
             $login = $this->login($id_unit);
@@ -296,9 +407,9 @@ class DiagnosticReportController extends Controller
             $data = json_decode(json_encode($data));
 
             dd($data);
-            
+
             $diagnosticReportRequest = $this->consumeSATUSEHATAPI('POST', $baseurl, 'DiagnosticReport', $data, true, $token);
-            
+
             $result = json_decode($diagnosticReportRequest->getBody()->getContents(), true);
 
             if ($diagnosticReportRequest->getStatusCode() >= 400) {
@@ -316,7 +427,6 @@ class DiagnosticReportController extends Controller
 
                 throw new Exception($msg, $diagnosticReportRequest->getStatusCode());
             } else {
-                
             }
         } catch (Exception $e) {
             return response()->json([

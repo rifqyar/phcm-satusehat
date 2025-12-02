@@ -152,7 +152,9 @@ Route::middleware(['checkLogin'])->group(function () {
             ->name('diagnostic-report.index');
         Route::post('/diagnostic-report/datatable', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'datatable'])
             ->name('diagnostic-report.datatable');
-        Route::post('/diagnostic-report/sendsatusehat', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'sendSatuSehat'])
+        Route::post('/diagnostic-report/sendsatusehat/{id}', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'sendSatuSehat'])
             ->name('diagnostic-report.send-satu-sehat');
+        Route::post('/diagnostic-report/bulk-send', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'bulkSend'])
+            ->name('diagnostic-report.bulk-send');
     });
 });
