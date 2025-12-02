@@ -26,13 +26,14 @@ class SendObservationToSATUSEHAT implements ShouldQueue
     protected $url;
     protected $token;
     protected $type; // TD (Sistolik, Diastolik), DJ, Tinggi, Berat
+    protected $resend;
 
     /**
      * Create a new job instance.
      *
      * @return void
      */
-    public function __construct($payload, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $type)
+    public function __construct($payload, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $type, $resend = false)
     {
         $this->payload = $payload;
         $this->arrParam = $arrParam;
@@ -42,6 +43,7 @@ class SendObservationToSATUSEHAT implements ShouldQueue
         $this->url = $url;
         $this->token = $token;
         $this->type = $type;
+        $this->resend = $resend ?? false;
     }
 
     /**
@@ -51,11 +53,12 @@ class SendObservationToSATUSEHAT implements ShouldQueue
      */
     public function handle()
     {
+        $logChannel = explode('/', $this->type)[0];
         try {
             if (count($this->payload) > 0) {
                 $observasiSatuSehat = SATUSEHAT_OBSERVATION::where('JENIS', $this->type);
                 $controller = app('App\\Http\\Controllers\\SatuSehat\\ObservasiController');
-                $response = $controller->consumeSATUSEHATAPI('POST', $this->baseurl, $this->url, $this->payload, true, $this->token);
+                $response = $controller->consumeSATUSEHATAPI(!$this->resend ? 'POST' : 'PUT', $this->baseurl, $this->url, $this->payload, true, $this->token);
 
                 $result = json_decode($response->getBody()->getContents(), true);
 
@@ -73,15 +76,19 @@ class SendObservationToSATUSEHAT implements ShouldQueue
                     $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Encounter';
                     throw new Exception($msg, $response->getStatusCode());
                 } else {
-                    if ($this->arrParam['jenis_pemeriksaan'] == 'RAWAT_JALAN') {
+                    if ($this->arrParam['jenis_perawatan'] == 'RAWAT_JALAN') {
                         $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA')
                             ->where('KARCIS', (int)$this->dataKarcis->KARCIS)
                             ->where('AKTIF', 1)
                             ->first();
                     } else {
-                        $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD')
-                            ->where('NOREG', (int)$this->dataKarcis->KARCIS)
-                            ->where('AKTIF', 1)
+                        $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as h')
+                            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_PENGKAJIAN_FISIK as d', 'h.id_asuhan_header', '=', 'd.id_asuhan_header')
+                            ->where('h.aktif', '1')
+                            ->where('h.noreg', $this->arrParam['karcis'])
+                            ->selectRaw("
+                                h.id_asuhan_header AS NOMOR
+                            ")
                             ->first();
                     }
 
@@ -113,23 +120,23 @@ class SendObservationToSATUSEHAT implements ShouldQueue
                         SATUSEHAT_OBSERVATION::create($observasiData);
                     }
 
-                    $this->logInfo($this->url, 'Sukses kirim data Observasi ' . $this->type, [
+                    $this->logInfo($logChannel, 'Sukses kirim data Observasi ' . $this->type, [
                         'payload' => $this->payload,
                         'response' => $result,
                         'user_id' => 'system' //Session::get('id')
                     ]);
 
-                    $this->logDb(json_encode($result), $this->url, json_encode($this->payload), 'system'); //Session::get('id')
+                    $this->logDb(json_encode($result), $$logChannel, json_encode($this->payload), 'system'); //Session::get('id')
                 }
             } else {
-                $this->logInfo($this->url, 'Sudah Integrasi ' . $this->type, [
+                $this->logInfo($logChannel, 'Sudah Integrasi ' . $this->type, [
                     'payload' => $this->payload,
                     'response' => 'Data Observasi Untuk jenis ini sudah pernah dikirim ke satusehat',
                     'user_id' => 'system' //Session::get('id')
                 ]);
             }
         } catch (Exception $e) {
-            $this->logError($this->url, 'Gagal kirim data Observasi ' . $this->type, [
+            $this->logError($logChannel, 'Gagal kirim data Observasi ' . $this->type, [
                 'payload' => $this->payload,
                 'response' => $e->getMessage(),
                 'user_id' => 'system' //Session::get('id')

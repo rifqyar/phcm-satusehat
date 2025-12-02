@@ -693,6 +693,27 @@
             });
         }
 
+        function resendSatuSehat(param) {
+            Swal.fire({
+                title: "Konfirmasi Pengiriman Ulang",
+                text: `Kirim Ulang Data Observasi Pasien ke SatuSehat?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Ya, kirim!",
+                cancelButtonText: "Batal",
+            }).then(async (conf) => {
+                if (conf.value || conf.isConfirmed) {
+                    await ajaxGetJson(
+                        `{{ route('satusehat.observasi.resend', '') }}/${btoa(param)}`,
+                        "input_success",
+                        "",
+                    );
+                }
+            });
+        }
+
         function input_success(res) {
             if (res.status != 200) {
                 input_error(res);

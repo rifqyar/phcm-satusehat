@@ -7,6 +7,7 @@ use App\Http\Traits\SATUSEHATTraits;
 use App\Jobs\SendObservationToSATUSEHAT;
 use App\Lib\LZCompressor\LZString;
 use App\Models\GlobalParameter;
+use App\Models\SATUSEHAT\SATUSEHAT_OBSERVATION;
 use App\Models\SATUSEHAT\SS_Kode_API;
 use Carbon\Carbon;
 use Exception;
@@ -70,7 +71,7 @@ class ObservasiController extends Controller
         $rjIntegrasi = $rj->whereNotNull('rsn.ID_SATUSEHAT_ENCOUNTER')->get();
 
         $ri = DB::table('v_kunjungan_ri as vkr')
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.KARCIS')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.noreg')
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
                 $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
                     ->on('vkr.KBUKU', '=', 'rsn.kbuku');
@@ -97,14 +98,14 @@ class ObservasiController extends Controller
                         (SELECT COUNT(DISTINCT rso2.JENIS)
                         FROM SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI rso2
                         WHERE rso2.KARCIS = vkr.ID_TRANSAKSI
-                        AND rso2.ID_ERM = eri.NOMOR
-                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 17
+                        AND rso2.ID_ERM = eri.id_asuhan_header
+                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 18
                     ) THEN 1
                     ELSE 0
                 END as sudah_integrasi,
-                CASE WHEN MAX(eri.KARCIS) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
+                CASE WHEN MAX(eri.NOREG) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
             ")
-            ->groupBy(['vkr.ID_TRANSAKSI', 'eri.NOMOR'])
+            ->groupBy(['vkr.ID_TRANSAKSI', 'eri.id_asuhan_header'])
             ->orderByDesc(DB::raw('MAX(vkr.TANGGAL)'))
             ->get();
 
@@ -191,7 +192,7 @@ class ObservasiController extends Controller
 
         // QUERY RAWAT INAP (Kolom disesuaikan agar UNION tidak error)
         $riQuery = DB::table('v_kunjungan_ri as vkr')
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.KARCIS')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.noreg')
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
                 $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
                     ->on('vkr.KBUKU', '=', 'rsn.kbuku');
@@ -219,14 +220,14 @@ class ObservasiController extends Controller
                         (SELECT COUNT(DISTINCT rso2.JENIS)
                         FROM SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI rso2
                         WHERE rso2.KARCIS = vkr.ID_TRANSAKSI
-                        AND rso2.ID_ERM = eri.NOMOR
-                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 17
+                        AND rso2.ID_ERM = eri.id_asuhan_header
+                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 18
                     ) THEN 1
                     ELSE 0
                 END as sudah_integrasi,
-                CASE WHEN MAX(eri.KARCIS) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
+                CASE WHEN MAX(eri.NOREG) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
             ")
-            ->groupBy(['vkr.ID_TRANSAKSI', 'eri.NOMOR']);
+            ->groupBy(['vkr.ID_TRANSAKSI', 'eri.id_asuhan_header']);
         $mergedQuery = $rjQuery->unionAll($riQuery);
 
         $dataAll = DB::query()->fromSub($mergedQuery, 'x')
@@ -318,7 +319,7 @@ class ObservasiController extends Controller
                     if ($row->sudah_integrasi == '0') {
                         $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
                     } else {
-                        $btn = '<a href="#" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                        $btn = '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                     }
                     $btn .= '<br>';
                     $btn .= '<a href="javascript:void(0)" onclick="lihatDetail(`' . $param . '`, `' . $paramSatuSehat . '`)" class="mt-2 btn btn-sm btn-info w-100"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</a>';
@@ -478,7 +479,7 @@ class ObservasiController extends Controller
                             FROM SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI rso2
                             WHERE rso2.KARCIS = vkr.ID_TRANSAKSI
                             AND rso2.ID_ERM = h.id_asuhan_header
-                            AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 17
+                            AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 18
                         ) THEN 1
                         ELSE 0
                     END as sudah_integrasi,
@@ -507,7 +508,7 @@ class ObservasiController extends Controller
         ], 200);
     }
 
-    public function sendSatuSehat($param)
+    public function sendSatuSehat($param, $resend = false)
     {
         $param = base64_decode($param);
         $params = LZString::decompressFromEncodedURIComponent($param);
@@ -523,7 +524,7 @@ class ObservasiController extends Controller
         $id_unit = '001';
 
         if ($arrParam['jenis_perawatan'] == 'RAWAT_INAP') {
-            return $this->sendObservationRIToSATUSEHAT($arrParam, $id_unit);
+            return $this->sendObservationRIToSATUSEHAT($arrParam, $id_unit, $resend);
         }
 
         $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as eri')
@@ -570,6 +571,14 @@ class ObservasiController extends Controller
             $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
 
+        // Define observation mappings
+        $vitalSignsMap = [
+            'TD' => 'definePayloadTD',
+            'DJ' => 'definePayloadDJ',
+            'TB' => 'definePayloadTinggi',
+            'BB' => 'definePayloadBerat',
+        ];
+
         try {
             $basePayload = [
                 'resourceType' => 'Observation',
@@ -601,10 +610,51 @@ class ObservasiController extends Controller
                 'issued' => Carbon::now('Asia/Jakarta')->toIso8601String(),
             ];
 
-            $payloadTD = $this->definePayloadTD($dataErm, $organisasi);
-            $payloadDJ = $this->definePayloadDJ($dataErm, $organisasi);
-            $payloadTinggi = $this->definePayloadTinggi($dataErm, $organisasi);
-            $payloadBerat = $this->definePayloadBerat($dataErm, $organisasi);
+            foreach ($vitalSignsMap as $key => $method) {
+                if (!empty($dataErm->$key)) {
+                    $payload = $this->$method($dataErm, $organisasi);
+                    if ($payload) {
+                        if ($resend && $key != 'TD') {
+                            $dataObs = SATUSEHAT_OBSERVATION::where('karcis', $arrParam['karcis'])
+                                ->where('kbuku', $arrParam['kbuku'])
+                                ->where('id_erm', $dataErm->NOMOR)
+                                ->where('jenis', strtolower($key))
+                                ->first();
+
+                            $basePayload['id'] = $dataObs ? $dataObs->ID_SATUSEHAT_OBSERVASI : null;
+                        } else if ($resend && $key == 'TD') {
+                            $dataObsSistolik = SATUSEHAT_OBSERVATION::where('karcis', $arrParam['karcis'])
+                                ->where('kbuku', $arrParam['kbuku'])
+                                ->where('id_erm', $dataErm->NOMOR)
+                                ->where('jenis', strtolower($key) . '_sistolik')
+                                ->first();
+
+                            $dataObsDiastolik = SATUSEHAT_OBSERVATION::where('karcis', $arrParam['karcis'])
+                                ->where('kbuku', $arrParam['kbuku'])
+                                ->where('id_erm', $dataErm->NOMOR)
+                                ->where('jenis', strtolower($key) . '_diastolik')
+                                ->first();
+                        }
+
+                        if ($key == 'TD') {
+                            if ($resend) {
+                                $basePayloadSystolic = $basePayload;
+                                $basePayloadSystolic['id'] = $dataObsSistolik ? $dataObsSistolik->ID_SATUSEHAT_OBSERVASI : null;
+
+                                $basePayloadDiastolic = $basePayload;
+                                $basePayloadDiastolic['id'] = $dataObsDiastolik ? $dataObsDiastolik->ID_SATUSEHAT_OBSERVASI : null;
+                            }
+                            $payloadSystolic = array_merge($basePayloadSystolic, $payload[0]);
+                            $payloadDiastolic = array_merge($basePayloadDiastolic, $payload[1]);
+                            $payloadObservations[] = ['payload' => $payloadSystolic, 'type' => strtolower($key) . '_sistolik'];
+                            $payloadObservations[] = ['payload' => $payloadDiastolic, 'type' => strtolower($key) . '_diastolik'];
+                        } else {
+                            $payloadWithBase = array_merge($basePayload, $payload);
+                            $payloadObservations[] = ['payload' => $payloadWithBase, 'type' => strtolower($key)];
+                        }
+                    }
+                }
+            }
 
             $login = $this->login($id_unit);
             if ($login['metadata']['code'] != 200) {
@@ -612,14 +662,6 @@ class ObservasiController extends Controller
             }
 
             $token = $login['response']['token'];
-
-            $url = 'Observation';
-
-            $payloadSystolic = array_merge($basePayload, $payloadTD[0]);
-            $payloadDiastolic = array_merge($basePayload, $payloadTD[1]);
-            $payloadDJ = array_merge($basePayload, $payloadDJ);
-            $payloadTinggi = array_merge($basePayload, $payloadTinggi);
-            $payloadBerat = array_merge($basePayload, $payloadBerat);
 
             $dataKarcis = DB::table('RJ_KARCIS as rk')
                 ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
@@ -632,11 +674,21 @@ class ObservasiController extends Controller
                 ->where('KBUKU', $dataKarcis->KBUKU)
                 ->first();
 
-            SendObservationToSATUSEHAT::dispatch($payloadSystolic, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'sistolik');
-            SendObservationToSATUSEHAT::dispatch($payloadDiastolic, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'diastolik');
-            SendObservationToSATUSEHAT::dispatch($payloadDJ, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'denyut_jantung');
-            SendObservationToSATUSEHAT::dispatch($payloadTinggi, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'tinggi_badan');
-            SendObservationToSATUSEHAT::dispatch($payloadBerat, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'berat_badan');
+            // Dispatch all observations
+            $url = 'Observation';
+            foreach ($payloadObservations as $obs) {
+                if ($resend) {
+                    $dataObs = SATUSEHAT_OBSERVATION::where('karcis', $arrParam['karcis'])
+                        ->where('kbuku', $arrParam['kbuku'])
+                        ->where('id_erm', $dataErm->NOMOR)
+                        ->where('jenis', $obs['type'])
+                        ->first();
+
+                    $url = 'Observation/' . ($dataObs ? $dataObs->ID_SATUSEHAT_OBSERVASI : '');
+                }
+
+                SendObservationToSATUSEHAT::dispatch($obs['payload'], $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $obs['type'], $resend);
+            }
 
             return response()->json([
                 'status' => JsonResponse::HTTP_OK,
@@ -659,7 +711,7 @@ class ObservasiController extends Controller
         }
     }
 
-    private function sendObservationRIToSATUSEHAT($arrParam, $id_unit)
+    private function sendObservationRIToSATUSEHAT($arrParam, $id_unit, $resend = false)
     {
         $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as h')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_PENGKAJIAN_FISIK as d', 'h.id_asuhan_header', '=', 'd.id_asuhan_header')
@@ -671,7 +723,7 @@ class ObservasiController extends Controller
                 d.td AS TD,
                 d.suhu AS SUHU,
                 d.p AS P,
-                d.nadi AS NADI,
+                d.nadi AS DJ,
                 d.bb AS BB,
                 d.tb AS TB,
                 d.kesadaran AS KESADARAN,
@@ -788,11 +840,40 @@ class ObservasiController extends Controller
                 if (!empty($dataErm->$key)) {
                     $payload = $this->$method($dataErm, $organisasi);
                     if ($payload) {
+                        if ($resend && $key != 'TD') {
+                            $dataObs = SATUSEHAT_OBSERVATION::where('karcis', $arrParam['karcis'])
+                                ->where('kbuku', $arrParam['kbuku'])
+                                ->where('id_erm', $dataErm->NOMOR)
+                                ->where('jenis', strtolower($key))
+                                ->first();
+
+                            $basePayload['id'] = $dataObs ? $dataObs->ID_SATUSEHAT_OBSERVASI : null;
+                        } else if ($resend && $key == 'TD') {
+                            $dataObsSistolik = SATUSEHAT_OBSERVATION::where('karcis', $arrParam['karcis'])
+                                ->where('kbuku', $arrParam['kbuku'])
+                                ->where('id_erm', $dataErm->NOMOR)
+                                ->where('jenis', strtolower($key) . '_sistolik')
+                                ->first();
+
+                            $dataObsDiastolik = SATUSEHAT_OBSERVATION::where('karcis', $arrParam['karcis'])
+                                ->where('kbuku', $arrParam['kbuku'])
+                                ->where('id_erm', $dataErm->NOMOR)
+                                ->where('jenis', strtolower($key) . '_diastolik')
+                                ->first();
+                        }
+
                         if ($key == 'TD') {
-                            $payloadSystolic = array_merge($basePayload, $payload[0]);
-                            $payloadDiastolic = array_merge($basePayload, $payload[1]);
-                            $payloadObservations[] = ['payload' => $payloadSystolic, 'type' => strtolower($key)];
-                            $payloadObservations[] = ['payload' => $payloadDiastolic, 'type' => strtolower($key)];
+                            if ($resend) {
+                                $basePayloadSystolic = $basePayload;
+                                $basePayloadSystolic['id'] = $dataObsSistolik ? $dataObsSistolik->ID_SATUSEHAT_OBSERVASI : null;
+
+                                $basePayloadDiastolic = $basePayload;
+                                $basePayloadDiastolic['id'] = $dataObsDiastolik ? $dataObsDiastolik->ID_SATUSEHAT_OBSERVASI : null;
+                            }
+                            $payloadSystolic = array_merge($basePayloadSystolic, $payload[0]);
+                            $payloadDiastolic = array_merge($basePayloadDiastolic, $payload[1]);
+                            $payloadObservations[] = ['payload' => $payloadSystolic, 'type' => strtolower($key) . '_sistolik'];
+                            $payloadObservations[] = ['payload' => $payloadDiastolic, 'type' => strtolower($key) . '_diastolik'];
                         } else {
                             $payloadWithBase = array_merge($basePayload, $payload);
                             $payloadObservations[] = ['payload' => $payloadWithBase, 'type' => strtolower($key)];
@@ -806,6 +887,16 @@ class ObservasiController extends Controller
                 if (!empty($dataErm->$key)) {
                     $payload = $this->$method($dataErm, $organisasi, $key);
                     if ($payload) {
+                        if ($resend) {
+                            $dataObs = SATUSEHAT_OBSERVATION::where('karcis', $arrParam['karcis'])
+                                ->where('kbuku', $arrParam['kbuku'])
+                                ->where('id_erm', $dataErm->NOMOR)
+                                ->where('jenis', strtolower($key))
+                                ->first();
+
+                            $basePayload['id'] = $dataObs ? $dataObs->ID_SATUSEHAT_OBSERVASI : null;
+                        }
+
                         $basePayloadExam = $basePayload;
                         $basePayloadExam['category'] = [[
                             'coding' => [[
@@ -841,7 +932,18 @@ class ObservasiController extends Controller
 
             // Dispatch all observations
             foreach ($payloadObservations as $obs) {
-                SendObservationToSATUSEHAT::dispatch($obs['payload'], $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $obs['type']);
+                if ($resend) {
+                    $dataObs = SATUSEHAT_OBSERVATION::where('karcis', $arrParam['karcis'])
+                        ->where('kbuku', $arrParam['kbuku'])
+                        ->where('id_erm', $dataErm->NOMOR)
+                        ->where('jenis', $obs['type'])
+                        ->first();
+
+                    $url .= '/' . ($dataObs ? $dataObs->ID_SATUSEHAT_OBSERVASI : '');
+                }
+
+                SendObservationToSATUSEHAT::dispatch($obs['payload'], $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $obs['type'], $resend);
+                $url = 'Observation';
             }
 
             return response()->json([
@@ -872,6 +974,11 @@ class ObservasiController extends Controller
                 'to' => null,
             ]
         ], 200);
+    }
+
+    public function resendSatuSehat($param)
+    {
+        return $this->sendSatuSehat($param, true);
     }
 
     private function definePayloadDJ($dataErm, $organisasi)
