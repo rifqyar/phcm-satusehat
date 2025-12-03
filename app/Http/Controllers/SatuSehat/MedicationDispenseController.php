@@ -570,15 +570,19 @@ class MedicationDispenseController extends Controller
         try {
             $idTrans = $request->input('id_trans');
             if (empty($idTrans)) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Parameter id_trans wajib dikirim.'
-                ], 400);
+                return response()->json(
+                    [
+                        'status' => 'error',
+                        'message' => 'Parameter id_trans wajib dikirim.',
+                    ],
+                    400,
+                );
             }
 
             $this->cekDanKirimMedRequestdariDispense($idTrans);
 
-            $data = DB::select("
+            $data = DB::select(
+                "
             SELECT DISTINCT
                 i.ID_TRANS AS ID_RESEP_FARMASI,
                 slm1.ID as STATUS_KIRIM,
@@ -607,19 +611,24 @@ class MedicationDispenseController extends Controller
                 ON m.KD_BRG_KFA = s.KFA_CODE
                 AND i3.ID_TRANS = s.LOCAL_ID
                 and s.LOG_TYPE = 'MedicationRequest'
-            LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm 
+            LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm
                 on m.KD_BRG_KFA = slm.KFA_CODE and i.ID_TRANS = slm.LOCAL_ID and slm.LOG_TYPE = 'MedicationRequestFromDispense'
             LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm1
                 ON i.ID_TRANS = slm1.LOCAL_ID and slm1.LOG_TYPE = 'MedicationDispense'
                 AND m.KD_BRG_KFA = slm1.KFA_CODE AND slm1.STATUS = 'success'
-            WHERE i.ID_TRANS = ?
-        ", [$idTrans]);
+            WHERE m.KD_BRG_KFA IS NOT NULL AND m.KD_BRG_KFA <> 0 and i.ID_TRANS = ?
+        ",
+                [$idTrans],
+            );
 
             if (empty($data)) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => "Data tidak ditemukan untuk ID_TRANS $idTrans"
-                ], 404);
+                return response()->json(
+                    [
+                        'status' => 'error',
+                        'message' => "Data tidak ditemukan untuk ID_TRANS $idTrans",
+                    ],
+                    404,
+                );
             }
 
             $summary = [];
@@ -627,12 +636,11 @@ class MedicationDispenseController extends Controller
             $alreadySent = 0;
 
             foreach ($data as $item) {
-
                 // 💥 Jika sudah berhasil dikirim sebelumnya → skip
                 if (!empty($item->STATUS_KIRIM)) {
                     $summary[] = [
                         'medication' => $item->medicationReference_display,
-                        'status' => 'already_sent'
+                        'status' => 'already_sent',
                     ];
                     $alreadySent++;
                     continue;
@@ -643,7 +651,7 @@ class MedicationDispenseController extends Controller
                     $summary[] = [
                         'medication' => $item->medicationReference_display,
                         'status' => 'skipped',
-                        'reason' => 'MedicationRequest belum terkirim'
+                        'reason' => 'MedicationRequest belum terkirim',
                     ];
                     continue;
 
@@ -655,40 +663,51 @@ class MedicationDispenseController extends Controller
 
                 SendMedicationDispense::dispatch($payload, [
                     'idTrans' => $idTrans,
-                    'item' => $item
+                    'item' => $item,
                 ]);
 
                 $summary[] = [
                     'medication' => $item->medicationReference_display,
-                    'status' => 'queued'
+                    'status' => 'queued',
                 ];
             }
 
             // 💡 Jika 100% sudah pernah dikirim → return jelas
             if ($alreadySent === $total) {
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Transaksi ' . $idTrans . ' Sudah Terkirim.',
-                    'results' => $summary
-                ], 200);
+                return response()->json(
+                    [
+                        'status' => 'success',
+                        'message' => 'Transaksi ' . $idTrans . ' Sudah Terkirim.',
+                        'results' => $summary,
+                    ],
+                    200,
+                );
             }
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'MedicationDispense diproses via queue.',
-                'results' => $summary
-            ], 200);
+            return response()->json(
+                [
+                    'status' => 'success',
+                    'message' => 'MedicationDispense diproses via queue.',
+                    'results' => $summary,
+                ],
+                200,
+            );
         } catch (\Exception $e) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Exception: ' . $e->getMessage()
-            ], 500);
+            return response()->json(
+                [
+                    'status' => 'error',
+                    'message' => 'Exception: ' . $e->getMessage(),
+                ],
+                500,
+            );
         }
     }
 
     //kirim medrequest dari dispense secara otomatis
-    private function cekDanKirimMedRequestdariDispense($idTrans){
-        $data = DB::select("
+    private function cekDanKirimMedRequestdariDispense($idTrans)
+    {
+        $data = DB::select(
+            "
             SELECT DISTINCT
                 i.ID_TRANS AS ID_RESEP_FARMASI,
                 slm1.ID as STATUS_KIRIM,
@@ -717,22 +736,23 @@ class MedicationDispenseController extends Controller
                 ON m.KD_BRG_KFA = s.KFA_CODE
                 AND i3.ID_TRANS = s.LOCAL_ID
                 and s.LOG_TYPE = 'MedicationRequest'
-            LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm 
+            LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm
                 on m.KD_BRG_KFA = slm.KFA_CODE and i.ID_TRANS = slm.LOCAL_ID and slm.LOG_TYPE = 'MedicationRequestFromDispense'
             LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm1
                 ON i.ID_TRANS = slm1.LOCAL_ID and slm1.LOG_TYPE = 'MedicationDispense'
                 AND m.KD_BRG_KFA = slm1.KFA_CODE AND slm1.STATUS = 'success'
-            WHERE i.ID_TRANS = ?
-        ", [$idTrans]);
+            WHERE m.KD_BRG_KFA IS NOT NULL AND m.KD_BRG_KFA <> 0 and i.ID_TRANS = ?
+        ",
+            [$idTrans],
+        );
 
-            foreach ($data as $item) {
-                // 💥 Jika belum ada MedicationRequest → skip
-                if (empty($item->FHIR_MEDICATION_REQUEST_ID)) {
-                    $this->createMedicationRequestPayloadfromDispense1($idTrans, $item->KDBRG_CENTRA);
-                }
+        foreach ($data as $item) {
+            // 💥 Jika belum ada MedicationRequest → skip
+            if (empty($item->FHIR_MEDICATION_REQUEST_ID)) {
+                $this->createMedicationRequestPayloadfromDispense1($idTrans, $item->KDBRG_CENTRA);
             }
+        }
     }
-
 
     //buat payload dispense
     private function createMedicationDispensePayload($item)
@@ -843,363 +863,193 @@ class MedicationDispenseController extends Controller
         try {
             $idTrans = $request->input('idTrans');
             $kdbrg = $request->input('kdbrg');
-        if (empty($idTrans) || empty($kdbrg)) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Parameter idTrans dan kdbrg wajib dikirim.'
-            ], 400);
-        }
 
-            $data = DB::connection('sqlsrv')->select(
-                "SELECT
-                H1.ID_TRANS,
-                MT.FHIR_ID AS medicationReference,
-                MT.NAMABRG_KFA,
-                MT.KD_BRG_KFA,
-                MT.KDBRG_CENTRA,
-                MT.IS_COMPOUND,
-                B.id_satusehat_encounter,
-                P.idpx AS ID_PASIEN,
-                P.nama AS PASIEN,
-                N.idnakes AS ID_NAKES,
-                N.nama AS NAKES
-            FROM SIRS_PHCM.dbo.RJ_KARCIS A
-            INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA AS B ON A.KARCIS = B.karcis
-            INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES AS N ON B.id_satusehat_dokter = N.idnakes
-            INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN AS P ON B.id_satusehat_px = P.idpx
-            INNER JOIN SIRS_PHCM.dbo.IF_HTRANS_OL H ON A.KARCIS = H.KARCIS
-            INNER JOIN SIRS_PHCM.dbo.IF_HTRANS H1 ON H.ID_TRANS = H1.ID_TRANS_OL
-            INNER JOIN SIRS_PHCM.dbo.IF_TRANS H2 ON H1.ID_TRANS = H2.ID_TRANS
-            INNER JOIN SIRS_PHCM.dbo.M_TRANS_KFA MT ON H2.KDBRG_CENTRA = MT.KDBRG_CENTRA
-            WHERE H1.ID_TRANS = ? AND H2.KDBRG_CENTRA = ?
-        ",
-                [$idTrans, $kdbrg],
-            );
-
-            if (empty($data)) {
-                return response()->json(
-                    [
-                        'status' => 'error',
-                        'message' => 'Data transaksi atau obat tidak ditemukan',
-                    ],
-                    404,
-                );
+            if (empty($idTrans) || empty($kdbrg)) {
+                return response()->json(['status' => 'error', 'message' => 'Parameter idTrans dan kdbrg wajib dikirim'], 400);
             }
 
-            $item = $data[0];
-            $orgId = '266bf013-b70b-4dc2-b934-40858a5658cc';
-
-            // pastikan FHIR_ID sudah ada
-            if (empty($item->medicationReference)) {
-                app(\App\Http\Controllers\SatusehatKfaController::class)->processMedication($item->KDBRG_CENTRA);
-
-                $item->medicationReference = DB::connection('sqlsrv')->table('SIRS_PHCM.dbo.M_TRANS_KFA')->where('KDBRG_CENTRA', $item->KDBRG_CENTRA)->value('FHIR_ID');
-
-                if (empty($item->medicationReference)) {
-                    return response()->json(
-                        [
-                            'status' => 'error',
-                            'message' => 'Kode FHIR tidak dapat dari SATUSEHAT',
-                        ],
-                        500,
-                    );
-                }
-            }
-
-            $uniqueId = now()->format('YmdHis') . '-001';
-            $jenisCode = $item->IS_COMPOUND == 1 ? 'C' : 'NC';
-            $jenisName = $item->IS_COMPOUND == 1 ? 'Compound' : 'Non-compound';
-
-            $payload = [
-                'resourceType' => 'MedicationRequest',
-                'identifier' => [
-                    [
-                        'system' => 'http://sys-ids.kemkes.go.id/prescription',
-                        'use' => 'official',
-                        'value' => $uniqueId,
-                    ],
-                ],
-                'contained' => [
-                    [
-                        'resourceType' => 'Medication',
-                        'meta' => [
-                            'profile' => ['https://fhir.kemkes.go.id/r4/StructureDefinition/Medication'],
-                        ],
-                        'id' => $uniqueId,
-                        'identifier' => [
-                            [
-                                'system' => 'http://sys-ids.kemkes.go.id/medication',
-                                'use' => 'official',
-                                'value' => $item->KD_BRG_KFA,
-                            ],
-                        ],
-                        'code' => [
-                            'coding' => [
-                                [
-                                    'system' => 'http://sys-ids.kemkes.go.id/kfa',
-                                    'code' => $item->KD_BRG_KFA,
-                                    'display' => $item->NAMABRG_KFA,
-                                ],
-                            ],
-                        ],
-                        'status' => 'active',
-                        'manufacturer' => [
-                            'reference' => 'Organization/' . $orgId,
-                        ],
-                        'extension' => [
-                            [
-                                'url' => 'https://fhir.kemkes.go.id/r4/StructureDefinition/MedicationType',
-                                'valueCodeableConcept' => [
-                                    'coding' => [
-                                        [
-                                            'system' => 'http://terminology.kemkes.go.id/CodeSystem/medication-type',
-                                            'code' => $jenisCode,
-                                            'display' => $jenisName,
-                                        ],
-                                    ],
-                                ],
-                            ],
-                        ],
-                    ],
-                ],
-                'status' => 'completed',
-                'intent' => 'order',
-                'category' => [
-                    [
-                        'coding' => [
-                            [
-                                'system' => 'http://terminology.hl7.org/CodeSystem/medicationrequest-category',
-                                'code' => 'community',
-                                'display' => 'Community',
-                            ],
-                        ],
-                    ],
-                ],
-                'priority' => 'routine',
-                'medicationReference' => [
-                    'reference' => 'Medication/' . $item->medicationReference,
-                ],
-                'subject' => [
-                    'reference' => 'Patient/' . $item->ID_PASIEN,
-                    'display' => $item->PASIEN,
-                ],
-                'encounter' => [
-                    'reference' => 'Encounter/' . $item->id_satusehat_encounter,
-                ],
-                'authoredOn' => now()->format('Y-m-d\TH:i:sP'),
-                'requester' => [
-                    'reference' => 'Practitioner/' . $item->ID_NAKES,
-                    'display' => $item->NAKES,
-                ],
-            ];
-
-            JobsSendMedicationRequest::dispatch($payload, [
-                'idTrans' => $idTrans,
-                'item' => [
-                    'KD_BRG_KFA' => $item->KD_BRG_KFA,
-                    'NAMABRG_KFA' => $item->NAMABRG_KFA,
-                    'medicationReference' => $item->medicationReference,
-                    'ID_PASIEN' => $item->ID_PASIEN,
-                    'id_satusehat_encounter' => $item->id_satusehat_encounter,
-                    'FROM' => 'MedicationRequestFromDispense',
-                ],
-            ]);
-
-            return response()->json([
-                'status' => 'success',
-                'message' => 'MedicationRequest dari Dispense dikirim ke antrian',
-            ]);
+            $result = $this->buildMedicationRequestAndDispatch($idTrans, $kdbrg);
+            return $result['error'] ? $result['response'] : response()->json(['status' => 'success', 'message' => 'MedicationRequest dari Dispense dikirim ke antrian']);
         } catch (\Throwable $e) {
-            return response()->json(
-                [
-                    'status' => 'error',
-                    'message' => 'createMedicationRequestPayloadfromDispense exception: ' . $e->getMessage(),
-                ],
-                500,
-            );
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
     }
-
     public function createMedicationRequestPayloadfromDispense1($idTrans, $kdbrg)
     {
         try {
+            if (empty($idTrans) || empty($kdbrg)) {
+                return response()->json(['status' => 'error', 'message' => 'Parameter idTrans dan kdbrg wajib dikirim'], 400);
+            }
 
-        // Validasi final (internal + API)
-        if (empty($idTrans) || empty($kdbrg)) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Parameter idTrans dan kdbrg wajib dikirim.'
-            ], 400);
+            $result = $this->buildMedicationRequestAndDispatch($idTrans, $kdbrg);
+            return $result['error'] ? $result['response'] : response()->json(['status' => 'success', 'message' => 'MedicationRequest dari Dispense dikirim ke antrian']);
+        } catch (\Throwable $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
         }
+    }
+    private function buildMedicationRequestAndDispatch($idTrans, $kdbrg)
+    {
+        // Query data
+        $data = DB::connection('sqlsrv')->select(
+            "SELECT
+            H1.ID_TRANS,
+            MT.FHIR_ID AS medicationReference,
+            MT.NAMABRG_KFA,
+            MT.KD_BRG_KFA,
+            MT.KDBRG_CENTRA,
+            MT.IS_COMPOUND,
+            B.id_satusehat_encounter,
+            P.idpx AS ID_PASIEN,
+            P.nama AS PASIEN,
+            N.idnakes AS ID_NAKES,
+            N.nama AS NAKES
+        FROM SIRS_PHCM.dbo.RJ_KARCIS A
+        INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA AS B ON A.KARCIS = B.karcis
+        INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES AS N ON B.id_satusehat_dokter = N.idnakes
+        INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN AS P ON B.id_satusehat_px = P.idpx
+        INNER JOIN SIRS_PHCM.dbo.IF_HTRANS_OL H ON A.KARCIS = H.KARCIS
+        INNER JOIN SIRS_PHCM.dbo.IF_HTRANS H1 ON H.ID_TRANS = H1.ID_TRANS_OL
+        INNER JOIN SIRS_PHCM.dbo.IF_TRANS H2 ON H1.ID_TRANS = H2.ID_TRANS
+        INNER JOIN SIRS_PHCM.dbo.M_TRANS_KFA MT ON H2.KDBRG_CENTRA = MT.KDBRG_CENTRA
+        WHERE H1.ID_TRANS = ? AND H2.KDBRG_CENTRA = ?",
+            [$idTrans, $kdbrg],
+        );
 
-            $data = DB::connection('sqlsrv')->select(
-                "SELECT
-                H1.ID_TRANS,
-                MT.FHIR_ID AS medicationReference,
-                MT.NAMABRG_KFA,
-                MT.KD_BRG_KFA,
-                MT.KDBRG_CENTRA,
-                MT.IS_COMPOUND,
-                B.id_satusehat_encounter,
-                P.idpx AS ID_PASIEN,
-                P.nama AS PASIEN,
-                N.idnakes AS ID_NAKES,
-                N.nama AS NAKES
-            FROM SIRS_PHCM.dbo.RJ_KARCIS A
-            INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA AS B ON A.KARCIS = B.karcis
-            INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES AS N ON B.id_satusehat_dokter = N.idnakes
-            INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN AS P ON B.id_satusehat_px = P.idpx
-            INNER JOIN SIRS_PHCM.dbo.IF_HTRANS_OL H ON A.KARCIS = H.KARCIS
-            INNER JOIN SIRS_PHCM.dbo.IF_HTRANS H1 ON H.ID_TRANS = H1.ID_TRANS_OL
-            INNER JOIN SIRS_PHCM.dbo.IF_TRANS H2 ON H1.ID_TRANS = H2.ID_TRANS
-            INNER JOIN SIRS_PHCM.dbo.M_TRANS_KFA MT ON H2.KDBRG_CENTRA = MT.KDBRG_CENTRA
-            WHERE H1.ID_TRANS = ? AND H2.KDBRG_CENTRA = ?
-        ",
-                [$idTrans, $kdbrg],
-            );
-
-            if (empty($data)) {
-                return response()->json(
+        if (empty($data)) {
+            return [
+                'error' => true,
+                'response' => response()->json(
                     [
                         'status' => 'error',
                         'message' => 'Data transaksi atau obat tidak ditemukan',
                     ],
                     404,
-                );
-            }
+                ),
+            ];
+        }
 
-            $item = $data[0];
-            $orgId = '266bf013-b70b-4dc2-b934-40858a5658cc';
+        $item = $data[0];
+        $orgId = '266bf013-b70b-4dc2-b934-40858a5658cc';
 
-            // pastikan FHIR_ID sudah ada
+        // Pastikan FHIR ID
+        if (empty($item->medicationReference)) {
+            app(\App\Http\Controllers\SatusehatKfaController::class)->processMedication($item->KDBRG_CENTRA);
+            $item->medicationReference = DB::connection('sqlsrv')->table('SIRS_PHCM.dbo.M_TRANS_KFA')->where('KDBRG_CENTRA', $item->KDBRG_CENTRA)->value('FHIR_ID');
+
             if (empty($item->medicationReference)) {
-                app(\App\Http\Controllers\SatusehatKfaController::class)->processMedication($item->KDBRG_CENTRA);
-
-                $item->medicationReference = DB::connection('sqlsrv')->table('SIRS_PHCM.dbo.M_TRANS_KFA')->where('KDBRG_CENTRA', $item->KDBRG_CENTRA)->value('FHIR_ID');
-
-                if (empty($item->medicationReference)) {
-                    return response()->json(
+                return [
+                    'error' => true,
+                    'response' => response()->json(
                         [
                             'status' => 'error',
-                            'message' => 'Kode FHIR tidak dapat dari SATUSEHAT',
+                            'message' => 'Kode FHIR tidak didapat dari SATUSEHAT',
                         ],
                         500,
-                    );
-                }
+                    ),
+                ];
             }
+        }
 
-            $uniqueId = now()->format('YmdHis') . '-001';
-            $jenisCode = $item->IS_COMPOUND == 1 ? 'C' : 'NC';
-            $jenisName = $item->IS_COMPOUND == 1 ? 'Compound' : 'Non-compound';
+        $uniqueId = now()->format('YmdHis') . '-001';
+        $jenisCode = $item->IS_COMPOUND == 1 ? 'C' : 'NC';
+        $jenisName = $item->IS_COMPOUND == 1 ? 'Compound' : 'Non-compound';
 
-            $payload = [
-                'resourceType' => 'MedicationRequest',
-                'identifier' => [
-                    [
-                        'system' => 'http://sys-ids.kemkes.go.id/prescription',
-                        'use' => 'official',
-                        'value' => $uniqueId,
-                    ],
+        $payload = [
+            'resourceType' => 'MedicationRequest',
+            'identifier' => [
+                [
+                    'system' => 'http://sys-ids.kemkes.go.id/prescription',
+                    'use' => 'official',
+                    'value' => $uniqueId,
                 ],
-                'contained' => [
-                    [
-                        'resourceType' => 'Medication',
-                        'meta' => [
-                            'profile' => ['https://fhir.kemkes.go.id/r4/StructureDefinition/Medication'],
+            ],
+            'contained' => [
+                [
+                    'resourceType' => 'Medication',
+                    'meta' => [
+                        'profile' => ['https://fhir.kemkes.go.id/r4/StructureDefinition/Medication'],
+                    ],
+                    'id' => $uniqueId,
+                    'identifier' => [
+                        [
+                            'system' => 'http://sys-ids.kemkes.go.id/medication',
+                            'use' => 'official',
+                            'value' => $item->KD_BRG_KFA,
                         ],
-                        'id' => $uniqueId,
-                        'identifier' => [
+                    ],
+                    'code' => [
+                        'coding' => [
                             [
-                                'system' => 'http://sys-ids.kemkes.go.id/medication',
-                                'use' => 'official',
-                                'value' => $item->KD_BRG_KFA,
+                                'system' => 'http://sys-ids.kemkes.go.id/kfa',
+                                'code' => $item->KD_BRG_KFA,
+                                'display' => $item->NAMABRG_KFA,
                             ],
                         ],
-                        'code' => [
-                            'coding' => [
-                                [
-                                    'system' => 'http://sys-ids.kemkes.go.id/kfa',
-                                    'code' => $item->KD_BRG_KFA,
-                                    'display' => $item->NAMABRG_KFA,
-                                ],
-                            ],
-                        ],
-                        'status' => 'active',
-                        'manufacturer' => [
-                            'reference' => 'Organization/' . $orgId,
-                        ],
-                        'extension' => [
-                            [
-                                'url' => 'https://fhir.kemkes.go.id/r4/StructureDefinition/MedicationType',
-                                'valueCodeableConcept' => [
-                                    'coding' => [
-                                        [
-                                            'system' => 'http://terminology.kemkes.go.id/CodeSystem/medication-type',
-                                            'code' => $jenisCode,
-                                            'display' => $jenisName,
-                                        ],
+                    ],
+                    'status' => 'active',
+                    'manufacturer' => [
+                        'reference' => 'Organization/' . $orgId,
+                    ],
+                    'extension' => [
+                        [
+                            'url' => 'https://fhir.kemkes.go.id/r4/StructureDefinition/MedicationType',
+                            'valueCodeableConcept' => [
+                                'coding' => [
+                                    [
+                                        'system' => 'http://terminology.kemkes.go.id/CodeSystem/medication-type',
+                                        'code' => $jenisCode,
+                                        'display' => $jenisName,
                                     ],
                                 ],
                             ],
                         ],
                     ],
                 ],
-                'status' => 'completed',
-                'intent' => 'order',
-                'category' => [
-                    [
-                        'coding' => [
-                            [
-                                'system' => 'http://terminology.hl7.org/CodeSystem/medicationrequest-category',
-                                'code' => 'community',
-                                'display' => 'Community',
-                            ],
+            ],
+            'status' => 'completed',
+            'intent' => 'order',
+            'category' => [
+                [
+                    'coding' => [
+                        [
+                            'system' => 'http://terminology.hl7.org/CodeSystem/medicationrequest-category',
+                            'code' => 'community',
+                            'display' => 'Community',
                         ],
                     ],
                 ],
-                'priority' => 'routine',
-                'medicationReference' => [
-                    'reference' => 'Medication/' . $item->medicationReference,
-                ],
-                'subject' => [
-                    'reference' => 'Patient/' . $item->ID_PASIEN,
-                    'display' => $item->PASIEN,
-                ],
-                'encounter' => [
-                    'reference' => 'Encounter/' . $item->id_satusehat_encounter,
-                ],
-                'authoredOn' => now()->format('Y-m-d\TH:i:sP'),
-                'requester' => [
-                    'reference' => 'Practitioner/' . $item->ID_NAKES,
-                    'display' => $item->NAKES,
-                ],
-            ];
+            ],
+            'priority' => 'routine',
+            'medicationReference' => [
+                'reference' => 'Medication/' . $item->medicationReference,
+            ],
+            'subject' => [
+                'reference' => 'Patient/' . $item->ID_PASIEN,
+                'display' => $item->PASIEN,
+            ],
+            'encounter' => [
+                'reference' => 'Encounter/' . $item->id_satusehat_encounter,
+            ],
+            'authoredOn' => now()->format('Y-m-d\TH:i:sP'),
+            'requester' => [
+                'reference' => 'Practitioner/' . $item->ID_NAKES,
+                'display' => $item->NAKES,
+            ],
+        ];
 
-            JobsSendMedicationRequest::dispatch($payload, [
-                'idTrans' => $idTrans,
-                'item' => [
-                    'KD_BRG_KFA' => $item->KD_BRG_KFA,
-                    'NAMABRG_KFA' => $item->NAMABRG_KFA,
-                    'medicationReference' => $item->medicationReference,
-                    'ID_PASIEN' => $item->ID_PASIEN,
-                    'id_satusehat_encounter' => $item->id_satusehat_encounter,
-                    'FROM' => 'MedicationRequestFromDispense',
-                ],
-            ]);
+        JobsSendMedicationRequest::dispatch($payload, [
+            'idTrans' => $idTrans,
+            'item' => [
+                'KD_BRG_KFA' => $item->KD_BRG_KFA,
+                'NAMABRG_KFA' => $item->NAMABRG_KFA,
+                'medicationReference' => $item->medicationReference,
+                'ID_PASIEN' => $item->ID_PASIEN,
+                'id_satusehat_encounter' => $item->id_satusehat_encounter,
+                'FROM' => 'MedicationRequestFromDispense',
+            ],
+        ]);
 
-            return response()->json([
-                'status' => 'success',
-                'message' => 'MedicationRequest dari Dispense dikirim ke antrian',
-            ]);
-        } catch (\Throwable $e) {
-            return response()->json(
-                [
-                    'status' => 'error',
-                    'message' => 'createMedicationRequestPayloadfromDispense exception: ' . $e->getMessage(),
-                ],
-                500,
-            );
-        }
+        return ['error' => false];
     }
 
     // biar singkat ngecek kirim medication sekalian biar bisa dipanggil di fungsi lain
