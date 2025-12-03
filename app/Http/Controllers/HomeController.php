@@ -31,7 +31,7 @@ class HomeController extends Controller
             [
                 'title' => 'Observasi',
                 'url' => 'satusehat.observasi.index',
-                'bg_color' => 'card-info'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Tindakan',

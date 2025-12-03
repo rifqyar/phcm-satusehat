@@ -56,41 +56,169 @@ class ProcedureController extends Controller
                 MAX(vkr.ID_NAKES_SS) as ID_NAKES_SS,
                 MAX(rsn.id_satusehat_encounter) as id_satusehat_encounter,
                 MAX(rsp.ID_SATUSEHAT_PROCEDURE) as ID_SATUSEHAT_PROCEDURE,
+                'RAWAT_JALAN' AS JENIS_PERAWATAN,
                 CASE
-                    WHEN (
-                        -- Jika tidak ada data operasi tapi ada di erflo
-                        (EXISTS (SELECT 1 FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI erflo2
-                                WHERE erflo2.KARCIS = vkr.ID_TRANSAKSI)
-                        AND NOT EXISTS (SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp2
-                                        WHERE rsp2.KARCIS = vkr.ID_TRANSAKSI
-                                        AND rsp2.JENIS_TINDAKAN = 'operasi'
-                                        AND rsp2.ID_SATUSEHAT_PROCEDURE IS NOT NULL))
-                        OR
-                        -- Jika tidak ada data lab/rad tapi ada di ere
-                        (EXISTS (SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB ere2
-                                WHERE ere2.KARCIS_ASAL = vkr.ID_TRANSAKSI)
-                        AND NOT EXISTS (SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp3
-                                        WHERE rsp3.KARCIS = vkr.ID_TRANSAKSI
-                                        AND rsp3.JENIS_TINDAKAN IN ('lab', 'rad')
-                                        AND rsp3.ID_SATUSEHAT_PROCEDURE IS NOT NULL))
-                    ) THEN 0
-                    WHEN MAX(rsp.ID_SATUSEHAT_PROCEDURE) IS NOT NULL THEN 1
+                    WHEN
+                        (
+                            NOT EXISTS (
+                                SELECT 1 FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI op
+                                WHERE op.KARCIS = vkr.ID_TRANSAKSI
+                            )
+                            OR EXISTS (
+                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p1
+                                WHERE p1.KARCIS = vkr.ID_TRANSAKSI
+                                AND p1.JENIS_TINDAKAN = 'operasi'
+                                AND p1.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                            )
+                        )
+                        AND
+                        (
+                            NOT EXISTS (
+                                SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB lab
+                                WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
+                                AND lab.KLINIK_TUJUAN = '0017'
+                            )
+                            OR EXISTS (
+                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p2
+                                WHERE p2.KARCIS = vkr.ID_TRANSAKSI
+                                AND p2.JENIS_TINDAKAN = 'lab'
+                                AND p2.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                            )
+                        )
+                        AND
+                        (
+                            NOT EXISTS (
+                                SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB rad
+                                WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
+                                AND rad.KLINIK_TUJUAN = '0015'
+                            )
+                            OR EXISTS (
+                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p3
+                                WHERE p3.KARCIS = vkr.ID_TRANSAKSI
+                                AND p3.JENIS_TINDAKAN = 'rad'
+                                AND p3.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                            )
+                        )
+                        AND
+                        (
+                            EXISTS (
+                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p4
+                                WHERE p4.KARCIS = vkr.ID_TRANSAKSI
+                                AND p4.JENIS_TINDAKAN = 'anamnese'
+                                AND p4.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                            )
+                        )
+                    THEN 1
                     ELSE 0
-                END as sudah_integrasi,
+                END AS sudah_integrasi,
                 CASE WHEN MAX(eri.KARCIS) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
             ")
             ->groupBy('vkr.ID_TRANSAKSI')
             ->orderByDesc(DB::raw('MAX(vkr.TANGGAL)'))
             ->get();
 
-        $totalAll = $data->count();
-        $totalSudahIntegrasi = $data->where('sudah_integrasi', 1)->count();
+        $dataRi = DB::table('v_kunjungan_ri as vkr')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.NOREG')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere', 'eri.NOREG', '=', 'ere.KARCIS_ASAL')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI as erflo', 'eri.NOREG', '=', 'erflo.NOREG')
+            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
+                $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
+                    ->on('vkr.KBUKU', '=', 'rsn.kbuku');
+            })
+            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', function ($join) {
+                $join->on('vkr.ID_TRANSAKSI', '=', 'rsp.KARCIS')
+                    ->on('vkr.KBUKU', '=', 'rsp.KBUKU');
+            })
+            ->where('eri.AKTIF', 1)
+            ->whereBetween('vkr.TANGGAL', [$startDate, $endDate])
+            ->selectRaw("
+                vkr.ID_TRANSAKSI as KARCIS,
+                MAX(vkr.TANGGAL) as TANGGAL,
+                MAX(vkr.NO_PESERTA) as NO_PESERTA,
+                MAX(vkr.KBUKU) as KBUKU,
+                MAX(vkr.NAMA_PASIEN) as NAMA_PASIEN,
+                MAX(vkr.DOKTER) as DOKTER,
+                MAX(vkr.ID_PASIEN_SS) as ID_PASIEN_SS,
+                MAX(vkr.ID_NAKES_SS) as ID_NAKES_SS,
+                MAX(rsn.id_satusehat_encounter) as id_satusehat_encounter,
+                MAX(rsp.ID_SATUSEHAT_PROCEDURE) as ID_SATUSEHAT_PROCEDURE,
+                'RAWAT_INAP' AS JENIS_PERAWATAN,
+
+                CASE
+                    WHEN
+                    (
+                        NOT EXISTS (
+                            SELECT 1 FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI op
+                            WHERE op.KARCIS = vkr.ID_TRANSAKSI
+                        )
+                        OR EXISTS (
+                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p1
+                            WHERE p1.KARCIS = vkr.ID_TRANSAKSI
+                            AND p1.JENIS_TINDAKAN = 'operasi'
+                            AND p1.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                        )
+                    )
+                    AND
+                    (
+                        NOT EXISTS (
+                            SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB lab
+                            WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
+                            AND lab.KLINIK_TUJUAN = '0017'
+                        )
+                        OR EXISTS (
+                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p2
+                            WHERE p2.KARCIS = vkr.ID_TRANSAKSI
+                            AND p2.JENIS_TINDAKAN = 'lab'
+                            AND p2.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                        )
+                    )
+                    AND
+                    (
+                        NOT EXISTS (
+                            SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB rad
+                            WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
+                            AND rad.KLINIK_TUJUAN = '0015'
+                        )
+                        OR EXISTS (
+                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p3
+                            WHERE p3.KARCIS = vkr.ID_TRANSAKSI
+                            AND p3.JENIS_TINDAKAN = 'rad'
+                            AND p3.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                        )
+                    )
+                    AND
+                    (
+                        EXISTS (
+                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p4
+                            WHERE p4.KARCIS = vkr.ID_TRANSAKSI
+                            AND p4.JENIS_TINDAKAN = 'anamnese'
+                            AND p4.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                        )
+                    )
+                THEN 1
+                ELSE 0
+                END AS sudah_integrasi,
+
+                CASE WHEN MAX(eri.NOREG) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
+            ")
+            ->groupBy('vkr.ID_TRANSAKSI')
+            ->orderByDesc(DB::raw('MAX(vkr.TANGGAL)'))
+            ->get();
+
+        $mergedAll = $data->merge($dataRi)
+            ->sortByDesc('TANGGAL')
+            ->values();
+
+        $totalAll = $mergedAll->count();
+        $totalSudahIntegrasi = $mergedAll->where('sudah_integrasi', 1)->count();
         $totalBelumIntegrasi = $totalAll - $totalSudahIntegrasi;
 
         $result = [
             'total_semua' => $totalAll,
             'total_sudah_integrasi' => $totalSudahIntegrasi,
             'total_belum_integrasi' => $totalBelumIntegrasi,
+            'total_rawat_jalan' => $mergedAll->where('JENIS_PERAWATAN', 'RAWAT_JALAN')->count(),
+            'total_rawat_inap' => $mergedAll->where('JENIS_PERAWATAN', 'RAWAT_INAP')->count(),
         ];
 
         return view('pages.satusehat.procedure.index', compact('result'));
@@ -142,32 +270,170 @@ class ProcedureController extends Controller
                 MAX(vkr.ID_NAKES_SS) as ID_NAKES_SS,
                 MAX(rsn.id_satusehat_encounter) as id_satusehat_encounter,
                 MAX(rsp.ID_SATUSEHAT_PROCEDURE) as ID_SATUSEHAT_PROCEDURE,
+                'RAWAT_JALAN' AS JENIS_PERAWATAN,
                 CASE
-                    WHEN (
-                        -- Jika tidak ada data operasi tapi ada di erflo
-                        (EXISTS (SELECT 1 FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI erflo2
-                                WHERE erflo2.KARCIS = vkr.ID_TRANSAKSI)
-                        AND NOT EXISTS (SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp2
-                                        WHERE rsp2.KARCIS = vkr.ID_TRANSAKSI
-                                        AND rsp2.JENIS_TINDAKAN = 'operasi'
-                                        AND rsp2.ID_SATUSEHAT_PROCEDURE IS NOT NULL))
-                        OR
-                        -- Jika tidak ada data lab/rad tapi ada di ere
-                        (EXISTS (SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB ere2
-                                WHERE ere2.KARCIS_ASAL = vkr.ID_TRANSAKSI)
-                        AND NOT EXISTS (SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp3
-                                        WHERE rsp3.KARCIS = vkr.ID_TRANSAKSI
-                                        AND rsp3.JENIS_TINDAKAN IN ('lab', 'rad')
-                                        AND rsp3.ID_SATUSEHAT_PROCEDURE IS NOT NULL))
-                    ) THEN 0
-                    WHEN MAX(rsp.ID_SATUSEHAT_PROCEDURE) IS NOT NULL THEN 1
+                    WHEN
+                        (
+                            NOT EXISTS (
+                                SELECT 1 FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI op
+                                WHERE op.KARCIS = vkr.ID_TRANSAKSI
+                            )
+                            OR EXISTS (
+                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p1
+                                WHERE p1.KARCIS = vkr.ID_TRANSAKSI
+                                AND p1.JENIS_TINDAKAN = 'operasi'
+                                AND p1.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                            )
+                        )
+                        AND
+                        (
+                            NOT EXISTS (
+                                SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB lab
+                                WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
+                                AND lab.KLINIK_TUJUAN = '0017'
+                            )
+                            OR EXISTS (
+                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p2
+                                WHERE p2.KARCIS = vkr.ID_TRANSAKSI
+                                AND p2.JENIS_TINDAKAN = 'lab'
+                                AND p2.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                            )
+                        )
+                        AND
+                        (
+                            NOT EXISTS (
+                                SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB rad
+                                WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
+                                AND rad.KLINIK_TUJUAN = '0015'
+                            )
+                            OR EXISTS (
+                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p3
+                                WHERE p3.KARCIS = vkr.ID_TRANSAKSI
+                                AND p3.JENIS_TINDAKAN = 'rad'
+                                AND p3.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                            )
+                        )
+                        AND
+                        (
+                            EXISTS (
+                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p4
+                                WHERE p4.KARCIS = vkr.ID_TRANSAKSI
+                                AND p4.JENIS_TINDAKAN = 'anamnese'
+                                AND p4.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                            )
+                        )
+                    THEN 1
                     ELSE 0
-                END as sudah_integrasi,
+                END AS sudah_integrasi,
                 CASE WHEN MAX(eri.KARCIS) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
             ")
             ->groupBy('vkr.ID_TRANSAKSI');
 
-        $totalData = $dataQuery->get();
+        $riQuery = DB::table('v_kunjungan_ri as vkr')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.NOREG')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere', 'eri.NOREG', '=', 'ere.KARCIS_ASAL')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI as erflo', 'eri.NOREG', '=', 'erflo.NOREG')
+            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
+                $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
+                    ->on('vkr.KBUKU', '=', 'rsn.kbuku');
+            })
+            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', function ($join) {
+                $join->on('vkr.ID_TRANSAKSI', '=', 'rsp.KARCIS')
+                    ->on('vkr.KBUKU', '=', 'rsp.KBUKU');
+            })
+            ->where('eri.AKTIF', 1)
+            ->whereBetween('vkr.TANGGAL', [$tgl_awal_db, $tgl_akhir_db])
+            ->selectRaw("
+                vkr.ID_TRANSAKSI as KARCIS,
+                MAX(vkr.TANGGAL) as TANGGAL,
+                MAX(vkr.NO_PESERTA) as NO_PESERTA,
+                MAX(vkr.KBUKU) as KBUKU,
+                MAX(vkr.NAMA_PASIEN) as NAMA_PASIEN,
+                MAX(vkr.DOKTER) as DOKTER,
+                MAX(vkr.ID_PASIEN_SS) as ID_PASIEN_SS,
+                MAX(vkr.ID_NAKES_SS) as ID_NAKES_SS,
+                MAX(rsn.id_satusehat_encounter) as id_satusehat_encounter,
+                MAX(rsp.ID_SATUSEHAT_PROCEDURE) as ID_SATUSEHAT_PROCEDURE,
+                'RAWAT_INAP' AS JENIS_PERAWATAN,
+                CASE
+                    WHEN
+                    (
+                        NOT EXISTS (
+                            SELECT 1 FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI op
+                            WHERE op.KARCIS = vkr.ID_TRANSAKSI
+                        )
+                        OR EXISTS (
+                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p1
+                            WHERE p1.KARCIS = vkr.ID_TRANSAKSI
+                            AND p1.JENIS_TINDAKAN = 'operasi'
+                            AND p1.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                        )
+                    )
+                    AND
+                    (
+                        NOT EXISTS (
+                            SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB lab
+                            WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
+                            AND lab.KLINIK_TUJUAN = '0017'
+                        )
+                        OR EXISTS (
+                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p2
+                            WHERE p2.KARCIS = vkr.ID_TRANSAKSI
+                            AND p2.JENIS_TINDAKAN = 'lab'
+                            AND p2.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                        )
+                    )
+                    AND
+                    (
+                        NOT EXISTS (
+                            SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB rad
+                            WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
+                            AND rad.KLINIK_TUJUAN = '0015'
+                        )
+                        OR EXISTS (
+                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p3
+                            WHERE p3.KARCIS = vkr.ID_TRANSAKSI
+                            AND p3.JENIS_TINDAKAN = 'rad'
+                            AND p3.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                        )
+                    )
+                    AND
+                    (
+                        EXISTS (
+                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p4
+                            WHERE p4.KARCIS = vkr.ID_TRANSAKSI
+                            AND p4.JENIS_TINDAKAN = 'anamnese'
+                            AND p4.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                        )
+                    )
+                THEN 1
+                ELSE 0
+                END AS sudah_integrasi,
+                CASE WHEN MAX(eri.NOREG) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
+            ")
+            ->groupBy('vkr.ID_TRANSAKSI');
+
+        $mergedQuery = $dataQuery->unionAll($riQuery);
+
+        $dataAll = DB::query()
+            ->fromSub($mergedQuery, 'x')
+            ->groupBy([
+                'x.JENIS_PERAWATAN',
+                'x.SUDAH_INTEGRASI',
+                'x.SUDAH_PROSES_DOKTER',
+                'x.KARCIS',
+                'x.TANGGAL',
+                'x.NO_PESERTA',
+                'x.KBUKU',
+                'x.NAMA_PASIEN',
+                'x.DOKTER',
+                'x.ID_PASIEN_SS',
+                'x.ID_NAKES_SS',
+                'x.id_satusehat_encounter',
+                'x.ID_SATUSEHAT_PROCEDURE',
+            ]);
+
+        $totalData = $dataAll->get();
         $totalAll = $totalData->count();
         $totalSudahIntegrasi = $totalData->where('sudah_integrasi', 1)->count();
         $totalBelumIntegrasi = $totalAll - $totalSudahIntegrasi;
@@ -176,19 +442,24 @@ class ProcedureController extends Controller
             'total_semua' => $totalAll,
             'total_sudah_integrasi' => $totalSudahIntegrasi,
             'total_belum_integrasi' => $totalBelumIntegrasi,
+            'total_rawat_jalan' => $totalData->where('JENIS_PERAWATAN', 'RAWAT_JALAN')->count(),
+            'total_rawat_inap' => $totalData->where('JENIS_PERAWATAN', 'RAWAT_INAP')->count(),
         ];
 
         $cari = $request->input('cari');
         if ($cari === 'mapped') {
-            $dataQuery->whereNotNull('rsp.karcis');
+            $dataAll->whereNotNull('x.ID_SATUSEHAT_PROCEDURE');
         } elseif ($cari === 'unmapped') {
-            $dataQuery->whereNull('rsp.karcis');
+            $dataAll->whereNull('x.ID_SATUSEHAT_PROCEDURE');
         }
 
-        $data = $dataQuery->orderByDesc(DB::raw('MAX(vkr.TANGGAL)'))->get();
+        $data = $dataAll->orderByDesc(DB::raw('MAX(x.TANGGAL)'))->get();
 
         return DataTables::of($data)
             ->addIndexColumn()
+            ->editColumn('JENIS_PERAWATAN', function ($row) {
+                return $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
+            })
             ->addColumn('checkbox', function ($row) {
                 $checkBox = '';
                 if ($row->sudah_integrasi == '0' && ($row->ID_PASIEN_SS != null && $row->ID_NAKES_SS != null && $row->id_satusehat_encounter != null)) {
@@ -209,10 +480,11 @@ class ProcedureController extends Controller
                 $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
                 $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
                 $idEncounter = LZString::compressToEncodedURIComponent($row->id_satusehat_encounter);
-                $paramSatuSehat = "sudah_integrasi=$row->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter";
+                $jenisPerawatan = LZString::compressToEncodedURIComponent($row->JENIS_PERAWATAN);
+                $paramSatuSehat = "sudah_integrasi=$row->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=$jenisPerawatan";
                 $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
-                $param = LZString::compressToEncodedURIComponent("karcis=$id_transaksi&kbuku=$KbBuku");
+                $param = LZString::compressToEncodedURIComponent("karcis=$id_transaksi&kbuku=$KbBuku&jenis_perawatan=$jenisPerawatan");
                 $btn = '';
                 if ($row->ID_PASIEN_SS == null) {
                     $btn = '<i class="text-muted">Pasien Belum Mapping</i>';
@@ -271,64 +543,119 @@ class ProcedureController extends Controller
         }
 
         $dataPasien = DB::table('RIRJ_MASTERPX')->select('NAMA', 'KBUKU', 'NO_PESERTA')->where("KBUKU", $arrParam['kbuku'])->first();
-        $dataErm = DB::table('v_kunjungan_rj as vkr')
-            ->select([
-                'vkr.ID_TRANSAKSI',
-                'vkr.NAMA_PASIEN',
-                'vkr.TANGGAL',
-                'eri.KODE_DIAGNOSA_UTAMA',
-                'eri.DIAG_UTAMA',
-                'eri.KODE_DIAGNOSA_SEKUNDER',
-                'eri.DIAG_SEKUNDER',
-                'eri.KODE_DIAGNOSA_KOMPLIKASI',
-                'eri.DIAG_KOMPLIKASI',
-                'eri.KODE_DIAGNOSA_PENYEBAB',
-                'eri.PENYEBAB',
-                'eri.ANAMNESE',
-                'eri.BB',
-                'eri.TB',
-                'eri.DJ',
-                'eri.TD',
-                'eri.CRTUSR',
-                'eri.CRTDT',
-                'eri.NOMOR'
-            ])
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri', function ($join) {
-                $join->on('vkr.ID_TRANSAKSI', '=', 'eri.KARCIS');
-            })
-            ->where('vkr.KBUKU', $arrParam['kbuku'])
-            ->where('vkr.ID_TRANSAKSI', $arrParam['karcis'])
-            ->orderByDesc('vkr.TANGGAL')
-            ->first();
+        if ($arrParam['jenis_perawatan'] == 'RAWAT_JALAN') {
+            $dataErm = DB::table('v_kunjungan_rj as vkr')
+                ->select([
+                    'vkr.ID_TRANSAKSI',
+                    'vkr.NAMA_PASIEN',
+                    'vkr.TANGGAL',
+                    'eri.KODE_DIAGNOSA_UTAMA',
+                    'eri.DIAG_UTAMA',
+                    'eri.KODE_DIAGNOSA_SEKUNDER',
+                    'eri.DIAG_SEKUNDER',
+                    'eri.KODE_DIAGNOSA_KOMPLIKASI',
+                    'eri.DIAG_KOMPLIKASI',
+                    'eri.KODE_DIAGNOSA_PENYEBAB',
+                    'eri.PENYEBAB',
+                    'eri.ANAMNESE',
+                    'eri.BB',
+                    'eri.TB',
+                    'eri.DJ',
+                    'eri.TD',
+                    'eri.CRTUSR',
+                    'eri.CRTDT',
+                    'eri.NOMOR'
+                ])
+                ->leftJoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri', function ($join) {
+                    $join->on('vkr.ID_TRANSAKSI', '=', 'eri.KARCIS');
+                })
+                ->where('vkr.KBUKU', $arrParam['kbuku'])
+                ->where('vkr.ID_TRANSAKSI', $arrParam['karcis'])
+                ->orderByDesc('vkr.TANGGAL')
+                ->first();
 
+            $dataErm->jenis_perawatan = 'RJ';
+        } else if ($arrParam['jenis_perawatan'] == 'RAWAT_INAP') {
+            $dataErm = DB::table('v_kunjungan_ri as vkr')
+                ->selectRaw("
+                    MAX(vkr.ID_TRANSAKSI) AS ID_TRANSAKSI,
+                    MAX(vkr.TANGGAL) AS TANGGAL,
+                    MAX(vkr.NO_PESERTA) AS NO_PESERTA,
+                    MAX(vkr.KBUKU) AS KBUKU,
+                    MAX(vkr.NAMA_PASIEN) AS NAMA_PASIEN,
+                    MAX(vkr.DOKTER) AS DOKTER,
+                    MAX(vkr.ID_PASIEN_SS) AS ID_PASIEN_SS,
+                    MAX(vkr.ID_NAKES_SS) AS ID_NAKES_SS,
+                    MAX(h.nmDok) as CRTUSR,
+                    MAX(d.td) AS TD,
+                    MAX(d.suhu) AS SUHU,
+                    MAX(d.p) AS P,
+                    MAX(d.nadi) AS NADI,
+                    MAX(d.bb) AS BB,
+                    MAX(d.tb) AS TB,
+                    MAX(eri2.KODE_DIAGNOSA_UTAMA) as KODE_DIAGNOSA_UTAMA,
+                    MAX(eri2.DIAG_UTAMA) as DIAG_UTAMA,
+                    MAX(eri2.KODE_DIAGNOSA_SEKUNDER) as KODE_DIAGNOSA_SEKUNDER,
+                    MAX(eri2.DIAG_SEKUNDER) as DIAG_SEKUNDER,
+                    MAX(eri2.KODE_DIAGNOSA_KOMPLIKASI) as KODE_DIAGNOSA_KOMPLIKASI,
+                    MAX(eri2.DIAG_KOMPLIKASI) as DIAG_KOMPLIKASI,
+                    MAX(eri2.KODE_DIAGNOSA_PENYEBAB) as KODE_DIAGNOSA_PENYEBAB,
+                    MAX(eri2.PENYEBAB) as PENYEBAB,
+                    MAX(eri2.ANAMNESE) as ANAMNESE,
+                    MAX(h.id_asuhan_header) AS NOMOR
+                ")
+                ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as h', function ($join) {
+                    $join->on('vkr.ID_TRANSAKSI', '=', 'h.noreg')
+                        ->on('vkr.KBUKU', '=', 'h.norm');
+                })
+                ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_PENGKAJIAN_FISIK as d', 'h.id_asuhan_header', '=', 'd.id_asuhan_header')
+                ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI as rso', function ($join) {
+                    $join->on('vkr.ID_TRANSAKSI', '=', 'rso.KARCIS')
+                        ->on('vkr.KBUKU', '=', 'rso.KBUKU');
+                })
+                ->leftjoin('RJ_KARCIS as rk', 'rk.NOREG', 'vkr.ID_TRANSAKSI')
+                ->leftjoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri2', 'eri2.KARCIS', 'rk.KARCIS')
+                ->where('vkr.KBUKU', $arrParam['kbuku'])
+                ->where('vkr.ID_TRANSAKSI', $arrParam['karcis'])
+                ->first();
+            $dataErm->jenis_perawatan = 'RJ';
+        }
+
+        if ($arrParam['jenis_perawatan'] == 'RAWAT_JALAN') {
+            $ermTable = 'ERM_RM_IRJA';
+            $karcisField = 'eri.KARCIS';
+        } else {
+            $ermTable = 'ERM_RI_F_ASUHAN_KEP_AWAL_HEAD';
+            $karcisField = 'eri.NOREG';
+        }
         // GET DATA ELAB
-        $dataLab = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as eri')
+        $dataLab = DB::table('E_RM_PHCM.dbo.' . $ermTable . ' as eri')
             ->select([
                 'ere.ID_RIWAYAT_ELAB',
-                'eri.KARCIS',
-                'eri.ANAMNESE',
+                $karcisField,
+                // 'eri.ANAMNESE',
                 'ere.ARRAY_TINDAKAN',
                 'ere.TANGGAL_ENTRI'
             ])
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere', 'eri.KARCIS', 'ere.KARCIS_ASAL')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere', $karcisField, 'ere.KARCIS_ASAL')
             ->where('eri.AKTIF', 1)
             ->where('ere.KLINIK_TUJUAN', '0017')
-            ->where('eri.KARCIS', $arrParam['karcis'])
+            ->where($karcisField, $arrParam['karcis'])
             ->get();
 
         // GET DATA ERAD
-        $dataRad = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as eri')
+        $dataRad = DB::table('E_RM_PHCM.dbo.' . $ermTable . ' as eri')
             ->select([
                 'ere.ID_RIWAYAT_ELAB',
-                'eri.KARCIS',
-                'eri.ANAMNESE',
+                $karcisField,
+                // 'eri.ANAMNESE',
                 'ere.ARRAY_TINDAKAN',
                 'ere.TANGGAL_ENTRI'
             ])
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere', 'eri.KARCIS', 'ere.KARCIS_ASAL')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere', $karcisField, 'ere.KARCIS_ASAL')
             ->where('eri.AKTIF', 1)
             ->where('ere.KLINIK_TUJUAN', '0015')
-            ->where('eri.KARCIS', $arrParam['karcis'])
+            ->where($karcisField, $arrParam['karcis'])
             ->get();
 
         // Pluck array tindakan untuk parameter where in
@@ -338,7 +665,6 @@ class ProcedureController extends Controller
             ->flatMap(function ($item) {
                 return explode(',', $item);
             })
-            ->map('trim')
             ->filter()
             ->unique()
             ->values();
@@ -355,6 +681,7 @@ class ProcedureController extends Controller
             ->values();
 
         // Ambil data nama tindakan lab & radiologi
+
         $tindakanLab = DB::table('RIRJ_MTINDAKAN')->whereIn('KD_TIND', $kdTindakanLab)->get();
         $tindakanRad = DB::table('RIRJ_MTINDAKAN')->whereIn('KD_TIND', $kdTindakanRad)->get();
 
@@ -366,8 +693,9 @@ class ProcedureController extends Controller
         $statusIntegrasiAnamnese = $dataICDAnamnese->whereNotNull('ID_SATUSEHAT_PROCEDURE')->count();
 
         $dataICDLab = SATUSEHAT_PROCEDURE::where('KARCIS', $arrParam['karcis'])
-            ->where('ID_JENIS_TINDAKAN', $dataLab->first()->ID_RIWAYAT_ELAB ?? null)
+            ->whereIn('ID_JENIS_TINDAKAN', $dataLab->pluck('ID_RIWAYAT_ELAB')->toArray() ?? null)
             ->get();
+
         $statusIntegrasiLab = $dataICDLab->whereNotNull('ID_SATUSEHAT_PROCEDURE')->count();
 
         $dataICDRad = SATUSEHAT_PROCEDURE::where('KARCIS', $arrParam['karcis'])
@@ -452,15 +780,29 @@ class ProcedureController extends Controller
          * 5. Buat Queue Pengiriman ke satu sehat
          */
 
-        $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as eri')
-            ->select([
-                'eri.NOMOR',
-                'eri.KODE_DIAGNOSA_UTAMA',
-                'eri.DIAG_UTAMA',
-                'eri.CRTDT'
-            ])
-            ->where('karcis', $arrParam['karcis'])
-            ->first();
+        if ($arrParam['jenis_perawatan'] == 'RAWAT_JALAN') {
+            $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as eri')
+                ->select([
+                    'eri.NOMOR',
+                    'eri.KODE_DIAGNOSA_UTAMA',
+                    'eri.DIAG_UTAMA',
+                    'eri.CRTDT'
+                ])
+                ->where('karcis', $arrParam['karcis'])
+                ->first();
+        } else {
+            $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as eri')
+                ->leftjoin('RJ_KARCIS as rk', 'rk.NOREG', 'eri.noreg')
+                ->leftjoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri2', 'eri2.KARCIS', 'rk.KARCIS')
+                ->select([
+                    'eri.ID_ASUHAN_HEADER as NOMOR',
+                    'eri2.KODE_DIAGNOSA_UTAMA',
+                    'eri2.DIAG_UTAMA',
+                    'eri.CRT_DT as CRTDT'
+                ])
+                ->where('eri.noreg', $arrParam['karcis'])
+                ->first();
+        }
 
         $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
             ->where('idpx', $arrParam['id_pasien_ss'])
@@ -481,8 +823,8 @@ class ProcedureController extends Controller
 
         try {
             $dataKarcis = DB::table('RJ_KARCIS as rk')
-                ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
-                ->where('rk.KARCIS', $arrParam['karcis'])
+                ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU', 'rk.NOREG')
+                ->where($arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? 'rk.KARCIS' : 'rk.NOREG', $arrParam['karcis'])
                 ->where('rk.IDUNIT', $id_unit)
                 ->orderBy('rk.TGL', 'DESC')
                 ->first();
@@ -608,28 +950,26 @@ class ProcedureController extends Controller
 
     private function definePayloadLab($param, $patient, $request, $dataErm)
     {
-        $dataLab = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as eri')
+
+        $dataLab = DB::table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
             ->select([
-                'ere.ID_RIWAYAT_ELAB',
-                'eri.KARCIS',
-                'eri.ANAMNESE',
-                'ere.ARRAY_TINDAKAN',
-                'ere.TANGGAL_ENTRI',
-                'ere.KDDOK',
-                'ere.KET_TINDAKAN'
+                'ere.KDDOK_TUJUAN as KDDOK',
+                'ered.ID_RIWAYAT_ELAB',
+                'ered.KD_TINDAKAN',
+                'ere.TANGGAL_ENTRI'
             ])
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere', 'eri.KARCIS', 'ere.KARCIS_ASAL')
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', 'ere.ID_RIWAYAT_ELAB', '=', 'rsp.ID_JENIS_TINDAKAN')
-            ->where('eri.AKTIF', 1)
+            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', 'ered.KD_TINDAKAN', '=', 'rsp.ID_TINDAKAN')
             ->where('ere.KLINIK_TUJUAN', '0017')
-            ->where('eri.KARCIS', $param['karcis'])
+            ->where('ere.KARCIS_ASAL', $param['karcis'])
             ->where(function ($q) {
-                $q->whereNull('rsp.ID_JENIS_TINDAKAN')
+                $q->whereNull('rsp.ID_TINDAKAN')
                     ->orWhereNull('rsp.ID_SATUSEHAT_PROCEDURE')
                     ->orWhere('rsp.ID_SATUSEHAT_PROCEDURE', '=', '');
             })
-            ->first();
+            ->get();
 
+        $icd9Data = json_decode($request->icd9_lab);
         if (!empty($dataLab)) {
             $category = [
                 "coding" => [
@@ -641,27 +981,31 @@ class ProcedureController extends Controller
                 ],
                 "text" => "Diagnostic procedure",
             ];
-            $code = [];
-            $icd9 = json_decode($request->icd9_lab, true);
-            $texticd9 = json_decode($request->text_icd9_lab, true);
 
-            for ($i = 0; $i < count($icd9); $i++) {
+            $code = [];
+            for ($i = 0; $i < count($dataLab); $i++) {
+                $icd9 = $icd9Data[$i]->icd9;
+                $texticd9 = $icd9Data[$i]->text_icd9;
+
                 array_push($code, [
                     "system" => "http://hl7.org/fhir/sid/icd-9-cm",
-                    "code" => "$icd9[$i]",
-                    "display" => "$texticd9[$i]",
+                    "code" => "$icd9",
+                    "display" => "$texticd9",
                 ]);
             }
 
-            $nakes = SS_Nakes::where('kddok', $dataLab->KDDOK)->first();
-            $performer = [
-                [
+
+            $performer = [];
+            for ($i = 0; $i < count($dataLab); $i++) {
+                $nakes = SS_Nakes::where('kddok', $dataLab[$i]->KDDOK)->first();
+
+                $performer[] = [
                     "actor" => [
                         "reference" => "Practitioner/$nakes->idnakes",
-                        "display" => "$nakes->nama",
-                    ],
-                ]
-            ];
+                        "display"   => $nakes->nama,
+                    ]
+                ];
+            }
 
             $reasonCode = [
                 [
@@ -676,7 +1020,6 @@ class ProcedureController extends Controller
             ];
 
             Carbon::setLocale('id');
-            $tglText = Carbon::parse($dataLab->TANGGAL_ENTRI)->translatedFormat('l, d F Y');
             $payload = [
                 "resourceType" => "Procedure",
                 "status" => "completed",
@@ -693,7 +1036,7 @@ class ProcedureController extends Controller
                 // ],
                 "encounter" => [
                     "reference" => "Encounter/" . $param['encounter_id'] . "",
-                    "display" => "Tindakan Pemeriksaan Lab pasien A/n $patient->nama pada $tglText"
+                    "display" => "Tindakan Pemeriksaan Lab pasien A/n $patient->nama"
                 ],
                 "performer" => $performer,
                 "reasonCode" => $reasonCode
@@ -703,36 +1046,33 @@ class ProcedureController extends Controller
         return [
             "payload" => $payload ?? [],
             "kddok" => $nakes->kddok ?? null,
-            "id_tindakan" => $dataLab->ID_RIWAYAT_ELAB ?? null,
-            "kodeICD" => isset($icd9) ? implode(',', $icd9) : null,
-            "textICD" => isset($texticd9) ? implode(',', $texticd9) : null,
+            "id_tindakan" => $dataLab->pluck('ID_RIWAYAT_ELAB')->toArray() ?? null,
+            "kode_tindakan" => $dataLab->pluck('KD_TINDAKAN')->toArray() ?? null,
+            "dataICD" => $icd9Data,
         ];
     }
 
     private function definePayloadRad($param, $patient, $request, $dataErm)
     {
-        $dataRad = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as eri')
+        $dataRad = DB::table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
             ->select([
-                'ere.ID_RIWAYAT_ELAB',
-                'eri.KARCIS',
-                'eri.ANAMNESE',
-                'ere.ARRAY_TINDAKAN',
-                'ere.TANGGAL_ENTRI',
-                'ere.KDDOK',
-                'ere.KET_TINDAKAN'
+                'ere.KDDOK_TUJUAN as KDDOK',
+                'ered.ID_RIWAYAT_ELAB',
+                'ered.KD_TINDAKAN',
+                'ere.TANGGAL_ENTRI'
             ])
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere', 'eri.KARCIS', 'ere.KARCIS_ASAL')
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', 'ere.ID_RIWAYAT_ELAB', '=', 'rsp.ID_JENIS_TINDAKAN')
-            ->where('eri.AKTIF', 1)
+            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', 'ered.KD_TINDAKAN', '=', 'rsp.ID_TINDAKAN')
             ->where('ere.KLINIK_TUJUAN', '0015')
-            ->where('eri.KARCIS', $param['karcis'])
+            ->where('ere.KARCIS_ASAL', $param['karcis'])
             ->where(function ($q) {
-                $q->whereNull('rsp.ID_JENIS_TINDAKAN')
+                $q->whereNull('rsp.ID_TINDAKAN')
                     ->orWhereNull('rsp.ID_SATUSEHAT_PROCEDURE')
                     ->orWhere('rsp.ID_SATUSEHAT_PROCEDURE', '=', '');
             })
-            ->first();
+            ->get();
 
+        $icd9Data = json_decode($request->icd9_rad);
         if (!empty($dataRad)) {
             $category = [
                 "coding" => [
@@ -746,26 +1086,28 @@ class ProcedureController extends Controller
             ];
 
             $code = [];
-            $icd9 = json_decode($request->icd9_rad, true);
-            $texticd9 = json_decode($request->text_icd9_rad, true);
+            for ($i = 0; $i < count($dataRad); $i++) {
+                $icd9 = $icd9Data[$i]->icd9;
+                $texticd9 = $icd9Data[$i]->text_icd9;
 
-            for ($i = 0; $i < count($icd9); $i++) {
                 array_push($code, [
                     "system" => "http://hl7.org/fhir/sid/icd-9-cm",
-                    "code" => "$icd9[$i]",
-                    "display" => "$texticd9[$i]",
+                    "code" => "$icd9",
+                    "display" => "$texticd9",
                 ]);
             }
 
-            $nakes = SS_Nakes::where('kddok', $dataRad->KDDOK)->first();
-            $performer = [
-                [
+            $performer = [];
+            for ($i = 0; $i < count($dataRad); $i++) {
+                $nakes = SS_Nakes::where('kddok', $dataRad[$i]->KDDOK)->first();
+
+                $performer[] = [
                     "actor" => [
                         "reference" => "Practitioner/$nakes->idnakes",
-                        "display" => "$nakes->nama",
-                    ],
-                ]
-            ];
+                        "display"   => $nakes->nama,
+                    ]
+                ];
+            }
 
             $reasonCode = [
                 [
@@ -780,7 +1122,6 @@ class ProcedureController extends Controller
             ];
 
             Carbon::setLocale('id');
-            $tglText = Carbon::parse($dataRad->TANGGAL_ENTRI)->translatedFormat('l, d F Y');
             $payload = [
                 "resourceType" => "Procedure",
                 "status" => "completed",
@@ -794,7 +1135,7 @@ class ProcedureController extends Controller
                 ],
                 "encounter" => [
                     "reference" => "Encounter/" . $param['encounter_id'] . "",
-                    "display" => "Tindakan Pemeriksaan Radiologi pasien A/n $patient->nama pada $tglText"
+                    "display" => "Tindakan Pemeriksaan Radiologi pasien A/n $patient->nama"
                 ],
                 "performer" => $performer,
                 "reasonCode" => $reasonCode
@@ -804,9 +1145,9 @@ class ProcedureController extends Controller
         return [
             "payload" => $payload ?? [],
             "kddok" => $nakes->kddok ?? null,
-            "id_tindakan" => $dataRad->ID_RIWAYAT_ELAB ?? null,
-            "kodeICD" => isset($icd9) ? implode(',', $icd9) : null,
-            "textICD" => isset($texticd9) ? implode(',', $texticd9) : null,
+            "id_tindakan" => $dataRad->pluck('ID_RIWAYAT_ELAB')->toArray() ?? null,
+            "kode_tindakan" => $dataRad->pluck('KD_TINDAKAN')->toArray() ?? null,
+            "dataICD" => $icd9Data,
         ];
     }
 
@@ -952,27 +1293,34 @@ class ProcedureController extends Controller
             $texticd9 = '';
             switch ($type) {
                 case 'pemeriksaanfisik':
-                    $table = 'ERM_RM_IRJA';
-                    $karcisField = "KARCIS";
-                    $selectField = "NOMOR";
-                    $selectNakes = "";
+                    if ($arrParam['jenis_perawatan'] == 'RAWAT_JALAN') {
+                        $table = 'ERM_RM_IRJA';
+                        $karcisField = "KARCIS";
+                        $selectField = "NOMOR";
+                        $selectNakes = "";
+                    } else {
+                        $table = 'ERM_RI_F_ASUHAN_KEP_AWAL_HEAD';
+                        $karcisField = "noreg";
+                        $selectField = "id_asuhan_header";
+                        $selectNakes = "";
+                    }
                     $icd9 = $request->icd9;
                     $texticd9 = $request->text_icd9;
                     $nakes = SS_Nakes::where('idnakes', $arrParam['id_nakes_ss'])->first();
                     break;
                 case 'lab':
-                    $table = 'ERM_RIWAYAT_ELAB';
+                    $table = 'ERM_RIWAYAT_ELAB as ere';
                     $karcisField = "KARCIS_ASAL";
                     $selectField = "ID_RIWAYAT_ELAB";
-                    $selectNakes = "KDDOK";
+                    $selectNakes = "KDDOK_TUJUAN";
                     $icd9 = json_decode($request->icd9, true);
                     $texticd9 = json_decode($request->text_icd9, true);
                     break;
                 case 'rad':
-                    $table = 'ERM_RIWAYAT_ELAB';
+                    $table = 'ERM_RIWAYAT_ELAB as ere';
                     $karcisField = "KARCIS_ASAL";
                     $selectField = "ID_RIWAYAT_ELAB";
-                    $selectNakes = "KDDOK";
+                    $selectNakes = "KDDOK_TUJUAN";
                     $icd9 = json_decode($request->icd9, true);
                     $texticd9 = json_decode($request->text_icd9, true);
                     break;
@@ -985,10 +1333,17 @@ class ProcedureController extends Controller
                     $texticd9 = json_decode($request->text_icd9, true);
                     break;
                 default:
-                    $table = 'ERM_RM_IRJA';
-                    $karcisField = "KARCIS";
-                    $selectField = "NOMOR";
-                    $selectNakes = "";
+                    if ($arrParam['jenis_perawatan'] == 'RAWAT_JALAN') {
+                        $table = 'ERM_RM_IRJA';
+                        $karcisField = "KARCIS";
+                        $selectField = "NOMOR";
+                        $selectNakes = "";
+                    } else {
+                        $table = 'ERM_RI_F_ASUHAN_KEP_AWAL_HEAD';
+                        $karcisField = "noreg";
+                        $selectField = "id_asuhan_header";
+                        $selectNakes = "";
+                    }
                     $icd9 = $request->icd9;
                     $texticd9 = $request->text_icd9;
                     $nakes = SS_Nakes::where('idnakes', $arrParam['id_nakes_ss'])->first();
@@ -996,67 +1351,126 @@ class ProcedureController extends Controller
             }
 
             $dataErm = DB::table("E_RM_PHCM.dbo.$table")
-                ->select('*')
-                ->where($karcisField, $arrParam['karcis'])
-                ->first();
+                ->where($karcisField, $arrParam['karcis']);
 
-            $dataSatuSehat = SATUSEHAT_PROCEDURE::where('ID_JENIS_TINDAKAN', $dataErm->{$selectField});
-
-            if (count($dataSatuSehat->get()) > 0) {
-                if ($dataSatuSehat->first()->ID_SATUSEHAT_PROCEDURE) {
-                    throw new Exception('Data tindakan ini sudah pernah kirim ke satu sehat, tidak bisa simpan ICD9', JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
-                }
-            }
-
-            $dataKarcis = DB::table('RJ_KARCIS as rk')
-                ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
-                ->where('rk.KARCIS', $arrParam['karcis'])
-                ->where('rk.IDUNIT', $id_unit)
-                ->orderBy('rk.TGL', 'DESC')
-                ->first();
-
-            $dataPeserta = DB::table('RIRJ_MASTERPX')
-                ->where('KBUKU', $dataKarcis->KBUKU)
-                ->first();
-
-            if ($type != 'pemeriksaanfisik') {
-                $nakes = SS_Nakes::where('kddok', $dataErm->{$selectNakes})->first();
-            }
-
-            $procedureData = [
-                'KBUKU' => $dataKarcis->KBUKU,
-                'NO_PESERTA' => $dataPeserta->NO_PESERTA,
-                'ID_SATUSEHAT_ENCOUNTER' => $arrParam['encounter_id'],
-                'ID_JENIS_TINDAKAN' => $dataErm->{$selectField},
-                'KD_ICD9' => is_array($icd9) ? implode(',', $icd9) : $icd9,
-                'DISP_ICD9' => is_array($texticd9) ? implode(',', $texticd9) : $texticd9,
-                'JENIS_TINDAKAN' => $request->type == 'pemeriksaanfisik' ? 'anamnese' : $request->type,
-                'KDDOK' => $nakes->kddok ?? null,
-            ];
-
-            $existingProcedure = $dataSatuSehat->where('KARCIS', (int)$dataKarcis->KARCIS)
-                ->where('JENIS_TINDAKAN', $type == 'pemeriksaanfisik' ? 'anamnese' : $type)
-                ->first();
-
-            if ($existingProcedure) {
-                DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE')
-                    ->where('KARCIS', $dataKarcis->KARCIS)
-                    ->where('JENIS_TINDAKAN', $type == 'pemeriksaanfisik' ? 'anamnese' : $type)
-                    ->update($procedureData);
+            if ($type == 'lab') {
+                $dataErm = $dataErm
+                    ->select([
+                        'ered.ID_RIWAYAT_ELAB',
+                        'ered.KD_TINDAKAN',
+                        'ere.KDDOK_TUJUAN'
+                    ])
+                    ->where('KLINIK_TUJUAN', '0017')
+                    ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB');
+            } else if ($type == 'rad') {
+                $dataErm = $dataErm
+                    ->select([
+                        'ered.ID_RIWAYAT_ELAB',
+                        'ered.KD_TINDAKAN',
+                        'ere.KDDOK_TUJUAN'
+                    ])
+                    ->where('KLINIK_TUJUAN', '0015')
+                    ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB');
             } else {
-                $procedureData['KARCIS'] = (int)$dataKarcis->KARCIS;
-                $procedureData['CRTDT'] = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
-                $procedureData['CRTUSER'] = 'system';
-                SATUSEHAT_PROCEDURE::create($procedureData);
+                $dataErm = $dataErm->select('*');
             }
+            $dataErm = $dataErm->get();
 
-            $this->logInfo('Procedure', 'Sukses Simpan Data ICD 9', [
-                'payload' => [
-                    'icd9' => $icd9,
-                    'text_icd9' => $texticd9,
-                ],
-                'user_id' => 'system' //Session::get('id')
-            ]);
+            for ($i = 0; $i < count($dataErm); $i++) {
+                $dataSatuSehat = SATUSEHAT_PROCEDURE::where('ID_JENIS_TINDAKAN', $dataErm[$i]->{$selectField});
+
+                if (count($dataSatuSehat->get()) > 0) {
+                    if ($dataSatuSehat->first()->ID_SATUSEHAT_PROCEDURE) {
+                        throw new Exception('Data tindakan ini sudah pernah kirim ke satu sehat, tidak bisa simpan ICD9', JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                    }
+                }
+
+                $dataKarcis = DB::table('RJ_KARCIS as rk')
+                    ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU', 'rk.NOREG')
+                    ->where($arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? 'rk.KARCIS' : 'rk.NOREG', $arrParam['karcis'])
+                    ->where('rk.IDUNIT', $id_unit)
+                    ->orderBy('rk.TGL', 'DESC')
+                    ->first();
+
+                $dataPeserta = DB::table('RIRJ_MASTERPX')
+                    ->where('KBUKU', $dataKarcis->KBUKU)
+                    ->first();
+
+                if ($type != 'pemeriksaanfisik') {
+                    $nakes = SS_Nakes::where('kddok', $dataErm[$i]->{$selectNakes})->first();
+                }
+
+                if ($type == 'lab' || $type == 'rad') {
+                    $dataICD = json_decode($request->icd9_data);
+                    $procedureData = [
+                        'KBUKU' => $dataKarcis->KBUKU,
+                        'NO_PESERTA' => $dataPeserta->NO_PESERTA,
+                        'ID_SATUSEHAT_ENCOUNTER' => $arrParam['encounter_id'],
+                        'ID_JENIS_TINDAKAN' => $dataErm[$i]->{$selectField},
+                        'ID_TINDAKAN' => $dataErm[$i]->KD_TINDAKAN,
+                        'KD_ICD9' => $dataICD[$i]->icd9,
+                        'DISP_ICD9' => $dataICD[$i]->text_icd9,
+                        'JENIS_TINDAKAN' => $request->type == 'pemeriksaanfisik' ? 'anamnese' : $request->type,
+                        'KDDOK' => $nakes->kddok ?? null,
+                    ];
+
+                    $existingProcedure = $dataSatuSehat->where('KARCIS', $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG)
+                        ->where('JENIS_TINDAKAN', $type)
+                        ->where('ID_TINDAKAN', $dataErm[$i]->KD_TINDAKAN)
+                        ->where('ID_JENIS_TINDAKAN', $dataErm[$i]->{$selectField})
+                        ->first();
+
+                    if ($existingProcedure) {
+                        DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE')
+                            ->where('KARCIS', $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG)
+                            ->where('JENIS_TINDAKAN', $type)
+                            ->where('ID_TINDAKAN', $dataErm[$i]->KD_TINDAKAN)
+                            ->where('ID_JENIS_TINDAKAN', $dataErm[$i]->{$selectField})
+                            ->update($procedureData);
+                    } else {
+                        $procedureData['KARCIS'] = $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG;
+                        $procedureData['CRTDT'] = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
+                        $procedureData['CRTUSER'] = 'system';
+                        SATUSEHAT_PROCEDURE::create($procedureData);
+                    }
+                } else {
+                    $procedureData = [
+                        'KBUKU' => $dataKarcis->KBUKU,
+                        'NO_PESERTA' => $dataPeserta->NO_PESERTA,
+                        'ID_SATUSEHAT_ENCOUNTER' => $arrParam['encounter_id'],
+                        'ID_JENIS_TINDAKAN' => $dataErm[$i]->{$selectField},
+                        'ID_TINDAKAN' => 0,
+                        'KD_ICD9' => is_array($icd9) ? implode(',', $icd9) : $icd9,
+                        'DISP_ICD9' => is_array($texticd9) ? implode(',', $texticd9) : $texticd9,
+                        'JENIS_TINDAKAN' => $request->type == 'pemeriksaanfisik' ? 'anamnese' : $request->type,
+                        'KDDOK' => $nakes->kddok ?? null,
+                    ];
+
+                    $existingProcedure = $dataSatuSehat->where('KARCIS', $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG)
+                        ->where('JENIS_TINDAKAN', $type == 'pemeriksaanfisik' ? 'anamnese' : $type)
+                        ->first();
+
+                    if ($existingProcedure) {
+                        DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE')
+                            ->where('KARCIS', $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG)
+                            ->where('JENIS_TINDAKAN', $type == 'pemeriksaanfisik' ? 'anamnese' : $type)
+                            ->update($procedureData);
+                    } else {
+                        $procedureData['KARCIS'] = $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG;
+                        $procedureData['CRTDT'] = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
+                        $procedureData['CRTUSER'] = 'system';
+                        SATUSEHAT_PROCEDURE::create($procedureData);
+                    }
+                }
+
+                $this->logInfo('Procedure', 'Sukses Simpan Data ICD 9', [
+                    'payload' => [
+                        'icd9' => $icd9,
+                        'text_icd9' => $texticd9,
+                    ],
+                    'user_id' => 'system' //Session::get('id')
+                ]);
+            }
 
             DB::commit();
             return response()->json([
@@ -1088,7 +1502,7 @@ class ProcedureController extends Controller
                 'data' => null,
                 'err_detail' => $e,
                 'message' => $e->getMessage() != '' ? $e->getMessage() : 'Terjadi Kesalahan Saat Kirim Data, Harap Coba lagi!'
-            ], $e->getCode() != '' ? $e->getCode() : 500);
+            ], 500);
         }
     }
 

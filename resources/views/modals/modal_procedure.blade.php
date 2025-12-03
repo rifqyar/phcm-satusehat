@@ -295,6 +295,7 @@
                                                             <th style="width: 5%;">No</th>
                                                             <th style="width: 25%;">Kode Pemeriksaan</th>
                                                             <th>Nama Pemeriksaan</th>
+                                                            <th>Kode Tindakan (ICD9-CM)</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody id="tabel_tindakan_rad">
@@ -308,7 +309,7 @@
                                         </div>
 
                                         <!-- Kode ICD 9 -->
-                                        <div class="form-group" id="curr-icd9-rad" style="display: none">
+                                        {{-- <div class="form-group" id="curr-icd9-rad" style="display: none">
                                             <label>Kode ICD 9-CM saat ini</label>
                                             <input type="text" disabled class="form-control">
                                         </div>
@@ -320,7 +321,7 @@
                                                 style="width: 100%">
                                                 <option value=""></option>
                                             </select>
-                                        </div>
+                                        </div> --}}
 
                                         <div class="form-group" id="btn-simpan-rad">
                                             <button class="btn btn-info" onclick="saveICD('rad')">Simpan Kode ICD 9</button>
@@ -367,6 +368,7 @@
                                                             <th style="width: 5%;">No</th>
                                                             <th style="width: 25%;">Kode Pemeriksaan</th>
                                                             <th>Nama Pemeriksaan</th>
+                                                            <th>Kode Tindakan (ICD9-CM)</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody id="tabel_tindakan_lab">
@@ -380,7 +382,7 @@
                                         </div>
 
                                         <!-- Kode ICD 9 -->
-                                        <div class="form-group" id="curr-icd9-lab" style="display: none">
+                                        {{-- <div class="form-group" id="curr-icd9-lab" style="display: none">
                                             <label>Kode ICD 9-CM saat ini</label>
                                             <input type="text" disabled class="form-control">
                                         </div>
@@ -392,7 +394,7 @@
                                                 style="width: 100%">
                                                 <option value=""></option>
                                             </select>
-                                        </div>
+                                        </div> --}}
 
                                         <div class="form-group" id="btn-simpan-lab">
                                             <button class="btn btn-info" onclick="saveICD('lab')">Simpan Kode ICD 9</button>
