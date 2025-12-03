@@ -85,8 +85,8 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Laporan Pemeriksaan',
-                'url' => '#',
-                'bg_color' => ''
+                'url' => 'satusehat.diagnostic-report.index',
+                'bg_color' => 'card-success'
             ],
             [
                 'title' => 'Rencana Perawatan',
