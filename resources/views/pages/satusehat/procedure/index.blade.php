@@ -629,13 +629,13 @@
             }
 
             // Sudah Kirim Lab
-            if ((statusIntegrasiLab == dataLab.length) && dataLab.length > 0) {
+            if ((statusIntegrasiLab == tindakanLab.length) && tindakanLab.length > 0) {
                 $('#integrasi_lab').show()
                 $('#success_lab').show()
                 $('#btn-simpan-lab').hide();
                 $('#form-icd-lab').hide();
             } else {
-                if (dataLab.length == 0) {
+                if (tindakanLab.length == 0) {
                     $('#btn-simpan-lab').hide();
                     $('#failed_lab').hide()
                     $('#form-icd-lab').find('select').prop('required', false);
@@ -649,13 +649,13 @@
             }
 
             // Sudah Kirim Radiologi
-            if ((statusIntegrasiRad == dataRad.length) && dataRad.length > 0) {
+            if ((statusIntegrasiRad == tindakanRad.length) && tindakanRad.length > 0) {
                 $('#integrasi_rad').show()
                 $('#success_rad').show()
                 $('#btn-simpan-rad').hide();
                 $('#form-icd-rad').hide()
             } else {
-                if (dataRad.length == 0) {
+                if (tindakanRad.length == 0) {
                     $('#btn-simpan-rad').hide();
                     $('#failed_rad').hide()
                     $('#form-icd-rad').find('select').prop('required', false);
