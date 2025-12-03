@@ -52,7 +52,6 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
     {
         try {
             if (count($this->payload['payload']) > 0) {
-                $procedureSatuSehat = SATUSEHAT_PROCEDURE::where('ID_JENIS_TINDAKAN', $this->payload['id_tindakan']);
                 $controller = app('App\\Http\\Controllers\\SatuSehat\\ProcedureController');
                 $response = $controller->consumeSATUSEHATAPI('POST', $this->baseurl, $this->url, $this->payload['payload'], true, $this->token);
 
@@ -72,43 +71,93 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
                     $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Encounter';
                     throw new Exception($msg, $response->getStatusCode());
                 } else {
-                    $procedureData = [
-                        'KBUKU' => $this->dataKarcis->KBUKU,
-                        'NO_PESERTA' => $this->dataPeserta->NO_PESERTA,
-                        'ID_SATUSEHAT_ENCOUNTER' => $this->arrParam['encounter_id'],
-                        'ID_JENIS_TINDAKAN' => $this->payload['id_tindakan'],
-                        'KD_ICD9' => $this->payload['kodeICD'],
-                        'DISP_ICD9' => $this->payload['textICD'],
-                        'JENIS_TINDAKAN' => $this->type,
-                        'KDDOK' => $this->payload['kddok'],
-                        'ID_SATUSEHAT_PROCEDURE' => $result['id'],
-                        'STATUS_SINCRON' => 1,
-                        'SINCRON_DATE' => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s')
-                    ];
+                    if ($this->type == 'lab' || $this->type == 'rad') {
+                        $dataICD = $this->payload['dataICD'];
+                        for ($i = 0; $i < count($dataICD); $i++) {
+                            $procedureData = [
+                                'KBUKU' => $this->dataKarcis->KBUKU,
+                                'NO_PESERTA' => $this->dataPeserta->NO_PESERTA,
+                                'ID_SATUSEHAT_ENCOUNTER' => $this->arrParam['encounter_id'],
+                                'ID_JENIS_TINDAKAN' => $this->payload['id_tindakan'][$i],
+                                'ID_TINDAKAN' => $dataICD[$i]->kd_tindakan,
+                                'KD_ICD9' => $dataICD[$i]->icd9,
+                                'DISP_ICD9' => $dataICD[$i]->text_icd9,
+                                'JENIS_TINDAKAN' => $this->type,
+                                'KDDOK' => $this->payload['kddok'],
+                                'ID_SATUSEHAT_PROCEDURE' => $result['id'],
+                                'STATUS_SINCRON' => 1,
+                                'SINCRON_DATE' => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s')
+                            ];
 
-                    $existingProcedure = $procedureSatuSehat->where('KARCIS', (int)$this->dataKarcis->KARCIS)
-                        ->where('JENIS_TINDAKAN', $this->type)
-                        ->first();
+                            $procedureSatuSehat = SATUSEHAT_PROCEDURE::where('ID_JENIS_TINDAKAN', $this->payload['id_tindakan'][$i]);
+                            $existingProcedure = $procedureSatuSehat->where('KARCIS', $this->arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$this->dataKarcis->KARCIS : (int)$this->dataKarcis->NOREG)
+                                ->where('JENIS_TINDAKAN', $this->type)
+                                ->where('ID_TINDAKAN', $dataICD[$i]->kd_tindakan)
+                                ->where('ID_JENIS_TINDAKAN', $this->payload['id_tindakan'][$i])
+                                ->first();
 
-                    if ($existingProcedure) {
-                        DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE')
-                            ->where('KARCIS', $this->dataKarcis->KARCIS)
-                            ->where('JENIS_TINDAKAN', $this->type)
-                            ->update($procedureData);
+                            if ($existingProcedure) {
+                                DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE')
+                                    ->where('KARCIS', $this->arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$this->dataKarcis->KARCIS : (int)$this->dataKarcis->NOREG)
+                                    ->where('JENIS_TINDAKAN', $this->type)
+                                    ->where('ID_TINDAKAN', $dataICD[$i]->kd_tindakan)
+                                    ->where('ID_JENIS_TINDAKAN', $this->payload['id_tindakan'][$i])
+                                    ->update($procedureData);
+                            } else {
+                                $procedureData['KARCIS'] = $this->arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$this->dataKarcis->KARCIS : (int)$this->dataKarcis->NOREG;
+                                $procedureData['CRTDT'] = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
+                                $procedureData['CRTUSER'] = 'system';
+                                SATUSEHAT_PROCEDURE::create($procedureData);
+                            }
+
+                            $this->logInfo($this->url, 'Sukses kirim data Procedure ' . $this->type, [
+                                'payload' => $this->payload,
+                                'response' => $result,
+                                'user_id' => 'system' //Session::get('id')
+                            ]);
+
+                            $this->logDb(json_encode($result), $this->url, json_encode($this->payload), 'system'); //Session::get('id')
+                        }
                     } else {
-                        $procedureData['KARCIS'] = (int)$this->dataKarcis->KARCIS;
-                        $procedureData['CRTDT'] = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
-                        $procedureData['CRTUSER'] = 'system';
-                        SATUSEHAT_PROCEDURE::create($procedureData);
+                        $procedureData = [
+                            'KBUKU' => $this->dataKarcis->KBUKU,
+                            'NO_PESERTA' => $this->dataPeserta->NO_PESERTA,
+                            'ID_SATUSEHAT_ENCOUNTER' => $this->arrParam['encounter_id'],
+                            'ID_JENIS_TINDAKAN' => $this->payload['id_tindakan'],
+                            'KD_ICD9' => $this->payload['kodeICD'],
+                            'DISP_ICD9' => $this->payload['textICD'],
+                            'JENIS_TINDAKAN' => $this->type,
+                            'KDDOK' => $this->payload['kddok'],
+                            'ID_SATUSEHAT_PROCEDURE' => $result['id'],
+                            'STATUS_SINCRON' => 1,
+                            'SINCRON_DATE' => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s')
+                        ];
+
+                        $procedureSatuSehat = SATUSEHAT_PROCEDURE::where('ID_JENIS_TINDAKAN', $this->payload['id_tindakan']);
+                        $existingProcedure = $procedureSatuSehat->where('KARCIS', $this->arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$this->dataKarcis->KARCIS : (int)$this->dataKarcis->NOREG)
+                            ->where('JENIS_TINDAKAN', $this->type)
+                            ->first();
+
+                        if ($existingProcedure) {
+                            DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE')
+                                ->where('KARCIS', $this->arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$this->dataKarcis->KARCIS : (int)$this->dataKarcis->NOREG)
+                                ->where('JENIS_TINDAKAN', $this->type)
+                                ->update($procedureData);
+                        } else {
+                            $procedureData['KARCIS'] = $this->arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$this->dataKarcis->KARCIS : (int)$this->dataKarcis->NOREG;
+                            $procedureData['CRTDT'] = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
+                            $procedureData['CRTUSER'] = 'system';
+                            SATUSEHAT_PROCEDURE::create($procedureData);
+                        }
+
+                        $this->logInfo($this->url, 'Sukses kirim data Procedure ' . $this->type, [
+                            'payload' => $this->payload,
+                            'response' => $result,
+                            'user_id' => 'system' //Session::get('id')
+                        ]);
+
+                        $this->logDb(json_encode($result), $this->url, json_encode($this->payload), 'system'); //Session::get('id')
                     }
-
-                    $this->logInfo($this->url, 'Sukses kirim data Procedure ' . $this->type, [
-                        'payload' => $this->payload,
-                        'response' => $result,
-                        'user_id' => 'system' //Session::get('id')
-                    ]);
-
-                    $this->logDb(json_encode($result), $this->url, json_encode($this->payload), 'system'); //Session::get('id')
                 }
             } else {
                 $this->logInfo($this->url, 'Sudah Integrasi ' . $this->type, [

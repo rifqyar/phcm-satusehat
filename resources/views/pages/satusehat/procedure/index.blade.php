@@ -105,6 +105,38 @@
                     <form action="javascript:void(0)" id="search-data" class="m-t-40">
                         <input type="hidden" name="search" value="{{ request('search') }}">
                         <div class="row justify-content-center">
+                            <div class="col-6">
+                                <div class="card card-inverse card-info card-mapping" onclick="search('all')">
+                                    <div class="card-body">
+                                        <div class="card-title">
+                                            <div class="row align-items-center ml-1">
+                                                <i class="fas fa-hospital" style="font-size: 48px"></i>
+                                                <div class="ml-3">
+                                                    <span style="font-size: 24px"
+                                                        id="total_rawat_jalan">{{ $result['total_rawat_jalan'] }}</span>
+                                                    <h4 class="text-white">Total Rawat Jalan</h4>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card card-inverse card-warning card-mapping" onclick="search('all')">
+                                    <div class="card-body">
+                                        <div class="card-title">
+                                            <div class="row align-items-center ml-1">
+                                                <i class="fas fa-bed" style="font-size: 48px"></i>
+                                                <div class="ml-3">
+                                                    <span style="font-size: 24px"
+                                                        id="total_rawat_inap">{{ $result['total_rawat_inap'] }}</span>
+                                                    <h4 class="text-white">Total Rawat Inap</h4>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="col-4">
                                 <div class="card card-inverse card-primary card-mapping" onclick="search('all')">
                                     <div class="card-body">
@@ -216,6 +248,7 @@
                                             style="margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500">
                                             Select All </label>
                                     </th>
+                                    <th>Perawatan</th>
                                     <th>Karcis</th>
                                     <th>Tgl</th>
                                     <th>No. Peserta</th>
@@ -338,6 +371,11 @@
                         searchable: false,
                         className: 'text-center',
                         responsivePriority: 1
+                    },
+                    {
+                        data: 'JENIS_PERAWATAN',
+                        name: 'JENIS_PERAWATAN',
+                        responsivePriority: -1
                     },
                     {
                         data: 'KARCIS',
@@ -669,8 +707,52 @@
                             <td>${index + 1}</td>
                             <td>${item.KD_TIND || '-'}</td>
                             <td>${item.NM_TIND || '-'}</td>
+                            <td>
+                                <div class="form-group curr-icd9-lab" id="curr-icd9-${item.KD_TIND}" style="display: none">
+                                    <label>Kode ICD 9-CM saat ini</label>
+                                    <input type="text" disabled class="form-control">
+                                </div>
+
+                                <div class="form-group mt-4 form-icd-lab" id="form-icd-lab-${item.KD_TIND}">
+                                    <label for="icd9-lab">Kode ICD 9-CM <small
+                                            class="text-danger">*</small></label>
+                                    <select name="icd9-lab-${item.KD_TIND}" id="icd9-lab-${item.KD_TIND}" data-id-tindakan="${item.KD_TIND}" class="form-control icd9-lab" style="width: 100%">
+                                        <option value=""></option>
+                                    </select>
+                                </div>
+                            </td>
                         </tr>
                     `);
+                });
+
+                $('.icd9-lab').select2({
+                    width: '100%',
+                    theme: "default",
+                    allowClear: true,
+                    placeholder: 'Cari kode ICD-9...',
+                    minimumInputLength: 2,
+                    dropdownParent: $('#tabel_tindakan_lab'),
+                    ajax: {
+                        url: `{{ route('satusehat.procedure.geticd9') }}`,
+                        dataType: 'json',
+                        delay: 300,
+                        data: function(params) {
+                            return {
+                                search: params.term
+                            };
+                        },
+                        processResults: function(data) {
+                            return {
+                                results: data.map(function(value) {
+                                    return {
+                                        id: value.KODE_SUB,
+                                        text: value.DIAGNOSA,
+                                    };
+                                })
+                            };
+                        },
+                        cache: true
+                    }
                 });
             } else {
                 $('#tabel_tindakan_lab').html(`
@@ -700,8 +782,52 @@
                             <td>${index + 1}</td>
                             <td>${item.KD_TIND || '-'}</td>
                             <td>${item.NM_TIND || '-'}</td>
+                            <td>
+                                <div class="form-group curr-icd9-rad" id="curr-icd9-${item.KD_TIND}" style="display: none">
+                                    <label>Kode ICD 9-CM saat ini</label>
+                                    <input type="text" disabled class="form-control">
+                                </div>
+
+                                <div class="form-group mt-4 form-icd-rad" id="form-icd-rad-${item.KD_TIND}">
+                                    <label for="icd9-rad">Kode ICD 9-CM <small
+                                            class="text-danger">*</small></label>
+                                    <select name="icd9-rad-${item.KD_TIND}" id="icd9-rad-${item.KD_TIND}" data-id-tindakan="${item.KD_TIND}" class="form-control icd9-rad" style="width: 100%">
+                                        <option value=""></option>
+                                    </select>
+                                </div>
+                            </td>
                         </tr>
                     `);
+                });
+
+                $('.icd9-rad').select2({
+                    width: '100%',
+                    theme: "classic",
+                    placeholder: 'Cari kode ICD-9...',
+                    minimumInputLength: 2,
+                    allowClear: true,
+                    dropdownParent: $('#tabel_tindakan_rad'),
+                    ajax: {
+                        url: `{{ route('satusehat.procedure.geticd9') }}`,
+                        dataType: 'json',
+                        delay: 300,
+                        data: function(params) {
+                            return {
+                                search: params.term
+                            };
+                        },
+                        processResults: function(data) {
+                            return {
+                                results: data.map(function(value) {
+                                    return {
+                                        id: value.KODE_SUB,
+                                        text: value.DIAGNOSA,
+                                    };
+                                })
+                            };
+                        },
+                        cache: true
+                    }
                 });
             } else {
                 $('#tabel_tindakan_rad').html(`
@@ -749,13 +875,27 @@
             }
 
             $.each(dataICD, function(index, item) {
-                if (item.length > 0) {
-                    $(`#curr-icd9-${index}`).show()
-                    $.each(item, function(x, data) {
-                        $(`#curr-icd9-${index}`).find('input').val(data.KD_ICD9 + ' - ' + data.DISP_ICD9)
-                    })
+                if (index != 'pemeriksaanfisik') {
+                    if (item.length > 0) {
+                        $.each(item, function(x, data) {
+                            $(`#curr-icd9-${data.ID_TINDAKAN}`).show()
+                            $(`#curr-icd9-${data.ID_TINDAKAN}`).find('input').val(data.KD_ICD9 + ' - ' +
+                                data
+                                .DISP_ICD9)
+                        })
+                    } else {
+                        $(`.curr-icd9-${index}`).hide()
+                    }
                 } else {
-                    $(`#curr-icd9-${index}`).hide()
+                    if (item.length > 0) {
+                        $(`#curr-icd9-${index}`).show()
+                        $.each(item, function(x, data) {
+                            $(`#curr-icd9-${index}`).find('input').val(data.KD_ICD9 + ' - ' + data
+                                .DISP_ICD9)
+                        })
+                    } else {
+                        $(`.curr-icd9-${index}`).hide()
+                    }
                 }
             })
 
@@ -822,62 +962,6 @@
             },
         });
 
-        $('#icd9-lab').select2({
-            width: '100%',
-            theme: "classic",
-            placeholder: 'Cari kode ICD-9...',
-            minimumInputLength: 2,
-            ajax: {
-                url: `{{ route('satusehat.procedure.geticd9') }}`,
-                dataType: 'json',
-                delay: 300,
-                data: function(params) {
-                    return {
-                        search: params.term
-                    };
-                },
-                processResults: function(data) {
-                    return {
-                        results: data.map(function(value) {
-                            return {
-                                id: value.KODE_SUB,
-                                text: value.DIAGNOSA,
-                            };
-                        })
-                    };
-                },
-                cache: true
-            }
-        });
-
-        $('#icd9-rad').select2({
-            width: '100%',
-            theme: "classic",
-            placeholder: 'Cari kode ICD-9...',
-            minimumInputLength: 2,
-            ajax: {
-                url: `{{ route('satusehat.procedure.geticd9') }}`,
-                dataType: 'json',
-                delay: 300,
-                data: function(params) {
-                    return {
-                        search: params.term
-                    };
-                },
-                processResults: function(data) {
-                    return {
-                        results: data.map(function(value) {
-                            return {
-                                id: value.KODE_SUB,
-                                text: value.DIAGNOSA,
-                            };
-                        })
-                    };
-                },
-                cache: true
-            }
-        });
-
         $('#icd9-operasi').select2({
             width: '100%',
             theme: "classic",
@@ -911,17 +995,51 @@
             formData.append('_token', $('meta[name="csrf-token"]').attr('content'))
             formData.append('type', type)
             formData.append('param', paramSatuSehat)
-            if (type != 'pemeriksaanfisik') {
-                const icd9 = $(`#icd9-${type}`).val()
-                const texticd = $(`#icd9-${type}`).select2('data').map(item => item.text);
+            if (type !== 'pemeriksaanfisik') {
+                let icd9 = [];
+                let kdTind = [];
+                let texticd = [];
+                if (type == 'lab' || type == 'rad') {
+                    let icd9Data = [];
+                    if (type == 'lab') {
+                        $('.icd9-lab').each(function() {
+                            let kdTindakan = $(this).data('id-tindakan');
+                            let icd9Value = $(this).val() || null;
+                            let textIcd9 = ($(this).select2('data')[0]?.text) || null;
 
-                formData.append(`icd9`, JSON.stringify(icd9));
-                formData.append(`text_icd9`, JSON.stringify(texticd));
+                            icd9Data.push({
+                                kd_tindakan: kdTindakan,
+                                icd9: icd9Value,
+                                text_icd9: textIcd9
+                            });
+                        });
+                    } else if (type == 'rad') {
+                        $('.icd9-rad').each(function() {
+                            let kdTindakan = $(this).data('id-tindakan');
+                            let icd9Value = $(this).val() || null;
+                            let textIcd9 = ($(this).select2('data')[0]?.text) || null;
+
+                            icd9Data.push({
+                                kd_tindakan: kdTindakan,
+                                icd9: icd9Value,
+                                text_icd9: textIcd9
+                            });
+                        });
+                    }
+
+                    formData.append('icd9_data', JSON.stringify(icd9Data));
+                } else {
+                    icd9 = $(`#icd9-${type}`).val();
+                    texticd = $(`#icd9-${type}`).select2('data').map(item => item.text);
+                }
+                formData.append('icd9', JSON.stringify(icd9));
+                formData.append('text_icd9', JSON.stringify(texticd));
             } else {
-                formData.append('icd9', $('input[name="sub_kd_icd_pm"]').val())
-                formData.append('text_icd9', $('input[name="icd9-pemeriksaanfisik"]').val())
+                formData.append('icd9', $('input[name="sub_kd_icd_pm"]').val());
+                formData.append('text_icd9', $('input[name="icd9-pemeriksaanfisik"]').val());
             }
 
+            console.log(formData)
             Swal.fire({
                 title: "Konfirmasi Simpan Data",
                 text: `Simpan Data ICD9-CM Sementara?`,
@@ -962,24 +1080,8 @@
                     icon: "error",
                     hideAfter: 3500,
                 });
-            } else if ($('#icd9-lab').prop('required') && (!icd9Lab || icd9Lab.length === 0)) {
-                $.toast({
-                    heading: "Kode ICD-9 belum diisi",
-                    text: 'Harap masukkan Kode Tindakan ICD-9CM untuk tindakan Laboratorium',
-                    position: "top-right",
-                    loaderBg: "#ff6849",
-                    icon: "error",
-                    hideAfter: 3500,
-                });
-            } else if ($('#icd9-rad').prop('required') && (!icd9Rad || icd9Rad.length === 0)) {
-                $.toast({
-                    heading: "Kode ICD-9 belum diisi",
-                    text: 'Harap masukkan Kode Tindakan ICD-9CM untuk tindakan Radiologi',
-                    position: "top-right",
-                    loaderBg: "#ff6849",
-                    icon: "error",
-                    hideAfter: 3500,
-                });
+
+                return;
             } else if ($('#icd9-operasi').prop('required') && (!icd9Operasi || icd9Operasi.length === 0)) {
                 $.toast({
                     heading: "Kode ICD-9 belum diisi",
@@ -989,51 +1091,101 @@
                     icon: "error",
                     hideAfter: 3500,
                 });
-            } else {
-                var formData = new FormData()
-                formData.append('_token', $('meta[name="csrf-token"]').attr('content'))
-                formData.append('param', param)
-                formData.append('icd9_pm', $('input[name="sub_kd_icd_pm"]').val())
-                formData.append('text_icd9_pm', $('input[name="icd9-pemeriksaanfisik"]').val())
 
-                let icd9LabValues = $('#icd9-lab').val() || []; // array of kode ICD
-                let icd9LabTexts = $('#icd9-lab').select2('data').map(item => item.text);
+                return
+            }
 
-                let icd9RadValues = $('#icd9-rad').val() || [];
-                let icd9RadTexts = $('#icd9-rad').select2('data').map(item => item.text);
+            let labFields = $('.icd9-lab');
+            let radFields = $('.icd9-rad');
+            let opField = $('#icd9-operasi');
 
-                let icd9OpValues = $('#icd9-operasi').val() || [];
-                let icd9OpTexts = $('#icd9-operasi').select2('data').map(item => item.text);
+            function cekKosong(selector, label) {
+                let kosong = false;
 
-                formData.append('icd9_lab', JSON.stringify(icd9LabValues));
-                formData.append('text_icd9_lab', JSON.stringify(icd9LabTexts));
-
-                formData.append('icd9_rad', JSON.stringify(icd9RadValues));
-                formData.append('text_icd9_rad', JSON.stringify(icd9RadTexts));
-
-                formData.append('icd9_op', JSON.stringify(icd9OpValues));
-                formData.append('text_icd9_op', JSON.stringify(icd9OpTexts));
-
-
-                Swal.fire({
-                    title: "Konfirmasi Pengiriman",
-                    text: `Kirim data Semua Tindakan Pasien ke SatuSehat?`,
-                    icon: "question",
-                    showCancelButton: true,
-                    confirmButtonColor: "#3085d6",
-                    cancelButtonColor: "#d33",
-                    confirmButtonText: "Ya, kirim!",
-                    cancelButtonText: "Batal",
-                }).then(async (conf) => {
-                    if (conf.value || conf.isConfirmed) {
-                        await ajaxPostFile(
-                            `{{ route('satusehat.procedure.send') }}`,
-                            formData,
-                            "input_success",
-                        );
+                selector.each(function() {
+                    if (!$(this).val() || $(this).val().length === 0) {
+                        kosong = true;
                     }
                 });
+
+                if (kosong) {
+                    $.toast({
+                        heading: "Kode ICD-9 belum diisi",
+                        text: `Harap masukan Kode ICD-9CM untuk tindakan ${label}`,
+                        position: "top-right",
+                        loaderBg: "#ff6849",
+                        icon: "error",
+                        hideAfter: 3500,
+                    });
+                    return false;
+                }
+                return true;
             }
+
+            if (!cekKosong(labFields, 'Laboratorium')) return;
+            if (!cekKosong(radFields, 'Radiologi')) return;
+
+            // FORM DATA
+            var formData = new FormData();
+            formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
+            formData.append('param', param);
+
+            formData.append('icd9_pm', $('input[name="sub_kd_icd_pm"]').val());
+            formData.append('text_icd9_pm', $('input[name="icd9-pemeriksaanfisik"]').val());
+
+            // FUNGSI UNTUK MULTIPLE ICD9
+            function ambilData(selector) {
+                let arr = [];
+                selector.each(function() {
+                    arr.push({
+                        kd_tindakan: $(this).data('id-tindakan') || null,
+                        icd9: $(this).val(),
+                        text_icd9: $(this).select2('data')[0]?.text || null
+                    });
+                });
+                return arr;
+            }
+
+            // MULTIPLE INPUT
+            let dataLab = ambilData(labFields);
+            let dataRad = ambilData(radFields);
+
+            // OPERASI (SINGLE)
+            let dataOp = {
+                kd_tindakan: opField.data('id-tindakan') || null,
+                icd9: opField.val(),
+                text_icd9: opField.select2('data')[0]?.text || null
+            };
+
+            // MASUKKAN KE FORM DATA
+            formData.append('icd9_lab', JSON.stringify(dataLab));
+            formData.append('icd9_rad', JSON.stringify(dataRad));
+
+            let icd9OpValues = $('#icd9-operasi').val() || [];
+            let icd9OpTexts = $('#icd9-operasi').select2('data').map(item => item.text);
+
+            formData.append('icd9_op', JSON.stringify(icd9OpValues));
+            formData.append('text_icd9_op', JSON.stringify(icd9OpTexts));
+
+
+            Swal.fire({
+                title: "Konfirmasi Pengiriman",
+                text: `Kirim data Semua Tindakan Pasien ke SatuSehat?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Ya, kirim!",
+                cancelButtonText: "Batal",
+            }).then(async (conf) => {
+                if (conf.value || conf.isConfirmed) {
+                    await ajaxPostFile(
+                        `{{ route('satusehat.procedure.send') }}`,
+                        formData,
+                        "input_success",
+                    );
+                }
+            });
         }
 
         function input_success(res) {
