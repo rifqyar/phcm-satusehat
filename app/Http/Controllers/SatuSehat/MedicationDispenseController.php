@@ -616,7 +616,7 @@ class MedicationDispenseController extends Controller
             LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm1
                 ON i.ID_TRANS = slm1.LOCAL_ID and slm1.LOG_TYPE = 'MedicationDispense'
                 AND m.KD_BRG_KFA = slm1.KFA_CODE AND slm1.STATUS = 'success'
-            WHERE i.ID_TRANS = ?
+            WHERE m.KD_BRG_KFA IS NOT NULL AND m.KD_BRG_KFA <> 0 and i.ID_TRANS = ?
         ",
                 [$idTrans],
             );
@@ -741,7 +741,7 @@ class MedicationDispenseController extends Controller
             LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm1
                 ON i.ID_TRANS = slm1.LOCAL_ID and slm1.LOG_TYPE = 'MedicationDispense'
                 AND m.KD_BRG_KFA = slm1.KFA_CODE AND slm1.STATUS = 'success'
-            WHERE i.ID_TRANS = ?
+            WHERE m.KD_BRG_KFA IS NOT NULL AND m.KD_BRG_KFA <> 0 and i.ID_TRANS = ?
         ",
             [$idTrans],
         );
