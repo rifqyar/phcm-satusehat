@@ -310,6 +310,10 @@
                         },
                         1250
                     );
+
+                    selectedIds = [];
+                    updateSelectAllCheckbox();
+
                     table.ajax.reload();
                 }
 
@@ -325,6 +329,10 @@
             $("#search-data").find("input.form-control").val("").trigger("blur");
             $("#search-data").find("input.form-control").removeClass("was-validated");
             $('input[name="search"]').val("false");
+
+            selectedIds = [];
+            updateSelectAllCheckbox();
+
             table.ajax.reload();
         }
 
