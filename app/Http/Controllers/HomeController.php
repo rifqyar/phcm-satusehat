@@ -31,12 +31,12 @@ class HomeController extends Controller
             [
                 'title' => 'Observasi',
                 'url' => 'satusehat.observasi.index',
-                'bg_color' => 'card-info'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Tindakan',
                 'url' => 'satusehat.procedure.index',
-                'bg_color' => 'card-info'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Resume Medis',
@@ -51,7 +51,7 @@ class HomeController extends Controller
             [
                 'title' => 'Resep Obat',
                 'url' => 'satusehat.medication-request.index',
-                'bg_color' => 'card-info'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Tebus Obat',
@@ -102,11 +102,6 @@ class HomeController extends Controller
                 'title' => 'Respon Kuesioner',
                 'url' => '#',
                 'bg_color' => ''
-            ],
-            [
-                'title' => 'Data Obat',
-                'url' => 'satusehat.medication.index',
-                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Episode Perawatan',

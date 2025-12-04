@@ -12,3 +12,4 @@ npm-debug.log
 yarn-error.log
 config/database.php
 user.md
+composer.phar

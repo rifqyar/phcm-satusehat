@@ -656,9 +656,6 @@ class MedicationRequestController extends Controller
     function createMedicationRequestPayload($idTrans, $kdbrg)
     {
         try {
-
-
-
             $data = DB::select("
             SELECT 
                 H.ID_TRANS, 

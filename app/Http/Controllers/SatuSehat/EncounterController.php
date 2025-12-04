@@ -732,8 +732,13 @@ class EncounterController extends Controller
             }
         }
 
-        if ($jam_progress < $jam_start)
-            $jam_start->addMinutes(-1 * (($jam_start->diff($jam_progress)->format('%i')) + rand(3, 6)));
+        if ($jam_progress < $jam_start) {
+            $selisih = $jam_start->clone()->diffInMinutes($jam_progress);
+            $acak = rand(3, 10);
+
+            $jam_start->subMinutes($selisih + $acak);
+        }
+        // $jam_progress->addMinutes(-1 * (($jam_start->diff($jam_progress)->format('%i')) + rand(3, 6)));
 
         if ($jam_finish <= $jam_progress && $jam_finish != null)
             $jam_finish->addMinutes((($jam_finish->diff($jam_progress)->format('%i')) + rand(6, 10)));
