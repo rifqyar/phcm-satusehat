@@ -145,7 +145,7 @@ class DiagnosticReportController extends Controller
                     $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $row->id . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                 }
 
-                return $btn;
+                return '<div style="min-width: 200px;">'.$btn.'</div>';
             })
             ->rawColumns(['kategori', 'file', 'aksi', 'checkbox', 'status_integrasi'])
             ->with([
@@ -421,7 +421,7 @@ class DiagnosticReportController extends Controller
                     'user_id' => 'system'
                 ]);
 
-                $this->logDb(json_encode($response), 'Specimen', json_encode($data), 'system');
+                $this->logDb(json_encode($response), 'DiagnosticReport', json_encode($data), 'system');
 
                 $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Diagnostic Report';
 
