@@ -310,6 +310,10 @@
                         },
                         1250
                     );
+
+                    selectedIds = [];
+                    updateSelectAllCheckbox();
+
                     table.ajax.reload();
                 }
 
@@ -325,6 +329,10 @@
             $("#search-data").find("input.form-control").val("").trigger("blur");
             $("#search-data").find("input.form-control").removeClass("was-validated");
             $('input[name="search"]').val("false");
+
+            selectedIds = [];
+            updateSelectAllCheckbox();
+
             table.ajax.reload();
         }
 
@@ -465,14 +473,14 @@
             const param = $(this).data('param');
 
             if ($(this).is(':checked')) {
-                if (!selectedIds.includes(id)) {
+                if (!selectedIds.some(item => item.id === id)) {
                     selectedIds.push({
                         id: id,
                         param: param
                     });
                 }
             } else {
-                selectedIds = selectedIds.filter(item => item !== id);
+                selectedIds = selectedIds.filter(item => item.id !== id);
             }
             updateSelectAllCheckbox();
         });
@@ -492,14 +500,14 @@
                 $(this).prop('checked', checked);
 
                 if (checked) {
-                    if (!selectedIds.includes(id)) {
+                    if (!selectedIds.some(item => item.id === id)) {
                         selectedIds.push({
                             id: id,
                             param: param
                         });
                     }
                 } else {
-                    selectedIds = selectedIds.filter(item => item !== id);
+                    selectedIds = selectedIds.filter(item => item.id !== id);
                 }
 
                 updateSelectAllCheckbox();

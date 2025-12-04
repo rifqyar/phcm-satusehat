@@ -237,7 +237,8 @@
                                             </div>
                                         </div>
 
-                                        <div class="form-group" id="curr-icd9-pemeriksaanfisik" style="display: none">
+                                        <div class="form-group" id="curr-icd9-pemeriksaanfisik"
+                                            style="display: none">
                                             <label>Kode ICD 9-CM saat ini</label>
                                             <input type="text" disabled class="form-control">
                                         </div>
@@ -251,7 +252,8 @@
                                         </div>
 
                                         <div class="form-group" id="btn-simpan-pemeriksaanfisik">
-                                            <button class="btn btn-info" onclick="saveICD('pemeriksaanfisik')">Simpan Kode ICD 9</button>
+                                            <button class="btn btn-info" onclick="saveICD('pemeriksaanfisik')">Simpan
+                                                Kode ICD 9</button>
                                         </div>
                                     </div>
                                 </div>
@@ -324,7 +326,8 @@
                                         </div> --}}
 
                                         <div class="form-group" id="btn-simpan-rad">
-                                            <button class="btn btn-info" onclick="saveICD('rad')">Simpan Kode ICD 9</button>
+                                            <button class="btn btn-info" onclick="saveICD('rad')">Simpan Kode ICD
+                                                9</button>
                                         </div>
                                     </div>
                                 </div>
@@ -397,7 +400,8 @@
                                         </div> --}}
 
                                         <div class="form-group" id="btn-simpan-lab">
-                                            <button class="btn btn-info" onclick="saveICD('lab')">Simpan Kode ICD 9</button>
+                                            <button class="btn btn-info" onclick="saveICD('lab')">Simpan Kode ICD
+                                                9</button>
                                         </div>
                                     </div>
                                 </div>
@@ -484,7 +488,8 @@
                                         </div>
 
                                         <div class="form-group" id="btn-simpan-op">
-                                            <button class="btn btn-info" onclick="saveICD('operasi')">Simpan Kode ICD 9</button>
+                                            <button class="btn btn-info" onclick="saveICD('operasi')">Simpan Kode ICD
+                                                9</button>
                                         </div>
                                     </div>
                                 </div>
@@ -497,6 +502,9 @@
             <div class="modal-footer">
                 <a href="javascript:void(0)" class="btn btn-primary" id="btn-send-satusehat"><i
                         class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>
+
+                <a href="javascript:void(0)" class="btn btn-warning" id="btn-resend-satusehat"><i
+                        class="fas fa-link mr-2"></i>Kirim Ulang Satu Sehat</a>
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
             </div>
         </div>

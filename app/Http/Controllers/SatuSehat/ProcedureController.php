@@ -460,17 +460,6 @@ class ProcedureController extends Controller
             ->editColumn('JENIS_PERAWATAN', function ($row) {
                 return $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
             })
-            ->addColumn('checkbox', function ($row) {
-                $checkBox = '';
-                if ($row->sudah_integrasi == '0' && ($row->ID_PASIEN_SS != null && $row->ID_NAKES_SS != null && $row->id_satusehat_encounter != null)) {
-                    $checkBox = "
-                        <input type='checkbox' class='select-row chk-col-purple' value='$row->KARCIS' id='$row->KARCIS' />
-                        <label for='$row->KARCIS' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
-                    ";
-                }
-
-                return $checkBox;
-            })
             ->editColumn('TANGGAL', function ($row) {
                 return date('Y-m-d', strtotime($row->TANGGAL));
             })
@@ -509,7 +498,7 @@ class ProcedureController extends Controller
                     return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
                 }
             })
-            ->rawColumns(['action', 'status_integrasi', 'checkbox'])
+            ->rawColumns(['action', 'status_integrasi'])
             ->with($totalData)
             ->make(true);
     }
@@ -750,7 +739,7 @@ class ProcedureController extends Controller
         return response()->json($dataICD9);
     }
 
-    public function sendSatuSehat(Request $request)
+    public function sendSatuSehat(Request $request, $resend = false)
     {
         $params = LZString::decompressFromEncodedURIComponent($request->param);
         $parts = explode('&', $params);
@@ -833,10 +822,10 @@ class ProcedureController extends Controller
                 ->where('KBUKU', $dataKarcis->KBUKU)
                 ->first();
 
-            $payloadPemeriksaanFisik = $this->definePayloadAnamnese($arrParam, $patient, $request, $dataErm);
-            $payloadLab = $this->definePayloadLab($arrParam, $patient, $request, $dataErm);
-            $payloadRad = $this->definePayloadRad($arrParam, $patient, $request, $dataErm);
-            $payloadOP = $this->definePayloadOp($arrParam, $patient, $request, $dataErm);
+            $payloadPemeriksaanFisik = $this->definePayloadAnamnese($arrParam, $patient, $request, $dataErm, $resend);
+            $payloadLab = $this->definePayloadLab($arrParam, $patient, $request, $dataErm, $resend);
+            $payloadRad = $this->definePayloadRad($arrParam, $patient, $request, $dataErm, $resend);
+            $payloadOP = $this->definePayloadOp($arrParam, $patient, $request, $dataErm, $resend);
 
             $login = $this->login($id_unit);
             if ($login['metadata']['code'] != 200) {
@@ -845,11 +834,23 @@ class ProcedureController extends Controller
 
             $token = $login['response']['token'];
 
-            $url = 'Procedure';
-            SendProcedureToSATUSEHAT::dispatch($payloadPemeriksaanFisik, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'anamnese');
-            SendProcedureToSATUSEHAT::dispatch($payloadLab, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'lab');
-            SendProcedureToSATUSEHAT::dispatch($payloadRad, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'rad');
-            SendProcedureToSATUSEHAT::dispatch($payloadOP, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'operasi');
+            if (!$resend) {
+                $url = 'Procedure';
+                SendProcedureToSATUSEHAT::dispatch($payloadPemeriksaanFisik, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'anamnese');
+                SendProcedureToSATUSEHAT::dispatch($payloadLab, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'lab');
+                SendProcedureToSATUSEHAT::dispatch($payloadRad, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'rad');
+                SendProcedureToSATUSEHAT::dispatch($payloadOP, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'operasi');
+            } else {
+                $urlAnamnse = 'Procedure/' . $payloadPemeriksaanFisik['currProcedure'];
+                $urlLab = 'Procedure/' . $payloadLab['currProcedure'];
+                $urlRad = 'Procedure/' . $payloadRad['currProcedure'];
+                $urlOp = 'Procedure/' . $payloadOP['currProcedure'];
+
+                SendProcedureToSATUSEHAT::dispatch($payloadPemeriksaanFisik, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlAnamnse, $token, 'anamnese', $resend);
+                SendProcedureToSATUSEHAT::dispatch($payloadLab, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlLab, $token, 'lab', $resend);
+                SendProcedureToSATUSEHAT::dispatch($payloadRad, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlRad, $token, 'rad', $resend);
+                SendProcedureToSATUSEHAT::dispatch($payloadOP, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlOp, $token, 'operasi', $resend);
+            }
 
             return response()->json([
                 'status' => JsonResponse::HTTP_OK,
@@ -872,7 +873,12 @@ class ProcedureController extends Controller
         }
     }
 
-    private function definePayloadAnamnese($param, $patient, $request, $dataErm)
+    public function resendSatuSehat(Request $request)
+    {
+        return $this->sendSatuSehat($request, true);
+    }
+
+    private function definePayloadAnamnese($param, $patient, $request, $dataErm, $resend)
     {
         $nakes = SS_Nakes::where('idnakes', $param['id_nakes_ss'])->first();
 
@@ -939,18 +945,26 @@ class ProcedureController extends Controller
             "reasonCode" => $reasonCode
         ];
 
+        if ($resend) {
+            $currProcedure = SATUSEHAT_PROCEDURE::where('ID_JENIS_TINDAKAN', $dataErm->NOMOR)
+                ->where('JENIS_TINDAKAN', 'anamnese')
+                ->first();
+
+            $payload['id'] = $currProcedure->ID_SATUSEHAT_PROCEDURE;
+        }
+
         return [
             "payload" => $payload,
             "kddok" => $nakes->kddok,
             "id_tindakan" => $dataErm->NOMOR,
             "kodeICD" => $kodeICD,
             "textICD" => $textICD,
+            "currProcedure" => $currProcedure->ID_SATUSEHAT_PROCEDURE ?? null
         ];
     }
 
-    private function definePayloadLab($param, $patient, $request, $dataErm)
+    private function definePayloadLab($param, $patient, $request, $dataErm, $resend)
     {
-
         $dataLab = DB::table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
             ->select([
@@ -962,10 +976,12 @@ class ProcedureController extends Controller
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', 'ered.KD_TINDAKAN', '=', 'rsp.ID_TINDAKAN')
             ->where('ere.KLINIK_TUJUAN', '0017')
             ->where('ere.KARCIS_ASAL', $param['karcis'])
-            ->where(function ($q) {
-                $q->whereNull('rsp.ID_TINDAKAN')
-                    ->orWhereNull('rsp.ID_SATUSEHAT_PROCEDURE')
-                    ->orWhere('rsp.ID_SATUSEHAT_PROCEDURE', '=', '');
+            ->where(function ($q) use ($resend) {
+                if (!$resend) {
+                    $q->whereNull('rsp.ID_TINDAKAN')
+                        ->orWhereNull('rsp.ID_SATUSEHAT_PROCEDURE')
+                        ->orWhere('rsp.ID_SATUSEHAT_PROCEDURE', '=', '');
+                }
             })
             ->get();
 
@@ -1041,6 +1057,14 @@ class ProcedureController extends Controller
                 "performer" => $performer,
                 "reasonCode" => $reasonCode
             ];
+
+            if ($resend) {
+                $currProcedure = SATUSEHAT_PROCEDURE::where('ID_JENIS_TINDAKAN', $dataLab->pluck('ID_RIWAYAT_ELAB')[0])
+                    ->where('JENIS_TINDAKAN', 'lab')
+                    ->first();
+
+                $payload['id'] = $currProcedure->ID_SATUSEHAT_PROCEDURE;
+            }
         }
 
         return [
@@ -1049,10 +1073,11 @@ class ProcedureController extends Controller
             "id_tindakan" => $dataLab->pluck('ID_RIWAYAT_ELAB')->toArray() ?? null,
             "kode_tindakan" => $dataLab->pluck('KD_TINDAKAN')->toArray() ?? null,
             "dataICD" => $icd9Data,
+            "currProcedure" => $currProcedure->ID_SATUSEHAT_PROCEDURE ?? null
         ];
     }
 
-    private function definePayloadRad($param, $patient, $request, $dataErm)
+    private function definePayloadRad($param, $patient, $request, $dataErm, $resend)
     {
         $dataRad = DB::table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
@@ -1065,10 +1090,12 @@ class ProcedureController extends Controller
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', 'ered.KD_TINDAKAN', '=', 'rsp.ID_TINDAKAN')
             ->where('ere.KLINIK_TUJUAN', '0015')
             ->where('ere.KARCIS_ASAL', $param['karcis'])
-            ->where(function ($q) {
-                $q->whereNull('rsp.ID_TINDAKAN')
-                    ->orWhereNull('rsp.ID_SATUSEHAT_PROCEDURE')
-                    ->orWhere('rsp.ID_SATUSEHAT_PROCEDURE', '=', '');
+            ->where(function ($q) use ($resend) {
+                if (!$resend) {
+                    $q->whereNull('rsp.ID_TINDAKAN')
+                        ->orWhereNull('rsp.ID_SATUSEHAT_PROCEDURE')
+                        ->orWhere('rsp.ID_SATUSEHAT_PROCEDURE', '=', '');
+                }
             })
             ->get();
 
@@ -1140,6 +1167,14 @@ class ProcedureController extends Controller
                 "performer" => $performer,
                 "reasonCode" => $reasonCode
             ];
+
+            if ($resend) {
+                $currProcedure = SATUSEHAT_PROCEDURE::where('ID_JENIS_TINDAKAN', $dataRad->pluck('ID_RIWAYAT_ELAB')[0])
+                    ->where('JENIS_TINDAKAN', 'rad')
+                    ->first();
+
+                $payload['id'] = $currProcedure->ID_SATUSEHAT_PROCEDURE;
+            }
         }
 
         return [
@@ -1148,19 +1183,22 @@ class ProcedureController extends Controller
             "id_tindakan" => $dataRad->pluck('ID_RIWAYAT_ELAB')->toArray() ?? null,
             "kode_tindakan" => $dataRad->pluck('KD_TINDAKAN')->toArray() ?? null,
             "dataICD" => $icd9Data,
+            "currProcedure" => $currProcedure->ID_SATUSEHAT_PROCEDURE ?? null
         ];
     }
 
-    private function definePayloadOp($param, $patient, $request, $dataErm)
+    private function definePayloadOp($param, $patient, $request, $dataErm, $resend)
     {
         $dataTindOp = DB::table('E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI as erflo')
             ->select('erflo.*')
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', 'erflo.ID_LAP_OPERASI', '=', 'rsp.ID_JENIS_TINDAKAN')
             ->where('erflo.KARCIS', $param['karcis'])
-            ->where(function ($q) {
-                $q->whereNull('rsp.ID_JENIS_TINDAKAN')
-                    ->orWhereNull('rsp.ID_SATUSEHAT_PROCEDURE')
-                    ->orWhere('rsp.ID_SATUSEHAT_PROCEDURE', '=', '');
+            ->where(function ($q) use ($resend) {
+                if (!$resend) {
+                    $q->whereNull('rsp.ID_JENIS_TINDAKAN')
+                        ->orWhereNull('rsp.ID_SATUSEHAT_PROCEDURE')
+                        ->orWhere('rsp.ID_SATUSEHAT_PROCEDURE', '=', '');
+                }
             })
             ->first();
 
@@ -1230,6 +1268,14 @@ class ProcedureController extends Controller
                 "performer" => $performer,
                 "reasonCode" => $reasonCode
             ];
+
+            if ($resend) {
+                $currProcedure = SATUSEHAT_PROCEDURE::where('ID_JENIS_TINDAKAN', $dataTindOp->id_lap_operasi)
+                    ->where('JENIS_TINDAKAN', 'operasi')
+                    ->first();
+
+                $payload['id'] = $currProcedure->ID_SATUSEHAT_PROCEDURE;
+            }
         }
 
         return [
@@ -1238,6 +1284,7 @@ class ProcedureController extends Controller
             "id_tindakan" => $dataTindOp->id_lap_operasi ?? null,
             "kodeICD" => isset($icd9) ? implode(',', $icd9) : null,
             "textICD" => isset($texticd9) ? implode(',', $texticd9) : null,
+            "currProcedure" => $currProcedure->ID_SATUSEHAT_PROCEDURE ?? null
         ];
     }
 

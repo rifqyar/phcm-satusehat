@@ -26,12 +26,13 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
     protected $url;
     protected $token;
     protected $type; // lab, rad, op
+    protected $resend;
     /**
      * Create a new job instance.
      *
      * @return void
      */
-    public function __construct($payload, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $type)
+    public function __construct($payload, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $type, $resend = false)
     {
         $this->payload = $payload;
         $this->arrParam = $arrParam;
@@ -41,6 +42,7 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
         $this->url = $url;
         $this->token = $token;
         $this->type = $type;
+        $this->resend = $resend;
     }
 
     /**
@@ -50,10 +52,11 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
      */
     public function handle()
     {
+        $logChannel = explode('/', $this->type)[0];
         try {
             if (count($this->payload['payload']) > 0) {
                 $controller = app('App\\Http\\Controllers\\SatuSehat\\ProcedureController');
-                $response = $controller->consumeSATUSEHATAPI('POST', $this->baseurl, $this->url, $this->payload['payload'], true, $this->token);
+                $response = $controller->consumeSATUSEHATAPI(!$this->resend ? 'POST' : 'PUT', $this->baseurl, $this->url, $this->payload['payload'], true, $this->token);
 
                 $result = json_decode($response->getBody()->getContents(), true);
 
@@ -110,7 +113,7 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
                                 SATUSEHAT_PROCEDURE::create($procedureData);
                             }
 
-                            $this->logInfo($this->url, 'Sukses kirim data Procedure ' . $this->type, [
+                            $this->logInfo($logChannel, 'Sukses kirim data Procedure ' . $this->type, [
                                 'payload' => $this->payload,
                                 'response' => $result,
                                 'user_id' => 'system' //Session::get('id')
@@ -150,7 +153,7 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
                             SATUSEHAT_PROCEDURE::create($procedureData);
                         }
 
-                        $this->logInfo($this->url, 'Sukses kirim data Procedure ' . $this->type, [
+                        $this->logInfo($logChannel, 'Sukses kirim data Procedure ' . $this->type, [
                             'payload' => $this->payload,
                             'response' => $result,
                             'user_id' => 'system' //Session::get('id')
@@ -160,14 +163,14 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
                     }
                 }
             } else {
-                $this->logInfo($this->url, 'Sudah Integrasi ' . $this->type, [
+                $this->logInfo($logChannel, 'Sudah Integrasi ' . $this->type, [
                     'payload' => $this->payload,
                     'response' => 'Data Procedure Untuk jenis ini sudah pernah dikirim ke satusehat',
                     'user_id' => 'system' //Session::get('id')
                 ]);
             }
         } catch (Exception $e) {
-            $this->logError($this->url, 'Gagal kirim data Procedure ' . $this->type, [
+            $this->logError($logChannel, 'Gagal kirim data Procedure ' . $this->type, [
                 'payload' => $this->payload,
                 'response' => $e->getMessage(),
                 'user_id' => 'system' //Session::get('id')

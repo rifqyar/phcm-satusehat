@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SatuSehat;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\LogTraits;
 use App\Http\Traits\SATUSEHATTraits;
+use App\Jobs\SendAllergyIntolerance;
 use App\Lib\LZCompressor\LZString;
 use App\Models\GlobalParameter;
 use App\Models\SATUSEHAT\SATUSEHAT_ALLERGY_INTOLERANCE;
@@ -171,9 +172,17 @@ class AllergyIntoleranceController extends Controller
             ->addIndexColumn()
             ->addColumn('checkbox', function ($row) {
                 $checkBox = '';
+                $id_transaksi = LZString::compressToEncodedURIComponent($row->KARCIS);
+                $KbBuku = LZString::compressToEncodedURIComponent($row->KBUKU);
+                $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
+                $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
+                $idEncounter = LZString::compressToEncodedURIComponent($row->id_satusehat_encounter);
+                $paramSatuSehat = "sudah_integrasi=$row->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter";
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+
                 if ($row->sudah_integrasi == '0' && ($row->ID_PASIEN_SS != null && $row->ID_NAKES_SS != null && $row->id_satusehat_encounter != null)) {
                     $checkBox = "
-                        <input type='checkbox' class='select-row chk-col-purple' value='$row->KARCIS' id='$row->KARCIS' />
+                        <input type='checkbox' class='select-row chk-col-purple' value='$row->KARCIS' data-param='$paramSatuSehat' id='$row->KARCIS' />
                         <label for='$row->KARCIS' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
                     ";
                 }
@@ -204,7 +213,7 @@ class AllergyIntoleranceController extends Controller
                     if ($row->sudah_integrasi == '0') {
                         $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
                     } else {
-                        $btn = '<a href="#" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                        $btn = '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                     }
                 }
 
@@ -316,7 +325,7 @@ class AllergyIntoleranceController extends Controller
         ], 200);
     }
 
-    public function sendSatuSehat($param)
+    public function sendSatuSehat($param, $resend = false)
     {
         $param = base64_decode($param);
         $params = LZString::decompressFromEncodedURIComponent($param);
@@ -449,7 +458,14 @@ class AllergyIntoleranceController extends Controller
             $token = $login['response']['token'];
 
             $url = 'AllergyIntolerance';
-            $dataencounter = $this->consumeSATUSEHATAPI('POST', $baseurl, $url, $payload, true, $token);
+
+            if ($resend) {
+                $currData = SATUSEHAT_ALLERGY_INTOLERANCE::where('KARCIS', $arrParam['karcis'])->first();
+                $payload['id'] = $currData->ID_ALLERGY_INTOLERANCE;
+                $url = 'AllergyIntolerance/' . $currData->ID_ALLERGY_INTOLERANCE;
+            }
+
+            $dataencounter = $this->consumeSATUSEHATAPI(!$resend ? 'POST' : 'PUT', $baseurl, $url, $payload, true, $token);
             $result = json_decode($dataencounter->getBody()->getContents(), true);
             if ($dataencounter->getStatusCode() >= 400) {
                 $response = json_decode($dataencounter->getBody(), true);
@@ -523,47 +539,27 @@ class AllergyIntoleranceController extends Controller
         }
     }
 
-    public function sendBulking(Request $request)
+    public function resendSatuSehat($param)
     {
-        $selectedAll = isset($request->selectAll) ? true : false;
-        $id_unit      = '001'; // session('id_klinik');
-        if (!$selectedAll) {
-            /**
-             * To Do
-             * - Ambil data pasien dari karcis
-             * - Ambil data pasien Mapping SS join kbuku
-             * - Ambil data E_RM_IRJA dari data karcis
-             * - Ambil data dokter dari E_RM_IRJA join ke dokter mapping SS
-             * - Ambil data Encounter sesuai karcis
-             * - Ambil data alergi join dari E_RM_IRJA
-             */
+        return $this->sendSatuSehat($param, true);
+    }
 
-            $arrKarcis = $request->karcis;
-            $dataKunjungan = DB::table('v_kunjungan_rj as vkr')
-                ->select([
-                    'vkr.ID_TRANSAKSI as KARCIS',
-                    'vkr.NO_PESERTA',
-                    'vkr.KBUKU',
-                    'vkr.NAMA_PASIEN',
-                    'vkr.ID_PASIEN_SS',
-                    'vkr.DOKTER',
-                    'vkr.ID_NAKES_SS',
-                    'rsn.id_satusehat_encounter'
-                ])
-                ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', 'vkr.ID_TRANSAKSI', 'rsn.karcis')
-                ->whereIn("vkr.ID_TRANSAKSI", $arrKarcis)
-                ->groupBy([
-                    'vkr.ID_TRANSAKSI',
-                    'vkr.NO_PESERTA',
-                    'vkr.KBUKU',
-                    'vkr.NAMA_PASIEN',
-                    'vkr.ID_PASIEN_SS',
-                    'vkr.DOKTER',
-                    'vkr.ID_NAKES_SS',
-                    'rsn.id_satusehat_encounter'
-                ])
-                ->get();
+    public function bulkSend(Request $request)
+    {
+        $resp = null;
+        foreach ($request->selected_ids as $selected) {
+            $param = $selected['param'];
+            SendAllergyIntolerance::dispatch($param);
         }
+
+        return response()->json([
+            'status' => JsonResponse::HTTP_OK,
+            'message' => 'Pengiriman Data Allergy Intolerance Pasien Sedang Diproses oleh sistem',
+            'redirect' => [
+                'need' => false,
+                'to' => null,
+            ]
+        ], 200);
     }
 
     /**
