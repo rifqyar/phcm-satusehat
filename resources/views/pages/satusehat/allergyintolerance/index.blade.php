@@ -157,9 +157,10 @@
                             <h4>Data Kunjungan Pasien</h4>
                         </div>
 
-                        <button type="button" class="btn btn-primary btn-rounded mr-3" onclick="sendBundle()">
-                            Kirim Bundling
-                            <i class="mdi mdi-cube-send"></i>
+                        <button type="button" class="btn btn-warning btn-rounded" onclick="bulkSend()"
+                            id="bulk-send-btn">
+                            <i class="mdi mdi-send-outline"></i>
+                            Kirim Terpilih ke SatuSehat
                         </button>
                     </div>
                     <!-- 🧾 Tabel Data -->
@@ -224,6 +225,8 @@
 
             getAllData()
 
+            $('#bulk-send-btn').prop('disabled', true);
+
             $("#search-data").on("submit", function(e) {
                 if (this.checkValidity()) {
                     e.preventDefault();
@@ -232,6 +235,10 @@
                         },
                         1250
                     );
+
+                    selectedIds = [];
+                    updateSelectAllCheckbox();
+
                     table.ajax.reload();
                 }
 
@@ -247,6 +254,10 @@
             $("#search-data").find("input.form-control").val("").trigger("blur");
             $("#search-data").find("input.form-control").removeClass("was-validated");
             $('input[name="search"]').val("false");
+
+            selectedIds = [];
+            updateSelectAllCheckbox();
+
             table.ajax.reload();
         }
 
@@ -271,7 +282,6 @@
                         data.tgl_akhir = $('input[name="tgl_akhir"]').val();
                     },
                     dataSrc: function(json) {
-                        console.log(json)
                         $('#total_all').text(json.total_semua);
                         $('#total_integrasi').text(json.total_sudah_integrasi);
                         $('#total_belum_integrasi').text(json.total_belum_integrasi);
@@ -357,8 +367,14 @@
                     if ($('#selectAll').is(':checked')) {
                         $('.select-row').each(function() {
                             const id = $(this).val();
+                            const param = $(this).data('param');
                             $(this).prop('checked', true);
-                            if (!selectedIds.includes(id)) selectedIds.push(id);
+                            if (!selectedIds.includes(id)) {
+                                selectedIds.push({
+                                    id: id,
+                                    param: param
+                                });
+                            }
                         });
                     }
 
@@ -368,33 +384,53 @@
         }
 
         // Select single row
-        $(document).on('change', '.select-row', function() {
+        $(document).on('change', '.select-row', function(e) {
+            e.stopPropagation();
             const id = $(this).val();
+            const param = $(this).data('param');
+
             if ($(this).is(':checked')) {
-                if (!selectedIds.includes(id)) selectedIds.push(id);
+                if (!selectedIds.some(item => item.id === id)) {
+                    selectedIds.push({
+                        id: id,
+                        param: param
+                    });
+                }
             } else {
-                selectedIds = selectedIds.filter(item => item !== id);
+                selectedIds = selectedIds.filter(item => item.id !== id);
             }
             updateSelectAllCheckbox();
         });
 
+        $(document).on('click', '.select-row', function(e) {
+            e.stopPropagation();
+        });
+
         // Select All (current page)
-        $('#selectAll').on('click', function() {
+        $('#selectAll').on('click', function(e) {
+            e.stopPropagation();
             const rows = $('.select-row');
             const checked = this.checked;
             rows.each(function() {
                 const id = $(this).val();
+                const param = $(this).data('param');
                 $(this).prop('checked', checked);
 
                 if (checked) {
-                    if (!selectedIds.includes(id)) selectedIds.push(id);
+                    if (!selectedIds.some(item => item.id === id)) {
+                        selectedIds.push({
+                            id: id,
+                            param: param
+                        });
+                    }
                 } else {
-                    selectedIds = selectedIds.filter(item => item !== id);
+                    selectedIds = selectedIds.filter(item => item.id !== id);
                 }
+
+                updateSelectAllCheckbox();
             });
         });
 
-        // Update status checkbox selectAll
         function updateSelectAllCheckbox() {
             const totalCheckboxes = $('.select-row').length;
             const checkedCount = $('.select-row:checked').length;
@@ -402,6 +438,16 @@
             // centang setengah (indeterminate) kalau sebagian terpilih
             $('#selectAll').prop('checked', checkedCount === totalCheckboxes && totalCheckboxes > 0);
             $('#selectAll').prop('indeterminate', checkedCount > 0 && checkedCount < totalCheckboxes);
+
+            // Update bulk send button state
+            const bulkSendBtn = $('#bulk-send-btn');
+            if (selectedIds.length > 0) {
+                bulkSendBtn.prop('disabled', false);
+                bulkSendBtn.html(`<i class="mdi mdi-send-outline"></i> Kirim ${selectedIds.length} Data ke SatuSehat`);
+            } else {
+                bulkSendBtn.prop('disabled', true);
+                bulkSendBtn.html('<i class="mdi mdi-send-outline"></i> Kirim Terpilih ke SatuSehat');
+            }
         }
 
         $('.data-table').on('click', 'button, a', function(e) {
@@ -434,18 +480,10 @@
             });
         }
 
-        function lihatDetailAlergi(param) {
-            ajaxGetJson(
-                `{{ route('satusehat.allergy-intolerance.lihat-alergi', '') }}/${btoa(param)}`,
-                "show_modal",
-                ""
-            );
-        }
-
-        function sendBundle() {
+        function resendSatuSehat(param) {
             Swal.fire({
-                title: "Konfirmasi Pengiriman Bundling",
-                text: `Kirim data yang anda pilih ke SatuSehat?`,
+                title: "Konfirmasi Pengiriman Ulang?",
+                text: `Kirim Ulang data Allergy Intolerance Pasien ke SatuSehat?`,
                 icon: "question",
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
@@ -454,23 +492,50 @@
                 cancelButtonText: "Batal",
             }).then(async (conf) => {
                 if (conf.value || conf.isConfirmed) {
-                    let formData = new FormData()
-                    formData.append('_token', $('meta[name="csrf-token"]').attr('content'))
+                    await ajaxGetJson(
+                        `{{ route('satusehat.allergy-intolerance.resend', '') }}/${btoa(param)}`,
+                        "input_success",
+                        ""
+                    );
+                }
+            });
+        }
 
-                    if ($('#selectAll').is(":checked")) {
-                        formData.append('selectAll', true)
-                    }
+        function lihatDetailAlergi(param) {
+            ajaxGetJson(
+                `{{ route('satusehat.allergy-intolerance.lihat-alergi', '') }}/${btoa(param)}`,
+                "show_modal",
+                ""
+            );
+        }
 
-                    for (let i = 0; i < selectedIds.length; i++) {
-                        const val = selectedIds[i]
-                        formData.append('karcis[]', val)
-                    }
+        function bulkSend() {
+            if (selectedIds.length === 0) {
+                $.toast({
+                    heading: "Peringatan!",
+                    text: "Pilih data yang akan dikirim terlebih dahulu.",
+                    position: "top-right",
+                    icon: "warning",
+                    hideAfter: 3000
+                });
+                return;
+            }
 
-                    ajaxPostFile(
-                        `{{ route('satusehat.allergy-intolerance.send-bulking') }}`,
-                        formData,
-                        "input_success"
-                    )
+            Swal.fire({
+                title: "Konfirmasi Bulk Send",
+                text: `Kirim ${selectedIds.length} data Allergy Intolerance ke SatuSehat?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Ya, kirim semua!",
+                cancelButtonText: "Batal",
+            }).then(async (result) => {
+                if (result.value) {
+                    await ajaxPostJson(`{{ route('satusehat.allergy-intolerance.bulk-send') }}`, {
+                        _token: $('meta[name="csrf-token"]').attr("content"),
+                        selected_ids: selectedIds
+                    }, "input_success", "");
                 }
             });
         }

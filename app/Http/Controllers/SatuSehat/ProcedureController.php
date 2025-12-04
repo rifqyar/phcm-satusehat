@@ -460,17 +460,6 @@ class ProcedureController extends Controller
             ->editColumn('JENIS_PERAWATAN', function ($row) {
                 return $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
             })
-            ->addColumn('checkbox', function ($row) {
-                $checkBox = '';
-                if ($row->sudah_integrasi == '0' && ($row->ID_PASIEN_SS != null && $row->ID_NAKES_SS != null && $row->id_satusehat_encounter != null)) {
-                    $checkBox = "
-                        <input type='checkbox' class='select-row chk-col-purple' value='$row->KARCIS' id='$row->KARCIS' />
-                        <label for='$row->KARCIS' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
-                    ";
-                }
-
-                return $checkBox;
-            })
             ->editColumn('TANGGAL', function ($row) {
                 return date('Y-m-d', strtotime($row->TANGGAL));
             })
@@ -509,7 +498,7 @@ class ProcedureController extends Controller
                     return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
                 }
             })
-            ->rawColumns(['action', 'status_integrasi', 'checkbox'])
+            ->rawColumns(['action', 'status_integrasi'])
             ->with($totalData)
             ->make(true);
     }

@@ -465,14 +465,14 @@
             const param = $(this).data('param');
 
             if ($(this).is(':checked')) {
-                if (!selectedIds.includes(id)) {
+                if (!selectedIds.some(item => item.id === id)) {
                     selectedIds.push({
                         id: id,
                         param: param
                     });
                 }
             } else {
-                selectedIds = selectedIds.filter(item => item !== id);
+                selectedIds = selectedIds.filter(item => item.id !== id);
             }
             updateSelectAllCheckbox();
         });
@@ -492,14 +492,14 @@
                 $(this).prop('checked', checked);
 
                 if (checked) {
-                    if (!selectedIds.includes(id)) {
+                    if (!selectedIds.some(item => item.id === id)) {
                         selectedIds.push({
                             id: id,
                             param: param
                         });
                     }
                 } else {
-                    selectedIds = selectedIds.filter(item => item !== id);
+                    selectedIds = selectedIds.filter(item => item.id !== id);
                 }
 
                 updateSelectAllCheckbox();

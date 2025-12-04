@@ -88,8 +88,9 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::get('/allergy-intolerance', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'index'])->name('allergy-intolerance.index');
         Route::post('/allergy-intolerance/datatable', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'datatable'])->name('allergy-intolerance.datatable');
         Route::get('/allergy-intolerance/send/{param}', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'sendSatuSehat'])->name('allergy-intolerance.send');
+        Route::get('/allergy-intolerance/resend/{param}', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'resendSatuSehat'])->name('allergy-intolerance.resend');
         Route::get('/allergy-intolerance/lihat-alergi/{param}', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'lihatAlergi'])->name('allergy-intolerance.lihat-alergi');
-        Route::post('/allergy-intolerance/kirim-bulking', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'sendBulking'])->name('allergy-intolerance.send-bulking');
+        Route::post('/allergy-intolerance/bulk-send', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'bulkSend'])->name('allergy-intolerance.bulk-send');
 
         // Service Request
         Route::get('/service-request', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'index'])->name('service-request.index');

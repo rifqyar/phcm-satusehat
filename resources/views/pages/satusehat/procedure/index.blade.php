@@ -228,11 +228,6 @@
                         <div class="card-title">
                             <h4>Data Kunjungan Pasien</h4>
                         </div>
-
-                        <button type="button" class="btn btn-primary btn-rounded mr-3" onclick="sendBundle()">
-                            Kirim Bundling
-                            <i class="mdi mdi-cube-send"></i>
-                        </button>
                     </div>
                     <!-- 🧾 Tabel Data -->
                     <div class="table-responsive">
@@ -241,13 +236,6 @@
                                 <tr>
                                     <th></th>
                                     <th>#</th>
-                                    <th>
-                                        <input type="checkbox" id="selectAll" value="selected-all"
-                                            class="chk-col-purple" />
-                                        <label for="selectAll"
-                                            style="margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500">
-                                            Select All </label>
-                                    </th>
                                     <th>Perawatan</th>
                                     <th>Karcis</th>
                                     <th>Tgl</th>
@@ -363,13 +351,6 @@
                         data: 'DT_RowIndex',
                         name: 'DT_RowIndex',
                         searchable: false,
-                        responsivePriority: 1
-                    },
-                    {
-                        data: 'checkbox',
-                        orderable: false,
-                        searchable: false,
-                        className: 'text-center',
                         responsivePriority: 1
                     },
                     {
