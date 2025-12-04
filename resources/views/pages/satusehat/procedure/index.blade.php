@@ -550,6 +550,8 @@
             const statusIntegrasiOp = res.data.statusIntegrasiOp
             const dataICD = res.data.dataICD
 
+            let integrasiAll = true
+
             $('#integrasi_anamnese').hide()
             $('#success_anamnese').hide()
             $('#failed_anamnese').hide()
@@ -613,80 +615,6 @@
                 htmlDiag = `<em>Tidak ada data diagnosa</em>`;
             }
             $('#data_diagnosa').html(htmlDiag)
-
-            // Sudah Kirim Pemeriksaan Fisik
-            if (statusIntegrasiAnamnese > 0) {
-                $('#integrasi_anamnese').show()
-                $('#success_anamnese').show()
-                $('#btn-simpan-pemeriksaanfisik').hide();
-                $("#form-icd-pemeriksaanfisik").find('input').prop('required', false);
-                $("#form-icd-pemeriksaanfisik").hide();
-            } else {
-                $('#btn-simpan-pemeriksaanfisik').show();
-                $('#failed_anamnese').show()
-                $("#form-icd-pemeriksaanfisik").find('input').prop('required', true);
-                $("#form-icd-pemeriksaanfisik").show();
-            }
-
-            // Sudah Kirim Lab
-            if ((statusIntegrasiLab == tindakanLab.length) && tindakanLab.length > 0) {
-                $('#integrasi_lab').show()
-                $('#success_lab').show()
-                $('#btn-simpan-lab').hide();
-                $('#form-icd-lab').hide();
-            } else {
-                if (tindakanLab.length == 0) {
-                    $('#btn-simpan-lab').hide();
-                    $('#failed_lab').hide()
-                    $('#form-icd-lab').find('select').prop('required', false);
-                    $('#form-icd-lab').hide();
-                } else {
-                    $('#btn-simpan-lab').show();
-                    $('#failed_lab').show()
-                    $('#form-icd-lab').find('select').prop('required', true);
-                    $('#form-icd-lab').show();
-                }
-            }
-
-            // Sudah Kirim Radiologi
-            if ((statusIntegrasiRad == tindakanRad.length) && tindakanRad.length > 0) {
-                $('#integrasi_rad').show()
-                $('#success_rad').show()
-                $('#btn-simpan-rad').hide();
-                $('#form-icd-rad').hide()
-            } else {
-                if (tindakanRad.length == 0) {
-                    $('#btn-simpan-rad').hide();
-                    $('#failed_rad').hide()
-                    $('#form-icd-rad').find('select').prop('required', false);
-                    $('#form-icd-rad').hide();
-                } else {
-                    $('#btn-simpan-rad').show();
-                    $('#form-icd-rad').find('select').prop('required', true);
-                    $('#failed_rad').show()
-                    $('#form-icd-rad').show()
-                }
-            }
-
-            // Sudah Kirim OP
-            if ((statusIntegrasiOp == tindakanOp.length) && tindakanOp.length > 0) {
-                $('#integrasi_op').show()
-                $('#success_op').show()
-                $('#btn-simpan-op').hide();
-                $('#form-icd-operasi').hide()
-            } else {
-                if (tindakanOp.length == 0) {
-                    $('#form-icd-operasi').find('select').prop('required', false);
-                    $('#success_op').hide()
-                    $('#btn-simpan-op').hide();
-                    $('#form-icd-operasi').hide()
-                } else {
-                    $('#form-icd-operasi').find('select').prop('required', true);
-                    $('#btn-simpan-op').show();
-                    $('#failed_op').show()
-                    $('#form-icd-operasi').show()
-                }
-            }
 
             if (dataLab.length > 0) {
                 var tglLab = dataLab[0].TANGGAL_ENTRI;
@@ -881,7 +809,7 @@
                             $(`#curr-icd9-${data.ID_TINDAKAN}`).show()
                             $(`#curr-icd9-${data.ID_TINDAKAN}`).find('input').val(data.KD_ICD9 + ' - ' +
                                 data
-                                .DISP_ICD9)
+                                .DISP_ICD9).attr('data-id-tindakan', data.ID_TINDAKAN)
                         })
                     } else {
                         $(`.curr-icd9-${index}`).hide()
@@ -898,6 +826,95 @@
                     }
                 }
             })
+
+            if (statusIntegrasiAnamnese > 0) {
+                $('#integrasi_anamnese').show()
+                $('#success_anamnese').show()
+                $('#btn-simpan-pemeriksaanfisik').hide();
+                $("#form-icd-pemeriksaanfisik").find('input').prop('required', false);
+                $("#form-icd-pemeriksaanfisik").hide();
+            } else {
+                $('#btn-simpan-pemeriksaanfisik').show();
+                $('#failed_anamnese').show()
+                $("#form-icd-pemeriksaanfisik").find('input').prop('required', true);
+                $("#form-icd-pemeriksaanfisik").show();
+
+                integrasiAll = false
+            }
+
+            // Sudah Kirim Lab
+            if ((statusIntegrasiLab == tindakanLab.length) && tindakanLab.length > 0) {
+                $('#integrasi_lab').show()
+                $('#success_lab').show()
+                $('#btn-simpan-lab').hide();
+                $('.form-icd-lab').hide();
+            } else {
+                if (tindakanLab.length == 0) {
+                    $('#btn-simpan-lab').hide();
+                    $('#failed_lab').hide()
+                    $('.form-icd-lab').find('select').prop('required', false);
+                    $('.form-icd-lab').hide();
+                } else {
+                    $('#btn-simpan-lab').show();
+                    $('#failed_lab').show()
+                    $('.form-icd-lab').find('select').prop('required', true);
+                    $('.form-icd-lab').show();
+
+                    integrasiAll = false
+                }
+            }
+
+            // Sudah Kirim Radiologi
+            if ((statusIntegrasiRad == tindakanRad.length) && tindakanRad.length > 0) {
+                $('#integrasi_rad').show()
+                $('#success_rad').show()
+                $('#btn-simpan-rad').hide();
+                $('.form-icd-rad').hide()
+            } else {
+                if (tindakanRad.length == 0) {
+                    $('#btn-simpan-rad').hide();
+                    $('#failed_rad').hide()
+                    $('.form-icd-rad').find('select').prop('required', false);
+                    $('.form-icd-rad').hide();
+                } else {
+                    $('#btn-simpan-rad').show();
+                    $('.form-icd-rad').find('select').prop('required', true);
+                    $('#failed_rad').show()
+                    $('.form-icd-rad').show()
+
+                    integrasiAll = false
+                }
+            }
+
+            // Sudah Kirim OP
+            if ((statusIntegrasiOp == tindakanOp.length) && tindakanOp.length > 0) {
+                $('#integrasi_op').show()
+                $('#success_op').show()
+                $('#btn-simpan-op').hide();
+                $('#form-icd-operasi').hide()
+            } else {
+                if (tindakanOp.length == 0) {
+                    $('#form-icd-operasi').find('select').prop('required', false);
+                    $('#success_op').hide()
+                    $('#btn-simpan-op').hide();
+                    $('#form-icd-operasi').hide()
+                } else {
+                    $('#form-icd-operasi').find('select').prop('required', true);
+                    $('#btn-simpan-op').show();
+                    $('#failed_op').show()
+                    $('#form-icd-operasi').show()
+
+                    integrasiAll = false
+                }
+            }
+
+            if (integrasiAll) {
+                $('#btn-send-satusehat').hide()
+                $('#btn-resend-satusehat').show()
+            } else {
+                $('#btn-resend-satusehat').hide()
+                $('#btn-send-satusehat').show()
+            }
 
             $('#modalProcedure').modal('show')
         }
@@ -1066,6 +1083,12 @@
             }
         })
 
+        $('#btn-resend-satusehat').on('click', function() {
+            if (paramSatuSehat != '') {
+                resendSatuSehat(paramSatuSehat)
+            }
+        })
+
         function sendSatuSehat(param) {
             const icd9Lab = $('#icd9-lab').val();
             const icd9Rad = $('#icd9-rad').val();
@@ -1181,6 +1204,78 @@
                 if (conf.value || conf.isConfirmed) {
                     await ajaxPostFile(
                         `{{ route('satusehat.procedure.send') }}`,
+                        formData,
+                        "input_success",
+                    );
+                }
+            });
+        }
+
+        function resendSatuSehat(param) {
+            let anamneseFields = $('#curr-icd9-pemeriksaanfisik').find('input');
+            let labFields = $('.curr-icd9-lab');
+            let radFields = $('.curr-icd9-rad');
+            let opField = $('#curr-icd9-operasi').find('input');
+
+            anamneseFields = $(anamneseFields).val().split(' - ')
+            const icd9Anamnese = anamneseFields[0]
+            const textIcd9Anamnese = anamneseFields[1]
+
+            // FORM DATA
+            var formData = new FormData();
+            formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
+            formData.append('param', param);
+
+            formData.append('icd9_pm', icd9Anamnese);
+            formData.append('text_icd9_pm', textIcd9Anamnese);
+
+            // FUNGSI UNTUK MULTIPLE ICD9
+            function ambilData(selector) {
+                let arr = [];
+                selector.each(function() {
+                    selectorField = $(selector).find('input').val().split(' - ')
+                    const icd9 = selectorField[0]
+                    const text = selectorField[1]
+                    arr.push({
+                        kd_tindakan: $(this).find('input').data('id-tindakan') || null,
+                        icd9: icd9,
+                        text_icd9: text
+                    });
+                });
+                return arr;
+            }
+
+            // MULTIPLE INPUT
+            let dataLab = ambilData(labFields);
+            let dataRad = ambilData(radFields);
+
+            formData.append('icd9_lab', JSON.stringify(dataLab));
+            formData.append('icd9_rad', JSON.stringify(dataRad));
+
+            if ($('#curr-icd9-operasi').css('display') != 'none') {
+                let icd9OpValues = $('#curr-icd9-operasi').val()
+                const parts = icd9OpValues.split(",").map(s => s.trim());
+
+                const icd9 = parts.map(item => item.split(" - ")[0]);
+                const textIcd9 = parts.map(item => item.split(" - ")[1]);
+
+                formData.append('icd9_op', JSON.stringify(icd9));
+                formData.append('text_icd9_op', JSON.stringify(textIcd9));
+            }
+
+            Swal.fire({
+                title: "Konfirmasi Pengiriman Ulang",
+                text: `Kirim Ulang Data Procedure Pasien ke SatuSehat?`,
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonColor: "#3085d6",
+                cancelButtonColor: "#d33",
+                confirmButtonText: "Ya, kirim!",
+                cancelButtonText: "Batal",
+            }).then(async (conf) => {
+                if (conf.value || conf.isConfirmed) {
+                    await ajaxPostFile(
+                        `{{ route('satusehat.procedure.resend') }}`,
                         formData,
                         "input_success",
                     );

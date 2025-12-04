@@ -81,6 +81,7 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::get('/procedure/lihat-detail/{param}', [App\Http\Controllers\SatuSehat\ProcedureController::class, 'lihatDetail'])->name('procedure.lihat-detail');
         Route::get('/get-icd9', [App\Http\Controllers\SatuSehat\ProcedureController::class, 'getICD9'])->name('procedure.geticd9');
         Route::post('/procedure/send', [App\Http\Controllers\SatuSehat\ProcedureController::class, 'sendSatuSehat'])->name('procedure.send');
+        Route::post('/procedure/resend', [App\Http\Controllers\SatuSehat\ProcedureController::class, 'resendSatuSehat'])->name('procedure.resend');
         Route::post('/procedure/save-icd', [App\Http\Controllers\SatuSehat\ProcedureController::class, 'store'])->name('procedure.saveICD9');
 
         // Allergy Intolerance
