@@ -485,7 +485,7 @@
                             html += `<tr id="row-${i}">
                                 <td>${i + 1}</td>
                                 <td>${row.NAMA_OBAT ?? '-'}</td>
-                                <td>${row.KD_BRG_KFA ?? '-'}</td>
+                                <td>${row.KD_BRG_KFA ? row.KD_BRG_KFA : '<span class="badge badge-danger">Belum Mapping</span>'}</td>
                                 <td>${row.NAMABRG_KFA ?? '-'}</td>
                                 <td class="col-mr" data-id="${row.ID_TRANS}" data-kfa="${row.KDBRG_CENTRA}">
                                     ${reqStatus}
@@ -499,7 +499,7 @@
 
                         const idTrans = res.data[0]?.ID_TRANS;
 
-                        // 🔥 cek hanya sekali
+                        // cek medication request ada apa nggak, cuman dilakukan sekali
                         $.ajax({
                             url: '/satu-sehat/medication-dispense/cekDispenseExist',
                             method: 'POST',
@@ -520,10 +520,7 @@
 
                                     // belum sukses → tampilkan tombol
                                     td.html(
-                                        `<button class="btn btn-sm btn-primary btnKirimDispense"
-                        data-id="${idTrans}" data-kfa="${kfa}">
-                        Kirim Dispense sebagai Request
-                    </button>`
+                                        `<span class="badge badge-danger">Belum ada Medication request</span>`
                                     );
                                 });
                             },
