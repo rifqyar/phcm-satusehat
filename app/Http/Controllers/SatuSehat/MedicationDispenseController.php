@@ -100,7 +100,7 @@ class MedicationDispenseController extends Controller
         "),
                 'log_disp.LOCAL_ID',
                 '=',
-                'a.ID_TRANS',
+                'aj.ID_TRANS',
             )
 
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION as SSM_DISP', 'SSM_DISP.ID', '=', DB::raw('log_disp.MAX_ID'))
