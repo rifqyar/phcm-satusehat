@@ -483,39 +483,6 @@
             );
         }
 
-        function sendBundle() {
-            Swal.fire({
-                title: "Konfirmasi Pengiriman Bundling",
-                text: `Kirim data yang anda pilih ke SatuSehat?`,
-                icon: "question",
-                showCancelButton: true,
-                confirmButtonColor: "#3085d6",
-                cancelButtonColor: "#d33",
-                confirmButtonText: "Ya, kirim!",
-                cancelButtonText: "Batal",
-            }).then(async (conf) => {
-                if (conf.value || conf.isConfirmed) {
-                    let formData = new FormData()
-                    formData.append('_token', $('meta[name="csrf-token"]').attr('content'))
-
-                    if ($('#selectAll').is(":checked")) {
-                        formData.append('selectAll', true)
-                    }
-
-                    for (let i = 0; i < selectedIds.length; i++) {
-                        const val = selectedIds[i]
-                        formData.append('karcis[]', val)
-                    }
-
-                    ajaxPostFile(
-                        `{{ route('satusehat.allergy-intolerance.send-bulking') }}`,
-                        formData,
-                        "input_success"
-                    )
-                }
-            });
-        }
-
         function show_modal(res) {
             const dataPasien = res.data.dataPasien
             const dataErm = res.data.dataErm
