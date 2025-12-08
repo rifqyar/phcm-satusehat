@@ -967,8 +967,9 @@ class ProcedureController extends Controller
     {
         $dataLab = DB::table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
+            ->leftJoin('RJ_KARCIS as rk', 'rk.KARCIS', 'ere.KARCIS_RUJUKAN')
             ->select([
-                'ere.KDDOK_TUJUAN as KDDOK',
+                'rk.KDDOK as KDDOK',
                 'ered.ID_RIWAYAT_ELAB',
                 'ered.KD_TINDAKAN',
                 'ere.TANGGAL_ENTRI'
@@ -1081,8 +1082,9 @@ class ProcedureController extends Controller
     {
         $dataRad = DB::table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
+            ->leftJoin('RJ_KARCIS as rk', 'rk.KARCIS', 'ere.KARCIS_RUJUKAN')
             ->select([
-                'ere.KDDOK_TUJUAN as KDDOK',
+                'rk.KDDOK as KDDOK',
                 'ered.ID_RIWAYAT_ELAB',
                 'ered.KD_TINDAKAN',
                 'ere.TANGGAL_ENTRI'
@@ -1405,18 +1407,20 @@ class ProcedureController extends Controller
                     ->select([
                         'ered.ID_RIWAYAT_ELAB',
                         'ered.KD_TINDAKAN',
-                        'ere.KDDOK_TUJUAN'
+                        'rk.KDDOK as KDDOK_TUJUAN'
                     ])
                     ->where('KLINIK_TUJUAN', '0017')
+                    ->leftJoin('RJ_KARCIS as rk', 'rk.KARCIS', 'ere.KARCIS_RUJUKAN')
                     ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB');
             } else if ($type == 'rad') {
                 $dataErm = $dataErm
                     ->select([
                         'ered.ID_RIWAYAT_ELAB',
                         'ered.KD_TINDAKAN',
-                        'ere.KDDOK_TUJUAN'
+                        'rk.KDDOK as KDDOK_TUJUAN'
                     ])
-                    ->where('KLINIK_TUJUAN', '0015')
+                    ->whereIn('KLINIK_TUJUAN', ['0015', '0016'])
+                    ->leftJoin('RJ_KARCIS as rk', 'rk.KARCIS', 'ere.KARCIS_RUJUKAN')
                     ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB');
             } else {
                 $dataErm = $dataErm->select('*');
