@@ -165,5 +165,17 @@ Route::middleware(['checkLogin'])->group(function () {
             ->name('diagnostic-report.send-satu-sehat');
         Route::post('/diagnostic-report/bulk-send', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'bulkSend'])
             ->name('diagnostic-report.bulk-send');
+
+        // Questionnaire Response
+        Route::get('/questionnaire-response', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'index'])
+            ->name('questionnaire-response.index');
+        Route::post('/questionnaire-response/datatable', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'datatable'])
+            ->name('questionnaire-response.datatable');
+        Route::get('/questionnaire-response/questions', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'getQuestions'])
+            ->name('questionnaire-response.questions');
+        Route::post('/questionnaire-response/send', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'send'])
+            ->name('questionnaire-response.send');
+        Route::post('/questionnaire-response/resend', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'resend'])
+            ->name('questionnaire-response.resend');
     });
 });

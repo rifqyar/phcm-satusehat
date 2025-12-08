@@ -100,8 +100,8 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Respon Kuesioner',
-                'url' => '#',
-                'bg_color' => ''
+                'url' => 'satusehat.questionnaire-response.index',
+                'bg_color' => 'card-success'
             ],
             [
                 'title' => 'Episode Perawatan',
