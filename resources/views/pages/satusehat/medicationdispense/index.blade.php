@@ -591,8 +591,10 @@
                 if (result.value) {
                     console.log("Lanjut kirim ke SATUSEHAT");
                     kirimSatusehat(idTrans);
+                    table.ajax.reload();
                 } else {
                     console.log("Dibatalkan");
+                    table.ajax.reload();
                 }
             });
         }
