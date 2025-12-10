@@ -178,6 +178,17 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::post('/questionnaire-response/resend', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'resend'])
             ->name('questionnaire-response.resend');
 
+        // Resume Medis Routes
+        Route::get('/resume-medis', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'index'])
+            ->name('resume-medis.index');
+        Route::post('/resume-medis/datatable', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'datatable'])
+            ->name('resume-medis.datatable');
+        Route::post('/resume-medis/lihat-detail/{param}', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'lihatDetail'])
+            ->name('resume-medis.lihat-detail');
+        Route::get('/resume-medis/send/{param}', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'send'])
+            ->name('resume-medis.send');
+        Route::get('/resume-medis/resend/{param}', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'resend'])
+            ->name('resume-medis.resend');
         // Diagnosis
         Route::get('/diagnosis', [App\Http\Controllers\SatuSehat\DiagnosisController::class, 'index'])->name('diagnosis.index');
         Route::post('/diagnosis/detail', [App\Http\Controllers\SatuSehat\DiagnosisController::class, 'getDetailDiagnosis'])->name('diagnosis.detail');

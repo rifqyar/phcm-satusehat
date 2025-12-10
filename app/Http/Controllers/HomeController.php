@@ -40,8 +40,8 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Resume Medis',
-                'url' => '#',
-                'bg_color' => ''
+                'url' => 'satusehat.resume-medis.index',
+                'bg_color' => 'card-success'
             ],
             [
                 'title' => 'Imunisasi',
