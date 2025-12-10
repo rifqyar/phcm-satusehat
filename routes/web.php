@@ -189,5 +189,18 @@ Route::middleware(['checkLogin'])->group(function () {
             ->name('resume-medis.send');
         Route::get('/resume-medis/resend/{param}', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'resend'])
             ->name('resume-medis.resend');
+        // Diagnosis
+        Route::get('/diagnosis', [App\Http\Controllers\SatuSehat\DiagnosisController::class, 'index'])->name('diagnosis.index');
+        Route::post('/diagnosis/detail', [App\Http\Controllers\SatuSehat\DiagnosisController::class, 'getDetailDiagnosis'])->name('diagnosis.detail');
+        
+        // Imunisasi
+        Route::get('/imunisasi', [App\Http\Controllers\SatuSehat\ImunisasiController::class, 'index'])->name('imunisasi.index');
+        Route::post('/imunisasi/detail', [App\Http\Controllers\SatuSehat\ImunisasiController::class, 'getDetailDiagnosis'])->name('imunisasi.detail');
+        Route::post('/imunisasi/datatabel', [App\Http\Controllers\SatuSehat\ImunisasiController::class, 'datatabel'])->name('imunisasi.datatabel');
+        
+        // Med Statement
+        Route::get('/medstatement', [App\Http\Controllers\SatuSehat\MedStatementController::class, 'index'])->name('medstatement.index');
+        Route::post('/medstatement/datatabel', [App\Http\Controllers\SatuSehat\MedStatementController::class, 'datatabel'])->name('medstatement.datatabel');
+
     });
 });
