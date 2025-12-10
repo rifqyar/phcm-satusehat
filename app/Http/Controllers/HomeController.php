@@ -25,8 +25,8 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Diagnosis',
-                'url' => '#',
-                'bg_color' => ''
+                'url' => 'satusehat.diagnosis.index',
+                'bg_color' => 'card-success'
             ],
             [
                 'title' => 'Observasi',
@@ -45,8 +45,8 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Imunisasi',
-                'url' => '#',
-                'bg_color' => ''
+                'url' => 'satusehat.imunisasi.index',
+                'bg_color' => 'card-success'
             ],
             [
                 'title' => 'Resep Obat',
@@ -95,8 +95,8 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Catatan Pengobatan',
-                'url' => '#',
-                'bg_color' => ''
+                'url' => 'satusehat.medstatement.index',
+                'bg_color' => 'card-success'
             ],
             [
                 'title' => 'Respon Kuesioner',
