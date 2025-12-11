@@ -29,7 +29,7 @@ class ResumeMedisController extends Controller
             'total_sudah_integrasi' => 4,
             'total_belum_integrasi' => 8,
         ];
-        
+
         return view('pages.satusehat.resume-medis.index', compact('result'));
     }
 
@@ -43,7 +43,7 @@ class ResumeMedisController extends Controller
             $statusIntegrated = ($i % 3 === 0);
             $jenisPerawatan = ($i % 2 == 0) ? 'Rawat Jalan' : 'Rawat Inap';
             $idTransaksi = 'TRX' . str_pad($i, 5, '0', STR_PAD_LEFT);
-            
+
             $rows[] = [
                 'DT_RowIndex' => $i,
                 'checkbox' => '<input type="checkbox" class="row-checkbox chk-col-purple" data-id="' . $idTransaksi . '" id="check_' . $i . '"><label for="check_' . $i . '"></label>',
@@ -55,17 +55,17 @@ class ResumeMedisController extends Controller
                 'TGL_MASUK' => Carbon::now()->subDays($i)->format('Y-m-d'),
                 'DOKTER' => 'Dr. Dokter ' . $i,
                 'sudah_integrasi' => $statusIntegrated ? 1 : 0,
-                'status_integrasi' => $statusIntegrated 
-                    ? '<span class="badge badge-success">Sudah Integrasi</span>' 
+                'status_integrasi' => $statusIntegrated
+                    ? '<span class="badge badge-success">Sudah Integrasi</span>'
                     : '<span class="badge badge-warning">Belum Integrasi</span>',
                 'action' => $this->generateActionButtons($idTransaksi, $statusIntegrated),
             ];
         }
 
         $total = count($rows);
-        $rjAll = collect($rows)->filter(fn($r) => $r['JENIS_PERAWATAN'] === 'Rawat Jalan')->count();
-        $ri = collect($rows)->filter(fn($r) => $r['JENIS_PERAWATAN'] === 'Rawat Inap')->count();
-        $total_integrated = collect($rows)->filter(fn($r) => $r['sudah_integrasi'] === 1)->count();
+        $rjAll = collect($rows)->filter(function($r) { return $r['JENIS_PERAWATAN'] === 'Rawat Jalan'; })->count();
+        $ri = collect($rows)->filter(function($r) { return $r['JENIS_PERAWATAN'] === 'Rawat Inap'; })->count();
+        $total_integrated = collect($rows)->filter(function($r) { return $r['sudah_integrasi'] === 1; })->count();
         $total_unmapped = $total - $total_integrated;
 
         return response()->json([
@@ -81,7 +81,7 @@ class ResumeMedisController extends Controller
     private function generateActionButtons($idTransaksi, $statusIntegrated)
     {
         $btnDetail = '<button type="button" class="btn btn-sm btn-info" onclick="lihatDetail(\'' . $idTransaksi . '\')"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</button>';
-        
+
         if (!$statusIntegrated) {
             $btnSend = '<button type="button" class="btn btn-sm btn-success ml-1" onclick="sendSatuSehat(\'' . $idTransaksi . '\')"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</button>';
             return $btnDetail . ' ' . $btnSend;
