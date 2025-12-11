@@ -36,6 +36,7 @@ class MasterRadiologyController extends Controller
         $total_mapped = $qMapped
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as d2', 'a.KD_TIND', '=', 'd2.ID')
             ->whereNotNull('d2.code')
+            ->whereNotNull('d2.ICD9')
             ->where('d2.code', '<>', '')
             ->select('a.KD_TIND')
             ->distinct()
@@ -53,6 +54,8 @@ class MasterRadiologyController extends Controller
                 'c.NM_GRUP_TIND as NAMA_GRUP',
                 'a.KD_TIND as ID_TINDAKAN',
                 'a.NM_TIND as NAMA_TINDAKAN',
+                'd.ICD9',
+                'd.ICD9_TEXT',
                 DB::raw('MAX(d.code) as SATUSEHAT_CODE'),
                 DB::raw('MAX(d.codesystem) as SATUSEHAT_SYSTEM'),
                 DB::raw('MAX(d.display) as SATUSEHAT_DISPLAY'),
@@ -65,7 +68,7 @@ class MasterRadiologyController extends Controller
                     ->where('IDUNIT', '001');
             })
             ->whereRaw('ISNULL(a.STT_ACT,0) <> 0')
-            ->groupBy('c.ID_GRUP_TIND', 'c.NM_GRUP_TIND', 'a.KD_TIND', 'a.NM_TIND')
+            ->groupBy('c.ID_GRUP_TIND', 'c.NM_GRUP_TIND', 'a.KD_TIND', 'a.NM_TIND', 'd.ICD9','d.ICD9_TEXT')
             ->orderBy('c.ID_GRUP_TIND')
             ->orderBy('a.NM_TIND');
 
@@ -83,9 +86,9 @@ class MasterRadiologyController extends Controller
         // 🧩 Mapped/unmapped filter
         $mapped_filter = $request->get('mapped_filter', 'all');
         if ($mapped_filter === 'mapped') {
-            $query->havingRaw('MAX(d.code) IS NOT NULL AND MAX(d.code) <> \'\'');
+            $query->havingRaw('MAX(d.code) IS NOT NULL AND MAX(d.code) <> \'\' AND MAX(d.ICD9) IS NOT NULL AND MAX(d.ICD9) <> \'\'');
         } elseif ($mapped_filter === 'unmapped') {
-            $query->havingRaw('MAX(d.code) IS NULL OR MAX(d.code) = \'\'');
+            $query->havingRaw('(MAX(d.code) IS NULL OR MAX(d.code) = \'\') OR (MAX(d.ICD9) IS NULL OR MAX(d.ICD9) = \'\')');
         }
 
         // 📄 Paginate final result
@@ -110,7 +113,9 @@ class MasterRadiologyController extends Controller
                 'c.NM_GRUP_TIND as NAMA_GRUP',
                 'a.NM_TIND as NAMA_TINDAKAN',
                 'd.code as SATUSEHAT_CODE',
-                'd.display as SATUSEHAT_DISPLAY'
+                'd.display as SATUSEHAT_DISPLAY',
+                'd.ICD9',
+                'd.ICD9_TEXT',
             )
             ->whereIn('b.KDKLINIK', function ($sub) {
                 $sub->select('KODE_KLINIK')
@@ -136,6 +141,8 @@ class MasterRadiologyController extends Controller
                 'nama_tindakan' => 'required|string|max:255',
                 'satusehat_code' => 'required|string|max:100',
                 'satusehat_display' => 'required|string|max:255',
+                'icd9' => 'required|string|max:20',
+                'icd9_text' => 'required|string',
             ]);
 
             $loinc = DB::connection('sqlsrv')
@@ -154,6 +161,8 @@ class MasterRadiologyController extends Controller
                         'display'   => $validated['satusehat_display'],
                         'codesystem' => 'http://loinc.org',
                         'CATEGORY'  => 1,       // Radiology
+                        'ICD9'  => $validated['icd9'],
+                        'ICD9_TEXT'  => $validated['icd9_text'],
                     ]);
             } else {
                 // Insert
@@ -166,6 +175,8 @@ class MasterRadiologyController extends Controller
                         'display'   => $validated['satusehat_display'],
                         'codesystem' => 'http://loinc.org',
                         'CATEGORY'  => 1,       // Radiology
+                        'ICD9'  => $validated['icd9'],
+                        'ICD9_TEXT'  => $validated['icd9_text'],
                     ]);
             }
 
