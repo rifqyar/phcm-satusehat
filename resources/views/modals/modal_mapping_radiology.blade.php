@@ -32,16 +32,36 @@
                     </div>
 
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">Kode LOINC</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="satusehat_code" name="satusehat_code" readonly>
+                                <input type="text" class="form-control" id="satusehat_code" name="satusehat_code"
+                                    readonly>
                             </div>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">Nama LOINC</label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="satusehat_display" name="satusehat_display" readonly>
+                                <input type="text" class="form-control" id="satusehat_display"
+                                    name="satusehat_display" readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Kode Tindakan Saat Ini</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="icd9_display" name="icd9_display"
+                                    readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Kode Tindakan ICD9-CM</label>
+                            <div class="input-group">
+                                <select name="icd9" id="icd9" class="form-control icd9" style="width: 100%">
+                                    <option value=""></option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -51,7 +71,7 @@
                         <form id="formSearchLoinc">
                             <div class="row align-items-end">
                                 <div class="col-md-10">
-                                    <input type="text" class="form-control" id="search_loinc" name="keyword" 
+                                    <input type="text" class="form-control" id="search_loinc" name="keyword"
                                         placeholder="Search LOINC..." required>
                                 </div>
                                 <div class="col-md-2">
@@ -111,20 +131,21 @@
 
     function getDataLoinc(query) {
         fetch(`/master-radiology/loinc-search?query=${encodeURIComponent(query)}`)
-        .then(response => response.json())
-        .then(data => {
-            const items = data?.Results || [];
-            const tbody = document.getElementById('tbodyLoinc');
-            tbody.innerHTML = '';
+            .then(response => response.json())
+            .then(data => {
+                const items = data?.Results || [];
+                const tbody = document.getElementById('tbodyLoinc');
+                tbody.innerHTML = '';
 
-            if (items.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center">Tidak ada data LOINC ditemukan</td></tr>`;
-                document.getElementById('tableLoincWrapper').style.display = 'block';
-                return;
-            }
-            
-            items.forEach(item => {
-                const row = `
+                if (items.length === 0) {
+                    tbody.innerHTML =
+                        `<tr><td colspan="6" class="text-center">Tidak ada data LOINC ditemukan</td></tr>`;
+                    document.getElementById('tableLoincWrapper').style.display = 'block';
+                    return;
+                }
+
+                items.forEach(item => {
+                    const row = `
                     <tr>
                         <td>${item.LOINC_NUM || '-'}</td>
                         <td>${item.LONG_COMMON_NAME || '-'}</td>
@@ -132,21 +153,21 @@
                         <td>${(item.Tags || []).join(', ') || '-'}</td>
                         <td><a href="${item.Link || '#'}" target="_blank">Link</a></td>
                         <td>
-                            <button type="button" class="btn btn-sm btn-success btnPilihLoinc" 
-                                data-code="${item.LOINC_NUM}" 
+                            <button type="button" class="btn btn-sm btn-success btnPilihLoinc"
+                                data-code="${item.LOINC_NUM}"
                                 data-display="${item.LONG_COMMON_NAME}">
                                 Pilih
                             </button>
                         </td>
                     </tr>
                 `;
-                tbody.insertAdjacentHTML('beforeend', row);
-            });
-            document.getElementById('tableLoincWrapper').style.display = 'block';
-        })
+                    tbody.insertAdjacentHTML('beforeend', row);
+                });
+                document.getElementById('tableLoincWrapper').style.display = 'block';
+            })
     }
 
-    formSearchLoinc.addEventListener('submit', function (e) {
+    formSearchLoinc.addEventListener('submit', function(e) {
         e.preventDefault();
 
         const query = document.getElementById('search_loinc').value.trim();
@@ -164,7 +185,7 @@
             alert('Terjadi error saat memuat data LOINC.');
             return;
         }
-        
+
     });
 
     // document.getElementById('btnCariLoincDisplay').addEventListener('click', async function () {
@@ -181,10 +202,10 @@
     //         alert('Terjadi error saat memuat data LOINC.');
     //         return;
     //     }
-        
+
     // });
 
-    document.addEventListener('click', function (e) {
+    document.addEventListener('click', function(e) {
         if (e.target.classList.contains('btnPilihLoinc')) {
             const kode = e.target.dataset.code;
             const nama = e.target.dataset.display;
@@ -194,5 +215,4 @@
             document.getElementById('search_loinc').value = '';
         }
     });
-
 </script>
