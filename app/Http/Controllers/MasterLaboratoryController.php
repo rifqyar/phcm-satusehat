@@ -41,7 +41,9 @@ class MasterLaboratoryController extends Controller
                 'ss.code as SATUSEHAT_CODE',
                 'ss.codesystem as SATUSEHAT_SYSTEM',
                 'ss.display as SATUSEHAT_DISPLAY',
-                'ss.CATEGORY'
+                'ss.CATEGORY',
+                'ss.ICD9',
+                'ss.ICD9_TEXT',
             )
             ->whereIn('a.ID_GRUP_TIND', $groupIds)
             ->groupBy(
@@ -52,7 +54,9 @@ class MasterLaboratoryController extends Controller
                 'ss.code',
                 'ss.codesystem',
                 'ss.display',
-                'ss.CATEGORY'
+                'ss.CATEGORY',
+                'ss.ICD9',
+                'ss.ICD9_TEXT',
             )
             ->orderBy('a.ID_GRUP_TIND', 'asc')
             ->distinct();
@@ -87,6 +91,7 @@ class MasterLaboratoryController extends Controller
             )
             ->whereIn('a.ID_GRUP_TIND', $groupIds)
             ->whereNotNull('ss.code')
+            ->whereNotNull('ss.ICD9')
             ->where('ss.code', '<>', '')
             ->groupBy(
                 'a.ID_GRUP_TIND',
@@ -159,6 +164,8 @@ class MasterLaboratoryController extends Controller
                 'b.NM_TIND as NAMA_TINDAKAN',
                 'ss.code as SATUSEHAT_CODE',
                 'ss.display as SATUSEHAT_DISPLAY',
+                'ss.ICD9',
+                'ss.ICD9_TEXT',
             )
             ->whereIn('a.ID_GRUP_TIND', $groupIds)
             ->where('a.KD_TIND', $id)
@@ -179,6 +186,8 @@ class MasterLaboratoryController extends Controller
                 'nama_tindakan' => 'required|string|max:255',
                 'satusehat_code' => 'required|string|max:100',
                 'satusehat_display' => 'required|string|max:255',
+                'icd9' => 'required|string|max:20',
+                'icd9_text' => 'required|string',
             ]);
 
             $loinc = DB::connection('sqlsrv')
@@ -196,7 +205,9 @@ class MasterLaboratoryController extends Controller
                         'code'      => $validated['satusehat_code'],
                         'display'   => $validated['satusehat_display'],
                         'codesystem' => 'http://loinc.org',
-                        'CATEGORY'  => 2,       // Laboratory
+                        'CATEGORY'  => 2,
+                        'ICD9'  => $validated['icd9'],
+                        'ICD9_TEXT'  => $validated['icd9_text'],
                     ]);
             } else {
                 // Insert
@@ -209,6 +220,8 @@ class MasterLaboratoryController extends Controller
                         'display'   => $validated['satusehat_display'],
                         'codesystem' => 'http://loinc.org',
                         'CATEGORY'  => 2,       // Laboratory
+                        'ICD9'  => $validated['icd9'],
+                        'ICD9_TEXT'  => $validated['icd9_text'],
                     ]);
             }
 
