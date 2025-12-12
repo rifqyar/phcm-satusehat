@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\DB;
+use App\Models\GlobalParameter;
+use App\Models\SATUSEHAT\SS_Kode_API;
 
 
 class SatusehatKfaController extends Controller
@@ -24,7 +26,17 @@ class SatusehatKfaController extends Controller
             ->orderByDesc('id')
             ->value('access_token');
 
-        $baseUrl = 'https://api-satusehat-stg.dto.kemkes.go.id/kfa-v2/products/all';
+            $id_unit = '001';
+            if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+                $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_KFA_STAGING')->select('valStr')->first()->valStr;
+                $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+            } else {
+                $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_KFA')->select('valStr')->first()->valStr;
+                $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+            }
+            $url = 'products/all';
+            $baseuri = rtrim($baseurl, '/') . '/' . ltrim($url, '/');
+        // $baseUrl = 'https://api-satusehat-stg.dto.kemkes.go.id/kfa-v2/products/all';
 
         try {
             // Tentukan parameter request ke API KFA
@@ -43,7 +55,7 @@ class SatusehatKfaController extends Controller
             $response = Http::withToken($token)
                 ->accept('application/json')
                 ->withoutVerifying()
-                ->get($baseUrl, $params);
+                ->get($baseuri, $params);
 
             if (!$response->successful()) {
                 return response()->json([
@@ -204,10 +216,22 @@ class SatusehatKfaController extends Controller
                 ];
             }
 
+                        
+            $id_unit = '001';
+            if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+                $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
+                $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+            } else {
+                $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
+                $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+            }
+            $url = 'Medication';
+            $baseuri = rtrim($baseurl, '/') . '/' . ltrim($url, '/');
+
             $client = new \GuzzleHttp\Client();
 
             $response = $client->post(
-                'https://api-satusehat-stg.dto.kemkes.go.id/fhir-r4/v1/Medication',
+                $baseuri,
                 [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $tokenData->access_token,
