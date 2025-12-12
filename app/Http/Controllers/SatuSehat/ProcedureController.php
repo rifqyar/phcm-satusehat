@@ -90,7 +90,7 @@ class ProcedureController extends Controller
                             NOT EXISTS (
                                 SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB rad
                                 WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
-                                AND rad.KLINIK_TUJUAN = '0015'
+                                AND rad.KLINIK_TUJUAN = '0015' OR rad.KLINIK_TUJUAN = '0016'
                             )
                             OR EXISTS (
                                 SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p3
@@ -177,7 +177,7 @@ class ProcedureController extends Controller
                         NOT EXISTS (
                             SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB rad
                             WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
-                            AND rad.KLINIK_TUJUAN = '0015'
+                            AND rad.KLINIK_TUJUAN = '0015' OR rad.KLINIK_TUJUAN = '0016'
                         )
                         OR EXISTS (
                             SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p3
@@ -304,7 +304,7 @@ class ProcedureController extends Controller
                             NOT EXISTS (
                                 SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB rad
                                 WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
-                                AND rad.KLINIK_TUJUAN = '0015'
+                                AND rad.KLINIK_TUJUAN = '0015' OR rad.KLINIK_TUJUAN = '0016'
                             )
                             OR EXISTS (
                                 SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p3
@@ -388,7 +388,7 @@ class ProcedureController extends Controller
                         NOT EXISTS (
                             SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB rad
                             WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
-                            AND rad.KLINIK_TUJUAN = '0015'
+                            AND rad.KLINIK_TUJUAN = '0015' OR rad.KLINIK_TUJUAN = '0016'
                         )
                         OR EXISTS (
                             SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p3
@@ -643,7 +643,10 @@ class ProcedureController extends Controller
             ])
             ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere', $karcisField, 'ere.KARCIS_ASAL')
             ->where('eri.AKTIF', 1)
-            ->where('ere.KLINIK_TUJUAN', '0015')
+            ->where(function ($query) {
+                $query->where('ere.KLINIK_TUJUAN', '0016')
+                    ->orWhere('ere.KLINIK_TUJUAN', '0015');
+            })
             ->where($karcisField, $arrParam['karcis'])
             ->get();
 
@@ -1089,7 +1092,10 @@ class ProcedureController extends Controller
                 'ere.TANGGAL_ENTRI'
             ])
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', 'ered.KD_TINDAKAN', '=', 'rsp.ID_TINDAKAN')
-            ->where('ere.KLINIK_TUJUAN', '0015')
+            ->where(function ($query) {
+                $query->where('ere.KLINIK_TUJUAN', '0016')
+                    ->orWhere('ere.KLINIK_TUJUAN', '0015');
+            })
             ->where('ere.KARCIS_ASAL', $param['karcis'])
             ->where(function ($q) use ($resend) {
                 if (!$resend) {
