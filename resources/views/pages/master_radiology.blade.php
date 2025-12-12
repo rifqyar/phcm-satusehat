@@ -263,8 +263,8 @@
                         return {
                             results: data.map(function(value) {
                                 return {
-                                    id: value.KODE_SUB,
-                                    text: value.DIAGNOSA,
+                                    id: value.CODE,
+                                    text: value.NAME,
                                 };
                             })
                         };
