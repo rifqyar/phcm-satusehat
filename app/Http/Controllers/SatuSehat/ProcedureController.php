@@ -623,10 +623,17 @@ class ProcedureController extends Controller
                 'ere.ID_RIWAYAT_ELAB',
                 $karcisField,
                 // 'eri.ANAMNESE',
-                'ere.ARRAY_TINDAKAN',
-                'ere.TANGGAL_ENTRI'
+                // 'ere.ARRAY_TINDAKAN',
+                'ere.TANGGAL_ENTRI',
+                'rmt.KD_TIND',
+                'rmt.NM_TIND',
+                'smsc.ICD9',
+                'smsc.ICD9_TEXT',
             ])
             ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere', $karcisField, 'ere.KARCIS_ASAL')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
+            ->leftJoin('RIRJ_MTINDAKAN as rmt', 'ered.KD_TINDAKAN', 'rmt.KD_TIND')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as smsc', 'rmt.NM_TIND', 'smsc.NM_TIND')
             ->where('eri.AKTIF', 1)
             ->where('ere.KLINIK_TUJUAN', '0017')
             ->where($karcisField, $arrParam['karcis'])
@@ -638,10 +645,17 @@ class ProcedureController extends Controller
                 'ere.ID_RIWAYAT_ELAB',
                 $karcisField,
                 // 'eri.ANAMNESE',
-                'ere.ARRAY_TINDAKAN',
-                'ere.TANGGAL_ENTRI'
+                // 'ere.ARRAY_TINDAKAN',
+                'ere.TANGGAL_ENTRI',
+                'rmt.KD_TIND',
+                'rmt.NM_TIND',
+                'smsc.ICD9',
+                'smsc.ICD9_TEXT',
             ])
             ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere', $karcisField, 'ere.KARCIS_ASAL')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
+            ->leftJoin('RIRJ_MTINDAKAN as rmt', 'ered.KD_TINDAKAN', 'rmt.KD_TIND')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as smsc', 'rmt.NM_TIND', 'smsc.NM_TIND')
             ->where('eri.AKTIF', 1)
             ->where(function ($query) {
                 $query->where('ere.KLINIK_TUJUAN', '0016')
@@ -651,31 +665,31 @@ class ProcedureController extends Controller
             ->get();
 
         // Pluck array tindakan untuk parameter where in
-        $kdTindakanLab = $dataLab
-            ->pluck('ARRAY_TINDAKAN')
-            ->filter()
-            ->flatMap(function ($item) {
-                return explode(',', $item);
-            })
-            ->filter()
-            ->unique()
-            ->values();
+        // $kdTindakanLab = $dataLab
+        //     ->pluck('ARRAY_TINDAKAN')
+        //     ->filter()
+        //     ->flatMap(function ($item) {
+        //         return explode(',', $item);
+        //     })
+        //     ->filter()
+        //     ->unique()
+        //     ->values();
 
-        $kdTindakanRad = $dataRad
-            ->pluck('ARRAY_TINDAKAN')
-            ->filter()
-            ->flatMap(function ($item) {
-                return explode(',', $item);
-            })
-            ->map('trim')
-            ->filter()
-            ->unique()
-            ->values();
+        // $kdTindakanRad = $dataRad
+        //     ->pluck('ARRAY_TINDAKAN')
+        //     ->filter()
+        //     ->flatMap(function ($item) {
+        //         return explode(',', $item);
+        //     })
+        //     ->map('trim')
+        //     ->filter()
+        //     ->unique()
+        //     ->values();
 
         // Ambil data nama tindakan lab & radiologi
 
-        $tindakanLab = DB::table('RIRJ_MTINDAKAN')->whereIn('KD_TIND', $kdTindakanLab)->get();
-        $tindakanRad = DB::table('RIRJ_MTINDAKAN')->whereIn('KD_TIND', $kdTindakanRad)->get();
+        $tindakanLab = $dataLab; //DB::table('RIRJ_MTINDAKAN')->whereIn('KD_TIND', $kdTindakanLab)->get();
+        $tindakanRad = $dataRad; //DB::table('RIRJ_MTINDAKAN')->whereIn('KD_TIND', $kdTindakanRad)->get();
 
         $dataTindOp = DB::table('E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI as erflo')
             ->where('erflo.KARCIS', $arrParam['karcis'])
@@ -969,14 +983,21 @@ class ProcedureController extends Controller
     {
         $dataLab = DB::table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
+            // ->leftJoin('RIRJ_MTINDAKAN as rmt', 'ered.KD_TINDAKAN', 'rmt.KD_TIND')
+            // ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as smsc', 'rmt.NM_TIND', 'smsc.NM_TIND')
             ->leftJoin('RJ_KARCIS as rk', 'rk.KARCIS', 'ere.KARCIS_RUJUKAN')
             ->select([
                 'rk.KDDOK as KDDOK',
                 'ered.ID_RIWAYAT_ELAB',
                 'ered.KD_TINDAKAN',
-                'ere.TANGGAL_ENTRI'
+                'ere.TANGGAL_ENTRI',
+                // 'smsc.ICD9',
+                // 'smsc.ICD9_TEXT',
             ])
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', 'ered.KD_TINDAKAN', '=', 'rsp.ID_TINDAKAN')
+            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', function ($join) {
+                $join->on('ered.KD_TINDAKAN', '=', 'rsp.ID_TINDAKAN')
+                    ->on('ered.ID_RIWAYAT_ELAB', '=', 'rsp.ID_JENIS_TINDAKAN');
+            })
             ->where('ere.KLINIK_TUJUAN', '0017')
             ->where('ere.KARCIS_ASAL', $param['karcis'])
             ->where(function ($q) use ($resend) {
@@ -1070,6 +1091,7 @@ class ProcedureController extends Controller
             }
         }
 
+        dd($payload);
         return [
             "payload" => $payload ?? [],
             "kddok" => $nakes->kddok ?? null,
@@ -1091,7 +1113,10 @@ class ProcedureController extends Controller
                 'ered.KD_TINDAKAN',
                 'ere.TANGGAL_ENTRI'
             ])
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', 'ered.KD_TINDAKAN', '=', 'rsp.ID_TINDAKAN')
+            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', function ($join) {
+                $join->on('ered.KD_TINDAKAN', '=', 'rsp.ID_TINDAKAN')
+                    ->on('ered.ID_RIWAYAT_ELAB', '=', 'rsp.ID_JENIS_TINDAKAN');
+            })
             ->where(function ($query) {
                 $query->where('ere.KLINIK_TUJUAN', '0016')
                     ->orWhere('ere.KLINIK_TUJUAN', '0015');

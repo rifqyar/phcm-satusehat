@@ -599,6 +599,10 @@
                             </td>
                         </tr>
                     `);
+
+                    if (item.ICD9 != null) {
+                        $(`#icd9-lab-${item.KD_TIND}`).append(`<option value="${item.ICD9}" selected>${item.ICD9_TEXT}</option>`)
+                    }
                 });
 
                 $('.icd9-lab').select2({
@@ -674,6 +678,10 @@
                             </td>
                         </tr>
                     `);
+
+                    if (item.ICD9 != null) {
+                        $(`#icd9-rad-${item.KD_TIND}`).append(`<option value="${item.ICD9}" selected>${item.ICD9_TEXT}</option>`)
+                    }
                 });
 
                 $('.icd9-rad').select2({
