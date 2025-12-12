@@ -729,10 +729,9 @@ class ProcedureController extends Controller
     public function getICD9(Request $request)
     {
         $param = strtoupper($request->search);
-        $dataICD9 = DB::table('RIRJ_ICD9CM')
-            ->where(DB::raw('UPPER(KODE)'), 'like', "%$param%")
-            ->orWhere(DB::raw('UPPER(KODE_SUB)'), 'like', "%$param%")
-            ->orWhere(DB::raw('UPPER(DIAGNOSA)'), 'like', "%$param%")
+        $dataICD9 = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_ICD9')
+            ->where(DB::raw('UPPER(CODE)'), 'like', "%$param%")
+            ->orWhere(DB::raw('UPPER(NAME)'), 'like', "%$param%")
             ->limit(50)
             ->get();
 

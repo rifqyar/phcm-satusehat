@@ -90,8 +90,8 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Rencana Perawatan',
-                'url' => '#',
-                'bg_color' => ''
+                'url' => 'satusehat.care-plan.index',
+                'bg_color' => 'card-success'
             ],
             [
                 'title' => 'Catatan Pengobatan',

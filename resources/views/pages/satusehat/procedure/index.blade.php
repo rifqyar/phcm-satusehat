@@ -621,8 +621,8 @@
                             return {
                                 results: data.map(function(value) {
                                     return {
-                                        id: value.KODE_SUB,
-                                        text: value.DIAGNOSA,
+                                        id: value.CODE,
+                                        text: value.NAME,
                                     };
                                 })
                             };
@@ -696,8 +696,8 @@
                             return {
                                 results: data.map(function(value) {
                                     return {
-                                        id: value.KODE_SUB,
-                                        text: value.DIAGNOSA,
+                                        id: value.CODE,
+                                        text: value.NAME,
                                     };
                                 })
                             };
@@ -910,9 +910,9 @@
                         response(
                             data.map(function(value) {
                                 return {
-                                    label: value.DIAGNOSA,
-                                    kd_icd: value.KODE,
-                                    kd_sub_icd: value.KODE_SUB,
+                                    label: value.NAME,
+                                    kd_icd: value.CODE,
+                                    kd_sub_icd: value.CODE,
                                 };
                             })
                         );
@@ -945,8 +945,8 @@
                     return {
                         results: data.map(function(value) {
                             return {
-                                id: value.KODE_SUB,
-                                text: value.DIAGNOSA,
+                                id: value.CODE,
+                                text: value.NAME,
                             };
                         })
                     };

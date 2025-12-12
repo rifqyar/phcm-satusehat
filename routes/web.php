@@ -157,6 +157,18 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::get('/clinical-impression/resend/{param}', [App\Http\Controllers\SatuSehat\ClinicalImpressionController::class, 'resend'])
             ->name('clinical-impression.resend');
 
+        // Care Plan
+        Route::get('/care-plan', [App\Http\Controllers\SatuSehat\CarePlanController::class, 'index'])
+            ->name('care-plan.index');
+        Route::post('/care-plan/datatable', [App\Http\Controllers\SatuSehat\CarePlanController::class, 'datatable'])
+            ->name('care-plan.datatable');
+        Route::post('/care-plan/lihat-detail/{param}', [App\Http\Controllers\SatuSehat\CarePlanController::class, 'lihatDetail'])
+            ->name('care-plan.lihat-detail');
+        Route::get('/care-plan/send/{param}', [App\Http\Controllers\SatuSehat\CarePlanController::class, 'send'])
+            ->name('care-plan.send');
+        Route::get('/care-plan/resend/{param}', [App\Http\Controllers\SatuSehat\CarePlanController::class, 'resend'])
+            ->name('care-plan.resend');
+
         // Medication
         Route::get('/medication', [App\Http\Controllers\SatuSehat\MedicationController::class, 'index'])->name('medication.index');
         Route::post('/medication/datatable', [App\Http\Controllers\SatuSehat\MedicationController::class, 'datatable'])->name('medication.datatable');
