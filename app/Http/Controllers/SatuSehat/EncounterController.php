@@ -594,6 +594,29 @@ class EncounterController extends Controller
         return $this->sendSatuSehat($param, true);
     }
 
+    public function receiveSatuSehat(Request $request)
+    {
+        $encounterId = SATUSEHAT_NOTA::where('karcis', (int)$request->karcis)
+            ->select('*')
+            ->first();
+
+        if ($encounterId) {
+            return response()->json([
+                'status' => JsonResponse::HTTP_OK,
+                'message' => 'Data Encounter Berhasil Diterima',
+                'data' => [
+                    'id_satusehat_encounter' => $encounterId->id_satusehat_encounter,
+                ]
+            ], 200);
+        } else {
+            return response()->json([
+                'status' => JsonResponse::HTTP_NOT_FOUND,
+                'message' => 'Data Encounter Tidak Ditemukan',
+                'data' => null
+            ], 404);
+        }
+    }
+
     private function definePayloadRawatJalan($dataKarcis, $param, $id_unit, $diagnosisSatuSehat)
     {
         $jenisEncounter = [
