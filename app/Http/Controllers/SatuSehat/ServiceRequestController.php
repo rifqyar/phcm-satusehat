@@ -1003,7 +1003,7 @@ class ServiceRequestController extends Controller
             ->distinct()
             ->where('rd.IDUNIT', $id_unit)
             ->where('rd.KLINIK_TUJUAN', $request->klinik)
-            ->where('kc.KARCIS', $request->karcis)
+            ->where('rd.KARCIS_ASAL', $request->karcis)
             ->whereNull('kc.TGL_BATAL')
             ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN')
             ->orderBy('rd.TANGGAL_ENTRI', 'DESC');
@@ -1046,24 +1046,13 @@ class ServiceRequestController extends Controller
 
         $dataKunjungan = null;
         foreach ($data as $key => $value) {
-            if(strtoupper($key) == strtoupper($request->tipeLayanan)){ {
+            if (strtoupper($key) == strtoupper($request->tipeLayanan)) {
                 $dataKunjungan = $value;
+                break;
             }
-
-            break;
         }
 
-        dump($dataKunjungan);
-        $allTindakanIds = collect($dataKunjungan)
-            ->pluck('ARRAY_TINDAKAN')
-            ->filter()
-            ->flatMap(function ($t) {
-                return explode(',', $t);
-            })
-            ->unique()
-            ->filter()
-            ->values()
-            ->toArray();
+        $allTindakanIds = $dataKunjungan ? array_filter(explode(',', $dataKunjungan->ARRAY_TINDAKAN ?? '')) : [];
 
         $allTindakanIdsSS = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE')
@@ -1075,37 +1064,36 @@ class ServiceRequestController extends Controller
             ->whereIn('KD_TIND', $allTindakanIds)
             ->pluck('NM_TIND', 'KD_TIND')
             ->toArray();
-        // dd($tindakanList);
 
-        $dataKunjungan = $dataKunjungan->map(function ($item) use ($allTindakanIdsSS, $tindakanList) {
-            $ids = array_filter(explode(',', $item->ARRAY_TINDAKAN ?? ''));
+        if ($dataKunjungan) {
+            $dataKunjungan = collect([$dataKunjungan])->map(function ($item) use ($allTindakanIdsSS, $tindakanList) {
+                $ids = array_filter(explode(',', $item->ARRAY_TINDAKAN ?? ''));
 
-            // Check if all IDs exist
-            $allExist = count($ids) > 0 && collect($ids)->every(function ($id) use ($allTindakanIdsSS) {
-                return in_array((int)$id, $allTindakanIdsSS);
-            });
+                // Check if all IDs exist
+                $allExist = count($ids) > 0 && collect($ids)->every(function ($id) use ($allTindakanIdsSS) {
+                    return in_array((int)$id, $allTindakanIdsSS);
+                });
 
-            $item->AllServiceRequestExist = $allExist ? 1 : 0;
+                $item->AllServiceRequestExist = $allExist ? 1 : 0;
 
-            // Map NM_TINDAKAN
-            $names = array_filter(array_map(function ($id) use ($tindakanList) {
-                return $tindakanList[$id] ?? null;
-            }, $ids));
-            $item->NM_TINDAKAN = implode(', ', $names);
+                // Map NM_TINDAKAN
+                $names = array_filter(array_map(function ($id) use ($tindakanList) {
+                    return $tindakanList[$id] ?? null;
+                }, $ids));
+                $item->NM_TINDAKAN = implode(', ', $names);
 
-            return $item;
-        });
+                return $item;
+            })->first();
+        }
 
-        dd($dataKunjungan);
-        // $id_transaksi = LZString::compressToEncodedURIComponent($request->KARCIS);
-        // $KbBuku = LZString::compressToEncodedURIComponent($data->KBUKU);
-        // $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
-        // $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
-        // $idEncounter = LZString::compressToEncodedURIComponent($data->id_satusehat_encounter);
-        // $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter";
-        // $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+        $idRiwayatElab = LZString::compressToEncodedURIComponent($dataKunjungan->ID_RIWAYAT_ELAB);
+        $karcis = LZString::compressToEncodedURIComponent($dataKunjungan->KARCIS_RUJUKAN);
+        $kdPasienSS = LZString::compressToEncodedURIComponent($dataKunjungan->ID_PASIEN_SS);
+        $kdNakesSS = LZString::compressToEncodedURIComponent($dataKunjungan->ID_NAKES_SS);
+        $kdDokterSS = LZString::compressToEncodedURIComponent($dataKunjungan->idnakes);
+        $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcis . '+' . $request->klinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
 
-        // SendServiceRequestJob::dispatch($paramSatuSehat);
+        SendServiceRequestJob::dispatch($paramSatuSehat);
         // if (!$encounterId) {
         //     // Kirim data baru jika encounter belum ada
         //     SendAllergyIntolerance::dispatch($paramSatuSehat);
