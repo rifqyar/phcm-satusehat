@@ -601,8 +601,11 @@ class EncounterController extends Controller
             ->select('*')
             ->first();
 
-        $kodeDokter = $request->kodeDokter;
-        dd(CiEncryptionHelper::decrypt($kodeDokter));
+        $karcis = DB::table('RJ_KARCIS AS rk')
+            ->where('KARCIS', $request->karcis)
+            ->where('IDUNIT', Session::get('id_unit_simrs', '001'))
+            ->first();
+        dd($request->all());
         $id_transaksi = LZString::compressToEncodedURIComponent($request->karcis);
         // $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
         // $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
