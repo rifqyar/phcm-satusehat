@@ -1084,32 +1084,25 @@ class ServiceRequestController extends Controller
 
                 return $item;
             })->first();
+
+            $idRiwayatElab = LZString::compressToEncodedURIComponent($dataKunjungan->ID_RIWAYAT_ELAB);
+            $karcis = LZString::compressToEncodedURIComponent($dataKunjungan->KARCIS_RUJUKAN);
+            $kdPasienSS = LZString::compressToEncodedURIComponent($dataKunjungan->ID_PASIEN_SS);
+            $kdNakesSS = LZString::compressToEncodedURIComponent($dataKunjungan->ID_NAKES_SS);
+            $kdDokterSS = LZString::compressToEncodedURIComponent($dataKunjungan->idnakes);
+            $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcis . '+' . $request->klinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
+
+            SendServiceRequestJob::dispatch($paramSatuSehat);
+
+            return response()->json([
+                'status' => JsonResponse::HTTP_OK,
+                'message' => 'Pengiriman Data Service Request Pasien Sedang Diproses oleh sistem',
+                'redirect' => [
+                    'need' => false,
+                    'to' => null,
+                ]
+            ], 200);
         }
-
-        $idRiwayatElab = LZString::compressToEncodedURIComponent($dataKunjungan->ID_RIWAYAT_ELAB);
-        $karcis = LZString::compressToEncodedURIComponent($dataKunjungan->KARCIS_RUJUKAN);
-        $kdPasienSS = LZString::compressToEncodedURIComponent($dataKunjungan->ID_PASIEN_SS);
-        $kdNakesSS = LZString::compressToEncodedURIComponent($dataKunjungan->ID_NAKES_SS);
-        $kdDokterSS = LZString::compressToEncodedURIComponent($dataKunjungan->idnakes);
-        $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcis . '+' . $request->klinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
-
-        SendServiceRequestJob::dispatch($paramSatuSehat);
-        // if (!$encounterId) {
-        //     // Kirim data baru jika encounter belum ada
-        //     SendAllergyIntolerance::dispatch($paramSatuSehat);
-        // } else {
-        //     // resend jika data sudah ada
-        //     SendAllergyIntolerance::dispatch($paramSatuSehat, true);
-        // }
-
-        return response()->json([
-            'status' => JsonResponse::HTTP_OK,
-            'message' => 'Pengiriman Data Service Request Pasien Sedang Diproses oleh sistem',
-            'redirect' => [
-                'need' => false,
-                'to' => null,
-            ]
-        ], 200);
     }
 
     /**
