@@ -4,13 +4,13 @@ if (!function_exists('ci_session')) {
 
     function ci_session($key = null)
     {
-        if (!isset($_COOKIE['ci_session'])) {
+        if (!isset($_COOKIE['ci_session_tpid'])) {
             return null;
         }
 
-        $sessionId = $_COOKIE['ci_session'];
+        $sessionId = $_COOKIE['ci_session_tpid'];
 
-        $path = 'C:\SIMRS\sessions\ci_session_' . $sessionId;
+        $path = 'C:\SIMRS\sessions\ci_session_tpid' . $sessionId;
 
         if (!file_exists($path)) {
             return null;
