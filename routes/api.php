@@ -17,7 +17,7 @@ Route::get('/', function () {
     return response()->json(['message' => 'API is working'], 200);
 });
 
-Route::post('encounter', 'App\Http\Controllers\SatuSehat\EncounterController@receiveSatuSehat');
+Route::post('encounter', [App\Http\Controllers\SatuSehat\EncounterController::class, 'receiveSatuSehat']);
 
 // Route::middleware('auth:api')->get('/user', function (Request $request) {
 //     return $request->user();
