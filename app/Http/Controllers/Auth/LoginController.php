@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Session;
 
 class LoginController extends Controller
 {
@@ -34,7 +35,13 @@ class LoginController extends Controller
         ])->withInput($request->only('username'));
     }
 
-    public function loginDirect(){
+    public function loginDirect() {}
 
+    public function logout()
+    {
+        Session::invalidate();
+        Session::flush();
+        Session::regenerateToken();
+        return redirect('http://10.1.19.22/login');
     }
 }

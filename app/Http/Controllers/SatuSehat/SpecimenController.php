@@ -135,7 +135,7 @@ class SpecimenController extends Controller
     {
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
-        $id_unit   = '001'; // session('id_klinik');
+        $id_unit = Session::get('id_unit_simrs', '001');
         // dd($request->all());
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
@@ -461,7 +461,7 @@ class SpecimenController extends Controller
         $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[4]);
         $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[5]);
         $kdDokterSS = LZString::decompressFromEncodedURIComponent($parts[6]);
-        $id_unit      = '001'; // session('id_klinik');
+        $id_unit = Session::get('id_unit_simrs', '001');
 
         $encounter = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
@@ -616,7 +616,7 @@ class SpecimenController extends Controller
                 $this->logError('specimen', 'Gagal kirim data specimen', [
                     'payload' => $data,
                     'response' => $response,
-                    'user_id' => 'system' //Session::get('id')
+                    'user_id' => Session::get('username', 'system') //Session::get('id')
                 ]);
 
                 $this->logDb(json_encode($response), 'Specimen', json_encode($data), 'system'); //Session::get('id')
@@ -665,7 +665,7 @@ class SpecimenController extends Controller
                     $this->logInfo('specimen', 'Sukses kirim data specimen', [
                         'payload' => $data,
                         'response' => $result,
-                        'user_id' => 'system' //Session::get('id')
+                        'user_id' => Session::get('username', 'system') //Session::get('id')
                     ]);
                     $this->logDb(json_encode($result), 'Specimen', json_encode($data), 'system'); //Session::get('id')
 
@@ -733,7 +733,7 @@ class SpecimenController extends Controller
             Log::info('Bulk specimen jobs dispatched', [
                 'total_dispatched' => $dispatched,
                 'total_failed' => $failed,
-                'user_id' => 'system', // You can use Session::get('id') if needed
+                'user_id' => Session::get('username', 'system'), // You can use Session::get('id') if needed
                 'params_count' => count($selectedIds)
             ]);
 
@@ -755,7 +755,7 @@ class SpecimenController extends Controller
         } catch (Exception $e) {
             Log::error('Bulk specimen dispatch failed', [
                 'error' => $e->getMessage(),
-                'user_id' => 'system' // Session::get('id')
+                'user_id' => Session::get('username', 'system') // Session::get('id')
             ]);
 
             return response()->json([

@@ -72,7 +72,7 @@ class EncounterController extends Controller
     {
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
-        $id_unit   = '001'; // session('id_klinik');
+        $id_unit = Session::get('id_unit_simrs', '001');
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
             $tgl_awal  = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
@@ -315,7 +315,7 @@ class EncounterController extends Controller
         $kdPasienSS = $arrParam['kd_pasien_ss'];
         $kdNakesSS = $arrParam['kd_nakes_ss'];
         $kdLokasiSS = $arrParam['kd_lokasi_ss'];
-        $id_unit      = '001'; // session('id_klinik');
+        $id_unit = Session::get('id_unit_simrs', '001');
 
         $dataKarcis = Karcis::leftJoin('RJ_KARCIS_BAYAR AS KarcisBayar', function ($query) use ($arrParam, $id_unit) {
             $query->on('RJ_KARCIS.KARCIS', '=', 'KarcisBayar.KARCIS')
@@ -443,7 +443,7 @@ class EncounterController extends Controller
                 $this->logError('encounter', 'Gagal kirim data encounter', [
                     'payload' => $payload,
                     'response' => $response,
-                    'user_id' => 'system' //Session::get('id')
+                    'user_id' => Session::get('username', 'system') //Session::get('id')
                 ]);
 
                 $this->logDb(json_encode($response), 'Encounter', json_encode($payload), 'system'); //Session::get('id')
@@ -540,7 +540,7 @@ class EncounterController extends Controller
                     $this->logInfo('encounter', 'Sukses kirim data encounter', [
                         'payload' => $payload,
                         'response' => $result,
-                        'user_id' => 'system' //Session::get('id')
+                        'user_id' => Session::get('username', 'system') //Session::get('id')
                     ]);
                     $this->logDb(json_encode($result), 'Encounter', json_encode($payload), 'system'); //Session::get('id')
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 use Yajra\DataTables\DataTables;
 
 class MasterSpecimenController extends Controller
@@ -19,7 +20,8 @@ class MasterSpecimenController extends Controller
         $errorMessage = session('error');
 
         $klinikLab = '0017';
-        $idUnit = '001';
+        $idUnit = Session::get('id_unit_simrs', '001');
+
         $groupsQuery = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.RJ_MGRUP_TIND as a')
             ->join('SIRS_PHCM.dbo.RJ_DGRUP_TIND as b', 'a.ID_GRUP_TIND', '=', 'b.ID_GRUP_TIND')
@@ -66,7 +68,7 @@ class MasterSpecimenController extends Controller
     public function datatable(Request $request)
     {
         $klinikLab = '0017';
-        $idUnit = '001';
+        $idUnit = Session::get('id_unit_simrs', '001');
 
         $groupsQuery = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.RJ_MGRUP_TIND as a')
@@ -174,7 +176,7 @@ class MasterSpecimenController extends Controller
     public function create()
     {
         $klinikLab = '0017';
-        $idUnit = '001';
+        $idUnit = Session::get('id_unit_simrs', '001');
 
         // Step 1: Get all lab groups
         $groupsQuery = DB::connection('sqlsrv')

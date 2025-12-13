@@ -24,8 +24,7 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle text-muted waves-effect waves-dark" href=""
                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><img
-                            src="https://ui-avatars.com/api/?name=JOHN DOE" alt="user"
-                            {{-- src="https://ui-avatars.com/api/?name={{ Session::get('name') }}" alt="user" --}}
+                            src="https://ui-avatars.com/api/?name={{ Session::get('nama_simrs') }}" alt="user"
                             class="profile-pic" /></a>
 
                     <div class="dropdown-menu dropdown-menu-right scale-up">
@@ -33,16 +32,15 @@
                             <li>
                                 <div class="dw-user-box">
                                     <div class="u-img"><img
-                                            src="https://ui-avatars.com/api/?name=JOHN DOE"
-                                            {{-- src="https://ui-avatars.com/api/?name={{ Session::get('name') }}" --}}
+                                            src="https://ui-avatars.com/api/?name={{ Session::get('nama_simrs') }}"
                                             alt="user"></div>
                                     <div class="u-text">
-                                        {{-- <h4>{{ Str::length(Session::get('name')) > 15 ? Str::substr(Session::get('name'), 0, 12) . '...' : Session::get('name') }} --}}
+                                        <h4>{{ Str::length(Session::get('nama_simrs')) > 15 ? Str::substr(Session::get('nama_simrs'), 0, 12) . '...' : Session::get('nama_simrs') }}
                                         </h4>
                                     </div>
                                 </div>
                             </li>
-                            {{-- <li><a href="{{ route('logout') }}"><i class="fa fa-power-off"></i> Logout</a></li> --}}
+                            <li><a href="{{ route('logout') }}"><i class="fa fa-power-off"></i> Logout</a></li>
                         </ul>
                     </div>
                 </li>

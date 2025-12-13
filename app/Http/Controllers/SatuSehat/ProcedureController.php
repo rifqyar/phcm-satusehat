@@ -17,6 +17,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\Validator;
 use Yajra\DataTables\DataTables;
 
@@ -228,7 +229,7 @@ class ProcedureController extends Controller
     {
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
-        $id_unit   = '001'; // session('id_klinik');
+        $id_unit = Session::get('id_unit_simrs', '001');
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
             $tgl_awal  = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
@@ -769,7 +770,7 @@ class ProcedureController extends Controller
             $val = $partsParam[1];
             $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
         }
-        $id_unit      = '001'; // session('id_klinik');
+        $id_unit = Session::get('id_unit_simrs', '001');
 
         /**
          * TO DO
@@ -1351,7 +1352,7 @@ class ProcedureController extends Controller
             if ($validator->fails()) {
                 throw new Exception($validator->errors()->first());
             }
-            $id_unit = '001';
+            $id_unit = Session::get('id_unit_simrs', '001');
 
             $params = LZString::decompressFromEncodedURIComponent($request->param);
             $parts = explode('&', $params);
@@ -1549,7 +1550,7 @@ class ProcedureController extends Controller
                         'icd9' => $icd9,
                         'text_icd9' => $texticd9,
                     ],
-                    'user_id' => 'system' //Session::get('id')
+                    'user_id' => Session::get('username', 'system') //Session::get('id')
                 ]);
             }
 

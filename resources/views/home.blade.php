@@ -33,7 +33,7 @@
         </div>
         <div class="col-md-7 col-4 align-self-center">
             <div class="d-flex m-t-10 justify-content-end">
-                <h6>Selamat Datang <p><b>{{ Session::get('user') }}</b></p>
+                <h6>Selamat Datang <p><b>{{ Session::get('nama_simrs') }}</b></p>
                 </h6>
             </div>
         </div>

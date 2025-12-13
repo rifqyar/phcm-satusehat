@@ -14,6 +14,7 @@ use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 use Yajra\DataTables\DataTables;
 
 class ObservasiController extends Controller
@@ -136,7 +137,7 @@ class ObservasiController extends Controller
     {
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
-        $id_unit   = '001'; // session('id_klinik');
+        $id_unit = Session::get('id_unit_simrs', '001');
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
             $tgl_awal  = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
@@ -529,7 +530,7 @@ class ObservasiController extends Controller
             $val = $partsParam[1];
             $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
         }
-        $id_unit = '001';
+        $id_unit = Session::get('id_unit_simrs', '001');
 
         if ($arrParam['jenis_perawatan'] == 'RAWAT_INAP') {
             return $this->sendObservationRIToSATUSEHAT($arrParam, $id_unit, $resend);

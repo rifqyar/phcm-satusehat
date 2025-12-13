@@ -8,7 +8,7 @@ use App\Http\Controllers\HomeController;
 use Illuminate\Support\Facades\DB;
 use App\Models\GlobalParameter;
 use App\Models\SATUSEHAT\SS_Kode_API;
-
+use Illuminate\Support\Facades\Session;
 
 class SatusehatKfaController extends Controller
 {
@@ -26,7 +26,7 @@ class SatusehatKfaController extends Controller
             ->orderByDesc('id')
             ->value('access_token');
 
-            $id_unit = '001';
+            $id_unit = Session::get('id_unit_simrs', '001');
             if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
                 $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_KFA_STAGING')->select('valStr')->first()->valStr;
                 $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
@@ -133,12 +133,12 @@ class SatusehatKfaController extends Controller
         try {
             // query data master obat
             $data = DB::select("
-            SELECT 
-                KDBRG_CENTRA, 
-                NAMABRG, 
-                KD_BRG_KFA, 
-                NAMABRG_KFA, 
-                IS_COMPOUND  
+            SELECT
+                KDBRG_CENTRA,
+                NAMABRG,
+                KD_BRG_KFA,
+                NAMABRG_KFA,
+                IS_COMPOUND
             FROM SIRS_PHCM.dbo.M_TRANS_KFA
             WHERE KDBRG_CENTRA = ?
         ", [$kodeBarang]);
@@ -216,8 +216,8 @@ class SatusehatKfaController extends Controller
                 ];
             }
 
-                        
-            $id_unit = '001';
+
+            $id_unit = Session::get('id_unit_simrs', '001');
             if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
                 $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
                 $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;

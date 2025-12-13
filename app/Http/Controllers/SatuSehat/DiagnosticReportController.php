@@ -13,6 +13,7 @@ use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Session;
 use Yajra\DataTables\Facades\DataTables;
 
 class DiagnosticReportController extends Controller
@@ -214,8 +215,7 @@ class DiagnosticReportController extends Controller
 
     public function sendSatuSehat($idDokumenPx)
     {
-
-        $id_unit      = '001'; // session('id_klinik');
+        $id_unit = Session::get('id_unit_simrs', '001');
         $status = 'final';
 
         $dokumen_px =  DB::connection('sqlsrv')
@@ -418,7 +418,7 @@ class DiagnosticReportController extends Controller
                 $this->logError('DiagnosticReport', 'Gagal kirim data diagnostic report', [
                     'payload' => $data,
                     'response' => $response,
-                    'user_id' => 'system'
+                    'user_id' => Session::get('username', 'system')
                 ]);
 
                 $this->logDb(json_encode($response), 'DiagnosticReport', json_encode($data), 'system');
