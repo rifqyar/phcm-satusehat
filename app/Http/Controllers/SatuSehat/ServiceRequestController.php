@@ -1011,7 +1011,7 @@ class ServiceRequestController extends Controller
             ->whereNull('kc.TGL_BATAL')
             ->where('kc.KARCIS', $request->karcis)
             ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
-        $radAll = $rad->first();
+        $data['rad'] = $rad->first();
 
         $lab = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.v_kunjungan_rj as rj')
@@ -1045,7 +1045,7 @@ class ServiceRequestController extends Controller
             ->where('kc.KARCIS', $request->karcis)
             ->whereNull('kc.TGL_BATAL')
             ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
-        $labAll = $lab->first();
+        $data['lab'] = $lab->first();
 
         $lab_ri = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.v_kunjungan_ri as rj')
@@ -1079,7 +1079,7 @@ class ServiceRequestController extends Controller
             ->whereNull('kc.TGL_BATAL')
             ->where('rd.KARCIS_ASAL', $request->karcis)
             ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
-        $lab_ri_all = $lab_ri->first();
+        $data['lab_ri'] = $lab_ri->first();
 
         $rad_ri = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.v_kunjungan_ri as rj')
@@ -1118,16 +1118,18 @@ class ServiceRequestController extends Controller
             })
             ->whereNull('kc.TGL_BATAL')
             ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
+        $data['rad_ri'] = $rad_ri->first();
 
-        $rad_ri_all = $rad_ri->first();
+        $dataKunjungan = null;
+        foreach ($data as $key => $value) {
+            if($data[$key] != null) {
+                $dataKunjungan = $value;
+            }
 
-        $mergedAll = $radAll->merge($labAll)
-            ->merge($rad_ri_all)
-            ->merge($lab_ri_all)
-            ->sortByDesc('rd.TANGGAL_ENTRI')
-            ->values();
+            break;
+        }
 
-        dd($mergedAll);
+        dd($dataKunjungan);
         // $id_transaksi = LZString::compressToEncodedURIComponent($request->KARCIS);
         // $KbBuku = LZString::compressToEncodedURIComponent($data->KBUKU);
         // $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
