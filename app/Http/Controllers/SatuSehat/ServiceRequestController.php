@@ -1003,7 +1003,8 @@ class ServiceRequestController extends Controller
             ->distinct()
             ->where('rd.IDUNIT', $id_unit)
             ->where('rd.KLINIK_TUJUAN', $request->klinik)
-            ->where('rd.KARCIS_ASAL', $request->karcis)
+            ->where('rd.KARCIS_RUJUKAN', $request->karcis)
+            ->where('rd.ID_RIWAYAT_ELAB', $request->idElab)
             ->whereNull('kc.TGL_BATAL')
             ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN')
             ->orderBy('rd.TANGGAL_ENTRI', 'DESC');
@@ -1039,14 +1040,15 @@ class ServiceRequestController extends Controller
             ->where('rd.IDUNIT', $id_unit)
             ->where('rd.KLINIK_TUJUAN', $request->klinik)
             ->whereNull('kc.TGL_BATAL')
-            ->where('rd.KARCIS_ASAL', $request->karcis)
+            ->where('rd.KARCIS_RUJUKAN', $request->karcis)
+            ->where('rd.ID_RIWAYAT_ELAB', $request->idElab)
             ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN')
             ->orderBy('rd.TANGGAL_ENTRI', 'DESC');
         $data['ri'] = $dataRi->first();
 
         $dataKunjungan = null;
         foreach ($data as $key => $value) {
-            if (strtoupper($key) == strtoupper($request->tipeLayanan)) {
+            if ($data[$key] != null) {
                 $dataKunjungan = $value;
                 break;
             }
