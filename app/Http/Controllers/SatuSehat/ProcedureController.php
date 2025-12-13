@@ -895,6 +895,80 @@ class ProcedureController extends Controller
         return $this->sendSatuSehat($request, true);
     }
 
+    public function receiveSatuSehat(Request $request)
+    {
+        // $procedureData = SATUSEHAT_PROCEDURE::where('karcis', (int)$request->karcis)
+        //     ->select('*')
+        //     ->first();
+
+        // $data = DB::table('v_kunjungan_rj as vkr')
+        //     ->select([
+        //         'vkr.ID_TRANSAKSI as KARCIS',
+        //         'vkr.TANGGAL',
+        //         'vkr.NO_PESERTA',
+        //         'vkr.KBUKU',
+        //         'vkr.NAMA_PASIEN',
+        //         'vkr.DOKTER',
+        //         'vkr.ID_PASIEN_SS',
+        //         'vkr.ID_NAKES_SS',
+        //         'rsn.id_satusehat_encounter',
+        //         DB::raw('CASE WHEN rsi.karcis IS NOT NULL THEN 1 ELSE 0 END as sudah_integrasi'),
+        //     ])
+        //     ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
+        //         $join->on('rsn.karcis', '=', 'vkr.ID_TRANSAKSI')
+        //             ->on('rsn.kbuku', '=', 'vkr.KBUKU');
+        //     })
+        //     ->leftJoin('E_RM_PHCM.dbo.ERM_ALERGIPX as ea', function ($join) {
+        //         $join->on('ea.KARCIS', '=', 'vkr.ID_TRANSAKSI')
+        //             ->on('ea.KBUKU', '=', 'vkr.KBUKU');
+        //     })
+        //     ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_ALLERGYINTOLERANCE as rsi', function ($join) {
+        //         $join->on('rsi.karcis', '=', 'vkr.ID_TRANSAKSI')
+        //             ->on('rsi.kbuku', '=', 'vkr.KBUKU');
+        //     })
+        //     ->where('ea.STATUS_AKTIF', 1)
+        //     ->where('vkr.ID_TRANSAKSI', $request->karcis)
+        //     ->orderByDesc('vkr.TANGGAL')
+        //     ->groupBy([
+        //         'vkr.ID_TRANSAKSI',
+        //         'vkr.KBUKU',
+        //         'vkr.TANGGAL',
+        //         'vkr.NO_PESERTA',
+        //         'vkr.NAMA_PASIEN',
+        //         'vkr.DOKTER',
+        //         'vkr.ID_PASIEN_SS',
+        //         'vkr.ID_NAKES_SS',
+        //         'rsn.id_satusehat_encounter',
+        //         'rsi.karcis'
+        //     ])
+        //     ->first();
+
+        // $id_transaksi = LZString::compressToEncodedURIComponent($request->KARCIS);
+        // $KbBuku = LZString::compressToEncodedURIComponent($data->KBUKU);
+        // $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
+        // $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
+        // $idEncounter = LZString::compressToEncodedURIComponent($data->id_satusehat_encounter);
+        // $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter";
+        // $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+
+        // if (!$procedureData) {
+        //     // Kirim data baru jika encounter belum ada
+        //     SendAllergyIntolerance::dispatch($paramSatuSehat);
+        // } else {
+        //     // resend jika data sudah ada
+        //     SendAllergyIntolerance::dispatch($paramSatuSehat, true);
+        // }
+
+        // return response()->json([
+        //     'status' => JsonResponse::HTTP_OK,
+        //     'message' => 'Pengiriman Data Encounter Pasien Sedang Diproses oleh sistem',
+        //     'redirect' => [
+        //         'need' => false,
+        //         'to' => null,
+        //     ]
+        // ], 200);
+    }
+
     private function definePayloadAnamnese($param, $patient, $request, $dataErm, $resend)
     {
         $nakes = SS_Nakes::where('idnakes', $param['id_nakes_ss'])->first();

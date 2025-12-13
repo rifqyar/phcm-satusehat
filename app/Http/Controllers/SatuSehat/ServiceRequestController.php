@@ -970,6 +970,191 @@ class ServiceRequestController extends Controller
         }
     }
 
+    public function receiveSatuSehat(Request $request)
+    {
+        $id_unit = Session::get('id_unit_simrs', '001');
+
+        $rad = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.v_kunjungan_rj as rj')
+            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
+                $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
+                    ->on('nt.idunit', '=', 'rj.ID_UNIT')
+                    ->on('nt.kbuku', '=', 'rj.KBUKU')
+                    ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
+            })
+            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.KARCIS_RUJUKAN', '=', 'nt.karcis')
+                    ->on('kc.IDUNIT', '=', 'nt.idunit')
+                    ->on('kc.KBUKU', '=', 'nt.kbuku')
+                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            })
+            ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
+                $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
+                    ->on('rd.IDUNIT', '=', 'nt.idunit')
+                    ->on('rd.KBUKU', '=', 'nt.kbuku')
+                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                    ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
+            })
+            ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'kc.KDDOK', '=', 'dk.kdDok')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'rd.KARCIS_RUJUKAN', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
+            ->join('SIRS_PHCM.dbo.DR_MDOKTER as dkd', 'kc.KDDOK', '=', 'dkd.kdDok')
+            ->select([DB::raw("'RAWAT JALAN' as JENIS_PERAWATAN"), 'rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
+            ->distinct()
+            ->where('rd.IDUNIT', $id_unit)
+            ->whereIn('rd.KLINIK_TUJUAN', function ($sub) use ($id_unit) {
+                $sub->select('KODE_KLINIK')
+                    ->from('SIRS_PHCM.dbo.RJ_KLINIK_RADIOLOGI')
+                    ->where('AKTIF', 'true')
+                    ->where('IDUNIT', $id_unit);
+            })
+            ->whereNull('kc.TGL_BATAL')
+            ->where('kc.KARCIS', $request->karcis)
+            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
+        $radAll = $rad->first();
+
+        $lab = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.v_kunjungan_rj as rj')
+            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
+                $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
+                    ->on('nt.idunit', '=', 'rj.ID_UNIT')
+                    ->on('nt.kbuku', '=', 'rj.KBUKU')
+                    ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
+            })
+            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.KARCIS_RUJUKAN', '=', 'nt.karcis')
+                    ->on('kc.IDUNIT', '=', 'nt.idunit')
+                    ->on('kc.KBUKU', '=', 'nt.kbuku')
+                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            })
+            ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
+                $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
+                    ->on('rd.IDUNIT', '=', 'nt.idunit')
+                    ->on('rd.KBUKU', '=', 'nt.kbuku')
+                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                    ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
+            })
+            ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'kc.KDDOK', '=', 'dk.kdDok')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'rd.KARCIS_RUJUKAN', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
+            ->join('SIRS_PHCM.dbo.DR_MDOKTER as dkd', 'kc.KDDOK', '=', 'dkd.kdDok')
+            ->select([DB::raw("'RAWAT JALAN' as JENIS_PERAWATAN"), 'rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
+            ->distinct()
+            ->where('rd.IDUNIT', $id_unit)
+            ->where('rd.KLINIK_TUJUAN', '0017')
+            ->where('kc.KARCIS', $request->karcis)
+            ->whereNull('kc.TGL_BATAL')
+            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
+        $labAll = $lab->first();
+
+        $lab_ri = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.v_kunjungan_ri as rj')
+            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
+                $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
+                    ->on('nt.idunit', '=', 'rj.ID_UNIT')
+                    ->on('nt.kbuku', '=', 'rj.KBUKU')
+                    ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
+            })
+            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.noreg', '=', 'nt.karcis')
+                    ->on('kc.IDUNIT', '=', 'nt.idunit')
+                    ->on('kc.KBUKU', '=', 'nt.kbuku')
+                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            })
+            ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
+                $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
+                    ->on('rd.IDUNIT', '=', 'nt.idunit')
+                    ->on('rd.KBUKU', '=', 'nt.kbuku')
+                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                    ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
+            })
+            ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'kc.KDDOK', '=', 'dk.kdDok')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'rd.KARCIS_RUJUKAN', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
+            ->leftJoin('SIRS_PHCM.dbo.DR_MDOKTER as dkd', 'kc.KDDOK', '=', 'dkd.kdDok')
+            ->select([DB::raw("'RAWAT INAP' as JENIS_PERAWATAN"), 'rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', DB::raw('nk.idnakes as ID_NAKES_SS'), 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
+            ->distinct()
+            ->where('rd.IDUNIT', $id_unit)
+            ->where('rd.KLINIK_TUJUAN', '0017')
+            ->whereNull('kc.TGL_BATAL')
+            ->where('rd.KARCIS_ASAL', $request->karcis)
+            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
+        $lab_ri_all = $lab_ri->first();
+
+        $rad_ri = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.v_kunjungan_ri as rj')
+            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
+                $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
+                    ->on('nt.idunit', '=', 'rj.ID_UNIT')
+                    ->on('nt.kbuku', '=', 'rj.KBUKU')
+                    ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
+            })
+            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                $join->on('kc.noreg', '=', 'nt.karcis')
+                    ->on('kc.IDUNIT', '=', 'nt.idunit')
+                    ->on('kc.KBUKU', '=', 'nt.kbuku')
+                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+            })
+            ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
+                $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
+                    ->on('rd.IDUNIT', '=', 'nt.idunit')
+                    ->on('rd.KBUKU', '=', 'nt.kbuku')
+                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                    ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
+            })
+            ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'kc.KDDOK', '=', 'dk.kdDok')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'rd.KARCIS_RUJUKAN', '=', 'ss.karcis')
+            ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'kc.KDDOK', '=', 'nk.kddok')
+            ->leftJoin('SIRS_PHCM.dbo.DR_MDOKTER as dkd', 'kc.KDDOK', '=', 'dkd.kdDok')
+            ->select([DB::raw("'RAWAT INAP' as JENIS_PERAWATAN"), 'rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', DB::raw('nk.idnakes as ID_NAKES_SS'), 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT')])
+            ->distinct()
+            ->where('rd.IDUNIT', $id_unit)
+            ->where('rd.KARCIS_ASAL', $request->karcis)
+            ->whereIn('rd.KLINIK_TUJUAN', function ($sub) use ($id_unit) {
+                $sub->select('KODE_KLINIK')
+                    ->from('SIRS_PHCM.dbo.RJ_KLINIK_RADIOLOGI')
+                    ->where('AKTIF', 'true')
+                    ->where('IDUNIT', $id_unit);
+            })
+            ->whereNull('kc.TGL_BATAL')
+            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
+
+        $rad_ri_all = $rad_ri->first();
+
+        $mergedAll = $radAll->merge($labAll)
+            ->merge($rad_ri_all)
+            ->merge($lab_ri_all)
+            ->sortByDesc('rd.TANGGAL_ENTRI')
+            ->values();
+
+        dd($mergedAll);
+        // $id_transaksi = LZString::compressToEncodedURIComponent($request->KARCIS);
+        // $KbBuku = LZString::compressToEncodedURIComponent($data->KBUKU);
+        // $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
+        // $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
+        // $idEncounter = LZString::compressToEncodedURIComponent($data->id_satusehat_encounter);
+        // $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter";
+        // $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+
+        // SendServiceRequestJob::dispatch($paramSatuSehat);
+        // if (!$encounterId) {
+        //     // Kirim data baru jika encounter belum ada
+        //     SendAllergyIntolerance::dispatch($paramSatuSehat);
+        // } else {
+        //     // resend jika data sudah ada
+        //     SendAllergyIntolerance::dispatch($paramSatuSehat, true);
+        // }
+
+        return response()->json([
+            'status' => JsonResponse::HTTP_OK,
+            'message' => 'Pengiriman Data Service Request Pasien Sedang Diproses oleh sistem',
+            'redirect' => [
+                'need' => false,
+                'to' => null,
+            ]
+        ], 200);
+    }
+
     /**
      * Show the form for creating a new resource.
      *
