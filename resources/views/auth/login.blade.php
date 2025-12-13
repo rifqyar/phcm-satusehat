@@ -28,7 +28,7 @@
     </div>
 
     <section id="wrapper">
-        <div class="login-register" style="background-image:url(../assets/images/background/bg1.jpg);">
+        <div class="login-register" style="background-image:url({{asset('assets/images/background/bg1.jpg')}});">
             <div class="login-box card">
                 <div class="card-body">
                     <h3 class="box-title m-b-20">Login to Your Account</h3>
