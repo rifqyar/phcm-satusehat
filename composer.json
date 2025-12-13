@@ -43,7 +43,8 @@
             "database/factories"
         ],
         "files": [
-            "app/Helpers/CISessionFile.php"
+            "app/Helpers/CISessionFile.php",
+            "app/Helpers/CiEncryptionHelper.php",
         ]
     },
     "autoload-dev": {

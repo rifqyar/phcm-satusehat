@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\SatuSehat;
 
+use App\Helpers\CiEncryptionHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\LogTraits;
 use App\Http\Traits\SATUSEHATTraits;
@@ -600,15 +601,19 @@ class EncounterController extends Controller
             ->select('*')
             ->first();
 
-        if ($encounterId) {
-            return response()->json([
-                'status' => JsonResponse::HTTP_OK,
-                'message' => 'Data Encounter Berhasil Diterima',
-                'data' => [
-                    'id_satusehat_encounter' => $encounterId->id_satusehat_encounter,
-                ]
-            ], 200);
+        $kodeDokter = $request->kodeDokter;
+        dd(CiEncryptionHelper::decrypt($kodeDokter));
+        $id_transaksi = LZString::compressToEncodedURIComponent($request->karcis);
+        // $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
+        // $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
+        // $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
+        // $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
+        // $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+
+        if (!$encounterId) {
+            // Kirim data baru jika encounter belum ada
         } else {
+            // resend jika data sudah ada
             return response()->json([
                 'status' => JsonResponse::HTTP_NOT_FOUND,
                 'message' => 'Data Encounter Tidak Ditemukan',
