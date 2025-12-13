@@ -19,14 +19,16 @@ class SendEncounter implements ShouldQueue
     public $param;
     public $tries = 3; // Number of attempts
     public $timeout = 120; // Timeout in seconds
+    public $resend = false;
     /**
      * Create a new job instance.
      *
      * @return void
      */
-    public function __construct($param)
+    public function __construct($param, $resend = false)
     {
         $this->param = $param;
+        $this->resend = $resend;
     }
 
     /**
@@ -39,7 +41,7 @@ class SendEncounter implements ShouldQueue
         try {
             $controller = app(EncounterController::class);
             $encodedParam = base64_encode($this->param);
-            $result = $controller->sendSatuSehat($encodedParam);
+            $result = $controller->sendSatuSehat($encodedParam, $this->resend);
             $this->logInfo('encounter', 'Sending Encounter Using Jobs', [
                 'payload' => $this->param,
                 'response' => $result,

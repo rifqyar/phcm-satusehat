@@ -601,27 +601,41 @@ class EncounterController extends Controller
             ->select('*')
             ->first();
 
-        $karcis = DB::table('RJ_KARCIS AS rk')
-            ->where('KARCIS', $request->karcis)
-            ->where('IDUNIT', Session::get('id_unit_simrs', '001'))
+        $rj = DB::table('v_kunjungan_rj as v')
+            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as n', function ($join) {
+                $join->on('n.KARCIS', '=', 'v.ID_TRANSAKSI')
+                    ->on('n.IDUNIT', '=', 'v.ID_UNIT')
+                    ->on('n.KBUKU', '=', 'v.KBUKU')
+                    ->on('n.NO_PESERTA', '=', 'v.NO_PESERTA');
+            })
+            ->select(
+                'v.*',
+                DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
+            )
+            ->groupBy('v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN')
+            ->where('v.ID_TRANSAKSI', $request->karcis)
             ->first();
-        dd($request->all());
+
+        $jenisPerawatan = 'RJ';
+        if (str_contains(strtoupper($request->aktivitas), 'RAWAT JALAN')) {
+            $jenisPerawatan = 'RJ';
+        } else {
+            $jenisPerawatan = 'RI';
+        }
+
         $id_transaksi = LZString::compressToEncodedURIComponent($request->karcis);
-        // $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
-        // $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
-        // $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
-        // $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
-        // $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+        $kdPasienSS = LZString::compressToEncodedURIComponent($rj->ID_PASIEN_SS);
+        $kdNakesSS = LZString::compressToEncodedURIComponent($rj->ID_NAKES_SS);
+        $kdLokasiSS = LZString::compressToEncodedURIComponent($rj->ID_LOKASI_SS);
+        $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
+        $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
         if (!$encounterId) {
             // Kirim data baru jika encounter belum ada
+            SendEncounter::dispatch($paramSatuSehat);
         } else {
             // resend jika data sudah ada
-            return response()->json([
-                'status' => JsonResponse::HTTP_NOT_FOUND,
-                'message' => 'Data Encounter Tidak Ditemukan',
-                'data' => null
-            ], 404);
+            SendEncounter::dispatch($paramSatuSehat, true);
         }
     }
 
