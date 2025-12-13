@@ -18,6 +18,7 @@ Route::get('/', function () {
 });
 
 Route::post('encounter', [App\Http\Controllers\SatuSehat\EncounterController::class, 'receiveSatuSehat']);
+Route::post('allergy-intolerance', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'receiveSatuSehat']);
 
 // Route::middleware('auth:api')->get('/user', function (Request $request) {
 //     return $request->user();

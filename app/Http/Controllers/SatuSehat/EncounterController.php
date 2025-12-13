@@ -637,6 +637,15 @@ class EncounterController extends Controller
             // resend jika data sudah ada
             SendEncounter::dispatch($paramSatuSehat, true);
         }
+
+        return response()->json([
+            'status' => JsonResponse::HTTP_OK,
+            'message' => 'Pengiriman Data Encounter Pasien Sedang Diproses oleh sistem',
+            'redirect' => [
+                'need' => false,
+                'to' => null,
+            ]
+        ], 200);
     }
 
     private function definePayloadRawatJalan($dataKarcis, $param, $id_unit, $diagnosisSatuSehat)
