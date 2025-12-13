@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/login', [App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [App\Http\Controllers\Auth\LoginController::class, 'login'])->name('do.login');
 Route::post('/login-direct', [App\Http\Controllers\Auth\LoginController::class, 'loginDirect'])->name('do.loginDirect');
-Route::post('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout');
+Route::get('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout');
 Route::middleware(['checkLogin'])->group(function () {
     Route::get('logs', [\Rap2hpoutre\LaravelLogViewer\LogViewerController::class, 'index']);
     // Home
