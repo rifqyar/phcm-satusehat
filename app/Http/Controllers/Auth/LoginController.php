@@ -33,4 +33,8 @@ class LoginController extends Controller
             'username' => 'The provided credentials do not match our records.',
         ])->withInput($request->only('username'));
     }
+
+    public function loginDirect(){
+
+    }
 }

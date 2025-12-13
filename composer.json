@@ -41,6 +41,9 @@
         "classmap": [
             "database/seeds",
             "database/factories"
+        ],
+        "files": [
+            "app/Helpers/CISessionFile.php"
         ]
     },
     "autoload-dev": {
