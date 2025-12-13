@@ -1,5 +1,7 @@
 <?php
 
+use Illuminate\Support\Facades\Session;
+
 if (!function_exists('ci_session')) {
 
     function ci_session($key = null)
@@ -19,6 +21,14 @@ if (!function_exists('ci_session')) {
         $raw = file_get_contents($path);
 
         $data = ci_session_decode($raw);
+
+        foreach ($data as $key => $value) {
+            Session::put($key, $value);
+        }
+
+        // Tandai bahwa ini sudah disync
+        Session::put('ci_synced', true);
+        Session::save();
 
         if ($key === null) {
             return $data;
