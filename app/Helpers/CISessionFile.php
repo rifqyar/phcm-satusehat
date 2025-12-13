@@ -4,7 +4,7 @@ use Illuminate\Support\Facades\Session;
 
 if (!function_exists('ci_session')) {
 
-    function ci_session($key = null)
+    function ci_session($sessKey = null)
     {
         if (!isset($_COOKIE['ci_session_tpid'])) {
             return null;
@@ -30,11 +30,11 @@ if (!function_exists('ci_session')) {
         Session::put('ci_synced', true);
         Session::save();
 
-        if ($key === null) {
+        if ($sessKey === null) {
             return $data;
         }
 
-        return $data[$key] ?? null;
+        return $data[$sessKey] ?? null;
     }
 }
 
