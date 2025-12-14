@@ -597,6 +597,11 @@ class EncounterController extends Controller
 
     public function receiveSatuSehat(Request $request)
     {
+        $this->logInfo('encounter', 'Receive Encounter dari SIMRS', [
+            'request' => $request->all(),
+            'user_id' => 'system'
+        ]);
+
         $encounterId = SATUSEHAT_NOTA::where('karcis', (int)$request->karcis)
             ->select('*')
             ->first();

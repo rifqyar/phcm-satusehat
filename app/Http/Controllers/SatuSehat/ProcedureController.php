@@ -933,6 +933,11 @@ class ProcedureController extends Controller
 
     public function receiveSatuSehat(Request $request)
     {
+        $this->logInfo('Procedure', 'Receive Procedure dari SIMRS', [
+            'request' => $request->all(),
+            'user_id' => 'system'
+        ]);
+
         $data['JALAN'] = DB::table('v_kunjungan_rj as vkr')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.KARCIS')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere', 'eri.KARCIS', 'ere.KARCIS_ASAL')

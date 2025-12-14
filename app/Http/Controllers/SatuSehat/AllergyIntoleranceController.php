@@ -565,6 +565,11 @@ class AllergyIntoleranceController extends Controller
 
     public function receiveSatuSehat(Request $request)
     {
+        $this->logInfo('AllergyIntolerance', 'Receive Allergy Intolerance dari SIMRS', [
+            'request' => $request->all(),
+            'user_id' => 'system'
+        ]);
+
         $encounterId = SATUSEHAT_ALLERGY_INTOLERANCE::where('karcis', (int)$request->karcis)
             ->select('*')
             ->first();

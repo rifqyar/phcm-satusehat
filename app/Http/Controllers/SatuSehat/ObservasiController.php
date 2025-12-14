@@ -1004,6 +1004,11 @@ class ObservasiController extends Controller
 
     public function receiveSatuSehat(Request $request)
     {
+        $this->logInfo('Observation', 'Receive Observation dari SIMRS', [
+            'request' => $request->all(),
+            'user_id' => 'system'
+        ]);
+
         // QUERY RAWAT JALAN
         $rjQuery = DB::table('v_kunjungan_rj as vkr')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.KARCIS')
