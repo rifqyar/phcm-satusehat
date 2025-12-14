@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\SatuSehat;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\LogTraits;
 use App\Http\Traits\SATUSEHATTraits;
 use App\Jobs\SendObservationToSATUSEHAT;
 use App\Lib\LZCompressor\LZString;
@@ -19,7 +20,7 @@ use Yajra\DataTables\DataTables;
 
 class ObservasiController extends Controller
 {
-    use SATUSEHATTraits;
+    use SATUSEHATTraits, LogTraits;
     /**
      * Display a listing of the resource.
      *

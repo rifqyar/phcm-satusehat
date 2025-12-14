@@ -616,30 +616,38 @@ class AllergyIntoleranceController extends Controller
             ])
             ->first();
 
-        $id_transaksi = LZString::compressToEncodedURIComponent($request->KARCIS);
-        $KbBuku = LZString::compressToEncodedURIComponent($data->KBUKU);
-        $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
-        $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
-        $idEncounter = LZString::compressToEncodedURIComponent($data->id_satusehat_encounter);
-        $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter";
-        $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+        if (!empty($data)) {
+            $id_transaksi = LZString::compressToEncodedURIComponent($request->KARCIS);
+            $KbBuku = LZString::compressToEncodedURIComponent($data->KBUKU);
+            $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
+            $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
+            $idEncounter = LZString::compressToEncodedURIComponent($data->id_satusehat_encounter);
+            $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter";
+            $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
-        if (!$encounterId) {
-            // Kirim data baru jika encounter belum ada
-            SendAllergyIntolerance::dispatch($paramSatuSehat);
+            if (!$encounterId) {
+                // Kirim data baru jika encounter belum ada
+                SendAllergyIntolerance::dispatch($paramSatuSehat);
+            } else {
+                // resend jika data sudah ada
+                SendAllergyIntolerance::dispatch($paramSatuSehat, true);
+            }
+
+            return response()->json([
+                'status' => JsonResponse::HTTP_OK,
+                'message' => 'Pengiriman Data Encounter Pasien Sedang Diproses oleh sistem',
+                'redirect' => [
+                    'need' => false,
+                    'to' => null,
+                ]
+            ], 200);
         } else {
-            // resend jika data sudah ada
-            SendAllergyIntolerance::dispatch($paramSatuSehat, true);
+            $this->logError('AllergyIntolerance', 'Data Allergy Intolerance Tidak Ditemukan', [
+                'request' => $request->all(),
+                'user_id' => 'system'
+            ]);
+            return;
         }
-
-        // return response()->json([
-        //     'status' => JsonResponse::HTTP_OK,
-        //     'message' => 'Pengiriman Data Encounter Pasien Sedang Diproses oleh sistem',
-        //     'redirect' => [
-        //         'need' => false,
-        //         'to' => null,
-        //     ]
-        // ], 200);
     }
 
     /**
