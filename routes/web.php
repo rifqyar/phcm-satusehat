@@ -17,6 +17,10 @@ Route::get('/login', [App\Http\Controllers\Auth\LoginController::class, 'showLog
 Route::post('/login', [App\Http\Controllers\Auth\LoginController::class, 'login'])->name('do.login');
 Route::post('/login-direct', [App\Http\Controllers\Auth\LoginController::class, 'loginDirect'])->name('do.loginDirect');
 Route::get('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout');
+
+// kirim satusehat tanpa middleware
+Route::get('/medication-request/prepsatusehatnm', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'prepMedicationRequest'])->name('medication-request.prepsatusehatnm');
+
 Route::middleware(['checkLogin'])->group(function () {
     Route::get('logs', [\Rap2hpoutre\LaravelLogViewer\LogViewerController::class, 'index']);
     // Home
