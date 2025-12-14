@@ -1173,7 +1173,6 @@ class ProcedureController extends Controller
                 }
             }
 
-            dd($request->all());
             return self::sendSatuSehat(new Request([
                 'param' => $paramSatuSehat,
                 'icd9_pm' => $icd9->icd9_pm,
