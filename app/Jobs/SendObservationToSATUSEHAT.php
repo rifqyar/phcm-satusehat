@@ -127,7 +127,7 @@ class SendObservationToSATUSEHAT implements ShouldQueue
                         'user_id' => Session::get('username', 'system') //Session::get('id')
                     ]);
 
-                    $this->logDb(json_encode($result), $$logChannel, json_encode($this->payload), 'system'); //Session::get('id')
+                    $this->logDb(json_encode($result), $this->url, json_encode($this->payload), 'system'); //Session::get('id')
                 }
             } else {
                 $this->logInfo($logChannel, 'Sudah Integrasi ' . $this->type, [
