@@ -632,14 +632,14 @@ class AllergyIntoleranceController extends Controller
             SendAllergyIntolerance::dispatch($paramSatuSehat, true);
         }
 
-        return response()->json([
-            'status' => JsonResponse::HTTP_OK,
-            'message' => 'Pengiriman Data Encounter Pasien Sedang Diproses oleh sistem',
-            'redirect' => [
-                'need' => false,
-                'to' => null,
-            ]
-        ], 200);
+        // return response()->json([
+        //     'status' => JsonResponse::HTTP_OK,
+        //     'message' => 'Pengiriman Data Encounter Pasien Sedang Diproses oleh sistem',
+        //     'redirect' => [
+        //         'need' => false,
+        //         'to' => null,
+        //     ]
+        // ], 200);
     }
 
     /**
