@@ -15,8 +15,6 @@ class CheckLoginMiddleware
      * @return mixed
      */
     public function handle($request, Closure $next)
-
-
     {
         if ($_SERVER['REMOTE_ADDR'] == '::1') {
             if (Session::has('is_logged_in')) {
@@ -28,32 +26,11 @@ class CheckLoginMiddleware
                 return redirect('login');
             }
         } else {
-            // if (ci_session('sdh_masuk_simrs') !== true) {
-            //     return redirect('http://10.1.19.22/login');
-            // }
+            if (ci_session('sdh_masuk_simrs') !== true) {
+                return redirect('http://10.1.19.22/login');
+            }
 
             return $next($request);
-
-
-
-
-
-
-
-        } else {
-
-
-            Session::invalidate();
-
-
-            Session::regenerateToken();
-
-
-            return redirect('login');
-
-
-
         }
-
     }
 }
