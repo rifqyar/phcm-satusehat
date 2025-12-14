@@ -54,7 +54,7 @@ class SendObservationToSATUSEHAT implements ShouldQueue
      */
     public function handle()
     {
-        $logChannel = explode('/', $this->type)[0];
+        $logChannel = explode('/', $this->url)[0];
         try {
             if (count($this->payload) > 0) {
                 $observasiSatuSehat = SATUSEHAT_OBSERVATION::where('JENIS', $this->type);
