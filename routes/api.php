@@ -19,7 +19,7 @@ Route::get('/', function () {
 
 Route::post('encounter', [App\Http\Controllers\SatuSehat\EncounterController::class, 'receiveSatuSehat']);
 Route::post('allergy-intolerance', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'receiveSatuSehat']);
-Route::get('procedure', [App\Http\Controllers\SatuSehat\ProcedureController::class, 'receiveSatuSehat']);
+Route::post('procedure', [App\Http\Controllers\SatuSehat\ProcedureController::class, 'receiveSatuSehat']);
 Route::post('service-request', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'receiveSatuSehat']);
 
 // Route::middleware('auth:api')->get('/user', function (Request $request) {
