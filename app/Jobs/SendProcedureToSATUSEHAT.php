@@ -53,7 +53,7 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
      */
     public function handle()
     {
-        $logChannel = explode('/', $this->type)[0];
+        $logChannel = explode('/', $this->url)[0];
         try {
             if (count($this->payload['payload']) > 0) {
                 $controller = app('App\\Http\\Controllers\\SatuSehat\\ProcedureController');
