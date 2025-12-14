@@ -15,6 +15,8 @@ class CheckLoginMiddleware
      * @return mixed
      */
     public function handle($request, Closure $next)
+
+
     {
         if ($_SERVER['REMOTE_ADDR'] == '::1') {
             if (Session::has('is_logged_in')) {
@@ -31,6 +33,27 @@ class CheckLoginMiddleware
             // }
 
             return $next($request);
+
+
+
+
+
+
+
+        } else {
+
+
+            Session::invalidate();
+
+
+            Session::regenerateToken();
+
+
+            return redirect('login');
+
+
+
         }
+
     }
 }
