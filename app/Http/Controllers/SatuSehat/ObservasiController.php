@@ -1099,10 +1099,10 @@ class ObservasiController extends Controller
 
         if ($data->sudah_integrasi == 0) {
             // Kirim data baru jika encounter belum ada
-            self::sendSatuSehat($paramSatuSehat, false);
+            $resp = $this->sendSatuSehat(base64_encode($paramSatuSehat), false);
         } else {
             // resend jika data sudah ada
-            self::sendSatuSehat($paramSatuSehat, true);
+            $resp = $this->sendSatuSehat(base64_encode($paramSatuSehat), true);
         }
 
         return response()->json([
