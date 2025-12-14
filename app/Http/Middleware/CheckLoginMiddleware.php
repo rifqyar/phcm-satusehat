@@ -26,9 +26,9 @@ class CheckLoginMiddleware
                 return redirect('login');
             }
         } else {
-            if (ci_session('sdh_masuk_simrs') !== true) {
-                return redirect('http://10.1.19.22/login');
-            }
+            // if (ci_session('sdh_masuk_simrs') !== true) {
+            //     return redirect('http://10.1.19.22/login');
+            // }
 
             return $next($request);
         }
