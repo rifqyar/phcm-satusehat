@@ -1175,8 +1175,8 @@ class ProcedureController extends Controller
 
             return self::sendSatuSehat(new Request([
                 'param' => $paramSatuSehat,
-                'icd9_pm' => $icd9->icd9_pm,
-                'text_icd9_pm' => $icd9->text_icd9_pm
+                'icd9_pm' => $icd9->icd9_pm ?? null,
+                'text_icd9_pm' => $icd9->text_icd9_pm ?? null
             ]), $resend, $request->type ?? 'all');
         }
     }
