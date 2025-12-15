@@ -1134,7 +1134,7 @@ class ProcedureController extends Controller
 
         $dataKunjungan = null;
         foreach ($data as $key => $value) {
-            if(isset($request->jenis_layanan)){
+            if (isset($request->jenis_layanan)) {
                 if ($key == strtoupper($request->jenis_layanan)) {
                     $dataKunjungan = $value;
                     break;
@@ -1309,7 +1309,7 @@ class ProcedureController extends Controller
     {
         $dataLab = DB::table('vw_getData_Elab as ere')
             // ->leftJoin('vw_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
-            ->leftJoin('RIRJ_MTINDAKAN as rmt', 'ered.KD_TINDAKAN', 'rmt.KD_TIND')
+            ->leftJoin('RIRJ_MTINDAKAN as rmt', 'ere.KD_TINDAKAN', 'rmt.KD_TIND')
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as smsc', 'rmt.NM_TIND', 'smsc.NM_TIND')
             ->leftJoin('RJ_KARCIS as rk', 'rk.KARCIS', 'ere.KARCIS_RUJUKAN')
             ->select([
@@ -1325,7 +1325,10 @@ class ProcedureController extends Controller
                     ->on('ere.ID_RIWAYAT_ELAB', '=', 'rsp.ID_JENIS_TINDAKAN');
             })
             ->where('ere.KLINIK_TUJUAN', '0017')
-            ->where('ere.KARCIS_ASAL', $param['karcis'])
+            ->where(function ($query) use ($param) {
+                $query->where('ere.KARCIS_ASAL', $param['karcis'])
+                    ->orWhere('ere.KARCIS_RUJUKAN', '=', $param['karcis']);
+            })
             ->where(function ($q) use ($resend) {
                 if (!$resend) {
                     $q->whereNull('rsp.ID_TINDAKAN')
@@ -1455,7 +1458,7 @@ class ProcedureController extends Controller
     {
         $dataRad = DB::table('vw_getData_Elab as ere')
             // ->leftJoin('vw_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
-            ->leftJoin('RIRJ_MTINDAKAN as rmt', 'ered.KD_TINDAKAN', 'rmt.KD_TIND')
+            ->leftJoin('RIRJ_MTINDAKAN as rmt', 'ere.KD_TINDAKAN', 'rmt.KD_TIND')
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as smsc', 'rmt.NM_TIND', 'smsc.NM_TIND')
             ->leftJoin('RJ_KARCIS as rk', 'rk.KARCIS', 'ere.KARCIS_RUJUKAN')
             ->select([
@@ -1467,14 +1470,16 @@ class ProcedureController extends Controller
                 'smsc.ICD9_TEXT',
             ])
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', function ($join) {
-                $join->on('ered.KD_TINDAKAN', '=', 'rsp.ID_TINDAKAN')
-                    ->on('ered.ID_RIWAYAT_ELAB', '=', 'rsp.ID_JENIS_TINDAKAN');
+                $join->on('ere.KD_TINDAKAN', '=', 'rsp.ID_TINDAKAN')
+                    ->on('ere.ID_RIWAYAT_ELAB', '=', 'rsp.ID_JENIS_TINDAKAN');
             })
             ->where(function ($query) {
                 $query->where('ere.KLINIK_TUJUAN', '0016')
                     ->orWhere('ere.KLINIK_TUJUAN', '0015');
             })
-            ->where('ere.KARCIS_ASAL', $param['karcis'])
+            ->where(function ($query) use ($param) {
+                $query->where('ere.KARCIS_ASAL', $param['karcis']);
+            })
             ->where(function ($q) use ($resend) {
                 if (!$resend) {
                     $q->whereNull('rsp.ID_TINDAKAN')
@@ -1818,7 +1823,7 @@ class ProcedureController extends Controller
                     ])
                     ->where('KLINIK_TUJUAN', '0017')
                     ->leftJoin('RJ_KARCIS as rk', 'rk.KARCIS', 'ere.KARCIS_RUJUKAN');
-                    // ->leftJoin('vw_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB');
+                // ->leftJoin('vw_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB');
             } else if ($type == 'rad') {
                 $dataErm = $dataErm
                     ->select([
@@ -1828,7 +1833,7 @@ class ProcedureController extends Controller
                     ])
                     ->whereIn('KLINIK_TUJUAN', ['0015', '0016'])
                     ->leftJoin('RJ_KARCIS as rk', 'rk.KARCIS', 'ere.KARCIS_RUJUKAN');
-                    // ->leftJoin('vw_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB');
+                // ->leftJoin('vw_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB');
             } else {
                 $dataErm = $dataErm->select('*');
             }
