@@ -970,7 +970,10 @@ class ProcedureController extends Controller
                     ->on('vkr.KBUKU', '=', 'rsp.KBUKU');
             })
             ->where('eri.AKTIF', 1)
-            ->where('vkr.ID_TRANSAKSI', '=', $request->karcis)
+            ->where(function ($query) use ($request) {
+                $query->where('vkr.ID_TRANSAKSI', '=', $request->karcis)
+                    ->orWhere('ere.KARCIS_RUJUKAN', '=', $request->karcis);
+            })
             ->selectRaw("
                 vkr.ID_TRANSAKSI as KARCIS,
                 MAX(vkr.TANGGAL) as TANGGAL,
@@ -1054,7 +1057,10 @@ class ProcedureController extends Controller
                     ->on('vkr.KBUKU', '=', 'rsp.KBUKU');
             })
             ->where('eri.AKTIF', 1)
-            ->where('vkr.ID_TRANSAKSI', '=', $request->karcis)
+            ->where(function ($query) use ($request) {
+                $query->where('vkr.ID_TRANSAKSI', '=', $request->karcis)
+                    ->orWhere('ere.KARCIS_RUJUKAN', '=', $request->karcis);
+            })
             ->selectRaw("
                 vkr.ID_TRANSAKSI as KARCIS,
                 MAX(vkr.TANGGAL) as TANGGAL,
@@ -1163,6 +1169,7 @@ class ProcedureController extends Controller
                     ->where('ere.KARCIS_RUJUKAN', $request->karcis)
                     ->where('ere.KLINIK_TUJUAN', '0017')
                     ->first();
+
                 $procedureData = SATUSEHAT_PROCEDURE::where('karcis', (int)$request->karcis)
                     ->where('JENIS_TINDAKAN', 'lab')
                     ->where('ID_JENIS_TINDAKAN', $dataLab->ID_RIWAYAT_ELAB)
@@ -1172,7 +1179,7 @@ class ProcedureController extends Controller
                     $resend = true;
                 }
             } else if ($request->type == 'rad') {
-                $dataLab = DB::table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere')
+                $dataRad = DB::table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as ere')
                     ->where('ere.KARCIS_RUJUKAN', $request->karcis)
                     ->where(function ($query) {
                         $query->where('ere.KLINIK_TUJUAN', '0016')
@@ -1181,7 +1188,7 @@ class ProcedureController extends Controller
                     ->first();
                 $procedureData = SATUSEHAT_PROCEDURE::where('karcis', (int)$request->karcis)
                     ->where('JENIS_TINDAKAN', 'rad')
-                    ->where('ID_JENIS_TINDAKAN', $dataLab->ID_RIWAYAT_ELAB)
+                    ->where('ID_JENIS_TINDAKAN', $dataRad->ID_RIWAYAT_ELAB)
                     ->count();
 
                 if ($procedureData > 0) {
