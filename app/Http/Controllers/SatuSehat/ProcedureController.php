@@ -1134,9 +1134,16 @@ class ProcedureController extends Controller
 
         $dataKunjungan = null;
         foreach ($data as $key => $value) {
-            if ($data[$key] != null) {
-                $dataKunjungan = $value;
-                break;
+            if(isset($request->jenis_layanan)){
+                if ($key == strtoupper($request->jenis_layanan)) {
+                    $dataKunjungan = $value;
+                    break;
+                }
+            } else {
+                if ($data[$key] != null) {
+                    $dataKunjungan = $value;
+                    break;
+                }
             }
         }
 
