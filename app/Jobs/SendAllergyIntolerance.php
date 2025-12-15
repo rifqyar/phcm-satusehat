@@ -18,7 +18,7 @@ class SendAllergyIntolerance implements ShouldQueue
 
     public $param;
     public $tries = 3; // Number of attempts
-    public $timeout = 120; // Timeout in seconds
+    public $timeout = 30; // Timeout in seconds
     public $resend = false;
 
     /**

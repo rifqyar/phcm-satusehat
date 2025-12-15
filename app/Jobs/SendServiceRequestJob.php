@@ -17,7 +17,7 @@ class SendServiceRequestJob implements ShouldQueue
 
     public $param;
     public $tries = 3; // Number of attempts
-    public $timeout = 120; // Timeout in seconds
+    public $timeout = 30; // Timeout in seconds
 
     /**
      * Create a new job instance.
@@ -50,7 +50,7 @@ class SendServiceRequestJob implements ShouldQueue
 
             // Call controller method. We ignore the return payload here since it's async.
             $result = $controller->sendSatuSehat($request, $encodedParam);
-            
+
             // Log successful processing
             Log::info('SendServiceRequestJob completed successfully', [
                 'param' => $this->param,
@@ -65,7 +65,7 @@ class SendServiceRequestJob implements ShouldQueue
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            
+
             // Re-throw the exception to trigger retry mechanism
             throw $e;
         }

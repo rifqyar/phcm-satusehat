@@ -19,6 +19,9 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, SATUSEHATTraits, LogTraits;
 
+    public $tries = 3; // Number of attempts
+    public $timeout = 30; // Timeout in seconds
+
     protected $payload;
     protected $arrParam;
     protected $dataKarcis;
