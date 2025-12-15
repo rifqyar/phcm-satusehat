@@ -39,6 +39,7 @@ class MasterSpecimenController extends Controller
 
         $groupIds = $groups->pluck('ID_GRUP_TIND');
 
+        $env = strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT' ? 'Dev' : 'Prod';
         $totalTindakan = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.RJ_DGRUP_TIND as a')
             ->leftJoin('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as b', 'a.KD_TIND', '=', 'b.KD_TIND')
@@ -58,6 +59,7 @@ class MasterSpecimenController extends Controller
         $totalMapping = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.SATUSEHAT_SPECIMEN_MAPPING')
             ->distinct('KODE_TINDAKAN')
+            ->where('ENV', $env)
             ->count('KODE_TINDAKAN');
 
         $totalUnmapped = $totalTindakan - $totalMapping;
