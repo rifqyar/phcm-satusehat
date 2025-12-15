@@ -264,7 +264,7 @@
                             results: data.map(function(value) {
                                 return {
                                     id: value.CODE,
-                                    text: value.NAME,
+                                    text: value.CODE + ' - ' + value.NAME,
                                 };
                             })
                         };
@@ -280,9 +280,10 @@
             let selected = $('.icd9').select2('data')[0];
 
             if (selected.text != '') {
+                let text = selected.text.split(' - ')[1];
                 formData.push({
                     name: 'icd9_text',
-                    value: selected ? selected.text : ''
+                    value: selected ? text : ''
                 });
             } else {
                 let icd9 = $('input[name="icd9_display"]').val().split(' - ');
