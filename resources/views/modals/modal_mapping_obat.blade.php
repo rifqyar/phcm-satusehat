@@ -49,8 +49,7 @@
 
                     <div class="mb-3">
                         <label class="form-label">Deskripsi</label>
-                        <textarea class="form-control" id="deskripsi" name="deskripsi" rows="3"
-                            placeholder="Tambahkan deskripsi..."></textarea>
+                        <textarea class="form-control" id="deskripsi" name="deskripsi" rows="3" placeholder="Tambahkan deskripsi..."></textarea>
                     </div>
 
                     <div class="form-check mb-3">
@@ -124,13 +123,13 @@
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function() {
 
         /**
          * 🟢 Saat modal dibuka (show.bs.modal)
          * Ambil data dari tombol pemicu (data-*) dan isi form utama modal
          */
-        $(document).on('show.bs.modal', '#modalMapping', function (event) {
+        $(document).on('show.bs.modal', '#modalMapping', function(event) {
             const button = $(event.relatedTarget); // tombol yang diklik
             const modal = $(this);
 
@@ -145,7 +144,11 @@
             const isCompound = button.data('is-compound');
             const deskripsi = button.data('deskripsi');
 
-            console.log('Modal dibuka untuk:', { id, kode, nama });
+            console.log('Modal dibuka untuk:', {
+                id,
+                kode,
+                nama
+            });
 
             // Isi field di dalam modal
             modal.find('#id_obat').val(id || '');
@@ -176,7 +179,7 @@
             $('#keyword_kfa').val('');
         });
 
-        $('#is_non_farmasi').on('change', function () {
+        $('#is_non_farmasi').on('change', function() {
             if ($(this).is(':checked')) {
                 $('#kode_kfa').val('000');
                 $('#nama_kfa').val('Non Farmasi');
@@ -202,7 +205,7 @@
          * 🟡 Event: submit form pencarian KFA
          * Mencegah reload, ambil data dari endpoint /satusehat/kfa-search
          */
-        $(document).off('submit', '#formCariKfa').on('submit', '#formCariKfa', function (e) {
+        $(document).off('submit', '#formCariKfa').on('submit', '#formCariKfa', function(e) {
             e.preventDefault();
 
             const tipe = $('#tipe_pencarian').val();
@@ -231,13 +234,16 @@
             const queryParam = `${tipe}=${encodeURIComponent(keyword)}`;
 
             // fetch data dari endpoint Laravel
-            fetch(`satusehat/kfa-search?${queryParam}`)
+            // fetch(`/satusehat/kfa-search?${queryParam}`)
+            fetch(`{{ route('kfa.search', '')}}?${queryParam}`)
                 .then(res => res.json())
                 .then(data => {
                     tbody.empty();
 
                     if (!Array.isArray(data) || data.length === 0) {
-                        tbody.html(`<tr><td colspan="5" class="text-center text-muted py-3">Tidak ada data ditemukan</td></tr>`);
+                        tbody.html(
+                            `<tr><td colspan="5" class="text-center text-muted py-3">Tidak ada data ditemukan</td></tr>`
+                            );
                         tableWrapper.show();
                         return;
                     }
@@ -268,7 +274,9 @@
                 })
                 .catch(err => {
                     console.error('Error:', err);
-                    tbody.html(`<tr><td colspan="5" class="text-center text-danger py-3">Terjadi kesalahan saat memuat data KFA.</td></tr>`);
+                    tbody.html(
+                        `<tr><td colspan="5" class="text-center text-danger py-3">Terjadi kesalahan saat memuat data KFA.</td></tr>`
+                        );
                 });
         });
 
@@ -276,9 +284,9 @@
         /**
          * 🔍 Filter cepat hasil KFA (client-side search)
          */
-        $(document).off('input', '#quickSearch').on('input', '#quickSearch', function () {
+        $(document).off('input', '#quickSearch').on('input', '#quickSearch', function() {
             const query = $(this).val().toLowerCase();
-            $('#tbodyKfa tr').each(function () {
+            $('#tbodyKfa tr').each(function() {
                 const nama = $(this).find('td:nth-child(2)').text().toLowerCase();
                 $(this).toggle(nama.includes(query));
             });
@@ -289,7 +297,7 @@
          * 🟢 Tombol "Pilih" pada hasil KFA
          * Mengisi form utama dengan data yang dipilih dari hasil pencarian
          */
-        $(document).off('click', '.btnPilihKfa').on('click', '.btnPilihKfa', function () {
+        $(document).off('click', '.btnPilihKfa').on('click', '.btnPilihKfa', function() {
             const kode = $(this).data('kfa');
             const nama = $(this).data('nama');
             const jenis = $(this).data('jenis');
