@@ -42,6 +42,6 @@ class LoginController extends Controller
         Session::invalidate();
         Session::flush();
         Session::regenerateToken();
-        return redirect('http://10.1.19.22/login');
+        return redirect('https://sim.phcm.co.id/simrs/login');
     }
 }

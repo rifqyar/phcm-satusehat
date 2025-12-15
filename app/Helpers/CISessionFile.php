@@ -12,7 +12,8 @@ if (!function_exists('ci_session')) {
 
         $sessionId = $_COOKIE['ci_session_tpid'];
 
-        $path = 'C:\SIMRS\sessions\ci_session_tpid' . $sessionId;
+        // $path = 'C:\SIMRS\sessions\ci_session_tpid' . $sessionId;
+        $path = ini_get('session.save_path').'\ci_session_tpid' . $sessionId;
 
         if (!file_exists($path)) {
             return null;

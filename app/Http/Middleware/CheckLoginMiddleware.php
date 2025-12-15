@@ -27,7 +27,7 @@ class CheckLoginMiddleware
             }
         } else {
             if (ci_session('sdh_masuk_simrs') !== true) {
-                return redirect('http://10.1.19.22/login');
+                return redirect('https://sim.phcm.co.id/simrs/login');
             }
 
             return $next($request);
