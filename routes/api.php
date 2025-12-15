@@ -21,6 +21,7 @@ Route::post('encounter', [App\Http\Controllers\SatuSehat\EncounterController::cl
 Route::post('allergy-intolerance', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'receiveSatuSehat']);
 Route::post('procedure', [App\Http\Controllers\SatuSehat\ProcedureController::class, 'receiveSatuSehat']);
 Route::post('service-request', [App\Http\Controllers\SatuSehat\ServiceRequestController::class, 'receiveSatuSehat']);
+Route::post('specimen', [App\Http\Controllers\SatuSehat\SpecimenController::class, 'receiveSatuSehat']);
 Route::post('observasi', [App\Http\Controllers\SatuSehat\ObservasiController::class, 'receiveSatuSehat']);
 
 // Route::middleware('auth:api')->get('/user', function (Request $request) {
