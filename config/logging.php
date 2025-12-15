@@ -107,6 +107,13 @@ return [
             'days' => 7
         ],
 
+        'servicerequest' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/servicerequest.log'),
+            'level' => 'info',
+            'days' => 7
+        ],
+
         'AllergyIntolerance' => [
             'driver' => 'daily',
             'path' => storage_path('logs/AllergyIntolerance.log'),
