@@ -75,7 +75,7 @@ class ProcedureController extends Controller
                         AND
                         (
                             NOT EXISTS (
-                                SELECT 1 FROM v_getData_Elab lab
+                                SELECT 1 FROM vw_getData_Elab lab
                                 WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
                                 AND lab.KLINIK_TUJUAN = '0017'
                             )
@@ -89,7 +89,7 @@ class ProcedureController extends Controller
                         AND
                         (
                             NOT EXISTS (
-                                SELECT 1 FROM v_getData_Elab rad
+                                SELECT 1 FROM vw_getData_Elab rad
                                 WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
                                 AND rad.KLINIK_TUJUAN = '0015' OR rad.KLINIK_TUJUAN = '0016'
                             )
@@ -120,7 +120,7 @@ class ProcedureController extends Controller
 
         $dataRi = DB::table('v_kunjungan_ri as vkr')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.NOREG')
-            ->leftJoin('v_getData_Elab as ere', 'eri.NOREG', '=', 'ere.KARCIS_ASAL')
+            ->leftJoin('vw_getData_Elab as ere', 'eri.NOREG', '=', 'ere.KARCIS_ASAL')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI as erflo', 'eri.NOREG', '=', 'erflo.NOREG')
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
                 $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
@@ -162,7 +162,7 @@ class ProcedureController extends Controller
                     AND
                     (
                         NOT EXISTS (
-                            SELECT 1 FROM v_getData_Elab lab
+                            SELECT 1 FROM vw_getData_Elab lab
                             WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
                             AND lab.KLINIK_TUJUAN = '0017'
                         )
@@ -176,7 +176,7 @@ class ProcedureController extends Controller
                     AND
                     (
                         NOT EXISTS (
-                            SELECT 1 FROM v_getData_Elab rad
+                            SELECT 1 FROM vw_getData_Elab rad
                             WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
                             AND rad.KLINIK_TUJUAN = '0015' OR rad.KLINIK_TUJUAN = '0016'
                         )
@@ -248,7 +248,7 @@ class ProcedureController extends Controller
 
         $dataQuery = DB::table('v_kunjungan_rj as vkr')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.KARCIS')
-            ->leftJoin('v_getData_Elab as ere', 'eri.KARCIS', 'ere.KARCIS_ASAL')
+            ->leftJoin('vw_getData_Elab as ere', 'eri.KARCIS', 'ere.KARCIS_ASAL')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI as erflo', 'eri.KARCIS', 'erflo.KARCIS')
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
                 $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
@@ -291,7 +291,7 @@ class ProcedureController extends Controller
                         AND NOT (
                             EXISTS (
                                 SELECT 1
-                                FROM v_getData_Elab lab
+                                FROM vw_getData_Elab lab
                                 WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
                                 AND lab.KLINIK_TUJUAN = '0017'
                             )
@@ -306,7 +306,7 @@ class ProcedureController extends Controller
                         AND NOT (
                             EXISTS (
                                 SELECT 1
-                                FROM v_getData_Elab rad
+                                FROM vw_getData_Elab rad
                                 WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
                                 AND rad.KLINIK_TUJUAN IN ('0015', '0016')
                             )
@@ -334,7 +334,7 @@ class ProcedureController extends Controller
 
         $riQuery = DB::table('v_kunjungan_ri as vkr')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.NOREG')
-            ->leftJoin('v_getData_Elab as ere', 'eri.NOREG', '=', 'ere.KARCIS_ASAL')
+            ->leftJoin('vw_getData_Elab as ere', 'eri.NOREG', '=', 'ere.KARCIS_ASAL')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI as erflo', 'eri.NOREG', '=', 'erflo.NOREG')
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
                 $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
@@ -377,7 +377,7 @@ class ProcedureController extends Controller
                         AND NOT (
                             EXISTS (
                                 SELECT 1
-                                FROM v_getData_Elab lab
+                                FROM vw_getData_Elab lab
                                 WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
                                 AND lab.KLINIK_TUJUAN = '0017'
                             )
@@ -392,7 +392,7 @@ class ProcedureController extends Controller
                         AND NOT (
                             EXISTS (
                                 SELECT 1
-                                FROM v_getData_Elab rad
+                                FROM vw_getData_Elab rad
                                 WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
                                 AND rad.KLINIK_TUJUAN IN ('0015', '0016')
                             )
@@ -635,8 +635,8 @@ class ProcedureController extends Controller
                 'smsc.ICD9',
                 'smsc.ICD9_TEXT',
             ])
-            ->leftJoin('v_getData_Elab as ere', $karcisField, 'ere.KARCIS_ASAL')
-            // ->leftJoin('v_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
+            ->leftJoin('vw_getData_Elab as ere', $karcisField, 'ere.KARCIS_ASAL')
+            // ->leftJoin('vw_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
             ->leftJoin('RIRJ_MTINDAKAN as rmt', 'ered.KD_TINDAKAN', 'rmt.KD_TIND')
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as smsc', 'rmt.NM_TIND', 'smsc.NM_TIND')
             ->where('eri.AKTIF', 1)
@@ -657,8 +657,8 @@ class ProcedureController extends Controller
                 'smsc.ICD9',
                 'smsc.ICD9_TEXT',
             ])
-            ->leftJoin('v_getData_Elab as ere', $karcisField, 'ere.KARCIS_ASAL')
-            // ->leftJoin('v_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
+            ->leftJoin('vw_getData_Elab as ere', $karcisField, 'ere.KARCIS_ASAL')
+            // ->leftJoin('vw_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
             ->leftJoin('RIRJ_MTINDAKAN as rmt', 'ered.KD_TINDAKAN', 'rmt.KD_TIND')
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as smsc', 'rmt.NM_TIND', 'smsc.NM_TIND')
             ->where('eri.AKTIF', 1)
@@ -959,8 +959,8 @@ class ProcedureController extends Controller
 
         $data['JALAN'] = DB::table('v_kunjungan_rj as vkr')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.KARCIS')
-            // ->leftJoin('v_getData_Elab as ere', 'eri.KARCIS', 'ere.KARCIS_ASAL')
-            ->leftJoin('v_getData_Elab as ere', 'eri.KARCIS', 'ere.KARCIS_ASAL')
+            // ->leftJoin('vw_getData_Elab as ere', 'eri.KARCIS', 'ere.KARCIS_ASAL')
+            ->leftJoin('vw_getData_Elab as ere', 'eri.KARCIS', 'ere.KARCIS_ASAL')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI as erflo', 'eri.KARCIS', 'erflo.KARCIS')
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
                 $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
@@ -1004,7 +1004,7 @@ class ProcedureController extends Controller
                         AND
                         (
                             NOT EXISTS (
-                                SELECT 1 FROM v_getData_Elab lab
+                                SELECT 1 FROM vw_getData_Elab lab
                                 WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
                                 AND lab.KLINIK_TUJUAN = '0017'
                             )
@@ -1018,7 +1018,7 @@ class ProcedureController extends Controller
                         AND
                         (
                             NOT EXISTS (
-                                SELECT 1 FROM v_getData_Elab rad
+                                SELECT 1 FROM vw_getData_Elab rad
                                 WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
                                 AND rad.KLINIK_TUJUAN = '0015' OR rad.KLINIK_TUJUAN = '0016'
                             )
@@ -1047,7 +1047,7 @@ class ProcedureController extends Controller
 
         $data['INAP'] = DB::table('v_kunjungan_ri as vkr')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.NOREG')
-            ->leftJoin('v_getData_Elab as ere', 'eri.NOREG', '=', 'ere.KARCIS_ASAL')
+            ->leftJoin('vw_getData_Elab as ere', 'eri.NOREG', '=', 'ere.KARCIS_ASAL')
             ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI as erflo', 'eri.NOREG', '=', 'erflo.NOREG')
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
                 $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
@@ -1091,7 +1091,7 @@ class ProcedureController extends Controller
                     AND
                     (
                         NOT EXISTS (
-                            SELECT 1 FROM v_getData_Elab lab
+                            SELECT 1 FROM vw_getData_Elab lab
                             WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
                             AND lab.KLINIK_TUJUAN = '0017'
                         )
@@ -1105,7 +1105,7 @@ class ProcedureController extends Controller
                     AND
                     (
                         NOT EXISTS (
-                            SELECT 1 FROM v_getData_Elab rad
+                            SELECT 1 FROM vw_getData_Elab rad
                             WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
                             AND rad.KLINIK_TUJUAN = '0015' OR rad.KLINIK_TUJUAN = '0016'
                         )
@@ -1166,7 +1166,7 @@ class ProcedureController extends Controller
                     $resend = true;
                 }
             } else if ($request->type == 'lab') {
-                $dataLab = DB::table('v_getData_Elab as ere')
+                $dataLab = DB::table('vw_getData_Elab as ere')
                     ->where('ere.KARCIS_RUJUKAN', $request->karcis)
                     ->where('ere.KLINIK_TUJUAN', '0017')
                     ->first();
@@ -1180,7 +1180,7 @@ class ProcedureController extends Controller
                     $resend = true;
                 }
             } else if ($request->type == 'rad') {
-                $dataRad = DB::table('v_getData_Elab as ere')
+                $dataRad = DB::table('vw_getData_Elab as ere')
                     ->where('ere.KARCIS_RUJUKAN', $request->karcis)
                     ->where(function ($query) {
                         $query->where('ere.KLINIK_TUJUAN', '0016')
@@ -1300,8 +1300,8 @@ class ProcedureController extends Controller
 
     private function definePayloadLab($param, $patient, $request, $dataErm, $resend)
     {
-        $dataLab = DB::table('v_getData_Elab as ere')
-            // ->leftJoin('v_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
+        $dataLab = DB::table('vw_getData_Elab as ere')
+            // ->leftJoin('vw_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
             ->leftJoin('RIRJ_MTINDAKAN as rmt', 'ered.KD_TINDAKAN', 'rmt.KD_TIND')
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as smsc', 'rmt.NM_TIND', 'smsc.NM_TIND')
             ->leftJoin('RJ_KARCIS as rk', 'rk.KARCIS', 'ere.KARCIS_RUJUKAN')
@@ -1446,8 +1446,8 @@ class ProcedureController extends Controller
 
     private function definePayloadRad($param, $patient, $request, $dataErm, $resend)
     {
-        $dataRad = DB::table('v_getData_Elab as ere')
-            // ->leftJoin('v_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
+        $dataRad = DB::table('vw_getData_Elab as ere')
+            // ->leftJoin('vw_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
             ->leftJoin('RIRJ_MTINDAKAN as rmt', 'ered.KD_TINDAKAN', 'rmt.KD_TIND')
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as smsc', 'rmt.NM_TIND', 'smsc.NM_TIND')
             ->leftJoin('RJ_KARCIS as rk', 'rk.KARCIS', 'ere.KARCIS_RUJUKAN')
@@ -1811,7 +1811,7 @@ class ProcedureController extends Controller
                     ])
                     ->where('KLINIK_TUJUAN', '0017')
                     ->leftJoin('RJ_KARCIS as rk', 'rk.KARCIS', 'ere.KARCIS_RUJUKAN');
-                    // ->leftJoin('v_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB');
+                    // ->leftJoin('vw_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB');
             } else if ($type == 'rad') {
                 $dataErm = $dataErm
                     ->select([
@@ -1821,7 +1821,7 @@ class ProcedureController extends Controller
                     ])
                     ->whereIn('KLINIK_TUJUAN', ['0015', '0016'])
                     ->leftJoin('RJ_KARCIS as rk', 'rk.KARCIS', 'ere.KARCIS_RUJUKAN');
-                    // ->leftJoin('v_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB');
+                    // ->leftJoin('vw_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB');
             } else {
                 $dataErm = $dataErm->select('*');
             }
