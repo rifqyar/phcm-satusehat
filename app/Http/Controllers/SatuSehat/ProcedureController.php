@@ -637,7 +637,7 @@ class ProcedureController extends Controller
             ])
             ->leftJoin('vw_getData_Elab as ere', $karcisField, 'ere.KARCIS_ASAL')
             // ->leftJoin('vw_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
-            ->leftJoin('RIRJ_MTINDAKAN as rmt', 'ered.KD_TINDAKAN', 'rmt.KD_TIND')
+            ->leftJoin('RIRJ_MTINDAKAN as rmt', 'ere.KD_TINDAKAN', 'rmt.KD_TIND')
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as smsc', 'rmt.NM_TIND', 'smsc.NM_TIND')
             ->where('eri.AKTIF', 1)
             ->where('ere.KLINIK_TUJUAN', '0017')
@@ -659,7 +659,7 @@ class ProcedureController extends Controller
             ])
             ->leftJoin('vw_getData_Elab as ere', $karcisField, 'ere.KARCIS_ASAL')
             // ->leftJoin('vw_getData_Elab_DETAIL as ered', 'ere.ID_RIWAYAT_ELAB', 'ered.ID_RIWAYAT_ELAB')
-            ->leftJoin('RIRJ_MTINDAKAN as rmt', 'ered.KD_TINDAKAN', 'rmt.KD_TIND')
+            ->leftJoin('RIRJ_MTINDAKAN as rmt', 'ere.KD_TINDAKAN', 'rmt.KD_TIND')
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as smsc', 'rmt.NM_TIND', 'smsc.NM_TIND')
             ->where('eri.AKTIF', 1)
             ->where(function ($query) {
@@ -1753,12 +1753,12 @@ class ProcedureController extends Controller
             switch ($type) {
                 case 'pemeriksaanfisik':
                     if ($arrParam['jenis_perawatan'] == 'RAWAT_JALAN') {
-                        $table = 'ERM_RM_IRJA';
+                        $table = 'E_RM_PHCM.dbo.ERM_RM_IRJA';
                         $karcisField = "KARCIS";
                         $selectField = "NOMOR";
                         $selectNakes = "";
                     } else {
-                        $table = 'ERM_RI_F_ASUHAN_KEP_AWAL_HEAD';
+                        $table = 'E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD';
                         $karcisField = "noreg";
                         $selectField = "id_asuhan_header";
                         $selectNakes = "";
@@ -1786,7 +1786,7 @@ class ProcedureController extends Controller
                     $texticd9 = json_decode($request->text_icd9, true);
                     break;
                 case 'operasi':
-                    $table = 'ERM_RI_F_LAP_OPERASI';
+                    $table = 'E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI';
                     $karcisField = "KARCIS";
                     $selectField = "id_lap_operasi";
                     $selectNakes = "kddok";
@@ -1795,12 +1795,12 @@ class ProcedureController extends Controller
                     break;
                 default:
                     if ($arrParam['jenis_perawatan'] == 'RAWAT_JALAN') {
-                        $table = 'ERM_RM_IRJA';
+                        $table = 'E_RM_PHCM.dbo.ERM_RM_IRJA';
                         $karcisField = "KARCIS";
                         $selectField = "NOMOR";
                         $selectNakes = "";
                     } else {
-                        $table = 'ERM_RI_F_ASUHAN_KEP_AWAL_HEAD';
+                        $table = 'E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD';
                         $karcisField = "noreg";
                         $selectField = "id_asuhan_header";
                         $selectNakes = "";
@@ -1811,7 +1811,7 @@ class ProcedureController extends Controller
                     break;
             }
 
-            $dataErm = DB::table("E_RM_PHCM.dbo.$table")
+            $dataErm = DB::table("$table")
                 ->where($karcisField, $arrParam['karcis']);
 
             if ($type == 'lab') {
@@ -1843,88 +1843,89 @@ class ProcedureController extends Controller
                 $dataSatuSehat = SATUSEHAT_PROCEDURE::where('ID_JENIS_TINDAKAN', $dataErm[$i]->{$selectField});
 
                 if (count($dataSatuSehat->get()) > 0) {
-                    if ($dataSatuSehat->first()->ID_SATUSEHAT_PROCEDURE) {
-                        throw new Exception('Data tindakan ini sudah pernah kirim ke satu sehat, tidak bisa simpan ICD9', JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
+                    if (!$dataSatuSehat->first()->ID_SATUSEHAT_PROCEDURE) {
+                        // throw new Exception('Data tindakan ini sudah pernah kirim ke satu sehat, tidak bisa simpan ICD9', JsonResponse::HTTP_UNPROCESSABLE_ENTITY);
                     }
-                }
-
-                $dataKarcis = DB::table('RJ_KARCIS as rk')
-                    ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU', 'rk.NOREG')
-                    ->where($arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? 'rk.KARCIS' : 'rk.NOREG', $arrParam['karcis'])
-                    ->where('rk.IDUNIT', $id_unit)
-                    ->orderBy('rk.TGL', 'DESC')
-                    ->first();
-
-                $dataPeserta = DB::table('RIRJ_MASTERPX')
-                    ->where('KBUKU', $dataKarcis->KBUKU)
-                    ->first();
-
-                if ($type != 'pemeriksaanfisik') {
-                    $nakes = SS_Nakes::where('kddok', $dataErm[$i]->{$selectNakes})->first();
-                }
-
-                if ($type == 'lab' || $type == 'rad') {
-                    $dataICD = json_decode($request->icd9_data);
-                    $procedureData = [
-                        'KBUKU' => $dataKarcis->KBUKU,
-                        'NO_PESERTA' => $dataPeserta->NO_PESERTA,
-                        'ID_SATUSEHAT_ENCOUNTER' => $arrParam['encounter_id'],
-                        'ID_JENIS_TINDAKAN' => $dataErm[$i]->{$selectField},
-                        'ID_TINDAKAN' => $dataErm[$i]->KD_TINDAKAN,
-                        'KD_ICD9' => $dataICD[$i]->icd9,
-                        'DISP_ICD9' => $dataICD[$i]->text_icd9,
-                        'JENIS_TINDAKAN' => $request->type == 'pemeriksaanfisik' ? 'anamnese' : $request->type,
-                        'KDDOK' => $nakes->kddok ?? null,
-                    ];
-
-                    $existingProcedure = $dataSatuSehat->where('KARCIS', $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG)
-                        ->where('JENIS_TINDAKAN', $type)
-                        ->where('ID_TINDAKAN', $dataErm[$i]->KD_TINDAKAN)
-                        ->where('ID_JENIS_TINDAKAN', $dataErm[$i]->{$selectField})
+                } else {
+                    $dataKarcis = DB::table('RJ_KARCIS as rk')
+                        ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU', 'rk.NOREG')
+                        ->where($arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? 'rk.KARCIS' : 'rk.NOREG', $arrParam['karcis'])
+                        ->where('rk.IDUNIT', $id_unit)
+                        ->orderBy('rk.TGL', 'DESC')
                         ->first();
 
-                    if ($existingProcedure) {
-                        DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE')
-                            ->where('KARCIS', $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG)
+                    $dataPeserta = DB::table('RIRJ_MASTERPX')
+                        ->where('KBUKU', $dataKarcis->KBUKU)
+                        ->first();
+
+                    if ($type != 'pemeriksaanfisik') {
+                        $nakes = SS_Nakes::where('kddok', $dataErm[$i]->{$selectNakes})->first();
+                    }
+
+                    if ($type == 'lab' || $type == 'rad') {
+                        $dataICD = json_decode($request->icd9_data);
+                        $procedureData = [
+                            'KBUKU' => $dataKarcis->KBUKU,
+                            'NO_PESERTA' => $dataPeserta->NO_PESERTA,
+                            'ID_SATUSEHAT_ENCOUNTER' => $arrParam['encounter_id'],
+                            'ID_JENIS_TINDAKAN' => $dataErm[$i]->{$selectField},
+                            'ID_TINDAKAN' => $dataErm[$i]->KD_TINDAKAN,
+                            'KD_ICD9' => $dataICD[$i]->icd9,
+                            'DISP_ICD9' => $dataICD[$i]->text_icd9,
+                            'JENIS_TINDAKAN' => $request->type == 'pemeriksaanfisik' ? 'anamnese' : $request->type,
+                            'KDDOK' => $nakes->kddok ?? null,
+                        ];
+
+                        $existingProcedure = $dataSatuSehat->where('KARCIS', $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG)
                             ->where('JENIS_TINDAKAN', $type)
                             ->where('ID_TINDAKAN', $dataErm[$i]->KD_TINDAKAN)
                             ->where('ID_JENIS_TINDAKAN', $dataErm[$i]->{$selectField})
-                            ->update($procedureData);
+                            ->first();
+
+                        if ($existingProcedure) {
+                            DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE')
+                                ->where('KARCIS', $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG)
+                                ->where('JENIS_TINDAKAN', $type)
+                                ->where('ID_TINDAKAN', $dataErm[$i]->KD_TINDAKAN)
+                                ->where('ID_JENIS_TINDAKAN', $dataErm[$i]->{$selectField})
+                                ->update($procedureData);
+                        } else {
+                            $procedureData['KARCIS'] = $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG;
+                            $procedureData['CRTDT'] = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
+                            $procedureData['CRTUSER'] = 'system';
+                            SATUSEHAT_PROCEDURE::create($procedureData);
+                        }
                     } else {
-                        $procedureData['KARCIS'] = $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG;
-                        $procedureData['CRTDT'] = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
-                        $procedureData['CRTUSER'] = 'system';
-                        SATUSEHAT_PROCEDURE::create($procedureData);
-                    }
-                } else {
-                    $procedureData = [
-                        'KBUKU' => $dataKarcis->KBUKU,
-                        'NO_PESERTA' => $dataPeserta->NO_PESERTA,
-                        'ID_SATUSEHAT_ENCOUNTER' => $arrParam['encounter_id'],
-                        'ID_JENIS_TINDAKAN' => $dataErm[$i]->{$selectField},
-                        'ID_TINDAKAN' => 0,
-                        'KD_ICD9' => is_array($icd9) ? implode(',', $icd9) : $icd9,
-                        'DISP_ICD9' => is_array($texticd9) ? implode(',', $texticd9) : $texticd9,
-                        'JENIS_TINDAKAN' => $request->type == 'pemeriksaanfisik' ? 'anamnese' : $request->type,
-                        'KDDOK' => $nakes->kddok ?? null,
-                    ];
+                        $procedureData = [
+                            'KBUKU' => $dataKarcis->KBUKU,
+                            'NO_PESERTA' => $dataPeserta->NO_PESERTA,
+                            'ID_SATUSEHAT_ENCOUNTER' => $arrParam['encounter_id'],
+                            'ID_JENIS_TINDAKAN' => $dataErm[$i]->{$selectField},
+                            'ID_TINDAKAN' => 0,
+                            'KD_ICD9' => is_array($icd9) ? implode(',', $icd9) : $icd9,
+                            'DISP_ICD9' => is_array($texticd9) ? implode(',', $texticd9) : $texticd9,
+                            'JENIS_TINDAKAN' => $request->type == 'pemeriksaanfisik' ? 'anamnese' : $request->type,
+                            'KDDOK' => $nakes->kddok ?? null,
+                        ];
 
-                    $existingProcedure = $dataSatuSehat->where('KARCIS', $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG)
-                        ->where('JENIS_TINDAKAN', $type == 'pemeriksaanfisik' ? 'anamnese' : $type)
-                        ->first();
-
-                    if ($existingProcedure) {
-                        DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE')
-                            ->where('KARCIS', $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG)
+                        $existingProcedure = $dataSatuSehat->where('KARCIS', $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG)
                             ->where('JENIS_TINDAKAN', $type == 'pemeriksaanfisik' ? 'anamnese' : $type)
-                            ->update($procedureData);
-                    } else {
-                        $procedureData['KARCIS'] = $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG;
-                        $procedureData['CRTDT'] = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
-                        $procedureData['CRTUSER'] = 'system';
-                        SATUSEHAT_PROCEDURE::create($procedureData);
+                            ->first();
+
+                        if ($existingProcedure) {
+                            DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE')
+                                ->where('KARCIS', $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG)
+                                ->where('JENIS_TINDAKAN', $type == 'pemeriksaanfisik' ? 'anamnese' : $type)
+                                ->update($procedureData);
+                        } else {
+                            $procedureData['KARCIS'] = $arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG;
+                            $procedureData['CRTDT'] = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
+                            $procedureData['CRTUSER'] = 'system';
+                            SATUSEHAT_PROCEDURE::create($procedureData);
+                        }
                     }
                 }
+
 
                 $this->logInfo('Procedure', 'Sukses Simpan Data ICD 9', [
                     'payload' => [
