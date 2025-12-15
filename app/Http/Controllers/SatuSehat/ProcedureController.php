@@ -274,54 +274,56 @@ class ProcedureController extends Controller
                 'RAWAT_JALAN' AS JENIS_PERAWATAN,
                 CASE
                     WHEN
-                        (
-                            NOT EXISTS (
-                                SELECT 1 FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI op
+                        NOT (
+                            EXISTS (
+                                SELECT 1
+                                FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI op
                                 WHERE op.KARCIS = vkr.ID_TRANSAKSI
                             )
-                            OR EXISTS (
-                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p1
-                                WHERE p1.KARCIS = vkr.ID_TRANSAKSI
-                                AND p1.JENIS_TINDAKAN = 'operasi'
-                                AND p1.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
+                                WHERE p.KARCIS = vkr.ID_TRANSAKSI
+                                AND p.JENIS_TINDAKAN = 'operasi'
+                                AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
                             )
                         )
-                        AND
-                        (
-                            NOT EXISTS (
-                                SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB lab
+                        AND NOT (
+                            EXISTS (
+                                SELECT 1
+                                FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB lab
                                 WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
                                 AND lab.KLINIK_TUJUAN = '0017'
                             )
-                            OR EXISTS (
-                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p2
-                                WHERE p2.KARCIS = vkr.ID_TRANSAKSI
-                                AND p2.JENIS_TINDAKAN = 'lab'
-                                AND p2.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
+                                WHERE p.KARCIS = vkr.ID_TRANSAKSI
+                                AND p.JENIS_TINDAKAN = 'lab'
+                                AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
                             )
                         )
-                        AND
-                        (
-                            NOT EXISTS (
-                                SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB rad
-                                WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
-                                AND rad.KLINIK_TUJUAN = '0015' OR rad.KLINIK_TUJUAN = '0016'
-                            )
-                            OR EXISTS (
-                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p3
-                                WHERE p3.KARCIS = vkr.ID_TRANSAKSI
-                                AND p3.JENIS_TINDAKAN = 'rad'
-                                AND p3.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                            )
-                        )
-                        AND
-                        (
+                        AND NOT (
                             EXISTS (
-                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p4
-                                WHERE p4.KARCIS = vkr.ID_TRANSAKSI
-                                AND p4.JENIS_TINDAKAN = 'anamnese'
-                                AND p4.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                                SELECT 1
+                                FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB rad
+                                WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
+                                AND rad.KLINIK_TUJUAN IN ('0015', '0016')
                             )
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
+                                WHERE p.KARCIS = vkr.ID_TRANSAKSI
+                                AND p.JENIS_TINDAKAN = 'rad'
+                                AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                            )
+                        )
+                        AND EXISTS (
+                            SELECT 1
+                            FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
+                            WHERE p.KARCIS = vkr.ID_TRANSAKSI
+                            AND p.JENIS_TINDAKAN = 'anamnese'
+                            AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
                         )
                     THEN 1
                     ELSE 0
@@ -358,57 +360,59 @@ class ProcedureController extends Controller
                 'RAWAT_INAP' AS JENIS_PERAWATAN,
                 CASE
                     WHEN
-                    (
-                        NOT EXISTS (
-                            SELECT 1 FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI op
-                            WHERE op.KARCIS = vkr.ID_TRANSAKSI
+                        NOT (
+                            EXISTS (
+                                SELECT 1
+                                FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI op
+                                WHERE op.KARCIS = vkr.ID_TRANSAKSI
+                            )
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
+                                WHERE p.KARCIS = vkr.ID_TRANSAKSI
+                                AND p.JENIS_TINDAKAN = 'operasi'
+                                AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                            )
                         )
-                        OR EXISTS (
-                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p1
-                            WHERE p1.KARCIS = vkr.ID_TRANSAKSI
-                            AND p1.JENIS_TINDAKAN = 'operasi'
-                            AND p1.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                        AND NOT (
+                            EXISTS (
+                                SELECT 1
+                                FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB lab
+                                WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
+                                AND lab.KLINIK_TUJUAN = '0017'
+                            )
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
+                                WHERE p.KARCIS = vkr.ID_TRANSAKSI
+                                AND p.JENIS_TINDAKAN = 'lab'
+                                AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                            )
                         )
-                    )
-                    AND
-                    (
-                        NOT EXISTS (
-                            SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB lab
-                            WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
-                            AND lab.KLINIK_TUJUAN = '0017'
+                        AND NOT (
+                            EXISTS (
+                                SELECT 1
+                                FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB rad
+                                WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
+                                AND rad.KLINIK_TUJUAN IN ('0015', '0016')
+                            )
+                            AND NOT EXISTS (
+                                SELECT 1
+                                FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
+                                WHERE p.KARCIS = vkr.ID_TRANSAKSI
+                                AND p.JENIS_TINDAKAN = 'rad'
+                                AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                            )
                         )
-                        OR EXISTS (
-                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p2
-                            WHERE p2.KARCIS = vkr.ID_TRANSAKSI
-                            AND p2.JENIS_TINDAKAN = 'lab'
-                            AND p2.ID_SATUSEHAT_PROCEDURE IS NOT NULL
+                        AND EXISTS (
+                            SELECT 1
+                            FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
+                            WHERE p.KARCIS = vkr.ID_TRANSAKSI
+                            AND p.JENIS_TINDAKAN = 'anamnese'
+                            AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
                         )
-                    )
-                    AND
-                    (
-                        NOT EXISTS (
-                            SELECT 1 FROM E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB rad
-                            WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
-                            AND rad.KLINIK_TUJUAN = '0015' OR rad.KLINIK_TUJUAN = '0016'
-                        )
-                        OR EXISTS (
-                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p3
-                            WHERE p3.KARCIS = vkr.ID_TRANSAKSI
-                            AND p3.JENIS_TINDAKAN = 'rad'
-                            AND p3.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                        )
-                    )
-                    AND
-                    (
-                        EXISTS (
-                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p4
-                            WHERE p4.KARCIS = vkr.ID_TRANSAKSI
-                            AND p4.JENIS_TINDAKAN = 'anamnese'
-                            AND p4.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                        )
-                    )
-                THEN 1
-                ELSE 0
+                    THEN 1
+                    ELSE 0
                 END AS sudah_integrasi,
                 CASE WHEN MAX(eri.NOREG) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
             ")
