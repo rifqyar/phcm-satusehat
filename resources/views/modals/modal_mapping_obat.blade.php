@@ -231,7 +231,7 @@
             const queryParam = `${tipe}=${encodeURIComponent(keyword)}`;
 
             // fetch data dari endpoint Laravel
-            fetch(`/satusehat/kfa-search?${queryParam}`)
+            fetch(`satusehat/kfa-search?${queryParam}`)
                 .then(res => res.json())
                 .then(data => {
                     tbody.empty();
