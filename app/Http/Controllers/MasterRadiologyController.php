@@ -13,7 +13,32 @@ class MasterRadiologyController extends Controller
     public function index(Request $request)
     {
         // base query untuk menghitung total, mapped, dan unmapped
-        $baseQuery = DB::connection('sqlsrv')
+        $stats = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as a')
+            ->join('SIRS_PHCM.dbo.RJ_DGRUP_TIND as b', 'a.KD_TIND', '=', 'b.KD_TIND')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as d', 'a.KD_TIND', '=', 'd.ID')
+            ->whereIn('b.KDKLINIK', function ($sub) {
+                $sub->select('KODE_KLINIK')
+                    ->from('SIRS_PHCM.dbo.RJ_KLINIK_RADIOLOGI')
+                    ->where('AKTIF', 'true')
+                    ->where('IDUNIT', '001');
+            })
+            ->whereRaw('ISNULL(a.STT_ACT,0) <> 0')
+            ->selectRaw("
+                COUNT(DISTINCT a.KD_TIND) AS total_all,
+                COUNT(DISTINCT CASE
+                    WHEN d.code IS NOT NULL AND d.code <> ''
+                    AND d.ICD9 IS NOT NULL AND d.ICD9 <> ''
+                    THEN a.KD_TIND
+                END) AS total_mapped
+            ")
+            ->first();
+
+        $total_all = (int) $stats->total_all;
+        $total_mapped = (int) $stats->total_mapped;
+        $total_unmapped = $total_all - $total_mapped;
+
+        $query = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as a')
             ->join('SIRS_PHCM.dbo.RJ_DGRUP_TIND as b', 'a.KD_TIND', '=', 'b.KD_TIND')
             ->join('SIRS_PHCM.dbo.RJ_MGRUP_TIND as c', 'b.ID_GRUP_TIND', '=', 'c.ID_GRUP_TIND')
@@ -24,31 +49,15 @@ class MasterRadiologyController extends Controller
                     ->where('AKTIF', 'true')
                     ->where('IDUNIT', '001');
             })
-            ->whereRaw('ISNULL(a.STT_ACT,0) <> 0');
-
-        $qAll = clone $baseQuery;
-        $total_all = $qAll
-            ->select('a.KD_TIND')
-            ->distinct()
-            ->count('a.KD_TIND');
-
-        $qMapped = clone $baseQuery;
-        $total_mapped = $qMapped
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as d2', 'a.KD_TIND', '=', 'd2.ID')
-            ->whereNotNull('d2.code')
-            ->whereNotNull('d2.ICD9')
-            ->where('d2.code', '<>', '')
-            ->select('a.KD_TIND')
-            ->distinct()
-            ->count('a.KD_TIND');
-
-        $total_unmapped = $total_all - $total_mapped;
-
-        $query = DB::connection('sqlsrv')
-            ->table('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as a')
-            ->join('SIRS_PHCM.dbo.RJ_DGRUP_TIND as b', 'a.KD_TIND', '=', 'b.KD_TIND')
-            ->join('SIRS_PHCM.dbo.RJ_MGRUP_TIND as c', 'b.ID_GRUP_TIND', '=', 'c.ID_GRUP_TIND')
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as d', 'a.KD_TIND', '=', 'd.ID')
+            ->whereRaw('ISNULL(a.STT_ACT,0) <> 0')
+            ->groupBy(
+                'c.ID_GRUP_TIND',
+                'c.NM_GRUP_TIND',
+                'a.KD_TIND',
+                'a.NM_TIND',
+                'd.ICD9',
+                'd.ICD9_TEXT'
+            )
             ->select(
                 'c.ID_GRUP_TIND as ID_GRUP',
                 'c.NM_GRUP_TIND as NAMA_GRUP',
@@ -61,20 +70,13 @@ class MasterRadiologyController extends Controller
                 DB::raw('MAX(d.display) as SATUSEHAT_DISPLAY'),
                 DB::raw('MAX(d.CATEGORY) as CATEGORY')
             )
-            ->whereIn('b.KDKLINIK', function ($sub) {
-                $sub->select('KODE_KLINIK')
-                    ->from('SIRS_PHCM.dbo.RJ_KLINIK_RADIOLOGI')
-                    ->where('AKTIF', 'true')
-                    ->where('IDUNIT', '001');
-            })
-            ->whereRaw('ISNULL(a.STT_ACT,0) <> 0')
-            ->groupBy('c.ID_GRUP_TIND', 'c.NM_GRUP_TIND', 'a.KD_TIND', 'a.NM_TIND', 'd.ICD9','d.ICD9_TEXT')
             ->orderBy('c.ID_GRUP_TIND')
             ->orderBy('a.NM_TIND');
 
+
         // 🔎 Search filter
         if ($request->filled('search')) {
-            $search = $request->get('search');
+            $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('a.NM_TIND', 'like', "%{$search}%")
                     ->orWhere('c.NM_GRUP_TIND', 'like', "%{$search}%")
@@ -85,15 +87,24 @@ class MasterRadiologyController extends Controller
 
         // 🧩 Mapped/unmapped filter
         $mapped_filter = $request->get('mapped_filter', 'all');
+
         if ($mapped_filter === 'mapped') {
-            $query->havingRaw('MAX(d.code) IS NOT NULL AND MAX(d.code) <> \'\' AND MAX(d.ICD9) IS NOT NULL AND MAX(d.ICD9) <> \'\'');
+            $query->havingRaw("
+                MAX(d.code) IS NOT NULL AND MAX(d.code) <> ''
+                AND MAX(d.ICD9) IS NOT NULL AND MAX(d.ICD9) <> ''
+            ");
         } elseif ($mapped_filter === 'unmapped') {
-            $query->havingRaw('(MAX(d.code) IS NULL OR MAX(d.code) = \'\') OR (MAX(d.ICD9) IS NULL OR MAX(d.ICD9) = \'\')');
+            $query->havingRaw("
+                MAX(d.code) IS NULL OR MAX(d.code) = ''
+                OR MAX(d.ICD9) IS NULL OR MAX(d.ICD9) = ''
+            ");
         }
 
         // 📄 Paginate final result
-        $data = $query->paginate(10)
-            ->appends(['search' => $request->search, 'mapped_filter' => $mapped_filter]);
+        $data = $query->paginate(10)->appends([
+                    'search' => $request->search,
+                    'mapped_filter' => $mapped_filter
+                ]);
 
         return view('pages.master_radiology', compact('data', 'mapped_filter', 'total_all', 'total_mapped', 'total_unmapped'));
     }
