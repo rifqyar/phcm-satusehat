@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\SatuSehat;
 
-use App\Helpers\CiEncryptionHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\LogTraits;
 use App\Http\Traits\SATUSEHATTraits;

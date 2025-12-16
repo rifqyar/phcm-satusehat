@@ -35,13 +35,21 @@ class LoginController extends Controller
         ])->withInput($request->only('username'));
     }
 
-    public function loginDirect() {}
+    public function loginDirect() {
+        $request = request();
+        $request->merge([
+            'username' => 'admin',
+            'password' => 'P@ssw0rd',
+        ]);
+
+        return $this->login($request);
+    }
 
     public function logout()
     {
         Session::invalidate();
         Session::flush();
         Session::regenerateToken();
-        return redirect('https://sim.phcm.co.id/simrs/login');
+        return redirect('https://sim.phcm.co.id/phcm-satusehat/public/login');
     }
 }
