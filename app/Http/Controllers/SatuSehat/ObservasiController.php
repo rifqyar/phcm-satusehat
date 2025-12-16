@@ -420,7 +420,7 @@ class ObservasiController extends Controller
                             FROM SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI rso2
                             WHERE rso2.KARCIS = vkr.ID_TRANSAKSI
                             AND rso2.ID_ERM = eri.NOMOR
-                            AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 5
+                            AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) > 0
                         ) THEN 1
                         ELSE 0
                     END as sudah_integrasi,
