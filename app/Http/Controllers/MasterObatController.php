@@ -127,7 +127,7 @@ class MasterObatController extends Controller
             $validated = $request->validate([
                 'id' => 'required|integer',
                 'kode_kfa' => 'nullable|string|max:100',
-                'nama_kfa' => 'nullable|string|max:255',
+                'nama_kfa' => 'nullable|string',
                 'deskripsi' => 'nullable|string|max:500',
                 'is_compound' => 'nullable|in:0,1',
             ]);
