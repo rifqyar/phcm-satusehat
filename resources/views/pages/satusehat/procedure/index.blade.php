@@ -601,7 +601,8 @@
                     `);
 
                     if (item.ICD9 != null) {
-                        $(`#icd9-lab-${item.KD_TIND}`).append(`<option value="${item.ICD9}" selected>${item.ICD9_TEXT}</option>`)
+                        $(`#icd9-lab-${item.KD_TIND}`).append(
+                            `<option value="${item.ICD9}" selected>${item.ICD9_TEXT}</option>`)
                     }
                 });
 
@@ -680,7 +681,8 @@
                     `);
 
                     if (item.ICD9 != null) {
-                        $(`#icd9-rad-${item.KD_TIND}`).append(`<option value="${item.ICD9}" selected>${item.ICD9_TEXT}</option>`)
+                        $(`#icd9-rad-${item.KD_TIND}`).append(
+                            `<option value="${item.ICD9}" selected>${item.ICD9_TEXT}</option>`)
                     }
                 });
 
@@ -778,7 +780,7 @@
                                 .DISP_ICD9)
                         })
                     } else {
-                        $(`.curr-icd9-${index}`).hide()
+                        $(`#curr-icd9-${index}`).hide()
                     }
                 }
             })
