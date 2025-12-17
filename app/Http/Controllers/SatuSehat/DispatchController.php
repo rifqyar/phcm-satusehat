@@ -16,7 +16,7 @@ class DispatchController extends Controller
             'payload' => $request,
         ]);
 
-        $payload = $request->except(['url']); // array murni
+        $payload = $request->except(['urls']); // array murni
         $urls    = $request->input('urls');   // array endpoint
 
         DispatchCIRequest::dispatch($payload, $urls);
