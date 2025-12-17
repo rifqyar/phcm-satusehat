@@ -1512,8 +1512,8 @@ class ProcedureController extends Controller
         return [
             "payload" => $payload ?? [],
             "kddok" => $nakes->kddok ?? null,
-            "id_tindakan" => $dataLab->pluck('ID_RIWAYAT_ELAB')->toArray() ?? null,
-            "kode_tindakan" => $dataLab->pluck('KD_TINDAKAN')->toArray() ?? null,
+            "id_tindakan" => $dataLab->pluck('ID_RIWAYAT_ELAB')->toArray() ?? [],
+            "kd_tindakan" => $dataLab->pluck('KD_TINDAKAN') ?? [],
             "dataICD" => $icd9Data,
             "currProcedure" => $currProcedure->ID_SATUSEHAT_PROCEDURE ?? null
         ];
@@ -1684,7 +1684,7 @@ class ProcedureController extends Controller
             "payload" => $payload ?? [],
             "kddok" => $nakes->kddok ?? null,
             "id_tindakan" => $dataRad->pluck('ID_RIWAYAT_ELAB')->toArray() ?? null,
-            "kode_tindakan" => $dataRad->pluck('KD_TINDAKAN')->toArray() ?? null,
+            "kd_tindakan" => $dataRad->pluck('KD_TINDAKAN')->toArray() ?? null,
             "dataICD" => $icd9Data,
             "currProcedure" => $currProcedure->ID_SATUSEHAT_PROCEDURE ?? null
         ];
