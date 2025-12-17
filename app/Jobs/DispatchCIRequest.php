@@ -48,14 +48,16 @@ class DispatchCIRequest implements ShouldQueue
             foreach ($this->url as $val) {
                 $endpoint = explode('/', $val)[1];
 
-                Http::timeout(10)
+                Http::withoutVerifying()
+                    ->timeout(10)
                     ->get(route($endpoint), $this->param);
             }
 
             $this->logInfo('dispatchci', 'Job Processed');
         } catch (\Throwable $e) {
             $this->logInfo('dispatchci', 'Job Error', [
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'detail' => $e
             ]);
 
             throw $e; // supaya retry jalan
