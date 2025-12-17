@@ -1162,7 +1162,7 @@ class ProcedureController extends Controller
             }
         }
 
-        if ($dataKunjungan) {
+        if ($dataKunjungan && ($dataKunjungan->id_satusehat_encounter != '' || $dataKunjungan->id_satusehat_encounter != null)) {
             $id_transaksi = LZString::compressToEncodedURIComponent($dataKunjungan->KARCIS);
             $KbBuku = LZString::compressToEncodedURIComponent($dataKunjungan->KBUKU);
             $kdPasienSS = LZString::compressToEncodedURIComponent($dataKunjungan->ID_PASIEN_SS);

@@ -1103,12 +1103,14 @@ class ObservasiController extends Controller
         $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=" . LZString::compressToEncodedURIComponent($data->JENIS_PERAWATAN);
         $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
-        if ($data->sudah_integrasi == 0) {
-            // Kirim data baru jika encounter belum ada
-            $resp = $this->sendSatuSehat(base64_encode($paramSatuSehat), false);
-        } else {
-            // resend jika data sudah ada
-            $resp = $this->sendSatuSehat(base64_encode($paramSatuSehat), true);
+        if($data->id_satusehat_encounter != null || $data->id_satusehat_encounter != ''){
+            if ($data->sudah_integrasi == 0) {
+                // Kirim data baru jika encounter belum ada
+                $resp = $this->sendSatuSehat(base64_encode($paramSatuSehat), false);
+            } else {
+                // resend jika data sudah ada
+                $resp = $this->sendSatuSehat(base64_encode($paramSatuSehat), true);
+            }
         }
 
         // return response()->json([
