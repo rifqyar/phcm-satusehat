@@ -483,6 +483,7 @@ class EncounterController extends Controller
                     $nota_satusehat = SATUSEHAT_NOTA::firstOrCreate(
                         [
                             'karcis' => $arrParam['jenis_perawatan'] == 'RJ' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG,
+                            'no_peserta' => $dataPeserta->NO_PESERTA,
                         ],
                         [
                             'id_satusehat_encounter' => $result['id'],
@@ -513,29 +514,6 @@ class EncounterController extends Controller
                     $nota_satusehat->sinkron_date   = now('Asia/Jakarta')->format('Y-m-d H:i:s');
 
                     $nota_satusehat->save();
-
-
-                    // $nota_satusehat = new SATUSEHAT_NOTA();
-                    // $nota_satusehat->id_satusehat_encounter = $result['id'];
-                    // $nota_satusehat->karcis = (int)$dataKarcis->KARCIS;
-                    // $nota_satusehat->nota = (int)$dataKarcis->NOTA;
-                    // $nota_satusehat->idunit = $id_unit;
-                    // $nota_satusehat->tgl = Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d');
-                    // $nota_satusehat->kbuku = $dataPeserta->KBUKU;
-                    // $nota_satusehat->no_peserta = $dataPeserta->NO_PESERTA;
-                    // $nota_satusehat->id_satusehat_px = $kdPasienSS;
-                    // $nota_satusehat->kddok = $dataKarcis->KDDOK;
-                    // $nota_satusehat->id_satusehat_dokter = $kdNakesSS;
-                    // $nota_satusehat->kdklinik = $dataKarcis->KLINIK;
-                    // $nota_satusehat->id_satusehat_klinik_location = $kdLokasiSS;
-                    // $nota_satusehat->crtdt = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
-                    // $nota_satusehat->crtusr = 'system';
-                    // $nota_satusehat->jam_datang = Carbon::parse($jam_start, 'Asia/Jakarta')->format('Y-m-d H:i:s');
-                    // $nota_satusehat->jam_progress = Carbon::parse($jam_progress, 'Asia/Jakarta')->format('Y-m-d H:i:s');
-                    // $nota_satusehat->jam_selesai = Carbon::parse($jam_finish, 'Asia/Jakarta')->format('Y-m-d H:i:s');
-                    // $nota_satusehat->status_sinkron = 1;
-                    // $nota_satusehat->sinkron_date = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
-                    // $nota_satusehat->save();
 
                     $this->logInfo('encounter', 'Sukses kirim data encounter', [
                         'payload' => $payload,
