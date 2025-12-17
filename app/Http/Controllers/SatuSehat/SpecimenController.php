@@ -474,7 +474,7 @@ class SpecimenController extends Controller
             ->table('vw_getData_Elab')
             ->where('IDUNIT', $id_unit)
             ->where('ID_RIWAYAT_ELAB', $idRiwayatElab)
-            ->first();
+            ->get();
 
         $servicerequest = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
@@ -653,7 +653,7 @@ class SpecimenController extends Controller
                             'crtdt'                       => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
                             'crtusr'                      => 'system', // Session::get('id'),
                             'sinkron_date'                => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
-                            'jam_datang'                  => Carbon::parse($riwayat->TANGGAL_ENTRI, 'Asia/Jakarta')->format('Y-m-d H:i:s'),
+                            'jam_datang'                  => Carbon::parse($riwayat[0]->TANGGAL_ENTRI, 'Asia/Jakarta')->format('Y-m-d H:i:s'),
                         ]);
 
                     $this->logInfo('specimen', 'Sukses kirim data specimen', [
