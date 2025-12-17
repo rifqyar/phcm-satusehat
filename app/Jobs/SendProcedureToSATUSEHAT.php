@@ -75,7 +75,7 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
 
                     $this->logDb(json_encode($res), $this->url, json_encode($this->payload['payload']), 'system'); //Session::get('id')
 
-                    $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Encounter';
+                    $msg = $result['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Encounter';
                     throw new Exception($msg, $response->getStatusCode());
                 } else {
                     if ($this->type == 'lab' || $this->type == 'rad') {
