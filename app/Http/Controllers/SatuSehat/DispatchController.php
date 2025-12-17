@@ -16,7 +16,13 @@ class DispatchController extends Controller
             'payload' => $request,
         ]);
 
-        $url = $request->url;
-        DispatchCIRequest::dispatch($request, $url);
+        $payload = $request->except(['url']); // array murni
+        $urls    = $request->input('urls');   // array endpoint
+
+        DispatchCIRequest::dispatch($payload, $urls);
+
+        return response()->json([
+            'status' => 'queued'
+        ]);
     }
 }

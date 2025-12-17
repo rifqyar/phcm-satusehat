@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redirect;
 
 class DispatchCIRequest implements ShouldQueue
@@ -41,20 +42,22 @@ class DispatchCIRequest implements ShouldQueue
         $this->logInfo('dispatchci', 'Processing Job', [
             'payload' => $this->param,
         ]);
+
         try {
             foreach ($this->url as $val) {
-                $url = explode('/', $val)[1];
-                Redirect::route($url, $this->param);
+                $endpoint = explode('/', $val)[1];
+
+                Http::timeout(10)
+                    ->post(route($endpoint), $this->param);
             }
 
-            $this->logInfo('dispatchci', 'Job Processed', [
-                'payload' => $this->param,
+            $this->logInfo('dispatchci', 'Job Processed');
+        } catch (\Throwable $e) {
+            $this->logInfo('dispatchci', 'Job Error', [
+                'error' => $e->getMessage()
             ]);
-        } catch (Exception $th) {
-            $this->logInfo('dispatchci', 'Job Processed Error', [
-                'payload' => $this->param,
-                'response' => $th
-            ]);
+
+            throw $e; // supaya retry jalan
         }
     }
 }
