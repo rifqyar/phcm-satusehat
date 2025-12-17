@@ -796,6 +796,12 @@ class ProcedureController extends Controller
                     'eri.NOMOR',
                     'eri.KODE_DIAGNOSA_UTAMA',
                     'eri.DIAG_UTAMA',
+                    'eri.KODE_DIAGNOSA_SEKUNDER',
+                    'eri.DIAG_SEKUNDER',
+                    'eri.KODE_DIAGNOSA_KOMPLIKASI',
+                    'eri.DIAG_KOMPLIKASI',
+                    'eri.KODE_DIAGNOSA_PENYEBAB',
+                    'eri.PENYEBAB',
                     'eri.CRTDT'
                 ])
                 ->where('karcis', $arrParam['karcis'])
@@ -806,7 +812,14 @@ class ProcedureController extends Controller
                 ->leftjoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri2', 'eri2.KARCIS', 'rk.KARCIS')
                 ->select([
                     'eri.ID_ASUHAN_HEADER as NOMOR',
-                    'eri2.KODE_DIAGNOSA_UTAMA',
+                    'eri.KODE_DIAGNOSA_UTAMA',
+                    'eri.DIAG_UTAMA',
+                    'eri.KODE_DIAGNOSA_SEKUNDER',
+                    'eri.DIAG_SEKUNDER',
+                    'eri.KODE_DIAGNOSA_KOMPLIKASI',
+                    'eri.DIAG_KOMPLIKASI',
+                    'eri.KODE_DIAGNOSA_PENYEBAB',
+                    'eri.PENYEBAB',
                     'eri2.DIAG_UTAMA',
                     'eri.CRT_DT as CRTDT'
                 ])
@@ -1256,13 +1269,38 @@ class ProcedureController extends Controller
             ]
         ];
 
+        $kodeDiagnosa = '';
+        $textDiagnosa = '';
+
+        switch ($dataErm) {
+            case $dataErm->KODE_DIAGNOSA_UTAMA:
+                $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                $textDiagnosa = $dataErm->DIAG_UTAMA;
+                break;
+            case $dataErm->KODE_DIAGNOSA_SEKUNDER:
+                $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_SEKUNDER;
+                $textDiagnosa = $dataErm->DIAG_SEKUNDER;
+                break;
+            case $dataErm->KODE_DIAGNOSA_KOMPLIKASI:
+                $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_KOMPLIKASI;
+                $textDiagnosa = $dataErm->DIAG_KOMPLIKASI;
+                break;
+            case $dataErm->KODE_DIAGNOSA_PENYEBAB:
+                $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_PENYEBAB;
+                $textDiagnosa = $dataErm->DIAG_PENYEBAB;
+                break;
+            default:
+                $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                $textDiagnosa = $dataErm->DIAG_UTAMA;
+                break;
+        }
         $reasonCode = [
             [
                 "coding" => [
                     [
                         "system" => "http://hl7.org/fhir/sid/icd-10",
-                        "code" => "$dataErm->KODE_DIAGNOSA_UTAMA",
-                        "display" => "$dataErm->DIAG_UTAMA",
+                        "code" => "$kodeDiagnosa",
+                        "display" => "$textDiagnosa",
                     ]
                 ],
             ]
@@ -1396,13 +1434,38 @@ class ProcedureController extends Controller
                 ];
             }
 
+            $kodeDiagnosa = '';
+            $textDiagnosa = '';
+
+            switch ($dataErm) {
+                case $dataErm->KODE_DIAGNOSA_UTAMA:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                    $textDiagnosa = $dataErm->DIAG_UTAMA;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_SEKUNDER:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_SEKUNDER;
+                    $textDiagnosa = $dataErm->DIAG_SEKUNDER;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_KOMPLIKASI:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_KOMPLIKASI;
+                    $textDiagnosa = $dataErm->DIAG_KOMPLIKASI;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_PENYEBAB:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_PENYEBAB;
+                    $textDiagnosa = $dataErm->DIAG_PENYEBAB;
+                    break;
+                default:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                    $textDiagnosa = $dataErm->DIAG_UTAMA;
+                    break;
+            }
             $reasonCode = [
                 [
                     "coding" => [
                         [
                             "system" => "http://hl7.org/fhir/sid/icd-10",
-                            "code" => "$dataErm->KODE_DIAGNOSA_UTAMA",
-                            "display" => "$dataErm->DIAG_UTAMA",
+                            "code" => "$kodeDiagnosa",
+                            "display" => "$textDiagnosa",
                         ]
                     ],
                 ]
@@ -1546,17 +1609,43 @@ class ProcedureController extends Controller
                 ];
             }
 
+            $kodeDiagnosa = '';
+            $textDiagnosa = '';
+
+            switch ($dataErm) {
+                case $dataErm->KODE_DIAGNOSA_UTAMA:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                    $textDiagnosa = $dataErm->DIAG_UTAMA;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_SEKUNDER:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_SEKUNDER;
+                    $textDiagnosa = $dataErm->DIAG_SEKUNDER;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_KOMPLIKASI:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_KOMPLIKASI;
+                    $textDiagnosa = $dataErm->DIAG_KOMPLIKASI;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_PENYEBAB:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_PENYEBAB;
+                    $textDiagnosa = $dataErm->DIAG_PENYEBAB;
+                    break;
+                default:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                    $textDiagnosa = $dataErm->DIAG_UTAMA;
+                    break;
+            }
             $reasonCode = [
                 [
                     "coding" => [
                         [
                             "system" => "http://hl7.org/fhir/sid/icd-10",
-                            "code" => "$dataErm->KODE_DIAGNOSA_UTAMA",
-                            "display" => "$dataErm->DIAG_UTAMA",
+                            "code" => "$kodeDiagnosa",
+                            "display" => "$textDiagnosa",
                         ]
                     ],
                 ]
             ];
+
 
             Carbon::setLocale('id');
             if (count($code) > 0) {
@@ -1648,17 +1737,43 @@ class ProcedureController extends Controller
                 ]
             ];
 
+            $kodeDiagnosa = '';
+            $textDiagnosa = '';
+
+            switch ($dataErm) {
+                case $dataErm->KODE_DIAGNOSA_UTAMA:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                    $textDiagnosa = $dataErm->DIAG_UTAMA;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_SEKUNDER:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_SEKUNDER;
+                    $textDiagnosa = $dataErm->DIAG_SEKUNDER;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_KOMPLIKASI:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_KOMPLIKASI;
+                    $textDiagnosa = $dataErm->DIAG_KOMPLIKASI;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_PENYEBAB:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_PENYEBAB;
+                    $textDiagnosa = $dataErm->DIAG_PENYEBAB;
+                    break;
+                default:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                    $textDiagnosa = $dataErm->DIAG_UTAMA;
+                    break;
+            }
             $reasonCode = [
                 [
                     "coding" => [
                         [
                             "system" => "http://hl7.org/fhir/sid/icd-10",
-                            "code" => "$dataErm->KODE_DIAGNOSA_UTAMA",
-                            "display" => "$dataErm->DIAG_UTAMA",
+                            "code" => "$kodeDiagnosa",
+                            "display" => "$textDiagnosa",
                         ]
                     ],
                 ]
             ];
+
 
             Carbon::setLocale('id');
             $tglText = Carbon::parse($dataTindOp->tanggal_operasi)->translatedFormat('l, d F Y');
