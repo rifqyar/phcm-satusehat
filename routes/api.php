@@ -17,6 +17,7 @@ Route::get('/', function () {
     return response()->json(['message' => 'API is working'], 200);
 });
 
+Route::post('dispatch', [App\Http\Controllers\SatuSehat\DispatchController::class, 'dispatchController']);
 Route::get('encounter', [App\Http\Controllers\SatuSehat\EncounterController::class, 'receiveSatuSehat'])->name('encounter');
 Route::get('allergy-intolerance', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'receiveSatuSehat'])->name('allergi-intolerance');
 Route::get('observasi', [App\Http\Controllers\SatuSehat\ObservasiController::class, 'receiveSatuSehat'])->name('observasi');
