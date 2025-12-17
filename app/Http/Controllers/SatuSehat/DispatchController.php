@@ -12,8 +12,8 @@ class DispatchController extends Controller
     use LogTraits;
     public function dispatchController(Request $request)
     {
-        $payload = $request->except(['urls']); // array murni
-        $urls    = $request->input('urls');   // array endpoint
+        $payload = $request->except(['url']); // array murni
+        $urls    = $request->input('url');   // array endpoint
 
         $this->logInfo('dispatchci', 'Receive param', [
             'payload' => $payload,
