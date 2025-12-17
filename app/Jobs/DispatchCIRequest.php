@@ -49,7 +49,7 @@ class DispatchCIRequest implements ShouldQueue
                 $endpoint = explode('/', $val)[1];
 
                 Http::timeout(10)
-                    ->post(route($endpoint), $this->param);
+                    ->get(route($endpoint), $this->param);
             }
 
             $this->logInfo('dispatchci', 'Job Processed');
