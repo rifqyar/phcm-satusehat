@@ -805,6 +805,7 @@ class ProcedureController extends Controller
                     'eri.CRTDT'
                 ])
                 ->where('karcis', $arrParam['karcis'])
+                ->where('eri.aktif', 1)
                 ->first();
         } else {
             $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as eri')
@@ -824,6 +825,7 @@ class ProcedureController extends Controller
                     'eri.CRT_DT as CRTDT'
                 ])
                 ->where('eri.noreg', $arrParam['karcis'])
+                ->where('eri.aktif', 1)
                 ->first();
         }
 
