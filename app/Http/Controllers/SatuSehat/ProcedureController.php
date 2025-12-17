@@ -565,6 +565,7 @@ class ProcedureController extends Controller
                 })
                 ->where('vkr.KBUKU', $arrParam['kbuku'])
                 ->where('vkr.ID_TRANSAKSI', $arrParam['karcis'])
+                ->where('eri.AKTIF', 1)
                 ->orderByDesc('vkr.TANGGAL')
                 ->first();
 
@@ -611,6 +612,7 @@ class ProcedureController extends Controller
                 ->leftjoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri2', 'eri2.KARCIS', 'rk.KARCIS')
                 ->where('vkr.KBUKU', $arrParam['kbuku'])
                 ->where('vkr.ID_TRANSAKSI', $arrParam['karcis'])
+                ->where('h.aktif', 1)
                 ->first();
             $dataErm->jenis_perawatan = 'RJ';
         }
