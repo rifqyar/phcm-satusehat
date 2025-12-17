@@ -616,7 +616,7 @@ class AllergyIntoleranceController extends Controller
             ])
             ->first();
 
-        if (!empty($data)) {
+        if (!empty($data) && ($data->id_satusehat_encounter != '' || $data->id_satusehat_encounter)) {
             $id_transaksi = LZString::compressToEncodedURIComponent($request->KARCIS);
             $KbBuku = LZString::compressToEncodedURIComponent($data->KBUKU);
             $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
@@ -642,7 +642,7 @@ class AllergyIntoleranceController extends Controller
                 ]
             ], 200);
         } else {
-            $this->logError('AllergyIntolerance', 'Data Allergy Intolerance Tidak Ditemukan', [
+            $this->logError('AllergyIntolerance', 'Data Allergy Intolerance Tidak Ditemukan, request tidak diproses sistem', [
                 'request' => $request->all(),
                 'user_id' => 'system'
             ]);

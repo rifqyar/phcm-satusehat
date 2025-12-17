@@ -1111,6 +1111,11 @@ class ObservasiController extends Controller
                 // resend jika data sudah ada
                 $resp = $this->sendSatuSehat(base64_encode($paramSatuSehat), true);
             }
+        } else {
+            $this->logInfo('Observation', 'Data Observation tidak diproses karena tidak ada encounter', [
+                'request' => $request->all(),
+                'user_id' => 'system'
+            ]);
         }
 
         // return response()->json([

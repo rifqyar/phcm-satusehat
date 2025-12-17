@@ -1232,6 +1232,11 @@ class ProcedureController extends Controller
                 'icd9_pm' => $icd9->icd9_pm ?? null,
                 'text_icd9_pm' => $icd9->text_icd9_pm ?? null
             ]), $resend, $request->type ?? 'all');
+        } else {
+            $this->logInfo('Procedure', 'Data Procedure tidak diproses karena tidak ada encounter', [
+                'request' => $request->all(),
+                'user_id' => 'system'
+            ]);
         }
     }
 
