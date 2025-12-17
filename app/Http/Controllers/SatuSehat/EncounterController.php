@@ -580,7 +580,7 @@ class EncounterController extends Controller
 
     public function receiveSatuSehat(Request $request)
     {
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit_simrs', $request->input('id_unit'));
         $this->logInfo('encounter', 'Receive Encounter dari SIMRS', [
             'request' => $request->all(),
             'user_id' => 'system'
