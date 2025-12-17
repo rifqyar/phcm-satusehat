@@ -498,14 +498,82 @@ class ProcedureController extends Controller
             })
             ->addColumn('status_integrasi', function ($row) {
                 if ($row->sudah_integrasi == '0') {
-                    return '<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>';
+                    $html = '<span class="badge badge-pill badge-danger p-2">Belum Integrasi</span>';
+                    $html .= $this->notif($row);
                 } else {
-                    return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
+                    $html = '<span class="badge badge-pill badge-success p-2">Sudah Integrasi</span>';
                 }
+
+                return $html;
             })
             ->rawColumns(['action', 'status_integrasi'])
             ->with($totalData)
             ->make(true);
+    }
+
+    private function notif($row)
+    {
+        $html = '';
+        $karcis = $row->KARCIS;
+        $sql = " SELECT
+                (SELECT COUNT(1)
+                FROM E_RM_PHCM.dbo.ERM_RM_IRJA
+                WHERE karcis = ? AND AKTIF = 1) AS fisik_total,
+
+                (SELECT COUNT(1)
+                FROM E_RM_PHCM.dbo.ERM_RM_IRJA eri
+                INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
+                    ON eri.KARCIS = rsp.KARCIS
+                AND eri.NOMOR = rsp.ID_JENIS_TINDAKAN
+                WHERE eri.KARCIS = ? AND eri.AKTIF = 1) AS fisik_integrated,
+
+                (SELECT COUNT(1)
+                FROM SIRS_PHCM.dbo.vw_getData_Elab
+                WHERE KARCIS_ASAL = ? AND KLINIK_TUJUAN in ('0017', '0031')) AS lab_total,
+
+                (SELECT COUNT(1)
+                FROM SIRS_PHCM.dbo.vw_getData_Elab vgde
+                INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
+                    ON vgde.KARCIS_ASAL = rsp.KARCIS
+                AND vgde.ID_RIWAYAT_ELAB = rsp.ID_JENIS_TINDAKAN
+                AND rsp.JENIS_TINDAKAN = 'lab'
+                WHERE vgde.KARCIS_ASAL = ? AND KLINIK_TUJUAN in ('0017', '0031')) AS lab_integrated,
+
+                (SELECT COUNT(1)
+                FROM SIRS_PHCM.dbo.vw_getData_Elab
+                WHERE KARCIS_ASAL = ? AND KLINIK_TUJUAN in (SELECT KODE_KLINIK
+                                FROM SIRS_PHCM..RJ_KLINIK_RADIOLOGI)) AS rad_total,
+
+                (SELECT COUNT(1)
+                FROM SIRS_PHCM.dbo.vw_getData_Elab vr
+                INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
+                    ON vr.KARCIS_ASAL = rsp.KARCIS
+                AND vr.ID_RIWAYAT_ELAB = rsp.ID_JENIS_TINDAKAN
+                AND rsp.JENIS_TINDAKAN = 'rad'
+                WHERE vr.KARCIS_ASAL = ? AND KLINIK_TUJUAN IN (SELECT KODE_KLINIK
+                                FROM SIRS_PHCM..RJ_KLINIK_RADIOLOGI)) AS rad_integrated
+            ";
+
+        $result = DB::selectOne($sql, [
+            $karcis, // fisik_total
+            $karcis, // fisik_integrated
+            $karcis, // lab_total
+            $karcis, // lab_integrated
+            $karcis, // rad_total
+            $karcis, // rad_integrated
+        ]);
+
+        $totalAllTindakan = $result->fisik_total + $result->lab_total + $result->rad_total;
+        $totalAllIntegrated = $result->fisik_integrated + $result->lab_integrated + $result->rad_integrated;
+
+        $colorStatus = $totalAllTindakan == $totalAllIntegrated ? 'text-success' : 'text-danger';
+        $colorLab = $result->lab_total == $result->lab_integrated ? 'text-success' : 'text-danger';
+        $colorRad = $result->rad_total == $result->rad_integrated ? 'text-success' : 'text-danger';
+        $html .= "<br> <i class='small $colorStatus'>$totalAllIntegrated / $totalAllTindakan Tindakan Terintegrasi</i>";
+        $html .= "<br> <i class='small $colorLab'>$result->lab_total Tindakan Lab</i>";
+        $html .= "<br> <i class='small $colorRad'>$result->rad_total Tindakan Radiologi</i>";
+
+        return $html;
     }
 
     private function checkDateFormat($date)
