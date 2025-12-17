@@ -1229,6 +1229,15 @@ class ProcedureController extends Controller
                 }
             }
 
+            if (($icd9->icd9_pm == '' || $icd9->text_icd9_pm == null) && $request->type == 'anamnese') {
+                $this->logInfo('Procedure', 'Data Procedure Anamnese tidak diproses karena tidak ada ICd 9', [
+                    'request' => $request->all(),
+                    'user_id' => 'system'
+                ]);
+
+                return false;
+            }
+
             self::sendSatuSehat(new Request([
                 'param' => $paramSatuSehat,
                 'icd9_pm' => $icd9->icd9_pm ?? null,

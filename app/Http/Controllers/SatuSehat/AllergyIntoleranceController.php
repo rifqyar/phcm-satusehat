@@ -572,7 +572,7 @@ class AllergyIntoleranceController extends Controller
         ]);
 
         $encounterId = SATUSEHAT_ALLERGY_INTOLERANCE::where('karcis', (int)$request->karcis)
-            ->select('*')
+            ->select('karcis')
             ->first();
 
         $data = DB::table('v_kunjungan_rj as vkr')
