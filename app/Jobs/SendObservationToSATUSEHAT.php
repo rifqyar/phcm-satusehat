@@ -19,7 +19,7 @@ class SendObservationToSATUSEHAT implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, SATUSEHATTraits, LogTraits;
 
-    public $tries = 2; // Number of attempts
+    // public $tries = 2; // Number of attempts
     public $timeout = 5; // Timeout in seconds
 
     protected $payload;
