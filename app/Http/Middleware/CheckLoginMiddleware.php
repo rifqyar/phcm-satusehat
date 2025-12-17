@@ -16,7 +16,7 @@ class CheckLoginMiddleware
      */
     public function handle($request, Closure $next)
     {
-        if ($_SERVER['REMOTE_ADDR'] == '::1' || $_SERVER['REMOTE_ADDR'] == '103.234.195.158' || $_SERVER['SERVER_NAME'] == 'localhost') {
+        if ($_SERVER['REMOTE_ADDR'] == '::1' || $_SERVER['REMOTE_ADDR'] == '103.234.195.158' || $_SERVER['SERVER_NAME'] == '127.0.0.1') {
             if (Session::has('is_logged_in')) {
                 config(['session.lifetime' => 1440]);
                 return $next($request);

@@ -23,7 +23,6 @@ class SendMedicationRequest implements ShouldQueue
     public $tries = 5;
     public $backoff = 10;
 
-
     /**
      * Create a new job instance.
      */
@@ -45,25 +44,25 @@ class SendMedicationRequest implements ShouldQueue
         $accessToken = $this->getAccessToken();
 
         if (!$accessToken) {
-            throw new \Exception("Access token tidak tersedia di database.");
+            throw new \Exception('Access token tidak tersedia di database.');
         }
         //setup organisasi
         $id_unit = Session::get('id_unit_simrs', '001');
         if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
-            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+            //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
         } else {
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
-            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+            //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
         // setup baseurl
         $baseurl = '';
         if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
-            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+            //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
         } else {
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
-            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+            //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
         //
         $url = 'MedicationRequest';
@@ -72,26 +71,37 @@ class SendMedicationRequest implements ShouldQueue
             $client = new \GuzzleHttp\Client();
 
             $baseuri = rtrim($baseurl, '/') . '/' . ltrim($url, '/');
-            $response = $client->post(
-                $baseuri,
-                [
-                    'headers' => [
-                        'Authorization' => 'Bearer ' . $accessToken,
-                        'Content-Type' => 'application/json'
-                    ],
-                    'body' => json_encode($payload),
-                    'verify' => false,
-                    'timeout' => 30
-                ]
-            );
+            $response = $client->post($baseuri, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Content-Type' => 'application/json',
+                ],
+                'body' => json_encode($payload),
+                'verify' => false,
+                'timeout' => 30,
+            ]);
 
             $responseBody = json_decode($response->getBody(), true);
             $httpStatus = $response->getStatusCode();
-
         } catch (\GuzzleHttp\Exception\RequestException $e) {
-            // request ke API gagal (timeout / 500 / dns error / dsb)
-            throw $e; // lempar biar Laravel retry otomatis
+
+            $body = null;
+            $status = null;
+
+            if ($e->hasResponse()) {
+                $status = $e->getResponse()->getStatusCode();
+                $body   = (string) $e->getResponse()->getBody();
+            }
+
+            throw new \RuntimeException(
+                'SATUSEHAT MedicationRequest failed. '
+                . 'HTTP=' . $status . ' '
+                . 'BODY=' . $body,
+                $status ?? 0,
+                $e
+            );
         }
+
         // =======================
         // LOGGING
         // =======================
@@ -104,7 +114,6 @@ class SendMedicationRequest implements ShouldQueue
 
         $idTrans = $meta['idTrans'] ?? null;
         $item = $meta['item'] ?? null;
-
 
         $logData = [
             'LOG_TYPE' => $item['FROM'] ?? 'MedicationRequest',
@@ -119,7 +128,7 @@ class SendMedicationRequest implements ShouldQueue
             'STATUS' => isset($responseBody['id']) ? 'success' : 'failed',
             'HTTP_STATUS' => $httpStatus,
             'RESPONSE_MESSAGE' => json_encode($responseBody),
-            'CREATED_AT' => now()
+            'CREATED_AT' => now(),
         ];
 
         $existing = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
@@ -139,12 +148,11 @@ class SendMedicationRequest implements ShouldQueue
                     'STATUS' => $logData['STATUS'],
                     'HTTP_STATUS' => $logData['HTTP_STATUS'],
                     'RESPONSE_MESSAGE' => $logData['RESPONSE_MESSAGE'],
-                    'UPDATED_AT' => now()
+                    'UPDATED_AT' => now(),
                 ]);
         } else {
             DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert($logData);
         }
-
     }
 
     /**
@@ -170,20 +178,22 @@ class SendMedicationRequest implements ShouldQueue
             'ENCOUNTER_ID' => $item['id_satusehat_encounter'] ?? null,
             'STATUS' => 'failed-permanent',
             'HTTP_STATUS' => null,
-            'RESPONSE_MESSAGE' => $exception->getMessage(),
-            'CREATED_AT' => now()
+            'RESPONSE_MESSAGE' => json_encode(
+                [
+                    'message' => $exception->getMessage(),
+                    'file' => $exception->getFile(),
+                    'line' => $exception->getLine(),
+                ],
+                JSON_UNESCAPED_UNICODE,
+            ),
+            'CREATED_AT' => now(),
         ]);
     }
 
     private function getAccessToken()
     {
-        $tokenData = DB::connection('sqlsrv')
-            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_AUTH')
-            ->select('issued_at', 'expired_in', 'access_token')
-            ->orderBy('id', 'desc')
-            ->first();
+        $tokenData = DB::connection('sqlsrv')->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_AUTH')->select('issued_at', 'expired_in', 'access_token')->where('idunit', '001')->orderBy('id', 'desc')->first();
 
         return $tokenData->access_token ?? null;
     }
-
 }

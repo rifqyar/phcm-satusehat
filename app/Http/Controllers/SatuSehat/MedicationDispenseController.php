@@ -8,6 +8,8 @@ use Illuminate\Http\Request;
 use Yajra\DataTables\Facades\DataTables;
 use App\Jobs\SendMedicationDispense;
 use App\Jobs\SendMedicationRequest as JobsSendMedicationRequest;
+use Illuminate\Support\Facades\Session;
+use App\Models\SATUSEHAT\SS_Kode_API;
 
 class MedicationDispenseController extends Controller
 {
@@ -341,7 +343,13 @@ class MedicationDispenseController extends Controller
             }
 
             $accessToken = $tokenData->access_token;
-            $orgId = '266bf013-b70b-4dc2-b934-40858a5658cc'; // organization ID (sandbox)
+            $id_unit = Session::get('id_unit_simrs', '001');
+            if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+                $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+            } else {
+                $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+            }
+            
             $client = new \GuzzleHttp\Client();
             $results = [];
 
