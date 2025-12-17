@@ -567,6 +567,7 @@ class AllergyIntoleranceController extends Controller
     {
         $this->logInfo('AllergyIntolerance', 'Receive Allergy Intolerance dari SIMRS', [
             'request' => $request->all(),
+            'karcis' => $request->karcis,
             'user_id' => 'system'
         ]);
 

@@ -969,6 +969,8 @@ class ProcedureController extends Controller
     {
         $this->logInfo('Procedure', 'Receive Procedure dari SIMRS', [
             'request' => $request->all(),
+            'karcis' => $request->karcis,
+            'jenis' => $request->jenis,
             'user_id' => 'system'
         ]);
 

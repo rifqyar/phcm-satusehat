@@ -583,6 +583,8 @@ class EncounterController extends Controller
         $id_unit = Session::get('id_unit_simrs', $request->input('id_unit'));
         $this->logInfo('encounter', 'Receive Encounter dari SIMRS', [
             'request' => $request->all(),
+            'karcis' => $request->karcis,
+            'aktifitas' => $request->aktivitas,
             'user_id' => 'system'
         ]);
 

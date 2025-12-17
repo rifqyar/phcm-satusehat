@@ -1007,6 +1007,7 @@ class ObservasiController extends Controller
     {
         $this->logInfo('Observation', 'Receive Observation dari SIMRS', [
             'request' => $request->all(),
+            'karcis' => $request->karcis,
             'user_id' => 'system'
         ]);
 
@@ -1041,7 +1042,7 @@ class ObservasiController extends Controller
                         FROM SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI rso2
                         WHERE rso2.KARCIS = vkr.ID_TRANSAKSI
                         AND rso2.ID_ERM = eri.NOMOR
-                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 5
+                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) > 0
                     ) THEN 1 ELSE 0 END as sudah_integrasi,
                 CASE WHEN MAX(eri.KARCIS) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
             ")
