@@ -41,6 +41,7 @@ class DispatchCIRequest implements ShouldQueue
     {
         $this->logInfo('dispatchci', 'Processing Job', [
             'payload' => $this->param,
+            'url' => $this->url,
         ]);
 
         try {
