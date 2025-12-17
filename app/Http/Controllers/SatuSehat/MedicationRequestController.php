@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Yajra\DataTables\Facades\DataTables;
 use App\Jobs\SendMedicationRequest;
+use Illuminate\Support\Facades\Session;
+use App\Models\SATUSEHAT\SS_Kode_API;
 
 
 class MedicationRequestController extends Controller
@@ -679,7 +681,15 @@ class MedicationRequestController extends Controller
             WHERE H.ID_TRANS = ? and T.KDBRG_CENTRA = ?
         ", [$idTrans, $kdbrg]);
 
-            $orgId = '266bf013-b70b-4dc2-b934-40858a5658cc';
+
+        $id_unit = Session::get('id_unit_simrs', '001');
+        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+            $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+
+        } else {
+            $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+        }
+        
             foreach ($data as $index => $item) {
                 $uniqueId = date('YmdHis') . '-' . str_pad($index + 1, 3, '0', STR_PAD_LEFT);
 
