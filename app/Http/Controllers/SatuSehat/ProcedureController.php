@@ -1513,7 +1513,7 @@ class ProcedureController extends Controller
             "payload" => $payload ?? [],
             "kddok" => $nakes->kddok ?? null,
             "id_tindakan" => $dataLab->pluck('ID_RIWAYAT_ELAB')->toArray() ?? [],
-            "kd_tindakan" => $dataLab->pluck('KD_TINDAKAN') ?? [],
+            "kd_tindakan" => $dataLab->pluck('KD_TINDAKAN')->toArray() ?? [],
             "dataICD" => $icd9Data,
             "currProcedure" => $currProcedure->ID_SATUSEHAT_PROCEDURE ?? null
         ];
