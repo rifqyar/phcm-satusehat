@@ -471,10 +471,10 @@ class SpecimenController extends Controller
         // dd($encounter);
 
         $riwayat = DB::connection('sqlsrv')
-            ->table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB')
+            ->table('vw_getData_Elab')
             ->where('IDUNIT', $id_unit)
             ->where('ID_RIWAYAT_ELAB', $idRiwayatElab)
-            ->first();
+            ->get();
 
         $servicerequest = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
@@ -503,17 +503,11 @@ class SpecimenController extends Controller
             ->where('idnakes', $kdDokterSS)
             ->first();
 
-        $kdTindakan = DB::connection('sqlsrv')
-            ->table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB')
-            ->where('IDUNIT', $id_unit)
-            ->where('ID_RIWAYAT_ELAB', $idRiwayatElab)
-            ->value('ARRAY_TINDAKAN');
-
         $specimenList = [];
 
-        if ($kdTindakan) {
+        if ($riwayat) {
             // Convert '12,53,24' → [12, 53, 24]
-            $ids = array_filter(explode(',', $kdTindakan));
+            $ids = $riwayat->pluck('KD_TINDAKAN');
 
             // === 🔗 Get specimen info connected to tindakan IDs ===
             $specimenList = DB::connection('sqlsrv')
@@ -659,7 +653,7 @@ class SpecimenController extends Controller
                             'crtdt'                       => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
                             'crtusr'                      => 'system', // Session::get('id'),
                             'sinkron_date'                => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
-                            'jam_datang'                  => Carbon::parse($riwayat->TANGGAL_ENTRI, 'Asia/Jakarta')->format('Y-m-d H:i:s'),
+                            'jam_datang'                  => Carbon::parse($riwayat[0]->TANGGAL_ENTRI, 'Asia/Jakarta')->format('Y-m-d H:i:s'),
                         ]);
 
                     $this->logInfo('specimen', 'Sukses kirim data specimen', [

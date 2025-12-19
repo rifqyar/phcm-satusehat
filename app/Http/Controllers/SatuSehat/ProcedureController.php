@@ -498,14 +498,82 @@ class ProcedureController extends Controller
             })
             ->addColumn('status_integrasi', function ($row) {
                 if ($row->sudah_integrasi == '0') {
-                    return '<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>';
+                    $html = '<span class="badge badge-pill badge-danger p-2">Belum Integrasi</span>';
+                    $html .= $this->notif($row);
                 } else {
-                    return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
+                    $html = '<span class="badge badge-pill badge-success p-2">Sudah Integrasi</span>';
                 }
+
+                return $html;
             })
             ->rawColumns(['action', 'status_integrasi'])
             ->with($totalData)
             ->make(true);
+    }
+
+    private function notif($row)
+    {
+        $html = '';
+        $karcis = $row->KARCIS;
+        $sql = " SELECT
+                (SELECT COUNT(1)
+                FROM E_RM_PHCM.dbo.ERM_RM_IRJA
+                WHERE karcis = ? AND AKTIF = 1) AS fisik_total,
+
+                (SELECT COUNT(1)
+                FROM E_RM_PHCM.dbo.ERM_RM_IRJA eri
+                INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
+                    ON eri.KARCIS = rsp.KARCIS
+                AND eri.NOMOR = rsp.ID_JENIS_TINDAKAN
+                WHERE eri.KARCIS = ? AND eri.AKTIF = 1) AS fisik_integrated,
+
+                (SELECT COUNT(1)
+                FROM SIRS_PHCM.dbo.vw_getData_Elab
+                WHERE KARCIS_ASAL = ? AND KLINIK_TUJUAN in ('0017', '0031')) AS lab_total,
+
+                (SELECT COUNT(1)
+                FROM SIRS_PHCM.dbo.vw_getData_Elab vgde
+                INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
+                    ON vgde.KARCIS_ASAL = rsp.KARCIS
+                AND vgde.ID_RIWAYAT_ELAB = rsp.ID_JENIS_TINDAKAN
+                AND rsp.JENIS_TINDAKAN = 'lab'
+                WHERE vgde.KARCIS_ASAL = ? AND KLINIK_TUJUAN in ('0017', '0031')) AS lab_integrated,
+
+                (SELECT COUNT(1)
+                FROM SIRS_PHCM.dbo.vw_getData_Elab
+                WHERE KARCIS_ASAL = ? AND KLINIK_TUJUAN in (SELECT KODE_KLINIK
+                                FROM SIRS_PHCM..RJ_KLINIK_RADIOLOGI)) AS rad_total,
+
+                (SELECT COUNT(1)
+                FROM SIRS_PHCM.dbo.vw_getData_Elab vr
+                INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
+                    ON vr.KARCIS_ASAL = rsp.KARCIS
+                AND vr.ID_RIWAYAT_ELAB = rsp.ID_JENIS_TINDAKAN
+                AND rsp.JENIS_TINDAKAN = 'rad'
+                WHERE vr.KARCIS_ASAL = ? AND KLINIK_TUJUAN IN (SELECT KODE_KLINIK
+                                FROM SIRS_PHCM..RJ_KLINIK_RADIOLOGI)) AS rad_integrated
+            ";
+
+        $result = DB::selectOne($sql, [
+            $karcis, // fisik_total
+            $karcis, // fisik_integrated
+            $karcis, // lab_total
+            $karcis, // lab_integrated
+            $karcis, // rad_total
+            $karcis, // rad_integrated
+        ]);
+
+        $totalAllTindakan = $result->fisik_total + $result->lab_total + $result->rad_total;
+        $totalAllIntegrated = $result->fisik_integrated + $result->lab_integrated + $result->rad_integrated;
+
+        $colorStatus = $totalAllTindakan == $totalAllIntegrated ? 'text-success' : 'text-danger';
+        $colorLab = $result->lab_total == $result->lab_integrated ? 'text-success' : 'text-danger';
+        $colorRad = $result->rad_total == $result->rad_integrated ? 'text-success' : 'text-danger';
+        $html .= "<br> <i class='small $colorStatus'>$totalAllIntegrated / $totalAllTindakan Tindakan Terintegrasi</i>";
+        $html .= "<br> <i class='small $colorLab'>$result->lab_total Tindakan Lab</i>";
+        $html .= "<br> <i class='small $colorRad'>$result->rad_total Tindakan Radiologi</i>";
+
+        return $html;
     }
 
     private function checkDateFormat($date)
@@ -565,6 +633,7 @@ class ProcedureController extends Controller
                 })
                 ->where('vkr.KBUKU', $arrParam['kbuku'])
                 ->where('vkr.ID_TRANSAKSI', $arrParam['karcis'])
+                ->where('eri.AKTIF', 1)
                 ->orderByDesc('vkr.TANGGAL')
                 ->first();
 
@@ -611,6 +680,7 @@ class ProcedureController extends Controller
                 ->leftjoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri2', 'eri2.KARCIS', 'rk.KARCIS')
                 ->where('vkr.KBUKU', $arrParam['kbuku'])
                 ->where('vkr.ID_TRANSAKSI', $arrParam['karcis'])
+                ->where('h.aktif', 1)
                 ->first();
             $dataErm->jenis_perawatan = 'RJ';
         }
@@ -796,9 +866,16 @@ class ProcedureController extends Controller
                     'eri.NOMOR',
                     'eri.KODE_DIAGNOSA_UTAMA',
                     'eri.DIAG_UTAMA',
+                    'eri.KODE_DIAGNOSA_SEKUNDER',
+                    'eri.DIAG_SEKUNDER',
+                    'eri.KODE_DIAGNOSA_KOMPLIKASI',
+                    'eri.DIAG_KOMPLIKASI',
+                    'eri.KODE_DIAGNOSA_PENYEBAB',
+                    'eri.PENYEBAB',
                     'eri.CRTDT'
                 ])
                 ->where('karcis', $arrParam['karcis'])
+                ->where('eri.aktif', 1)
                 ->first();
         } else {
             $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as eri')
@@ -806,11 +883,19 @@ class ProcedureController extends Controller
                 ->leftjoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri2', 'eri2.KARCIS', 'rk.KARCIS')
                 ->select([
                     'eri.ID_ASUHAN_HEADER as NOMOR',
-                    'eri2.KODE_DIAGNOSA_UTAMA',
+                    'eri.KODE_DIAGNOSA_UTAMA',
+                    'eri.DIAG_UTAMA',
+                    'eri.KODE_DIAGNOSA_SEKUNDER',
+                    'eri.DIAG_SEKUNDER',
+                    'eri.KODE_DIAGNOSA_KOMPLIKASI',
+                    'eri.DIAG_KOMPLIKASI',
+                    'eri.KODE_DIAGNOSA_PENYEBAB',
+                    'eri.PENYEBAB',
                     'eri2.DIAG_UTAMA',
                     'eri.CRT_DT as CRTDT'
                 ])
                 ->where('eri.noreg', $arrParam['karcis'])
+                ->where('eri.aktif', 1)
                 ->first();
         }
 
@@ -954,6 +1039,8 @@ class ProcedureController extends Controller
     {
         $this->logInfo('Procedure', 'Receive Procedure dari SIMRS', [
             'request' => $request->all(),
+            'karcis' => $request->karcis,
+            'jenis' => $request->jenis,
             'user_id' => 'system'
         ]);
 
@@ -1147,7 +1234,7 @@ class ProcedureController extends Controller
             }
         }
 
-        if ($dataKunjungan) {
+        if ($dataKunjungan && ($dataKunjungan->id_satusehat_encounter != '' || $dataKunjungan->id_satusehat_encounter != null)) {
             $id_transaksi = LZString::compressToEncodedURIComponent($dataKunjungan->KARCIS);
             $KbBuku = LZString::compressToEncodedURIComponent($dataKunjungan->KBUKU);
             $kdPasienSS = LZString::compressToEncodedURIComponent($dataKunjungan->ID_PASIEN_SS);
@@ -1212,11 +1299,25 @@ class ProcedureController extends Controller
                 }
             }
 
+            if (($icd9->icd9_pm == '' || $icd9->text_icd9_pm == null) && $request->type == 'anamnese') {
+                $this->logInfo('Procedure', 'Data Procedure Anamnese tidak diproses karena tidak ada ICd 9', [
+                    'request' => $request->all(),
+                    'user_id' => 'system'
+                ]);
+
+                return false;
+            }
+
             self::sendSatuSehat(new Request([
                 'param' => $paramSatuSehat,
                 'icd9_pm' => $icd9->icd9_pm ?? null,
                 'text_icd9_pm' => $icd9->text_icd9_pm ?? null
             ]), $resend, $request->type ?? 'all');
+        } else {
+            $this->logInfo('Procedure', 'Data Procedure tidak diproses karena tidak ada encounter', [
+                'request' => $request->all(),
+                'user_id' => 'system'
+            ]);
         }
     }
 
@@ -1256,13 +1357,38 @@ class ProcedureController extends Controller
             ]
         ];
 
+        $kodeDiagnosa = '';
+        $textDiagnosa = '';
+
+        switch ($dataErm) {
+            case $dataErm->KODE_DIAGNOSA_UTAMA:
+                $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                $textDiagnosa = $dataErm->DIAG_UTAMA;
+                break;
+            case $dataErm->KODE_DIAGNOSA_SEKUNDER:
+                $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_SEKUNDER;
+                $textDiagnosa = $dataErm->DIAG_SEKUNDER;
+                break;
+            case $dataErm->KODE_DIAGNOSA_KOMPLIKASI:
+                $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_KOMPLIKASI;
+                $textDiagnosa = $dataErm->DIAG_KOMPLIKASI;
+                break;
+            case $dataErm->KODE_DIAGNOSA_PENYEBAB:
+                $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_PENYEBAB;
+                $textDiagnosa = $dataErm->DIAG_PENYEBAB;
+                break;
+            default:
+                $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                $textDiagnosa = $dataErm->DIAG_UTAMA;
+                break;
+        }
         $reasonCode = [
             [
                 "coding" => [
                     [
                         "system" => "http://hl7.org/fhir/sid/icd-10",
-                        "code" => "$dataErm->KODE_DIAGNOSA_UTAMA",
-                        "display" => "$dataErm->DIAG_UTAMA",
+                        "code" => "$kodeDiagnosa",
+                        "display" => "$textDiagnosa",
                     ]
                 ],
             ]
@@ -1396,13 +1522,38 @@ class ProcedureController extends Controller
                 ];
             }
 
+            $kodeDiagnosa = '';
+            $textDiagnosa = '';
+
+            switch ($dataErm) {
+                case $dataErm->KODE_DIAGNOSA_UTAMA:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                    $textDiagnosa = $dataErm->DIAG_UTAMA;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_SEKUNDER:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_SEKUNDER;
+                    $textDiagnosa = $dataErm->DIAG_SEKUNDER;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_KOMPLIKASI:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_KOMPLIKASI;
+                    $textDiagnosa = $dataErm->DIAG_KOMPLIKASI;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_PENYEBAB:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_PENYEBAB;
+                    $textDiagnosa = $dataErm->DIAG_PENYEBAB;
+                    break;
+                default:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                    $textDiagnosa = $dataErm->DIAG_UTAMA;
+                    break;
+            }
             $reasonCode = [
                 [
                     "coding" => [
                         [
                             "system" => "http://hl7.org/fhir/sid/icd-10",
-                            "code" => "$dataErm->KODE_DIAGNOSA_UTAMA",
-                            "display" => "$dataErm->DIAG_UTAMA",
+                            "code" => "$kodeDiagnosa",
+                            "display" => "$textDiagnosa",
                         ]
                     ],
                 ]
@@ -1447,8 +1598,8 @@ class ProcedureController extends Controller
         return [
             "payload" => $payload ?? [],
             "kddok" => $nakes->kddok ?? null,
-            "id_tindakan" => $dataLab->pluck('ID_RIWAYAT_ELAB')->toArray() ?? null,
-            "kode_tindakan" => $dataLab->pluck('KD_TINDAKAN')->toArray() ?? null,
+            "id_tindakan" => $dataLab->pluck('ID_RIWAYAT_ELAB')->toArray() ?? [],
+            "kd_tindakan" => $dataLab->pluck('KD_TINDAKAN')->toArray() ?? [],
             "dataICD" => $icd9Data,
             "currProcedure" => $currProcedure->ID_SATUSEHAT_PROCEDURE ?? null
         ];
@@ -1546,17 +1697,43 @@ class ProcedureController extends Controller
                 ];
             }
 
+            $kodeDiagnosa = '';
+            $textDiagnosa = '';
+
+            switch ($dataErm) {
+                case $dataErm->KODE_DIAGNOSA_UTAMA:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                    $textDiagnosa = $dataErm->DIAG_UTAMA;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_SEKUNDER:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_SEKUNDER;
+                    $textDiagnosa = $dataErm->DIAG_SEKUNDER;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_KOMPLIKASI:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_KOMPLIKASI;
+                    $textDiagnosa = $dataErm->DIAG_KOMPLIKASI;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_PENYEBAB:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_PENYEBAB;
+                    $textDiagnosa = $dataErm->DIAG_PENYEBAB;
+                    break;
+                default:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                    $textDiagnosa = $dataErm->DIAG_UTAMA;
+                    break;
+            }
             $reasonCode = [
                 [
                     "coding" => [
                         [
                             "system" => "http://hl7.org/fhir/sid/icd-10",
-                            "code" => "$dataErm->KODE_DIAGNOSA_UTAMA",
-                            "display" => "$dataErm->DIAG_UTAMA",
+                            "code" => "$kodeDiagnosa",
+                            "display" => "$textDiagnosa",
                         ]
                     ],
                 ]
             ];
+
 
             Carbon::setLocale('id');
             if (count($code) > 0) {
@@ -1593,7 +1770,7 @@ class ProcedureController extends Controller
             "payload" => $payload ?? [],
             "kddok" => $nakes->kddok ?? null,
             "id_tindakan" => $dataRad->pluck('ID_RIWAYAT_ELAB')->toArray() ?? null,
-            "kode_tindakan" => $dataRad->pluck('KD_TINDAKAN')->toArray() ?? null,
+            "kd_tindakan" => $dataRad->pluck('KD_TINDAKAN')->toArray() ?? null,
             "dataICD" => $icd9Data,
             "currProcedure" => $currProcedure->ID_SATUSEHAT_PROCEDURE ?? null
         ];
@@ -1648,17 +1825,43 @@ class ProcedureController extends Controller
                 ]
             ];
 
+            $kodeDiagnosa = '';
+            $textDiagnosa = '';
+
+            switch ($dataErm) {
+                case $dataErm->KODE_DIAGNOSA_UTAMA:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                    $textDiagnosa = $dataErm->DIAG_UTAMA;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_SEKUNDER:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_SEKUNDER;
+                    $textDiagnosa = $dataErm->DIAG_SEKUNDER;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_KOMPLIKASI:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_KOMPLIKASI;
+                    $textDiagnosa = $dataErm->DIAG_KOMPLIKASI;
+                    break;
+                case $dataErm->KODE_DIAGNOSA_PENYEBAB:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_PENYEBAB;
+                    $textDiagnosa = $dataErm->DIAG_PENYEBAB;
+                    break;
+                default:
+                    $kodeDiagnosa = $dataErm->KODE_DIAGNOSA_UTAMA;
+                    $textDiagnosa = $dataErm->DIAG_UTAMA;
+                    break;
+            }
             $reasonCode = [
                 [
                     "coding" => [
                         [
                             "system" => "http://hl7.org/fhir/sid/icd-10",
-                            "code" => "$dataErm->KODE_DIAGNOSA_UTAMA",
-                            "display" => "$dataErm->DIAG_UTAMA",
+                            "code" => "$kodeDiagnosa",
+                            "display" => "$textDiagnosa",
                         ]
                     ],
                 ]
             ];
+
 
             Carbon::setLocale('id');
             $tglText = Carbon::parse($dataTindOp->tanggal_operasi)->translatedFormat('l, d F Y');

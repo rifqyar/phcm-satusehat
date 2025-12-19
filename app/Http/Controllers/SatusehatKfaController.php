@@ -29,10 +29,10 @@ class SatusehatKfaController extends Controller
             $id_unit = Session::get('id_unit_simrs', '001');
             if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
                 $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_KFA_STAGING')->select('valStr')->first()->valStr;
-                $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+                //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
             } else {
                 $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_KFA')->select('valStr')->first()->valStr;
-                $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+                //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
             }
             $url = 'products/all';
             $baseuri = rtrim($baseurl, '/') . '/' . ltrim($url, '/');
@@ -151,8 +151,13 @@ class SatusehatKfaController extends Controller
             }
 
             $obat = $data[0];
-            $orgId = '266bf013-b70b-4dc2-b934-40858a5658cc';
-
+            $id_unit = Session::get('id_unit_simrs', '001');
+            if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+                $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+            } else {
+                $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+            }
+            
             // tentukan tipe racikan
             $jenisCode = ($obat->IS_COMPOUND == 1) ? 'C' : 'NC';
             $jenisName = ($obat->IS_COMPOUND == 1) ? 'Compound' : 'Non-compound';
@@ -220,10 +225,10 @@ class SatusehatKfaController extends Controller
             $id_unit = Session::get('id_unit_simrs', '001');
             if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
                 $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
-                $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+                //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
             } else {
                 $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
-                $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+                //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
             }
             $url = 'Medication';
             $baseuri = rtrim($baseurl, '/') . '/' . ltrim($url, '/');

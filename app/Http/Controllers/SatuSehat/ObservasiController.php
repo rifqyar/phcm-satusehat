@@ -60,7 +60,7 @@ class ObservasiController extends Controller
                         FROM SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI rso2
                         WHERE rso2.KARCIS = vkr.ID_TRANSAKSI
                         AND rso2.ID_ERM = eri.NOMOR
-                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 5
+                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) > 0
                     ) THEN 1
                     ELSE 0
                 END as sudah_integrasi,
@@ -186,7 +186,7 @@ class ObservasiController extends Controller
                         FROM SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI rso2
                         WHERE rso2.KARCIS = vkr.ID_TRANSAKSI
                         AND rso2.ID_ERM = eri.NOMOR
-                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 5
+                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) > 0
                     ) THEN 1 ELSE 0 END as sudah_integrasi,
                 CASE WHEN MAX(eri.KARCIS) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
             ")
@@ -420,7 +420,7 @@ class ObservasiController extends Controller
                             FROM SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI rso2
                             WHERE rso2.KARCIS = vkr.ID_TRANSAKSI
                             AND rso2.ID_ERM = eri.NOMOR
-                            AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 5
+                            AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) > 0
                         ) THEN 1
                         ELSE 0
                     END as sudah_integrasi,
@@ -1007,6 +1007,7 @@ class ObservasiController extends Controller
     {
         $this->logInfo('Observation', 'Receive Observation dari SIMRS', [
             'request' => $request->all(),
+            'karcis' => $request->karcis,
             'user_id' => 'system'
         ]);
 
@@ -1041,7 +1042,7 @@ class ObservasiController extends Controller
                         FROM SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI rso2
                         WHERE rso2.KARCIS = vkr.ID_TRANSAKSI
                         AND rso2.ID_ERM = eri.NOMOR
-                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 5
+                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) > 0
                     ) THEN 1 ELSE 0 END as sudah_integrasi,
                 CASE WHEN MAX(eri.KARCIS) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
             ")
@@ -1103,12 +1104,19 @@ class ObservasiController extends Controller
         $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=" . LZString::compressToEncodedURIComponent($data->JENIS_PERAWATAN);
         $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
-        if ($data->sudah_integrasi == 0) {
-            // Kirim data baru jika encounter belum ada
-            $resp = $this->sendSatuSehat(base64_encode($paramSatuSehat), false);
+        if($data->id_satusehat_encounter != null || $data->id_satusehat_encounter != ''){
+            if ($data->sudah_integrasi == 0) {
+                // Kirim data baru jika encounter belum ada
+                $resp = $this->sendSatuSehat(base64_encode($paramSatuSehat), false);
+            } else {
+                // resend jika data sudah ada
+                $resp = $this->sendSatuSehat(base64_encode($paramSatuSehat), true);
+            }
         } else {
-            // resend jika data sudah ada
-            $resp = $this->sendSatuSehat(base64_encode($paramSatuSehat), true);
+            $this->logInfo('Observation', 'Data Observation tidak diproses karena tidak ada encounter', [
+                'request' => $request->all(),
+                'user_id' => 'system'
+            ]);
         }
 
         // return response()->json([

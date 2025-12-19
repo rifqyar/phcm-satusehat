@@ -100,6 +100,13 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        'dispatchci' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/dispatch.log'),
+            'level' => 'info',
+            'days' => 7
+        ],
+
         'encounter' => [
             'driver' => 'daily',
             'path' => storage_path('logs/encounter.log'),

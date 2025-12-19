@@ -564,7 +564,7 @@
                 $('#no_rm').html(dataPasien.KBUKU)
                 $('#no_peserta').html(dataPasien.NO_PESERTA)
 
-                $('#no_karcis').html(dataErm.ID_TRANSAKSI)
+                $('#no_karcis').html(dataErm.KARCIS)
                 $('#dokter').html(dataErm.CRTUSR)
 
                 let htmlDiag = '';

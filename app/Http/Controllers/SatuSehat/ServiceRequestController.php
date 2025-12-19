@@ -729,7 +729,7 @@ class ServiceRequestController extends Controller
         $dateTimeNow = Carbon::now()->toIso8601String();
 
         $riwayat = DB::connection('sqlsrv')
-            ->table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB')
+            ->table('vw_getData_Elab')
             ->where('IDUNIT', $id_unit)
             ->where('ID_RIWAYAT_ELAB', $idRiwayatElab)
             ->first();

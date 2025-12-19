@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/login', [App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [App\Http\Controllers\Auth\LoginController::class, 'login'])->name('do.login');
-Route::post('/login-direct', [App\Http\Controllers\Auth\LoginController::class, 'loginDirect'])->name('do.loginDirect');
+Route::get('/login-direct', [App\Http\Controllers\Auth\LoginController::class, 'loginDirect'])->name('do.loginDirect');
 Route::get('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout'])->name('logout');
 
 // kirim satusehat tanpa middleware

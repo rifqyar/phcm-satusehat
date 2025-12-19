@@ -120,7 +120,8 @@ class HomeController extends Controller
         // Ambil record terakhir
         $data = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_AUTH')
-            ->select('issued_at', 'expired_in', 'access_token')
+            ->select('issued_at', 'expired_in', 'access_token', 'idunit')
+            ->where('idunit', '001')
             ->orderBy('id', 'desc')
             ->first();
 
@@ -137,6 +138,7 @@ class HomeController extends Controller
 
         if ($now->lessThan($earlyExpire)) {
             // Masih valid (dengan buffer 1 jam)
+            
             return [
                 'expired_in' => $expiredAt->toDateTimeString(),
                 'expired_buffer' => $earlyExpire->toDateTimeString(),
@@ -152,12 +154,19 @@ class HomeController extends Controller
 
         $clientId = env('SATUSEHAT_CLIENT_ID');
         $clientSecret = env('SATUSEHAT_CLIENT_SECRET');
-
-        $url = 'https://api-satusehat-stg.dto.kemkes.go.id/oauth2/v1/accesstoken?grant_type=client_credentials';
+        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+            $baseurl = 'https://api-satusehat-stg.dto.kemkes.go.id/oauth2/v1/accesstoken?grant_type=client_credentials';
+            //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+        } else {
+            // $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
+            $baseurl = 'https://api-satusehat.kemkes.go.id/oauth2/v1/accesstoken?grant_type=client_credentials';
+            //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+        }
+        // $url = 'https://api-satusehat-stg.dto.kemkes.go.id/oauth2/v1/accesstoken?grant_type=client_credentials';
 
         $response = Http::asForm()
             ->withOptions(['verify' => false]) // ignore ssl
-            ->post($url, [
+            ->post($baseurl, [
                 'client_id' => $clientId,
                 'client_secret' => $clientSecret,
             ]);

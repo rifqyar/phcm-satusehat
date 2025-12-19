@@ -567,11 +567,12 @@ class AllergyIntoleranceController extends Controller
     {
         $this->logInfo('AllergyIntolerance', 'Receive Allergy Intolerance dari SIMRS', [
             'request' => $request->all(),
+            'karcis' => $request->karcis,
             'user_id' => 'system'
         ]);
 
         $encounterId = SATUSEHAT_ALLERGY_INTOLERANCE::where('karcis', (int)$request->karcis)
-            ->select('*')
+            ->select('karcis')
             ->first();
 
         $data = DB::table('v_kunjungan_rj as vkr')
@@ -616,7 +617,7 @@ class AllergyIntoleranceController extends Controller
             ])
             ->first();
 
-        if (!empty($data)) {
+        if (!empty($data) && ($data->id_satusehat_encounter != '' || $data->id_satusehat_encounter)) {
             $id_transaksi = LZString::compressToEncodedURIComponent($request->KARCIS);
             $KbBuku = LZString::compressToEncodedURIComponent($data->KBUKU);
             $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
@@ -642,7 +643,7 @@ class AllergyIntoleranceController extends Controller
                 ]
             ], 200);
         } else {
-            $this->logError('AllergyIntolerance', 'Data Allergy Intolerance Tidak Ditemukan', [
+            $this->logError('AllergyIntolerance', 'Data Allergy Intolerance Tidak Ditemukan, request tidak diproses sistem', [
                 'request' => $request->all(),
                 'user_id' => 'system'
             ]);

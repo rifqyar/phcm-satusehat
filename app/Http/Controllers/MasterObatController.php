@@ -14,9 +14,18 @@ class MasterObatController extends Controller
     {
 
         $kode = $request->get('kode');
-        $total_all = MasterObat::count();
-        $total_mapped = MasterObat::whereNotNull('KD_BRG_KFA')->where('KD_BRG_KFA', '<>', '')->count();
-        $total_unmapped = MasterObat::whereNull('KD_BRG_KFA')->orWhere('KD_BRG_KFA', '')->count();
+        // $total_all = MasterObat::count();
+        // $total_mapped = MasterObat::whereNotNull('KD_BRG_KFA')->where('KD_BRG_KFA', '<>', '')->count();
+        // $total_unmapped = MasterObat::whereNull('KD_BRG_KFA')->orWhere('KD_BRG_KFA', '')->count();
+        $stats = MasterObat::selectRaw("
+            COUNT(1) AS total_all,
+            SUM(CASE WHEN KD_BRG_KFA IS NOT NULL AND KD_BRG_KFA <> '' THEN 1 ELSE 0 END) AS total_mapped,
+            SUM(CASE WHEN KD_BRG_KFA IS NULL OR KD_BRG_KFA = '' THEN 1 ELSE 0 END) AS total_unmapped
+        ")->first();
+
+        $total_all = $stats->total_all;
+        $total_mapped = $stats->total_mapped;
+        $total_unmapped = $stats->total_unmapped;
 
         return view('pages.master_obat', compact(
             'total_all',
@@ -24,7 +33,6 @@ class MasterObatController extends Controller
             'total_unmapped',
             'kode'
         ));
-
     }
     public function getData(Request $request)
     {
@@ -127,7 +135,7 @@ class MasterObatController extends Controller
             $validated = $request->validate([
                 'id' => 'required|integer',
                 'kode_kfa' => 'nullable|string|max:100',
-                'nama_kfa' => 'nullable|string|max:255',
+                'nama_kfa' => 'nullable|string',
                 'deskripsi' => 'nullable|string|max:500',
                 'is_compound' => 'nullable|in:0,1',
             ]);
@@ -148,7 +156,4 @@ class MasterObatController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
     }
-
-
 }
-

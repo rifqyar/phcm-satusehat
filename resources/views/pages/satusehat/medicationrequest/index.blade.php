@@ -479,7 +479,7 @@
                 $('#obatDetailContent').html(`<p class='text-center text-muted'>Memuat data obat...</p>`);
 
                 $.ajax({
-                    url: '{{ route('satusehat.medication-request.detail') }}',
+                    url: `{{ route('satusehat.medication-request.detail') }}`,
                     type: 'POST',
                     data: {
                         _token: '{{ csrf_token() }}',
@@ -512,7 +512,7 @@
                                                                                 <td>${row.JUMLAH ?? '-'}</td>
                                                                                 <td>
                                                                                 ${
-                                                                                    row.KD_BRG_KFA 
+                                                                                    row.KD_BRG_KFA
                                                                                         ? (
                                                                                             row.KD_BRG_KFA === '000'
                                                                                                 ? `<span class="badge badge-warning">Non Farmasi</span>`

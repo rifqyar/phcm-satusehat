@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\SatuSehat;
 
-use App\Helpers\CiEncryptionHelper;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\LogTraits;
 use App\Http\Traits\SATUSEHATTraits;
@@ -35,6 +34,7 @@ class EncounterController extends Controller
     {
         $startDate = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
         $endDate   = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
+        $id_unit = Session::get('id_unit_simrs', '001');
 
         $rj = DB::table('v_kunjungan_rj as v')
             ->whereBetween('TANGGAL', [$startDate, $endDate])
@@ -48,13 +48,15 @@ class EncounterController extends Controller
                 'v.*',
                 DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
             )
-            ->groupBy('v.ICD9', 'v.DIPLAY_ICD9', 'v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN');
+            ->groupBy('v.ICD9', 'v.DIPLAY_ICD9', 'v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN')
+            ->where('v.ID_UNIT', $id_unit);
 
         $rjAll = $rj->get();
         $rjIntegrasi = $rj->whereNotNull('n.ID_SATUSEHAT_ENCOUNTER')->get();
 
         $ri = DB::table('v_kunjungan_ri')
             ->whereBetween('TANGGAL', [$startDate, $endDate])
+            ->where('ID_UNIT', $id_unit)
             ->get();
 
         $mergedAll = $rjAll->merge($ri)
@@ -102,7 +104,8 @@ class EncounterController extends Controller
                 'v.*',
                 DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
             )
-            ->groupBy('v.ICD9', 'v.DIPLAY_ICD9', 'v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN');
+            ->groupBy('v.ICD9', 'v.DIPLAY_ICD9', 'v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN')
+            ->where('v.ID_UNIT', $id_unit);
 
         $rjAll = $rj->get();
         $rjIntegrasi = $rj->whereNotNull('n.ID_SATUSEHAT_ENCOUNTER')->get();
@@ -120,6 +123,7 @@ class EncounterController extends Controller
                 DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
             )
             ->groupBy('v.ICD9', 'v.DIPLAY_ICD9', 'v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_LOKASI', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN')
+            ->where('v.ID_UNIT', $id_unit)
             ->get();
 
         $mergedAll = $rjAll->merge($ri)
@@ -465,7 +469,7 @@ class EncounterController extends Controller
                                 ->on('rk.IDUNIT', '=', 'rkb.IDUNIT')
                                 ->whereRaw('ISNULL(rkb.STBTL,0) = 0');
                         })
-                        ->select('rk.KARCIS', 'rk.NOREG', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU', 'rkb.NOTA')
+                        ->select('rk.NO_PESERTA', 'rk.KARCIS', 'rk.NOREG', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU', 'rkb.NOTA')
                         ->where(function ($query) use ($arrParam) {
                             if ($arrParam['jenis_perawatan'] == 'RI') {
                                 $query->where('rk.NOREG', $arrParam['id_transaksi']);
@@ -484,6 +488,8 @@ class EncounterController extends Controller
                     $nota_satusehat = SATUSEHAT_NOTA::firstOrCreate(
                         [
                             'karcis' => $arrParam['jenis_perawatan'] == 'RJ' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG,
+                            'no_peserta' => $dataPeserta->NO_PESERTA,
+                            'kbuku' => $dataKarcis->KBUKU
                         ],
                         [
                             'id_satusehat_encounter' => $result['id'],
@@ -514,29 +520,6 @@ class EncounterController extends Controller
                     $nota_satusehat->sinkron_date   = now('Asia/Jakarta')->format('Y-m-d H:i:s');
 
                     $nota_satusehat->save();
-
-
-                    // $nota_satusehat = new SATUSEHAT_NOTA();
-                    // $nota_satusehat->id_satusehat_encounter = $result['id'];
-                    // $nota_satusehat->karcis = (int)$dataKarcis->KARCIS;
-                    // $nota_satusehat->nota = (int)$dataKarcis->NOTA;
-                    // $nota_satusehat->idunit = $id_unit;
-                    // $nota_satusehat->tgl = Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d');
-                    // $nota_satusehat->kbuku = $dataPeserta->KBUKU;
-                    // $nota_satusehat->no_peserta = $dataPeserta->NO_PESERTA;
-                    // $nota_satusehat->id_satusehat_px = $kdPasienSS;
-                    // $nota_satusehat->kddok = $dataKarcis->KDDOK;
-                    // $nota_satusehat->id_satusehat_dokter = $kdNakesSS;
-                    // $nota_satusehat->kdklinik = $dataKarcis->KLINIK;
-                    // $nota_satusehat->id_satusehat_klinik_location = $kdLokasiSS;
-                    // $nota_satusehat->crtdt = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
-                    // $nota_satusehat->crtusr = 'system';
-                    // $nota_satusehat->jam_datang = Carbon::parse($jam_start, 'Asia/Jakarta')->format('Y-m-d H:i:s');
-                    // $nota_satusehat->jam_progress = Carbon::parse($jam_progress, 'Asia/Jakarta')->format('Y-m-d H:i:s');
-                    // $nota_satusehat->jam_selesai = Carbon::parse($jam_finish, 'Asia/Jakarta')->format('Y-m-d H:i:s');
-                    // $nota_satusehat->status_sinkron = 1;
-                    // $nota_satusehat->sinkron_date = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
-                    // $nota_satusehat->save();
 
                     $this->logInfo('encounter', 'Sukses kirim data encounter', [
                         'payload' => $payload,
@@ -597,8 +580,11 @@ class EncounterController extends Controller
 
     public function receiveSatuSehat(Request $request)
     {
+        $id_unit = Session::get('id_unit_simrs', $request->input('id_unit'));
         $this->logInfo('encounter', 'Receive Encounter dari SIMRS', [
             'request' => $request->all(),
+            'karcis' => $request->karcis,
+            'aktifitas' => $request->aktivitas,
             'user_id' => 'system'
         ]);
 
@@ -618,6 +604,7 @@ class EncounterController extends Controller
                 DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
             )
             ->groupBy('v.ICD9', 'v.DIPLAY_ICD9', 'v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN')
+            ->where('v.ID_UNIT', $id_unit)
             ->where('v.ID_TRANSAKSI', $request->karcis)
             ->first();
 
@@ -633,6 +620,7 @@ class EncounterController extends Controller
                 DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
             )
             ->groupBy('v.ICD9', 'v.DIPLAY_ICD9', 'v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_LOKASI', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN')
+            ->where('v.ID_UNIT', $id_unit)
             ->where('v.ID_TRANSAKSI', $request->karcis)
             ->first();
 

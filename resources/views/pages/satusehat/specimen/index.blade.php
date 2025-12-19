@@ -86,7 +86,7 @@
                                                 <i class="fas fa-radiation" style="font-size: 48px"></i>
                                                 <div class="ml-3">
                                                     <span style="font-size: 24px" id="total_all_rad">0</span>
-                                                    <h4 class="text-white">Radiology 
+                                                    <h4 class="text-white">Radiology
                                                     </h4>
                                                 </div>
                                             </div>
@@ -282,7 +282,7 @@
 
             getAllData();
             refreshSummary();
-            
+
             // Initialize bulk send button state
             $('#bulk-send-btn').prop('disabled', true);
 
@@ -362,7 +362,7 @@
                         searchable: false,
                         data: null,
                         defaultContent: ''
-                    }, 
+                    },
                     {
                         data: 'DT_RowIndex',
                         name: 'DT_RowIndex',
@@ -501,7 +501,7 @@
             // centang setengah (indeterminate) kalau sebagian terpilih
             $('#selectAll').prop('checked', checkedCount === totalCheckboxes && totalCheckboxes > 0);
             $('#selectAll').prop('indeterminate', checkedCount > 0 && checkedCount < totalCheckboxes);
-            
+
             // Update bulk send button state
             const bulkSendBtn = $('#bulk-send-btn');
             if (selectedIds.length > 0) {
@@ -609,7 +609,7 @@
                 confirmButtonText: "Ya, kirim semua!",
                 cancelButtonText: "Batal",
             }).then((result) => {
-                if (result.isConfirmed) {
+                if (result.value) {
                     // Show loading state
                     Swal.fire({
                         title: 'Mengirim Data...',
@@ -629,7 +629,7 @@
                         },
                         success: function(response) {
                             Swal.close();
-                            
+
                             if (response.status === 200) {
                                 $.toast({
                                     heading: "Berhasil!",
@@ -638,7 +638,7 @@
                                     icon: "success",
                                     hideAfter: 7000
                                 });
-                                
+
                                 // Show additional info about background processing
                                 setTimeout(() => {
                                     $.toast({
@@ -649,7 +649,7 @@
                                         hideAfter: 5000
                                     });
                                 }, 2000);
-                                
+
                                 // Clear selections and reload table
                                 selectedIds = [];
                                 $('#selectAll').prop('checked', false);
@@ -669,11 +669,11 @@
                         error: function(xhr) {
                             Swal.close();
                             let errorMessage = "Terjadi kesalahan saat mengirim data";
-                            
+
                             if (xhr.responseJSON && xhr.responseJSON.message) {
                                 errorMessage = xhr.responseJSON.message;
                             }
-                            
+
                             $.toast({
                                 heading: "Error!",
                                 text: errorMessage,

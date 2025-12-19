@@ -39,6 +39,7 @@ class MasterSpecimenController extends Controller
 
         $groupIds = $groups->pluck('ID_GRUP_TIND');
 
+        $env = strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT' ? 'Dev' : 'Prod';
         $totalTindakan = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.RJ_DGRUP_TIND as a')
             ->leftJoin('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as b', 'a.KD_TIND', '=', 'b.KD_TIND')
@@ -58,6 +59,7 @@ class MasterSpecimenController extends Controller
         $totalMapping = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.SATUSEHAT_SPECIMEN_MAPPING')
             ->distinct('KODE_TINDAKAN')
+            ->where('ENV', $env)
             ->count('KODE_TINDAKAN');
 
         $totalUnmapped = $totalTindakan - $totalMapping;
@@ -259,12 +261,13 @@ class MasterSpecimenController extends Controller
             'specimen.required' => 'Minimal pilih satu specimen.',
         ]);
 
-        DB::connection('sqlsrv')->transaction(function () use ($validated) {
-            $dataToInsert = collect($validated['specimen'])->map(function ($kodeSpecimen) use ($validated) {
+        $env = strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT' ? 'Dev' : 'Prod';
+        DB::connection('sqlsrv')->transaction(function () use ($validated, $env) {
+            $dataToInsert = collect($validated['specimen'])->map(function ($kodeSpecimen) use ($validated, $env) {
                 return [
                     'KODE_TINDAKAN' => $validated['tindakan'],
                     'KODE_SPECIMEN' => $kodeSpecimen,
-                    'ENV' => 'Dev'
+                    'ENV' => $env
                 ];
             })->toArray();
 
@@ -351,12 +354,13 @@ class MasterSpecimenController extends Controller
                 ->where('KODE_TINDAKAN', $id)
                 ->delete();
 
+            $env = strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT' ? 'Dev' : 'Prod';
             if (!empty($validated['specimen'])) {
-                $dataToInsert = collect($validated['specimen'])->map(function ($specimenCode) use ($id) {
+                $dataToInsert = collect($validated['specimen'])->map(function ($specimenCode) use ($id, $env) {
                     return [
                         'KODE_TINDAKAN' => $id,
                         'KODE_SPECIMEN' => $specimenCode,
-                        'ENV' => 'Dev'
+                        'ENV' => $env
                     ];
                 })->toArray();
 

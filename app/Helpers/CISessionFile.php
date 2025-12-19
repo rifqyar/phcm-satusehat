@@ -7,15 +7,16 @@ if (!function_exists('ci_session')) {
     function ci_session($sessKey = null)
     {
         if (!isset($_COOKIE['ci_session_tpid'])) {
-            return null;
+            return false;
         }
 
         $sessionId = $_COOKIE['ci_session_tpid'];
 
-        $path = 'C:\SIMRS\sessions\ci_session_tpid' . $sessionId;
+        $path = 'C:\xampp\htdocs\sessions\ci_session_tpid' . $sessionId;
+        // $path = ini_get('session.save_path').'\ci_session_tpid' . $sessionId;
 
         if (!file_exists($path)) {
-            return null;
+            return false;
         }
 
         $raw = file_get_contents($path);
@@ -34,7 +35,7 @@ if (!function_exists('ci_session')) {
             return $data;
         }
 
-        return $data[$sessKey] ?? null;
+        return $data[$sessKey] ?? false;
     }
 }
 

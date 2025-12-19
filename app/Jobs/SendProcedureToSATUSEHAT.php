@@ -19,8 +19,8 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, SATUSEHATTraits, LogTraits;
 
-    public $tries = 3; // Number of attempts
-    public $timeout = 30; // Timeout in seconds
+    // public $tries = 2; // Number of attempts
+    public $timeout = 5; // Timeout in seconds
 
     protected $payload;
     protected $arrParam;
@@ -75,7 +75,7 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
 
                     $this->logDb(json_encode($res), $this->url, json_encode($this->payload['payload']), 'system'); //Session::get('id')
 
-                    $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Encounter';
+                    $msg = $result['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Encounter';
                     throw new Exception($msg, $response->getStatusCode());
                 } else {
                     if ($this->type == 'lab' || $this->type == 'rad') {
@@ -86,7 +86,7 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
                                 'NO_PESERTA' => $this->dataPeserta->NO_PESERTA,
                                 'ID_SATUSEHAT_ENCOUNTER' => $this->arrParam['encounter_id'],
                                 'ID_JENIS_TINDAKAN' => $this->payload['id_tindakan'][$i],
-                                'ID_TINDAKAN' => $dataICD[$i]->kd_tindakan,
+                                'ID_TINDAKAN' => $this->payload['kd_tindakan'][$i],
                                 'KD_ICD9' => $dataICD[$i]->icd9,
                                 'DISP_ICD9' => $dataICD[$i]->text_icd9,
                                 'JENIS_TINDAKAN' => $this->type,
@@ -99,7 +99,7 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
                             $procedureSatuSehat = SATUSEHAT_PROCEDURE::where('ID_JENIS_TINDAKAN', $this->payload['id_tindakan'][$i]);
                             $existingProcedure = $procedureSatuSehat->where('KARCIS', $this->arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$this->dataKarcis->KARCIS : (int)$this->dataKarcis->NOREG)
                                 ->where('JENIS_TINDAKAN', $this->type)
-                                ->where('ID_TINDAKAN', $dataICD[$i]->kd_tindakan)
+                                ->where('ID_TINDAKAN', $this->payload['kd_tindakan'][$i])
                                 ->where('ID_JENIS_TINDAKAN', $this->payload['id_tindakan'][$i])
                                 ->first();
 
@@ -107,7 +107,7 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
                                 DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE')
                                     ->where('KARCIS', $this->arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? (int)$this->dataKarcis->KARCIS : (int)$this->dataKarcis->NOREG)
                                     ->where('JENIS_TINDAKAN', $this->type)
-                                    ->where('ID_TINDAKAN', $dataICD[$i]->kd_tindakan)
+                                    ->where('ID_TINDAKAN', $this->payload['kd_tindakan'][$i])
                                     ->where('ID_JENIS_TINDAKAN', $this->payload['id_tindakan'][$i])
                                     ->update($procedureData);
                             } else {

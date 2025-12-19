@@ -17,8 +17,8 @@ class SendAllergyIntolerance implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, LogTraits;
 
     public $param;
-    public $tries = 3; // Number of attempts
-    public $timeout = 30; // Timeout in seconds
+    // public $tries = 3; // Number of attempts
+    public $timeout = 5; // Timeout in seconds
     public $resend = false;
 
     /**
