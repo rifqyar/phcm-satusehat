@@ -35,11 +35,10 @@
                     <img src="{{ asset('assets/images/warna_phcm.png') }}" alt="Home" style="width: 50%" />
                 </a>
                 <h3 class="box-title m-b-20 m-t-20">Login to Your Account</h3>
-                <form class="floating-labels m-t-40" id="loginform" method="POST" action="{{ route('do.login') }}"
-                    novalidate>
+                <form class="floating-labels m-t-40" id="loginform" method="POST" action="{{ route('do.login') }}">
                     @csrf
                     <div class="form-group m-b-40">
-                        <select name="id_unit" id="id_unit" class="form-control">
+                        <select name="id_unit" id="id_unit" class="form-control" required>
                             <option selected disabled class="text-center">--- Pilih Unit ---</option>
                             @foreach ($sites as $site)
                                 <option value="{{ $site->IDUNIT }}">{{ $site->NAMA_UNIT }}</option>
