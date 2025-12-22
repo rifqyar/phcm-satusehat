@@ -24,7 +24,7 @@
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle text-muted waves-effect waves-dark" href=""
                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><img
-                            src="https://ui-avatars.com/api/?name={{ Session::get('nama_simrs') }}" alt="user"
+                            src="https://ui-avatars.com/api/?name={{ Session::get('nama') }}" alt="user"
                             class="profile-pic" /></a>
 
                     <div class="dropdown-menu dropdown-menu-right scale-up">
@@ -32,10 +32,10 @@
                             <li>
                                 <div class="dw-user-box">
                                     <div class="u-img"><img
-                                            src="https://ui-avatars.com/api/?name={{ Session::get('nama_simrs') }}"
+                                            src="https://ui-avatars.com/api/?name={{ Session::get('nama') }}"
                                             alt="user"></div>
                                     <div class="u-text">
-                                        <h4>{{ Str::length(Session::get('nama_simrs')) > 15 ? Str::substr(Session::get('nama_simrs'), 0, 12) . '...' : Session::get('nama_simrs') }}
+                                        <h4>{{ Str::length(Session::get('nama')) > 15 ? Str::substr(Session::get('nama'), 0, 12) . '...' : Session::get('nama_simrs') }}
                                         </h4>
                                     </div>
                                 </div>
