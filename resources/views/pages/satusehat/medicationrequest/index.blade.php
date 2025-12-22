@@ -208,7 +208,7 @@
         $(document).ready(function () {
             // 🗓️ datepicker
             var endDate = moment();
-            var startDate = moment().subtract(240, 'days');
+            var startDate = moment().subtract(7, 'days');
 
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0,

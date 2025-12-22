@@ -23,6 +23,7 @@ class MedicationDispenseController extends Controller
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
         $jenis = $request->input('jenis'); // ri / rj
+        $id_unit = Session::get('id_unit_simrs', '001');
 
         if (!$startDate || !$endDate) {
             $endDate = now();
@@ -112,7 +113,7 @@ class MedicationDispenseController extends Controller
 
             // FILTER JALAN / INAP
             ->where('a.KET_LAYANAN', $ketLayanan)
-
+            ->where('a.IDUNIT', $id_unit)
             ->select(
                 'b.id',
                 'b.id_satusehat_encounter',
@@ -194,7 +195,7 @@ class MedicationDispenseController extends Controller
             left join SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm1 on iho.ID_TRANS = slm1.LOCAL_ID and slm1.LOG_TYPE = 'MedicationRequest' and slm1.KFA_CODE = m.KD_BRG_KFA and slm1.STATUS = 'success'
             left join SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm11 on ih.ID_TRANS = slm11.LOCAL_ID and slm11.LOG_TYPE = 'MedicationRequestFromDispense' and slm11.KFA_CODE = m.KD_BRG_KFA and slm11.STATUS = 'success'
             left join SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION slm2 on ih.ID_TRANS = slm2.LOCAL_ID and slm2.LOG_TYPE = 'MedicationDispense'and slm2.KFA_CODE = m.KD_BRG_KFA and slm2.STATUS = 'success'
-           WHERE i.ID_TRANS = :idTrans
+           WHERE ih.IDUNIT IN (001,002) AND i.ID_TRANS = :idTrans
         ",
                 ['idTrans' => $idTrans],
             );
