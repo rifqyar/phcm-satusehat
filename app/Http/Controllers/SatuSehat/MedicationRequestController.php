@@ -31,6 +31,7 @@ class MedicationRequestController extends Controller
         $endDate = $request->input('end_date');
         $jenis = $request->input('jenis'); // ri / rj
         $ketLayanan = $jenis === 'ri' ? 'INAP' : 'JALAN';
+        $id_unit = Session::get('id_unit_simrs', '001');
 
 
         if (!$startDate || !$endDate) {
@@ -43,37 +44,43 @@ class MedicationRequestController extends Controller
             ? 'SIRS_PHCM.dbo.v_kunjungan_ri'
             : 'SIRS_PHCM.dbo.v_kunjungan_rj';
 
-        // 🧱 Base query
         $query = DB::table('SIRS_PHCM.dbo.IF_HTRANS_OL as a')
-        ->distinct()
+            ->distinct()
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as b', 'a.KARCIS', '=', 'b.karcis')
-            ->leftJoin("$kunjunganTable as c", 'a.KARCIS', '=', 'c.ID_TRANSAKSI')  // ← berubah dinamis
+            ->leftJoin("$kunjunganTable as c", 'a.KARCIS', '=', 'c.ID_TRANSAKSI')
             ->leftJoin(DB::raw("
-            (
-                SELECT 
-                    ol.ID_TRANS,
-                    CASE 
-                        WHEN COUNT(CASE WHEN kfa.KD_BRG_KFA IS NULL THEN 1 END) > 0 
-                        THEN '000'
-                        ELSE '100'
-                    END AS STATUS_MAPPING
-                FROM SIRS_PHCM.dbo.IF_TRANS_OL ol
-                LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA kfa 
-                    ON ol.KDBRG_CENTRA = kfa.KDBRG_CENTRA
-                GROUP BY ol.ID_TRANS
-            ) as d
-        "), 'd.ID_TRANS', '=', 'a.ID_TRANS')
+                (
+                    SELECT 
+                        ol.ID_TRANS,
+                        CASE 
+                            WHEN COUNT(CASE WHEN kfa.KD_BRG_KFA IS NULL THEN 1 END) > 0 
+                            THEN '000'
+                            ELSE '100'
+                        END AS STATUS_MAPPING
+                    FROM SIRS_PHCM.dbo.IF_TRANS_OL ol
+                    LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA kfa 
+                        ON ol.KDBRG_CENTRA = kfa.KDBRG_CENTRA
+                    GROUP BY ol.ID_TRANS
+                ) as d
+            "), 'd.ID_TRANS', '=', 'a.ID_TRANS')
             ->leftJoin(DB::raw("
-            (
-                SELECT 
-                    LOCAL_ID,
-                    MAX(ID) AS MAX_ID
-                FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
-                WHERE LOG_TYPE = 'MedicationRequest' AND STATUS = 'success'
-                GROUP BY LOCAL_ID
-            ) AS log_latest
-        "), 'log_latest.LOCAL_ID', '=', 'a.ID_TRANS')
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION as SSM', 'SSM.ID', '=', DB::raw('log_latest.MAX_ID'))
+                (
+                    SELECT 
+                        LOCAL_ID,
+                        MAX(ID) AS MAX_ID
+                    FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
+                    WHERE LOG_TYPE = 'MedicationRequest' 
+                    AND STATUS = 'success'
+                    GROUP BY LOCAL_ID
+                ) AS log_latest
+            "), 'log_latest.LOCAL_ID', '=', 'a.ID_TRANS')
+            ->leftJoin(
+                'SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION as SSM',
+                'SSM.ID',
+                '=',
+                DB::raw('log_latest.MAX_ID')
+            )
+            ->where('a.IDUNIT', $id_unit)
             ->whereBetween(DB::raw('CAST(c.TANGGAL AS date)'), [$startDate, $endDate])
             ->where('a.KET_LAYANAN', $ketLayanan)
             ->select(
@@ -85,11 +92,11 @@ class MedicationRequestController extends Controller
                 DB::raw('c.NAMA_PASIEN AS PASIEN'),
                 DB::raw('c.DOKTER AS DOKTER'),
                 DB::raw("
-                CASE 
-                    WHEN SSM.ID IS NOT NULL THEN '200'
-                    ELSE d.STATUS_MAPPING
-                END AS STATUS_MAPPING
-            "),
+                    CASE 
+                        WHEN SSM.ID IS NOT NULL THEN '200'
+                        ELSE d.STATUS_MAPPING
+                    END AS STATUS_MAPPING
+                "),
                 DB::raw('SSM.STATUS AS LOG_STATUS'),
                 DB::raw('SSM.CREATED_AT AS LOG_CREATED_AT')
             );
@@ -177,8 +184,7 @@ class MedicationRequestController extends Controller
                     WHERE
                     H.ID_TRANS = :idTrans
                     AND H.ACTIVE = 1
-                    AND H.IDUNIT = 001
-            ", ['idTrans' => $idTrans]);
+                    AND H.IDUNIT in (001,002)", ['idTrans' => $idTrans]);
 
             if (empty($data)) {
                 return response()->json([
