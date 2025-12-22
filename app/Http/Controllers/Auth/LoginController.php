@@ -83,10 +83,11 @@ class LoginController extends Controller
 
     public function loginDirect(Request $request)
     {
-        $request = request();
         $request->merge([
-            'username' => 'admin',
-            'password' => 'P@ssw0rd',
+            'nipp'     => $this->_decrypt_url($request->nipp),
+            'username' => $this->_decrypt_url($request->username),
+            'password' => $this->_decrypt_url($request->password),
+            'unit' => $this->_decrypt_url($request->unit),
         ]);
 
         return $this->login($request);
@@ -145,5 +146,33 @@ class LoginController extends Controller
         Session::flush();
         Session::regenerateToken();
         return redirect('https://sim.phcm.co.id/phcm-satusehat/public/login');
+    }
+
+    private function _decrypt_url($encryptedData)
+    {
+        $key = $this->_get_key();
+        $decodedData = $this->_base64url_decode($encryptedData);
+        $ivLength = openssl_cipher_iv_length('aes-256-cbc');
+        $iv = substr($decodedData, 0, $ivLength);
+        $encrypted = substr($decodedData, $ivLength);
+        $decrypted = openssl_decrypt($encrypted, 'aes-256-cbc', $key, 0, $iv);
+        return $decrypted;
+    }
+    private function _base64url_encode($data)
+    {
+        $base64 = base64_encode($data);
+        $base64url = strtr($base64, '+/', '-_');
+        $base64url = rtrim($base64url, '=');
+        return $base64url;
+    }
+    private function _base64url_decode($data)
+    {
+        $base64url = strtr($data, '-_', '+/');
+        $paddedBase64 = str_pad($base64url, strlen($base64url) % 4, '=', STR_PAD_RIGHT);
+        return base64_decode($paddedBase64);
+    }
+    private function _get_key()
+    {
+        return 'zXSVBcNtyuiOpwqWERtcySDgas657923';
     }
 }
