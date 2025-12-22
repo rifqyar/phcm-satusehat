@@ -73,10 +73,22 @@
                 </form>
             </div>
         </div>
-        </div>
     </section>
-
     @include('includes.script')
+
+    @if (session('errors'))
+        <script>
+            $.toast({
+                heading: 'Login Gagal!',
+                text: `{{ session('errors')->first('login') }}`,
+                position: 'top-right',
+                loaderBg: '#ff6849',
+                icon: 'error',
+                hideAfter: 3000,
+                stack: 6
+            });
+        </script>
+    @endif
 </body>
 
 </html>
