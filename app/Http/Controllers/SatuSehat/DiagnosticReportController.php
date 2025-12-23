@@ -418,7 +418,7 @@ class DiagnosticReportController extends Controller
                 $this->logError('DiagnosticReport', 'Gagal kirim data diagnostic report', [
                     'payload' => $data,
                     'response' => $response,
-                    'user_id' => Session::get('username', 'system')
+                    'user_id' => Session::get('nama', 'system')
                 ]);
 
                 $this->logDb(json_encode($response), 'DiagnosticReport', json_encode($data), 'system');

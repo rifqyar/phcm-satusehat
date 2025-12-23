@@ -814,7 +814,7 @@ class ServiceRequestController extends Controller
                 $this->logError('servicerequest', 'Gagal kirim data service request', [
                     'payload' => $data,
                     'response' => $response,
-                    'user_id' => Session::get('username', 'system') //Session::get('id')
+                    'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
 
                 $this->logDb(json_encode($response), 'ServiceRequest', json_encode($data), 'system'); //Session::get('id')
@@ -863,7 +863,7 @@ class ServiceRequestController extends Controller
                     $this->logInfo('servicerequest', 'Sukses kirim data service request', [
                         'payload' => $data,
                         'response' => $result,
-                        'user_id' => Session::get('username', 'system') //Session::get('id')
+                        'user_id' => Session::get('nama', 'system') //Session::get('id')
                     ]);
                     $this->logDb(json_encode($result), 'ServiceRequest', json_encode($data), 'system'); //Session::get('id')
 
@@ -901,7 +901,7 @@ class ServiceRequestController extends Controller
             Log::info('Bulk send request received', [
                 'selected_ids_count' => count($selectedIds),
                 'first_few_params' => array_slice($selectedIds, 0, 2),
-                'user_id' => Session::get('username', 'system')
+                'user_id' => Session::get('nama', 'system')
             ]);
 
             if (empty($selectedIds)) {
@@ -938,7 +938,7 @@ class ServiceRequestController extends Controller
             Log::info('Bulk service request jobs dispatched', [
                 'total_dispatched' => $dispatched,
                 'total_errors' => count($errors),
-                'user_id' => Session::get('username', 'system'),
+                'user_id' => Session::get('nama', 'system'),
                 'params_count' => count($selectedIds)
             ]);
 
@@ -962,7 +962,7 @@ class ServiceRequestController extends Controller
         } catch (Exception $e) {
             Log::error('Bulk send dispatch failed', [
                 'error' => $e->getMessage(),
-                'user_id' => Session::get('username', 'system') // Session::get('id')
+                'user_id' => Session::get('nama', 'system') // Session::get('id')
             ]);
 
             return response()->json([

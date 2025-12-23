@@ -46,13 +46,13 @@ class SendEncounter implements ShouldQueue
             $this->logInfo('encounter', 'Sending Encounter Using Jobs', [
                 'payload' => $this->param,
                 'response' => $result,
-                'user_id' => Session::get('username', 'system')
+                'user_id' => Session::get('nama', 'system')
             ]);
         } catch (Exception $e) {
             $this->logError('encounter', 'Failed Sending Encounter Using Jobs', [
                 'payload' => $this->param,
                 'response' => $e->getMessage(),
-                'user_id' => Session::get('username', 'system') //Session::get('id')
+                'user_id' => Session::get('nama', 'system') //Session::get('id')
             ]);
             $this->fail($e);
         }

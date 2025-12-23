@@ -474,7 +474,7 @@ class AllergyIntoleranceController extends Controller
                 $this->logError($url, 'Gagal kirim data Allergy Intolerance', [
                     'payload' => $payload,
                     'response' => $response,
-                    'user_id' => Session::get('username', 'system') //Session::get('id')
+                    'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
 
                 $this->logDb(json_encode($response), $url, json_encode($payload), 'system'); //Session::get('id')
@@ -510,7 +510,7 @@ class AllergyIntoleranceController extends Controller
                     $this->logInfo($url, 'Sukses kirim data Allergy intolerance', [
                         'payload' => $payload,
                         'response' => $result,
-                        'user_id' => Session::get('username', 'system') //Session::get('id')
+                        'user_id' => Session::get('nama', 'system') //Session::get('id')
                     ]);
                     $this->logDb(json_encode($result), $url, json_encode($payload), 'system'); //Session::get('id')
 

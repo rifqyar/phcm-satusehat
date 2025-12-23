@@ -448,7 +448,7 @@ class EncounterController extends Controller
                 $this->logError('encounter', 'Gagal kirim data encounter', [
                     'payload' => $payload,
                     'response' => $response,
-                    'user_id' => Session::get('username', 'system') //Session::get('id')
+                    'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
 
                 $this->logDb(json_encode($response), 'Encounter', json_encode($payload), 'system'); //Session::get('id')
@@ -524,7 +524,7 @@ class EncounterController extends Controller
                     $this->logInfo('encounter', 'Sukses kirim data encounter', [
                         'payload' => $payload,
                         'response' => $result,
-                        'user_id' => Session::get('username', 'system') //Session::get('id')
+                        'user_id' => Session::get('nama', 'system') //Session::get('id')
                     ]);
                     $this->logDb(json_encode($result), 'Encounter', json_encode($payload), 'system'); //Session::get('id')
 

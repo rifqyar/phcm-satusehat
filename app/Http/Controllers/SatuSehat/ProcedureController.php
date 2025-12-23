@@ -2135,7 +2135,7 @@ class ProcedureController extends Controller
                         'icd9' => $icd9,
                         'text_icd9' => $texticd9,
                     ],
-                    'user_id' => Session::get('username', 'system') //Session::get('id')
+                    'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
             }
 

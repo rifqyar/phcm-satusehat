@@ -71,7 +71,7 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
                     $this->logError($this->url, 'Gagal kirim data Procedure ' . $this->type, [
                         'payload' => $this->payload['payload'],
                         'response' => $res,
-                        'user_id' => Session::get('username', 'system')
+                        'user_id' => Session::get('nama', 'system')
                     ]);
 
                     $this->logDb(json_encode($res), $this->url, json_encode($this->payload['payload']), 'system'); //Session::get('id')
@@ -121,7 +121,7 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
                             $this->logInfo($logChannel, 'Sukses kirim data Procedure ' . $this->type, [
                                 'payload' => $this->payload,
                                 'response' => $result,
-                                'user_id' => Session::get('username', 'system') //Session::get('id')
+                                'user_id' => Session::get('nama', 'system') //Session::get('id')
                             ]);
 
                             $this->logDb(json_encode($result), $this->url, json_encode($this->payload), 'system'); //Session::get('id')
@@ -161,7 +161,7 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
                         $this->logInfo($logChannel, 'Sukses kirim data Procedure ' . $this->type, [
                             'payload' => $this->payload,
                             'response' => $result,
-                            'user_id' => Session::get('username', 'system') //Session::get('id')
+                            'user_id' => Session::get('nama', 'system') //Session::get('id')
                         ]);
 
                         $this->logDb(json_encode($result), $this->url, json_encode($this->payload), 'system'); //Session::get('id')
@@ -171,14 +171,14 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
                 $this->logInfo($logChannel, 'Sudah Integrasi ' . $this->type, [
                     'payload' => $this->payload,
                     'response' => 'Data Procedure Untuk jenis ini sudah pernah dikirim ke satusehat',
-                    'user_id' => Session::get('username', 'system') //Session::get('id')
+                    'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
             }
         } catch (Exception $e) {
             $this->logError($logChannel, 'Gagal kirim data Procedure ' . $this->type, [
                 'payload' => $this->payload,
                 'response' => $e->getMessage(),
-                'user_id' => Session::get('username', 'system') //Session::get('id')
+                'user_id' => Session::get('nama', 'system') //Session::get('id')
             ]);
             $this->fail($e);
         }

@@ -610,7 +610,7 @@ class SpecimenController extends Controller
                 $this->logError('specimen', 'Gagal kirim data specimen', [
                     'payload' => $data,
                     'response' => $response,
-                    'user_id' => Session::get('username', 'system') //Session::get('id')
+                    'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
 
                 $this->logDb(json_encode($response), 'Specimen', json_encode($data), 'system'); //Session::get('id')
@@ -659,7 +659,7 @@ class SpecimenController extends Controller
                     $this->logInfo('specimen', 'Sukses kirim data specimen', [
                         'payload' => $data,
                         'response' => $result,
-                        'user_id' => Session::get('username', 'system') //Session::get('id')
+                        'user_id' => Session::get('nama', 'system') //Session::get('id')
                     ]);
                     $this->logDb(json_encode($result), 'Specimen', json_encode($data), 'system'); //Session::get('id')
 
@@ -727,7 +727,7 @@ class SpecimenController extends Controller
             Log::info('Bulk specimen jobs dispatched', [
                 'total_dispatched' => $dispatched,
                 'total_failed' => $failed,
-                'user_id' => Session::get('username', 'system'), // You can use Session::get('id') if needed
+                'user_id' => Session::get('nama', 'system'), // You can use Session::get('id') if needed
                 'params_count' => count($selectedIds)
             ]);
 
@@ -749,7 +749,7 @@ class SpecimenController extends Controller
         } catch (Exception $e) {
             Log::error('Bulk specimen dispatch failed', [
                 'error' => $e->getMessage(),
-                'user_id' => Session::get('username', 'system') // Session::get('id')
+                'user_id' => Session::get('nama', 'system') // Session::get('id')
             ]);
 
             return response()->json([
