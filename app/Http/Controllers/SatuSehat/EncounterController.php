@@ -666,13 +666,8 @@ class EncounterController extends Controller
         $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
         $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
-        if (!$encounterId) {
-            // Kirim data baru jika encounter belum ada
-            SendEncounter::dispatch($paramSatuSehat)->onQueue('encounter');
-        } else {
-            // resend jika data sudah ada
-            SendEncounter::dispatch($paramSatuSehat, true)->onQueue('encounter');
-        }
+        if ($data->ID_LOKASI_SS == null && $data->ID_NAKES_SS == null && $data->ID_PASIEN_SS == null) return;
+        SendEncounter::dispatch($paramSatuSehat, $encounterId ? true : false)->onQueue('encounter');
 
         // return response()->json([
         //     'status' => JsonResponse::HTTP_OK,
