@@ -207,22 +207,15 @@ class SatusehatKfaController extends Controller
                 ]
             ];
 
-            // ambil access token
-            $tokenData = DB::connection('sqlsrv')
-                ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_AUTH')
-                ->select('access_token')
-                ->orderBy('id', 'desc')
-                ->first();
+            $accessToken = $this->getAccessToken();
 
-            if (!$tokenData) {
-                return [
-                    'status' => 'error',
-                    'message' => 'Token tidak ditemukan.'
-                ];
+            if (!$accessToken) {
+                throw new \Exception('Access token tidak tersedia di database.');
             }
 
 
-            $id_unit = Session::get('id_unit', '001');
+
+            $id_unit = Session::get('id_unit_simrs', '001');
             if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
                 $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
                 //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
@@ -239,7 +232,7 @@ class SatusehatKfaController extends Controller
                 $baseuri,
                 [
                     'headers' => [
-                        'Authorization' => 'Bearer ' . $tokenData->access_token,
+                        'Authorization' => 'Bearer ' . $accessToken,
                         'Content-Type' => 'application/json'
                     ],
                     'body' => json_encode($payload),
@@ -294,6 +287,13 @@ class SatusehatKfaController extends Controller
                 'message' => $e->getMessage()
             ];
         }
+    }
+
+    private function getAccessToken()
+    {
+        $tokenData = DB::connection('sqlsrv')->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_AUTH')->select('issued_at', 'expired_in', 'access_token')->where('idunit', '001')->orderBy('id', 'desc')->first();
+
+        return $tokenData->access_token ?? null;
     }
 
 }

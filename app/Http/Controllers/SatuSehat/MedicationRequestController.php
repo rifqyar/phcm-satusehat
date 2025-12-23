@@ -81,6 +81,7 @@ class MedicationRequestController extends Controller
                 DB::raw('log_latest.MAX_ID')
             )
             ->where('a.IDUNIT', $id_unit)
+            ->where('a.ACTIVE', '1')
             ->whereBetween(DB::raw('CAST(c.TANGGAL AS date)'), [$startDate, $endDate])
             ->where('a.KET_LAYANAN', $ketLayanan)
             ->select(
@@ -218,6 +219,7 @@ class MedicationRequestController extends Controller
         }
     }
 
+    //dev gak dipake
     public function sendMedicationRequest(Request $request)
     {
         try {
@@ -291,8 +293,14 @@ class MedicationRequestController extends Controller
                 ], 400);
             }
 
+            $id_unit = Session::get('id_unit_simrs', '001');
+            if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+                $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+            } else {
+                $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+            }
+
             $accessToken = $tokenData->access_token;
-            $orgId = '266bf013-b70b-4dc2-b934-40858a5658cc'; // organization ID (sandbox)
             $client = new \GuzzleHttp\Client();
 
             $results = [];
@@ -691,7 +699,6 @@ class MedicationRequestController extends Controller
         $id_unit = Session::get('id_unit', '001');
         if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
             $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
-
         } else {
             $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }

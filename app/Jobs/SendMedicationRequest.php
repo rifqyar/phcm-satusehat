@@ -86,22 +86,33 @@ class SendMedicationRequest implements ShouldQueue
             $httpStatus = $response->getStatusCode();
         } catch (\GuzzleHttp\Exception\RequestException $e) {
 
-            $body = null;
             $status = null;
+            $body   = null;
 
             if ($e->hasResponse()) {
                 $status = $e->getResponse()->getStatusCode();
                 $body   = (string) $e->getResponse()->getBody();
             }
 
+            $message = 'SATUSEHAT MedicationRequest failed. ';
+
+            if ($status !== null) {
+                $message .= 'HTTP=' . $status . ' ';
+            }
+
+            if (!empty($body)) {
+                $message .= 'BODY=' . $body;
+            } else {
+                $message .= 'ERROR=' . $e->getMessage();
+            }
+
             throw new \RuntimeException(
-                'SATUSEHAT MedicationRequest failed. '
-                . 'HTTP=' . $status . ' '
-                . 'BODY=' . $body,
+                $message,
                 $status ?? 0,
                 $e
             );
         }
+
 
         // =======================
         // LOGGING
@@ -169,7 +180,7 @@ class SendMedicationRequest implements ShouldQueue
 
         // Save failed log
         DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert([
-            'LOG_TYPE' => 'MedicationRequest',
+            'LOG_TYPE' => $item['FROM'] ?? 'MedicationRequest',
             'LOCAL_ID' => $idTrans,
             'KFA_CODE' => $item['KD_BRG_KFA'] ?? null,
             'NAMA_OBAT' => $item['NAMABRG_KFA'] ?? null,
@@ -188,6 +199,7 @@ class SendMedicationRequest implements ShouldQueue
                 JSON_UNESCAPED_UNICODE,
             ),
             'CREATED_AT' => now(),
+            'PAYLOAD' => $this->payload,
         ]);
     }
 
