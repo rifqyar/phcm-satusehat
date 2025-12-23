@@ -22,7 +22,7 @@ class DispatchController extends Controller
             'urls' => $urls
         ]);
 
-        DispatchCIRequest::dispatch($payload, $urls);
+        DispatchCIRequest::dispatch($payload, $urls)->onQueue('incoming');
 
         return response()->json([
             'status' => 'queued'

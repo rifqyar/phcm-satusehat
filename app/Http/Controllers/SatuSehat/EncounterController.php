@@ -559,7 +559,7 @@ class EncounterController extends Controller
         $resp = null;
         foreach ($request->selected_ids as $selected) {
             $param = $selected['param'];
-            SendEncounter::dispatch($param);
+            SendEncounter::dispatch($param)->onQueue('encounter');
             // $this->sendSatuSehat(base64_encode($param));
         }
 
@@ -643,10 +643,10 @@ class EncounterController extends Controller
 
         if (!$encounterId) {
             // Kirim data baru jika encounter belum ada
-            SendEncounter::dispatch($paramSatuSehat);
+            SendEncounter::dispatch($paramSatuSehat)->onQueue('encounter');
         } else {
             // resend jika data sudah ada
-            SendEncounter::dispatch($paramSatuSehat, true);
+            SendEncounter::dispatch($paramSatuSehat, true)->onQueue('encounter');
         }
 
         // return response()->json([

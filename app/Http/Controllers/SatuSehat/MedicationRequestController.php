@@ -50,26 +50,26 @@ class MedicationRequestController extends Controller
             ->leftJoin("$kunjunganTable as c", 'a.KARCIS', '=', 'c.ID_TRANSAKSI')
             ->leftJoin(DB::raw("
                 (
-                    SELECT 
+                    SELECT
                         ol.ID_TRANS,
-                        CASE 
-                            WHEN COUNT(CASE WHEN kfa.KD_BRG_KFA IS NULL THEN 1 END) > 0 
+                        CASE
+                            WHEN COUNT(CASE WHEN kfa.KD_BRG_KFA IS NULL THEN 1 END) > 0
                             THEN '000'
                             ELSE '100'
                         END AS STATUS_MAPPING
                     FROM SIRS_PHCM.dbo.IF_TRANS_OL ol
-                    LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA kfa 
+                    LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA kfa
                         ON ol.KDBRG_CENTRA = kfa.KDBRG_CENTRA
                     GROUP BY ol.ID_TRANS
                 ) as d
             "), 'd.ID_TRANS', '=', 'a.ID_TRANS')
             ->leftJoin(DB::raw("
                 (
-                    SELECT 
+                    SELECT
                         LOCAL_ID,
                         MAX(ID) AS MAX_ID
                     FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
-                    WHERE LOG_TYPE = 'MedicationRequest' 
+                    WHERE LOG_TYPE = 'MedicationRequest'
                     AND STATUS = 'success'
                     GROUP BY LOCAL_ID
                 ) AS log_latest
@@ -92,7 +92,7 @@ class MedicationRequestController extends Controller
                 DB::raw('c.NAMA_PASIEN AS PASIEN'),
                 DB::raw('c.DOKTER AS DOKTER'),
                 DB::raw("
-                    CASE 
+                    CASE
                         WHEN SSM.ID IS NOT NULL THEN '200'
                         ELSE d.STATUS_MAPPING
                     END AS STATUS_MAPPING
@@ -106,7 +106,7 @@ class MedicationRequestController extends Controller
 
         $sentCount = (clone $query)
             ->whereRaw("
-            CASE 
+            CASE
                 WHEN SSM.ID IS NOT NULL THEN '200'
                 ELSE d.STATUS_MAPPING
             END = '200'
@@ -232,16 +232,16 @@ class MedicationRequestController extends Controller
             }
 
             $data = DB::select("
-            SELECT 
-                H.ID_TRANS, 
-                MT.FHIR_ID AS medicationReference, 
-                MT.NAMABRG_KFA, 
-                MT.KD_BRG_KFA, 
+            SELECT
+                H.ID_TRANS,
+                MT.FHIR_ID AS medicationReference,
+                MT.NAMABRG_KFA,
+                MT.KD_BRG_KFA,
                 MT.IS_COMPOUND,
-                B.id_satusehat_encounter, 
-                P.idpx AS ID_PASIEN, 
-                P.nama AS PASIEN, 
-                N.idnakes AS ID_NAKES, 
+                B.id_satusehat_encounter,
+                P.idpx AS ID_PASIEN,
+                P.nama AS PASIEN,
+                N.idnakes AS ID_NAKES,
                 N.nama AS NAKES
             FROM SIRS_PHCM.dbo.RJ_KARCIS A
             INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA AS B ON A.KARCIS = B.karcis
@@ -568,7 +568,7 @@ class MedicationRequestController extends Controller
                                     'id_satusehat_encounter' => $payloadResult['payload']['encounter']['reference'] ?? null,
                                 ]
                             ]
-                        );
+                        )->onQueue('MedicationRequest');
                     }
                 } else {
                     // decode message (bisa jadi JSON string dari FHIR)
@@ -582,7 +582,7 @@ class MedicationRequestController extends Controller
                         // echo $idTrans.$kdbrg; die();
                         $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg);
 
-                        // echo json_encode($payloadResult); die();    
+                        // echo json_encode($payloadResult); die();
                         $rowResult['status'] = $payloadResult['status'] ?? 'error';
                         $rowResult['message'] = $payloadResult['message'] ?? null;
                         $rowResult['idTrans'] = $payloadResult['idTrans'] ?? null;
@@ -608,7 +608,7 @@ class MedicationRequestController extends Controller
                                         'id_satusehat_encounter' => $payloadResult['payload']['encounter']['reference'] ?? null,
                                     ],
                                 ]
-                            );
+                            )->onQueue('MedicationRequest');
                         }
 
                     } else {
@@ -665,17 +665,17 @@ class MedicationRequestController extends Controller
     {
         try {
             $data = DB::select("
-            SELECT 
-                H.ID_TRANS, 
-                MT.FHIR_ID AS medicationReference, 
+            SELECT
+                H.ID_TRANS,
+                MT.FHIR_ID AS medicationReference,
                 T.ID as 'fl_racik',
-                MT.NAMABRG_KFA, 
-                MT.KD_BRG_KFA, 
+                MT.NAMABRG_KFA,
+                MT.KD_BRG_KFA,
                 MT.IS_COMPOUND,
-                B.id_satusehat_encounter, 
-                P.idpx AS ID_PASIEN, 
-                P.nama AS PASIEN, 
-                N.idnakes AS ID_NAKES, 
+                B.id_satusehat_encounter,
+                P.idpx AS ID_PASIEN,
+                P.nama AS PASIEN,
+                N.idnakes AS ID_NAKES,
                 N.nama AS NAKES
             FROM SIRS_PHCM.dbo.RJ_KARCIS A
             INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA AS B ON A.KARCIS = B.karcis
@@ -695,7 +695,7 @@ class MedicationRequestController extends Controller
         } else {
             $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
-        
+
             foreach ($data as $index => $item) {
                 $uniqueId = date('YmdHis') . '-' . str_pad($index + 1, 3, '0', STR_PAD_LEFT);
 

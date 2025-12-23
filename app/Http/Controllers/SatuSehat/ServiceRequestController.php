@@ -923,7 +923,7 @@ class ServiceRequestController extends Controller
                     }
 
                     // Dispatch job to queue for background processing
-                    SendServiceRequestJob::dispatch($param);
+                    SendServiceRequestJob::dispatch($param)->onQueue('ServiceRequest');
                     $dispatched++;
                 } catch (Exception $e) {
                     $errors[] = "Failed to dispatch job for param: " . $e->getMessage();
@@ -1064,7 +1064,7 @@ class ServiceRequestController extends Controller
             $kdDokterSS = LZString::compressToEncodedURIComponent($dataKunjungan->idnakes);
             $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcis . '+' . $request->klinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
 
-            SendServiceRequestJob::dispatch($paramSatuSehat);
+            SendServiceRequestJob::dispatch($paramSatuSehat)->onQueue('ServiceRequest');
 
             return response()->json([
                 'status' => JsonResponse::HTTP_OK,

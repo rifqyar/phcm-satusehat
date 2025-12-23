@@ -697,7 +697,7 @@ class ObservasiController extends Controller
                     $url = 'Observation/' . ($dataObs ? $dataObs->ID_SATUSEHAT_OBSERVASI : '');
                 }
 
-                SendObservationToSATUSEHAT::dispatch($obs['payload'], $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $obs['type'], $resend);
+                SendObservationToSATUSEHAT::dispatch($obs['payload'], $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $obs['type'], $resend)->onQueue('observasi');
             }
 
             return response()->json([
@@ -953,7 +953,7 @@ class ObservasiController extends Controller
                     $url .= '/' . ($dataObs ? $dataObs->ID_SATUSEHAT_OBSERVASI : '');
                 }
 
-                SendObservationToSATUSEHAT::dispatch($obs['payload'], $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $obs['type'], $resend);
+                SendObservationToSATUSEHAT::dispatch($obs['payload'], $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $obs['type'], $resend)->onQueue('observasi');
                 $url = 'Observation';
             }
 

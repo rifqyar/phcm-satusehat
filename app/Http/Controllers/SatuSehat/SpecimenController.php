@@ -710,7 +710,7 @@ class SpecimenController extends Controller
                     $encodedParam = base64_encode($param);
 
                     // Dispatch job to queue for background processing
-                    SendSpecimenJob::dispatch($encodedParam);
+                    SendSpecimenJob::dispatch($encodedParam)->onQueue('specimen');
                     $dispatched++;
                 } catch (Exception $e) {
                     $failed++;
@@ -805,7 +805,9 @@ class SpecimenController extends Controller
         $kdDokterSS = LZString::compressToEncodedURIComponent($lab->idnakes);
         $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcisAsal . '+' . $karcisRujukan . '+' . $request->klinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
 
-        self::sendSatuSehat(base64_encode($paramSatuSehat));
+        $encodedParam = base64_encode($paramSatuSehat);
+        SendSpecimenJob::dispatch($encodedParam)->onQueue('specimen');
+        // self::sendSatuSehat(base64_encode($paramSatuSehat));
     }
 
     /**

@@ -30,6 +30,7 @@ class DispatchCIRequest implements ShouldQueue
     {
         $this->param = $param;
         $this->url = $url;
+        $this->onQueue('incoming');
     }
 
     /**

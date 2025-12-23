@@ -350,7 +350,7 @@ class MedicationDispenseController extends Controller
             } else {
                 $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
             }
-            
+
             $client = new \GuzzleHttp\Client();
             $results = [];
 
@@ -673,7 +673,7 @@ class MedicationDispenseController extends Controller
                 SendMedicationDispense::dispatch($payload, [
                     'idTrans' => $idTrans,
                     'item' => $item,
-                ]);
+                ])->onQueue('MedicationDispense');
 
                 $summary[] = [
                     'medication' => $item->medicationReference_display,
@@ -1056,7 +1056,7 @@ class MedicationDispenseController extends Controller
                 'id_satusehat_encounter' => $item->id_satusehat_encounter,
                 'FROM' => 'MedicationRequestFromDispense',
             ],
-        ]);
+        ])->onQueue('MedicationRequest');
 
         return ['error' => false];
     }

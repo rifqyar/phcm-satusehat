@@ -48,6 +48,7 @@ class SendObservationToSATUSEHAT implements ShouldQueue
         $this->token = $token;
         $this->type = $type;
         $this->resend = $resend ?? false;
+        $this->onQueue('observasi');
     }
 
     /**

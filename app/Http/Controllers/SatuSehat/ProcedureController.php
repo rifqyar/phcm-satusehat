@@ -940,20 +940,20 @@ class ProcedureController extends Controller
                 switch ($type) {
                     case 'anamnese':
                         $payloadPemeriksaanFisik = $this->definePayloadAnamnese($arrParam, $patient, $request, $dataErm, $resend);
-                        count($payloadPemeriksaanFisik['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadPemeriksaanFisik, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'anamnese');
+                        count($payloadPemeriksaanFisik['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadPemeriksaanFisik, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'anamnese')->onQueue('procedure');
                         break;
                     case 'lab':
                         $payloadLab = $this->definePayloadLab($arrParam, $patient, $request, $dataErm, $resend);
-                        count($payloadLab['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadLab, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'lab');
+                        count($payloadLab['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadLab, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'lab')->onQueue('procedure');
                         break;
                     case 'rad':
                         $payloadRad = $this->definePayloadRad($arrParam, $patient, $request, $dataErm, $resend);
-                        count($payloadRad['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadRad, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'rad');
+                        count($payloadRad['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadRad, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'rad')->onQueue('procedure');
                         $url = 'Procedure';
                         break;
                     case 'operasi':
                         $payloadOP = $this->definePayloadOp($arrParam, $patient, $request, $dataErm, $resend);
-                        count($payloadOP['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadOP, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'operasi');
+                        count($payloadOP['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadOP, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'operasi')->onQueue('procedure');
                         $url = 'Procedure';
                         break;
                     default:
@@ -961,10 +961,10 @@ class ProcedureController extends Controller
                         $payloadLab = $this->definePayloadLab($arrParam, $patient, $request, $dataErm, $resend);
                         $payloadRad = $this->definePayloadRad($arrParam, $patient, $request, $dataErm, $resend);
                         $payloadOP = $this->definePayloadOp($arrParam, $patient, $request, $dataErm, $resend);
-                        count($payloadPemeriksaanFisik['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadPemeriksaanFisik, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'anamnese');
-                        count($payloadLab['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadLab, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'lab');
-                        count($payloadRad['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadRad, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'rad');
-                        count($payloadOP['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadOP, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'operasi');
+                        count($payloadPemeriksaanFisik['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadPemeriksaanFisik, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'anamnese')->onQueue('procedure');
+                        count($payloadLab['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadLab, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'lab')->onQueue('procedure');
+                        count($payloadRad['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadRad, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'rad')->onQueue('procedure');
+                        count($payloadOP['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadOP, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, 'operasi')->onQueue('procedure');
                         break;
                 }
             } else {
@@ -972,23 +972,23 @@ class ProcedureController extends Controller
                     case 'anamnese':
                         $payloadPemeriksaanFisik = $this->definePayloadAnamnese($arrParam, $patient, $request, $dataErm, $resend);
                         $urlAnamnse = 'Procedure/' . $payloadPemeriksaanFisik['currProcedure'];
-                        count($payloadPemeriksaanFisik['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadPemeriksaanFisik, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlAnamnse, $token, 'anamnese', $resend);
+                        count($payloadPemeriksaanFisik['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadPemeriksaanFisik, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlAnamnse, $token, 'anamnese', $resend)->onQueue('procedure');
                         break;
                     case 'lab':
                         $payloadLab = $this->definePayloadLab($arrParam, $patient, $request, $dataErm, $resend);
                         $urlLab = 'Procedure/' . $payloadLab['currProcedure'];
-                        count($payloadLab['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadLab, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlLab, $token, 'lab', $resend);
+                        count($payloadLab['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadLab, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlLab, $token, 'lab', $resend)->onQueue('procedure');
                         break;
                     case 'rad':
                         $payloadRad = $this->definePayloadRad($arrParam, $patient, $request, $dataErm, $resend);
                         $urlRad = 'Procedure/' . $payloadRad['currProcedure'];
-                        count($payloadRad['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadRad, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlRad, $token, 'rad', $resend);
+                        count($payloadRad['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadRad, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlRad, $token, 'rad', $resend)->onQueue('procedure');
                         $url = 'Procedure';
                         break;
                     case 'operasi':
                         $payloadOP = $this->definePayloadOp($arrParam, $patient, $request, $dataErm, $resend);
                         $urlOp = 'Procedure/' . $payloadOP['currProcedure'];
-                        count($payloadOP['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadOP, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlOp, $token, 'operasi', $resend);
+                        count($payloadOP['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadOP, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlOp, $token, 'operasi', $resend)->onQueue('procedure');
                         $url = 'Procedure';
                         break;
                     default:
@@ -1001,10 +1001,10 @@ class ProcedureController extends Controller
                         $urlLab = 'Procedure/' . $payloadLab['currProcedure'];
                         $urlRad = 'Procedure/' . $payloadRad['currProcedure'];
                         $urlOp = 'Procedure/' . $payloadOP['currProcedure'];
-                        count($payloadPemeriksaanFisik['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadPemeriksaanFisik, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlAnamnse, $token, 'anamnese', $resend);
-                        count($payloadLab['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadLab, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlLab, $token, 'lab', $resend);
-                        count($payloadRad['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadRad, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlRad, $token, 'rad', $resend);
-                        count($payloadOP['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadOP, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlOp, $token, 'operasi', $resend);
+                        count($payloadPemeriksaanFisik['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadPemeriksaanFisik, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlAnamnse, $token, 'anamnese', $resend)->onQueue('procedure');
+                        count($payloadLab['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadLab, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlLab, $token, 'lab', $resend)->onQueue('procedure');
+                        count($payloadRad['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadRad, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlRad, $token, 'rad', $resend)->onQueue('procedure');
+                        count($payloadOP['payload']) > 0 && SendProcedureToSATUSEHAT::dispatch($payloadOP, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $urlOp, $token, 'operasi', $resend)->onQueue('procedure');
                         break;
                 }
             }

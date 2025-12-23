@@ -550,7 +550,7 @@ class AllergyIntoleranceController extends Controller
         $resp = null;
         foreach ($request->selected_ids as $selected) {
             $param = $selected['param'];
-            SendAllergyIntolerance::dispatch($param);
+            SendAllergyIntolerance::dispatch($param)->onQueue('AllergyIntolerance');
         }
 
         return response()->json([
@@ -628,10 +628,10 @@ class AllergyIntoleranceController extends Controller
 
             if (!$encounterId) {
                 // Kirim data baru jika encounter belum ada
-                SendAllergyIntolerance::dispatch($paramSatuSehat);
+                SendAllergyIntolerance::dispatch($paramSatuSehat)->onQueue('AllergyIntolerance');
             } else {
                 // resend jika data sudah ada
-                SendAllergyIntolerance::dispatch($paramSatuSehat, true);
+                SendAllergyIntolerance::dispatch($paramSatuSehat, true)->onQueue('AllergyIntollerance');
             }
 
             return response()->json([

@@ -31,6 +31,7 @@ class SendMedicationDispense implements ShouldQueue
     {
         $this->payload = $payload;
         $this->meta = $meta;
+        $this->onQueue('MedicationDispense');
     }
 
     /**

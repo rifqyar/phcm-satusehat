@@ -27,6 +27,7 @@ class SendSpecimenJob implements ShouldQueue
     public function __construct($param)
     {
         $this->param = $param;
+        $this->onQueue('specimen');
     }
 
     /**
