@@ -423,7 +423,9 @@ class EncounterController extends Controller
             ];
 
             if ($resend) {
-                $encounterId = SATUSEHAT_NOTA::where('karcis', (int)$idTransaksi)
+                $encounterId = SATUSEHAT_NOTA::where('karcis', $idTransaksi)
+                    ->where('no_peserta', $dataKarcis->NO_PESERTA)
+                    ->where('idunit', $id_unit)
                     ->select('*')
                     ->first();
                 $payload['id'] = $encounterId->id_satusehat_encounter;
@@ -463,22 +465,45 @@ class EncounterController extends Controller
                     $jam_progress = $historyTime['jam_progress'];
                     $jam_finish = $historyTime['jam_finish'];
 
-                    $dataKarcis = DB::table('RJ_KARCIS as rk')
-                        ->leftJoin('RJ_KARCIS_BAYAR as rkb', function ($join) {
-                            $join->on('rk.KARCIS', '=', 'rkb.KARCIS')
-                                ->on('rk.IDUNIT', '=', 'rkb.IDUNIT')
-                                ->whereRaw('ISNULL(rkb.STBTL,0) = 0');
-                        })
-                        ->select('rk.NO_PESERTA', 'rk.KARCIS', 'rk.NOREG', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU', 'rkb.NOTA')
+                    // $dataKarcis = DB::table('RJ_KARCIS as rk')
+                    //     ->leftJoin('RJ_KARCIS_BAYAR as rkb', function ($join) {
+                    //         $join->on('rk.KARCIS', '=', 'rkb.KARCIS')
+                    //             ->on('rk.IDUNIT', '=', 'rkb.IDUNIT')
+                    //             ->whereRaw('ISNULL(rkb.STBTL,0) = 0');
+                    //     })
+                    //     ->select('rk.NO_PESERTA', 'rk.KARCIS', 'rk.NOREG', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU', 'rkb.NOTA')
+                    //     ->where(function ($query) use ($arrParam) {
+                    //         if ($arrParam['jenis_perawatan'] == 'RI') {
+                    //             $query->where('rk.NOREG', $arrParam['id_transaksi']);
+                    //         } else {
+                    //             $query->where('rk.KARCIS', $arrParam['id_transaksi']);
+                    //         }
+                    //     })
+                    //     ->where('rk.IDUNIT', $id_unit)
+                    //     ->orderBy('rk.TGL', 'DESC')
+                    //     ->first();
+                    $dataKarcis = Karcis::leftJoin('RJ_KARCIS_BAYAR AS KarcisBayar', function ($query) use ($arrParam, $id_unit) {
+                        $query->on('RJ_KARCIS.KARCIS', '=', 'KarcisBayar.KARCIS')
+                            ->on('RJ_KARCIS.IDUNIT', '=', 'KarcisBayar.IDUNIT')
+                            ->whereRaw('ISNULL(KarcisBayar.STBTL,0) = 0')
+                            ->where('KarcisBayar.IDUNIT', $id_unit); // pindahkan ke sini
+                    })
+                        ->with([
+                            'ermkunjung' => function ($query) use ($arrParam, $id_unit) {
+                                $query->select('KARCIS', 'NO_KUNJUNG', 'CRTDT AS WAKTU_ERM')
+                                    ->where('IDUNIT', $id_unit);
+                            }
+                        ])
+                        ->with('inap')
+                        ->select('RJ_KARCIS.NOREG', 'RJ_KARCIS.KARCIS', 'RJ_KARCIS.KBUKU', 'RJ_KARCIS.NO_PESERTA', 'RJ_KARCIS.KLINIK', 'RJ_KARCIS.KDDOK', 'RJ_KARCIS.TGL_VERIF_KARCIS', 'RJ_KARCIS.CRTDT AS WAKTU_BUAT_KARCIS', 'KarcisBayar.TGL_CETAK AS WAKTU_NOTA', 'KarcisBayar.NOTA', 'RJ_KARCIS.TGL')
                         ->where(function ($query) use ($arrParam) {
                             if ($arrParam['jenis_perawatan'] == 'RI') {
-                                $query->where('rk.NOREG', $arrParam['id_transaksi']);
+                                $query->where('RJ_KARCIS.NOREG', $arrParam['id_transaksi']);
                             } else {
-                                $query->where('rk.KARCIS', $arrParam['id_transaksi']);
+                                $query->where('RJ_KARCIS.KARCIS', $arrParam['id_transaksi']);
                             }
                         })
-                        ->where('rk.IDUNIT', $id_unit)
-                        ->orderBy('rk.TGL', 'DESC')
+                        ->where('RJ_KARCIS.IDUNIT', $id_unit)
                         ->first();
 
                     $dataPeserta = DB::table('RIRJ_MASTERPX')
