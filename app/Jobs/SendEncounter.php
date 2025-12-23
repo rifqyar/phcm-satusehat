@@ -29,6 +29,7 @@ class SendEncounter implements ShouldQueue
     {
         $this->param = $param;
         $this->resend = $resend;
+        $this->onQueue('encounter');
     }
 
     /**

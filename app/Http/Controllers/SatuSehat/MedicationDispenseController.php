@@ -23,7 +23,7 @@ class MedicationDispenseController extends Controller
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
         $jenis = $request->input('jenis'); // ri / rj
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
 
         if (!$startDate || !$endDate) {
             $endDate = now();
@@ -344,7 +344,7 @@ class MedicationDispenseController extends Controller
             }
 
             $accessToken = $tokenData->access_token;
-            $id_unit = Session::get('id_unit_simrs', '001');
+            $id_unit = Session::get('id_unit', '001');
             if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
                 $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
             } else {
@@ -672,7 +672,7 @@ class MedicationDispenseController extends Controller
                 SendMedicationDispense::dispatch($payload, [
                     'idTrans' => $idTrans,
                     'item' => $item,
-                ]);
+                ])->onQueue('MedicationDispense');
 
                 $summary[] = [
                     'medication' => $item->medicationReference_display,
@@ -1071,7 +1071,7 @@ class MedicationDispenseController extends Controller
                 'id_satusehat_encounter' => $item->id_satusehat_encounter,
                 'FROM' => 'MedicationRequestFromDispense',
             ],
-        ]);
+        ])->onQueue('MedicationRequest');
 
         return ['error' => false];
     }

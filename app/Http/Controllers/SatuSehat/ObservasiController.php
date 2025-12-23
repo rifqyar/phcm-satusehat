@@ -138,7 +138,7 @@ class ObservasiController extends Controller
     {
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
             $tgl_awal  = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
@@ -531,7 +531,7 @@ class ObservasiController extends Controller
             $val = $partsParam[1];
             $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
         }
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
 
         if ($arrParam['jenis_perawatan'] == 'RAWAT_INAP') {
             return $this->sendObservationRIToSATUSEHAT($arrParam, $id_unit, $resend);
@@ -697,7 +697,7 @@ class ObservasiController extends Controller
                     $url = 'Observation/' . ($dataObs ? $dataObs->ID_SATUSEHAT_OBSERVASI : '');
                 }
 
-                SendObservationToSATUSEHAT::dispatch($obs['payload'], $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $obs['type'], $resend);
+                SendObservationToSATUSEHAT::dispatch($obs['payload'], $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $obs['type'], $resend)->onQueue('observasi');
             }
 
             return response()->json([
@@ -953,7 +953,7 @@ class ObservasiController extends Controller
                     $url .= '/' . ($dataObs ? $dataObs->ID_SATUSEHAT_OBSERVASI : '');
                 }
 
-                SendObservationToSATUSEHAT::dispatch($obs['payload'], $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $obs['type'], $resend);
+                SendObservationToSATUSEHAT::dispatch($obs['payload'], $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $obs['type'], $resend)->onQueue('observasi');
                 $url = 'Observation';
             }
 

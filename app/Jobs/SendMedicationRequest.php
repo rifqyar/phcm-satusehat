@@ -30,6 +30,7 @@ class SendMedicationRequest implements ShouldQueue
     {
         $this->payload = $payload;
         $this->meta = $meta;
+        $this->onQueue('MedicationRequest');
     }
 
     /**
@@ -47,7 +48,7 @@ class SendMedicationRequest implements ShouldQueue
             throw new \Exception('Access token tidak tersedia di database.');
         }
         //setup organisasi
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
         if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
             //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;

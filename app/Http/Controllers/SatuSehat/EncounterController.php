@@ -34,7 +34,7 @@ class EncounterController extends Controller
     {
         $startDate = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
         $endDate   = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
 
         $rj = DB::table('v_kunjungan_rj as v')
             ->whereBetween('TANGGAL', [$startDate, $endDate])
@@ -75,7 +75,7 @@ class EncounterController extends Controller
     {
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
             $tgl_awal  = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
@@ -320,7 +320,7 @@ class EncounterController extends Controller
         $kdPasienSS = $arrParam['kd_pasien_ss'];
         $kdNakesSS = $arrParam['kd_nakes_ss'];
         $kdLokasiSS = $arrParam['kd_lokasi_ss'];
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
 
         $dataKarcis = Karcis::leftJoin('RJ_KARCIS_BAYAR AS KarcisBayar', function ($query) use ($arrParam, $id_unit) {
             $query->on('RJ_KARCIS.KARCIS', '=', 'KarcisBayar.KARCIS')
@@ -559,7 +559,7 @@ class EncounterController extends Controller
         $resp = null;
         foreach ($request->selected_ids as $selected) {
             $param = $selected['param'];
-            SendEncounter::dispatch($param);
+            SendEncounter::dispatch($param)->onQueue('encounter');
             // $this->sendSatuSehat(base64_encode($param));
         }
 
@@ -580,7 +580,7 @@ class EncounterController extends Controller
 
     public function receiveSatuSehat(Request $request)
     {
-        $id_unit = Session::get('id_unit_simrs', $request->input('id_unit'));
+        $id_unit = Session::get('id_unit', $request->input('id_unit'));
         $this->logInfo('encounter', 'Receive Encounter dari SIMRS', [
             'request' => $request->all(),
             'karcis' => $request->karcis,
@@ -643,10 +643,10 @@ class EncounterController extends Controller
 
         if (!$encounterId) {
             // Kirim data baru jika encounter belum ada
-            SendEncounter::dispatch($paramSatuSehat);
+            SendEncounter::dispatch($paramSatuSehat)->onQueue('encounter');
         } else {
             // resend jika data sudah ada
-            SendEncounter::dispatch($paramSatuSehat, true);
+            SendEncounter::dispatch($paramSatuSehat, true)->onQueue('encounter');
         }
 
         // return response()->json([

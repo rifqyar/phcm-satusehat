@@ -226,7 +226,7 @@ class ServiceRequestController extends Controller
     {
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
         // dd($request->all());
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
@@ -635,7 +635,7 @@ class ServiceRequestController extends Controller
             $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[3]);
             $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[4]);
             $kdDokterSS = LZString::decompressFromEncodedURIComponent($parts[5]);
-            $id_unit = Session::get('id_unit_simrs', '001');
+            $id_unit = Session::get('id_unit', '001');
 
             // Validate that all required parameters were decompressed successfully
             if (
@@ -923,7 +923,7 @@ class ServiceRequestController extends Controller
                     }
 
                     // Dispatch job to queue for background processing
-                    SendServiceRequestJob::dispatch($param);
+                    SendServiceRequestJob::dispatch($param)->onQueue('ServiceRequest');
                     $dispatched++;
                 } catch (Exception $e) {
                     $errors[] = "Failed to dispatch job for param: " . $e->getMessage();
@@ -974,7 +974,7 @@ class ServiceRequestController extends Controller
 
     public function receiveSatuSehat(Request $request)
     {
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
 
         $dataRj = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.v_kunjungan_rj as rj')
@@ -1064,7 +1064,7 @@ class ServiceRequestController extends Controller
             $kdDokterSS = LZString::compressToEncodedURIComponent($dataKunjungan->idnakes);
             $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcis . '+' . $request->klinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
 
-            SendServiceRequestJob::dispatch($paramSatuSehat);
+            SendServiceRequestJob::dispatch($paramSatuSehat)->onQueue('ServiceRequest');
 
             return response()->json([
                 'status' => JsonResponse::HTTP_OK,

@@ -47,6 +47,7 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
         $this->token = $token;
         $this->type = $type;
         $this->resend = $resend;
+        $this->onQueue('procedure');
     }
 
     /**

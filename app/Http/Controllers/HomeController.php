@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Session;
 
 class HomeController extends Controller
 {
@@ -17,6 +18,7 @@ class HomeController extends Controller
      */
     public function index()
     {
+        $idUnit = Session::get('id_unit', '001');
         $satuSehatMenu = [
             [
                 'title' => 'Kunjungan Pasien',
@@ -138,7 +140,7 @@ class HomeController extends Controller
 
         if ($now->lessThan($earlyExpire)) {
             // Masih valid (dengan buffer 1 jam)
-            
+
             return [
                 'expired_in' => $expiredAt->toDateTimeString(),
                 'expired_buffer' => $earlyExpire->toDateTimeString(),

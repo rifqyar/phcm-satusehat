@@ -215,7 +215,7 @@ class DiagnosticReportController extends Controller
 
     public function sendSatuSehat($idDokumenPx)
     {
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
         $status = 'final';
 
         $dokumen_px =  DB::connection('sqlsrv')

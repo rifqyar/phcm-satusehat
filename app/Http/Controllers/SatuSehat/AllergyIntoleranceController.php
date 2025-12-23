@@ -91,7 +91,7 @@ class AllergyIntoleranceController extends Controller
     {
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
             $tgl_awal  = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
@@ -339,7 +339,7 @@ class AllergyIntoleranceController extends Controller
             $val = $partsParam[1];
             $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
         }
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
 
         $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
             ->where('idpx', $arrParam['id_pasien_ss'])
@@ -550,7 +550,7 @@ class AllergyIntoleranceController extends Controller
         $resp = null;
         foreach ($request->selected_ids as $selected) {
             $param = $selected['param'];
-            SendAllergyIntolerance::dispatch($param);
+            SendAllergyIntolerance::dispatch($param)->onQueue('AllergyIntolerance');
         }
 
         return response()->json([
@@ -628,10 +628,10 @@ class AllergyIntoleranceController extends Controller
 
             if (!$encounterId) {
                 // Kirim data baru jika encounter belum ada
-                SendAllergyIntolerance::dispatch($paramSatuSehat);
+                SendAllergyIntolerance::dispatch($paramSatuSehat)->onQueue('AllergyIntolerance');
             } else {
                 // resend jika data sudah ada
-                SendAllergyIntolerance::dispatch($paramSatuSehat, true);
+                SendAllergyIntolerance::dispatch($paramSatuSehat, true)->onQueue('AllergyIntollerance');
             }
 
             return response()->json([
