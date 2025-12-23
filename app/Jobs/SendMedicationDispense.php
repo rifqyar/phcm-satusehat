@@ -48,23 +48,17 @@ class SendMedicationDispense implements ShouldQueue
             throw new \Exception("Access token tidak tersedia di database.");
         }
         //setup organisasi
-        $id_unit = Session::get('id_unit_simrs', '001');
         if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
-            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
-
         } else {
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
-            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
         }
         // setup baseurl
         $baseurl = '';
         if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
-            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
         } else {
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
-            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
         }
         //
         $url = 'MedicationDispense';
@@ -73,37 +67,65 @@ class SendMedicationDispense implements ShouldQueue
             $client = new \GuzzleHttp\Client();
 
             $baseuri = rtrim($baseurl, '/') . '/' . ltrim($url, '/');
-            $response = $client->post(
-                $baseuri,
-                [
-                    'headers' => [
-                        'Authorization' => 'Bearer ' . $accessToken,
-                        'Content-Type' => 'application/json'
-                    ],
-                    'body' => json_encode($payload),
-                    'verify' => false,
-                    'timeout' => 30
-                ]
-            );
 
-            $responseBody = json_decode($response->getBody(), true);
+            $response = $client->post($baseuri, [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Content-Type'  => 'application/json',
+                ],
+                'body'    => json_encode($payload),
+                'verify'  => false,
+                'timeout' => 30,
+            ]);
+
+            // =======================
+            // RESPONSE PARSING (FIX)
+            // =======================
+            $responseBodyRaw = (string) $response->getBody();
+            $responseBody    = json_decode($responseBodyRaw, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception('Invalid JSON response from SATUSEHAT');
+            }
+
             $httpStatus = $response->getStatusCode();
         } catch (\GuzzleHttp\Exception\RequestException $e) {
-            // request ke API gagal (timeout / 500 / dns error / dsb)
-            throw $e; // lempar biar Laravel retry otomatis
+
+            $responseBody = [];
+            $httpStatus   = null;
+
+            if ($e->hasResponse()) {
+                $httpStatus = $e->getResponse()->getStatusCode();
+                $responseBodyRaw = (string) $e->getResponse()->getBody();
+                $responseBody    = json_decode($responseBodyRaw, true) ?? [];
+            }
+
+            throw new \Exception(
+                json_encode($responseBody) ?: $e->getMessage(),
+                $httpStatus ?? 0,
+                $e
+            );
         }
+
         // =======================
         // LOGGING
         // =======================
 
-        $this->logDb(json_encode($responseBody), $url, json_encode($this->payload), 'system');
+        $this->logDb(
+            json_encode($responseBody, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+            $url,
+            json_encode($this->payload),
+            'system'
+        );
 
         // =======================
-        // LOGGING DB KHUSUS MEDICATION REQUEST
+        // LOGGING DB KHUSUS MEDICATION DISPENSE
         // =======================
 
         $idTrans = $meta['idTrans'] ?? null;
-        $item = $meta['item'] ?? null;
+        $item    = $meta['item'] ?? null;
+
+        $dispenseId = $responseBody['id'] ?? null;
 
         $logData = [
             'LOG_TYPE' => 'MedicationDispense',
@@ -111,13 +133,16 @@ class SendMedicationDispense implements ShouldQueue
             'FHIR_MEDICATION_ID' => $item->medicationReference_reference ?? null,
             'NAMA_OBAT' => $item->medicationReference_display ?? '-',
             'KFA_CODE' => $item->KD_BRG_KFA ?? '-',
-            'FHIR_MEDICATION_DISPENSE_ID' => $responseBody['id'] ?? null,
+            'FHIR_MEDICATION_DISPENSE_ID' => $dispenseId,
             'FHIR_MEDICATION_REQUEST_ID' => $item->FHIR_MEDICATION_REQUEST_ID ?? null,
             'PATIENT_ID' => $item->idpx ?? null,
             'ENCOUNTER_ID' => $item->ENCOUNTER_ID ?? null,
-            'STATUS' => isset($responseBody['id']) ? 'success' : 'failed',
+            'STATUS' => !empty($dispenseId) ? 'success' : 'failed',
             'HTTP_STATUS' => $httpStatus,
-            'RESPONSE_MESSAGE' => json_encode($responseBody),
+            'RESPONSE_MESSAGE' => json_encode(
+                $responseBody,
+                JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
+            ),
             'CREATED_AT' => now(),
             'PAYLOAD' => json_encode($payload)
         ];

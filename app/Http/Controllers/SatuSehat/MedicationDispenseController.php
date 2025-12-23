@@ -350,7 +350,7 @@ class MedicationDispenseController extends Controller
             } else {
                 $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
             }
-            
+
             $client = new \GuzzleHttp\Client();
             $results = [];
 
@@ -655,7 +655,6 @@ class MedicationDispenseController extends Controller
                     continue;
                 }
 
-                // 💥 Jika belum ada MedicationRequest → skip
                 if (empty($item->FHIR_MEDICATION_REQUEST_ID)) {
                     $summary[] = [
                         'medication' => $item->medicationReference_display,
@@ -664,7 +663,7 @@ class MedicationDispenseController extends Controller
                     ];
                     continue;
 
-                    // $this->createMedicationRequestPayloadfromDispense($idTrans, $item->KDBRG_CENTRA);
+                    //$this->createMedicationRequestPayloadfromDispense1($idTrans, $item->KDBRG_CENTRA);
                 }
 
                 // 🚀 Build & queue payload
@@ -766,7 +765,13 @@ class MedicationDispenseController extends Controller
     //buat payload dispense
     private function createMedicationDispensePayload($item)
     {
-        $orgId = '266bf013-b70b-4dc2-b934-40858a5658cc'; // ID organisasi
+        $id_unit = Session::get('id_unit_simrs', '001');
+        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+            $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+        } else {
+            $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+        }
+
         $jenisCode = $item->isRacikan == 1 ? 'C' : 'NC';
         $jenisName = $item->isRacikan == 1 ? 'Compound' : 'Non-compound';
 
@@ -777,7 +782,7 @@ class MedicationDispenseController extends Controller
             ],
         ];
 
-        return [
+        $payload = [
             'resourceType' => 'MedicationDispense',
             'contained' => [
                 [
@@ -844,7 +849,7 @@ class MedicationDispenseController extends Controller
             'context' => [
                 'reference' => 'Encounter/' . $item->id_satusehat_encounter,
             ],
-            'whenPrepared' => '2023-11-13T05:35:00+00:00',
+            'whenPrepared' => now()->toIso8601String(),
             'performer' => [
                 [
                     'actor' => [
@@ -864,6 +869,10 @@ class MedicationDispenseController extends Controller
                 'wasSubstituted' => false,
             ],
         ];
+
+        // echo json_encode($payload, JSON_PRETTY_PRINT);die();
+
+        return $payload;
     }
 
     //buat dispense kirim med request
@@ -938,7 +947,14 @@ class MedicationDispenseController extends Controller
         }
 
         $item = $data[0];
-        $orgId = '266bf013-b70b-4dc2-b934-40858a5658cc';
+        $id_unit = Session::get('id_unit_simrs', '001');
+        // $id_unit = '002';
+        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+            $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+        } else {
+            $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+        }
+        //  echo 'masuk sini dan orgId = '.$orgId. ' kdbrg = '.$kdbrg; die();
 
         // Pastikan FHIR ID
         if (empty($item->medicationReference)) {
@@ -1045,7 +1061,6 @@ class MedicationDispenseController extends Controller
                 'display' => $item->NAKES,
             ],
         ];
-
         JobsSendMedicationRequest::dispatch($payload, [
             'idTrans' => $idTrans,
             'item' => [
