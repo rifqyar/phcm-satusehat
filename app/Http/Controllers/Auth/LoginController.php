@@ -83,14 +83,14 @@ class LoginController extends Controller
 
     public function loginDirect(Request $request)
     {
-        $request->merge([
-            'nipp'     => $this->_decrypt_url($request->nipp),
-            'username' => $this->_decrypt_url($request->username),
-            'password' => $this->_decrypt_url($request->password),
-            'unit' => $this->_decrypt_url($request->unit),
-        ]);
+        $data = $request->all();
+        foreach ($data as $key => $value) {
+            $data[$key] = $this->_decrypt_url($value);
+        }
 
-        return $this->login($request);
+        $sess = array($data);
+        session($sess);
+        return redirect()->route('home');
     }
 
     public static function doLogin($url, $param, $method, $authorized = '')
@@ -145,7 +145,7 @@ class LoginController extends Controller
         Session::invalidate();
         Session::flush();
         Session::regenerateToken();
-        return redirect('https://sim.phcm.co.id/phcm-satusehat/public/login');
+        return redirect(env('APP_URL'));
     }
 
     private function _decrypt_url($encryptedData)
