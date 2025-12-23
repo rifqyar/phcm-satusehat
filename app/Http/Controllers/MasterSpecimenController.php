@@ -20,7 +20,7 @@ class MasterSpecimenController extends Controller
         $errorMessage = session('error');
 
         $klinikLab = '0017';
-        $idUnit = Session::get('id_unit_simrs', '001');
+        $idUnit = Session::get('id_unit', '001');
 
         $groupsQuery = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.RJ_MGRUP_TIND as a')
@@ -70,7 +70,7 @@ class MasterSpecimenController extends Controller
     public function datatable(Request $request)
     {
         $klinikLab = '0017';
-        $idUnit = Session::get('id_unit_simrs', '001');
+        $idUnit = Session::get('id_unit', '001');
 
         $groupsQuery = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.RJ_MGRUP_TIND as a')
@@ -178,7 +178,7 @@ class MasterSpecimenController extends Controller
     public function create()
     {
         $klinikLab = '0017';
-        $idUnit = Session::get('id_unit_simrs', '001');
+        $idUnit = Session::get('id_unit', '001');
 
         // Step 1: Get all lab groups
         $groupsQuery = DB::connection('sqlsrv')

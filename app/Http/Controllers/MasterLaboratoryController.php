@@ -11,7 +11,7 @@ class MasterLaboratoryController extends Controller
     public function index(Request $request)
     {
         $klinikLab = '0017';
-        $idUnit = Session::get('id_unit_simrs', '001');
+        $idUnit = Session::get('id_unit', '001');
 
         $groupsQuery = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.RJ_MGRUP_TIND as a')
@@ -135,7 +135,7 @@ class MasterLaboratoryController extends Controller
         $id = $request->input('id');
 
         $klinikLab = '0017';
-        $idUnit = Session::get('id_unit_simrs', '001');
+        $idUnit = Session::get('id_unit', '001');
 
         $groupsQuery = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.RJ_MGRUP_TIND as a')

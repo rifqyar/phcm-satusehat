@@ -18,6 +18,8 @@ class HomeController extends Controller
      */
     public function index()
     {
+        $idUnit = Session::get('id_unit', '001');
+        dd($idUnit);
         $satuSehatMenu = [
             [
                 'title' => 'Kunjungan Pasien',

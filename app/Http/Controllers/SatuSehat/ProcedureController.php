@@ -229,7 +229,7 @@ class ProcedureController extends Controller
     {
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
             $tgl_awal  = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
@@ -844,7 +844,7 @@ class ProcedureController extends Controller
             $val = $partsParam[1];
             $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
         }
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
 
         /**
          * TO DO
@@ -1934,7 +1934,7 @@ class ProcedureController extends Controller
             if ($validator->fails()) {
                 throw new Exception($validator->errors()->first());
             }
-            $id_unit = Session::get('id_unit_simrs', '001');
+            $id_unit = Session::get('id_unit', '001');
 
             $params = LZString::decompressFromEncodedURIComponent($request->param);
             $parts = explode('&', $params);

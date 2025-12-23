@@ -31,7 +31,7 @@ class MedicationRequestController extends Controller
         $endDate = $request->input('end_date');
         $jenis = $request->input('jenis'); // ri / rj
         $ketLayanan = $jenis === 'ri' ? 'INAP' : 'JALAN';
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
 
 
         if (!$startDate || !$endDate) {
@@ -688,7 +688,7 @@ class MedicationRequestController extends Controller
         ", [$idTrans, $kdbrg]);
 
 
-        $id_unit = Session::get('id_unit_simrs', '001');
+        $id_unit = Session::get('id_unit', '001');
         if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
             $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
 

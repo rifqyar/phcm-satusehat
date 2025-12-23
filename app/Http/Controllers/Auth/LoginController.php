@@ -34,6 +34,7 @@ class LoginController extends Controller
 
         $url = env('API_URL') . "/restsirs-simrs-gcp/public/master/user/login";
 
+        dd($url);
         $param  = array(
             "idunit" => $idunit,
             "password" => $password,
