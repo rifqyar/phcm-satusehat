@@ -88,8 +88,8 @@ class LoginController extends Controller
             $data[$key] = $this->_decrypt_url($value);
         }
 
-        $sess = array($data);
-        session($sess);
+        $data['sdh_masuk'] = true;
+        session($data);
         return redirect()->route('home');
     }
 
