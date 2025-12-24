@@ -567,45 +567,45 @@ class EncounterController extends Controller
             ->select('*')
             ->first();
 
-        $rj = DB::table('v_kunjungan_rj as v')
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as n', function ($join) {
-                $join->on('n.KARCIS', '=', 'v.ID_TRANSAKSI')
-                    ->on('n.IDUNIT', '=', 'v.ID_UNIT')
-                    ->on('n.KBUKU', '=', 'v.KBUKU')
-                    ->on('n.NO_PESERTA', '=', 'v.NO_PESERTA');
-            })
-            ->select(
-                'v.*',
-                DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
-            )
-            ->groupBy('v.ICD9', 'v.DIPLAY_ICD9', 'v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN')
-            ->where('v.ID_UNIT', $id_unit)
-            ->where('v.ID_TRANSAKSI', $request->karcis)
-            ->first();
-
-        $ri = DB::table('v_kunjungan_ri as v')
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as n', function ($join) {
-                $join->on('n.KARCIS', '=', 'v.ID_TRANSAKSI')
-                    ->on('n.IDUNIT', '=', 'v.ID_UNIT')
-                    ->on('n.KBUKU', '=', 'v.KBUKU')
-                    ->on('n.NO_PESERTA', '=', 'v.NO_PESERTA');
-            })
-            ->select(
-                'v.*',
-                DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
-            )
-            ->groupBy('v.ICD9', 'v.DIPLAY_ICD9', 'v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_LOKASI', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN')
-            ->where('v.ID_UNIT', $id_unit)
-            ->where('v.ID_TRANSAKSI', $request->karcis)
-            ->first();
-
         $data = null;
         $jenisPerawatan = 'RJ';
         if (str_contains(strtoupper($request->aktivitas), 'RAWAT JALAN')) {
             $jenisPerawatan = 'RJ';
+
+            $rj = DB::table('v_kunjungan_rj as v')
+                ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as n', function ($join) {
+                    $join->on('n.KARCIS', '=', 'v.ID_TRANSAKSI')
+                        ->on('n.IDUNIT', '=', 'v.ID_UNIT')
+                        ->on('n.KBUKU', '=', 'v.KBUKU')
+                        ->on('n.NO_PESERTA', '=', 'v.NO_PESERTA');
+                })
+                ->select(
+                    'v.*',
+                    DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
+                )
+                ->groupBy('v.ICD9', 'v.DIPLAY_ICD9', 'v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.STATUS_MAPPING_LOKASI', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN')
+                ->where('v.ID_UNIT', $id_unit)
+                ->where('v.ID_TRANSAKSI', $request->karcis)
+                ->first();
             $data = $rj;
         } else {
             $jenisPerawatan = 'RI';
+
+            $ri = DB::table('v_kunjungan_ri as v')
+                ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as n', function ($join) {
+                    $join->on('n.KARCIS', '=', 'v.ID_TRANSAKSI')
+                        ->on('n.IDUNIT', '=', 'v.ID_UNIT')
+                        ->on('n.KBUKU', '=', 'v.KBUKU')
+                        ->on('n.NO_PESERTA', '=', 'v.NO_PESERTA');
+                })
+                ->select(
+                    'v.*',
+                    DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
+                )
+                ->groupBy('v.ICD9', 'v.DIPLAY_ICD9', 'v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.STATUS_MAPPING_LOKASI', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_LOKASI', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN')
+                ->where('v.ID_UNIT', $id_unit)
+                ->where('v.ID_TRANSAKSI', $request->karcis)
+                ->first();
             $data = $ri;
         }
 
