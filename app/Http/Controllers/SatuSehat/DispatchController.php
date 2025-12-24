@@ -15,7 +15,7 @@ class DispatchController extends Controller
     {
         $payload = $request->except(['url']); // array murni
         $urls    = $request->input('url');   // array endpoint
-        Session::put('id_unit_simrs', $request->input('id_unit'));
+        Session::put('id_unit', $request->input('id_unit'));
 
         $this->logInfo('dispatchci', 'Receive param', [
             'payload' => $payload,
