@@ -69,7 +69,7 @@
                                                 <i class="fas fa-info-circle" style="font-size: 48px"></i>
                                                 <div class="ml-3">
                                                     <span style="font-size: 24px"
-                                                        id="total_all">{{ count($mergedAll) }}</span>
+                                                        id="total_all">{{ $mergedAll }}</span>
                                                     <h4 class="text-white">Semua Data Kunjungan <br></h4>
                                                 </div>
                                             </div>
@@ -84,7 +84,7 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-hospital" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px" id="total_rj">{{ count($rjAll) }}</span>
+                                                    <span style="font-size: 24px" id="total_rj">{{ $rjAll }}</span>
                                                     <h4 class="text-white">Kunjungan Rawat Jalan <br>
                                                     </h4>
                                                 </div>
@@ -100,7 +100,7 @@
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-bed" style="font-size: 48px"></i>
                                                 <div class="ml-3">
-                                                    <span style="font-size: 24px" id="total_ri">{{ count($ri) }}</span>
+                                                    <span style="font-size: 24px" id="total_ri">{{ $ri }}</span>
                                                     <h4 class="text-white">Kunjungan Rawat Inap <br></h4>
                                                 </div>
                                             </div>
@@ -116,7 +116,7 @@
                                                 <i class="fas fa-link" style="font-size: 48px"></i>
                                                 <div class="ml-3">
                                                     <span style="font-size: 24px"
-                                                        id="total_integrasi">{{ count($mergedIntegrated) }}</span>
+                                                        id="total_integrasi">{{ $mergedIntegrated }}</span>
                                                     <h4 class="text-white">Data Termapping <br></h4>
                                                 </div>
                                             </div>

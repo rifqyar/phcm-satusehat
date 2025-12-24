@@ -36,39 +36,31 @@ class EncounterController extends Controller
         $endDate   = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
         $id_unit = Session::get('id_unit', '001');
 
-        $rj = DB::table('v_kunjungan_rj as v')
-            ->whereBetween('TANGGAL', [$startDate, $endDate])
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as n', function ($join) {
-                $join->on('n.KARCIS', '=', 'v.ID_TRANSAKSI')
-                    ->on('n.IDUNIT', '=', 'v.ID_UNIT')
-                    ->on('n.KBUKU', '=', 'v.KBUKU')
-                    ->on('n.NO_PESERTA', '=', 'v.NO_PESERTA');
-            })
-            ->select(
-                'v.*',
-                DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
-            )
-            ->groupBy('v.ICD9', 'v.DIPLAY_ICD9', 'v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN')
-            ->where('v.ID_UNIT', $id_unit);
+        $dataKunjungan = collect(DB::select("
+            EXEC dbo.sp_getDataEncounter ?, ?, ?, ?
+        ", [
+            $id_unit,
+            $startDate,
+            $endDate,
+            'all'
+        ]));
 
-        $rjAll = $rj->get();
-        $rjIntegrasi = $rj->whereNotNull('n.ID_SATUSEHAT_ENCOUNTER')->get();
+        $summary = $dataKunjungan->first();
 
-        $ri = DB::table('v_kunjungan_ri')
-            ->whereBetween('TANGGAL', [$startDate, $endDate])
-            ->where('ID_UNIT', $id_unit)
-            ->get();
+        $totalData = [
+            'total_semua' => $summary->total_semua ?? 0,
+            'rjAll' => $summary->rjAll ?? 0,
+            'ri' => $summary->ri ?? 0,
+            'total_sudah_integrasi' => $summary->total_sudah_integrasi ?? 0,
+            'total_belum_integrasi' => $summary->total_belum_integrasi ?? 0,
+        ];
 
-        $mergedAll = $rjAll->merge($ri)
-            ->sortByDesc('TANGGAL')
-            ->values();
-
-        $mergedIntegrated = $rjIntegrasi->merge($ri)
-            ->sortByDesc('TANGGAL')
-            ->values();
-
-        $unmapped = count($mergedAll) - count($mergedIntegrated);
-        return view('pages.satusehat.encounter.index', compact('mergedAll', 'mergedIntegrated', 'rjAll', 'rjIntegrasi', 'ri', 'unmapped'));
+        $mergedAll = $summary->total_semua ?? 0;
+        $mergedIntegrated = $summary->total_sudah_integrasi ?? 0;
+        $rjAll = $summary->rjAll ?? 0;
+        $ri = $summary->ri ?? 0;
+        $unmapped = $summary->total_belum_integrasi ?? 0;
+        return view('pages.satusehat.encounter.index', compact('mergedAll', 'mergedIntegrated', 'rjAll', 'ri', 'unmapped'));
     }
 
     public function datatable(Request $request)
@@ -92,66 +84,24 @@ class EncounterController extends Controller
         $tgl_awal_db  = Carbon::parse($tgl_awal)->format('Y-m-d H:i:s');
         $tgl_akhir_db = Carbon::parse($tgl_akhir)->format('Y-m-d H:i:s');
 
-        $rj = DB::table('v_kunjungan_rj as v')
-            ->whereBetween('TANGGAL', [$tgl_awal_db, $tgl_akhir_db])
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as n', function ($join) {
-                $join->on('n.KARCIS', '=', 'v.ID_TRANSAKSI')
-                    ->on('n.IDUNIT', '=', 'v.ID_UNIT')
-                    ->on('n.KBUKU', '=', 'v.KBUKU')
-                    ->on('n.NO_PESERTA', '=', 'v.NO_PESERTA');
-            })
-            ->select(
-                'v.*',
-                DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
-            )
-            ->groupBy('v.ICD9', 'v.DIPLAY_ICD9', 'v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN')
-            ->where('v.ID_UNIT', $id_unit);
+        $dataKunjungan = collect(DB::select("
+            EXEC dbo.sp_getDataEncounter ?, ?, ?, ?
+        ", [
+            $id_unit,
+            $tgl_awal_db,
+            $tgl_akhir_db,
+            $request->input('cari') ?? 'all'
+        ]));
 
-        $rjAll = $rj->get();
-        $rjIntegrasi = $rj->whereNotNull('n.ID_SATUSEHAT_ENCOUNTER')->get();
+        $summary = $dataKunjungan->first();
 
-        $ri = DB::table('v_kunjungan_ri as v')
-            ->whereBetween('TANGGAL', [$tgl_awal_db, $tgl_akhir_db])
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as n', function ($join) {
-                $join->on('n.KARCIS', '=', 'v.ID_TRANSAKSI')
-                    ->on('n.IDUNIT', '=', 'v.ID_UNIT')
-                    ->on('n.KBUKU', '=', 'v.KBUKU')
-                    ->on('n.NO_PESERTA', '=', 'v.NO_PESERTA');
-            })
-            ->select(
-                'v.*',
-                DB::raw('COUNT(DISTINCT n.ID_SATUSEHAT_ENCOUNTER) as JUMLAH_NOTA_SATUSEHAT')
-            )
-            ->groupBy('v.ICD9', 'v.DIPLAY_ICD9', 'v.JENIS_PERAWATAN', 'v.STATUS_SELESAI', 'v.STATUS_KUNJUNGAN', 'v.DOKTER', 'v.DEBITUR', 'v.LOKASI', 'v.STATUS_MAPPING_PASIEN', 'v.ID_PASIEN_SS', 'v.ID_NAKES_SS', 'v.KODE_DOKTER', 'v.ID_LOKASI_SS', 'v.UUID', 'v.STATUS_MAPPING_LOKASI', 'v.STATUS_MAPPING_NAKES', 'v.ID_TRANSAKSI', 'v.ID_UNIT', 'v.KODE_KLINIK', 'v.KBUKU', 'v.NO_PESERTA', 'v.TANGGAL', 'v.NAMA_PASIEN')
-            ->where('v.ID_UNIT', $id_unit)
-            ->get();
-
-        $mergedAll = $rjAll->merge($ri)
-            ->sortByDesc('TANGGAL')
-            ->values();
-
-        $mergedIntegrated = $rjIntegrasi->merge($ri)
-            ->sortByDesc('TANGGAL')
-            ->values();
-
-        $unmapped = count($mergedAll) - count($mergedIntegrated);
         $totalData = [
-            'total_semua' => count($mergedAll),
-            'rjAll' => count($rjAll),
-            'ri' => count($ri),
-            'total_sudah_integrasi' => count($mergedIntegrated),
-            'total_belum_integrasi' => $unmapped,
+            'total_semua' => $summary->total_semua ?? 0,
+            'rjAll' => $summary->rjAll ?? 0,
+            'ri' => $summary->ri ?? 0,
+            'total_sudah_integrasi' => $summary->total_sudah_integrasi ?? 0,
+            'total_belum_integrasi' => $summary->total_belum_integrasi ?? 0,
         ];
-
-        if ($request->input('cari') == 'mapped') {
-            $dataKunjungan = $mergedIntegrated;
-        } else if ($request->input('cari') == 'unmapped') {
-            $dataKunjungan = $mergedAll->filter(function ($item) {
-                return $item->JUMLAH_NOTA_SATUSEHAT == '0';
-            })->values();
-        } else {
-            $dataKunjungan = $mergedAll;
-        }
 
         return DataTables::of($dataKunjungan)
             ->addIndexColumn()
