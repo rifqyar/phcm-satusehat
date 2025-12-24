@@ -121,6 +121,13 @@ return [
             'days' => 7
         ],
 
+        'Specimen' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/Specimen.log'),
+            'level' => 'info',
+            'days' => 7
+        ],
+
         'AllergyIntolerance' => [
             'driver' => 'daily',
             'path' => storage_path('logs/AllergyIntolerance.log'),

@@ -461,7 +461,7 @@ class AllergyIntoleranceController extends Controller
             $url = 'AllergyIntolerance';
 
             if ($resend) {
-                $currData = SATUSEHAT_ALLERGY_INTOLERANCE::where('KARCIS', $arrParam['karcis'])->first();
+                $currData = SATUSEHAT_ALLERGY_INTOLERANCE::where('KARCIS', $arrParam['karcis'])->where('IDUNIT', $id_unit)->first();
                 $payload['id'] = $currData->ID_ALLERGY_INTOLERANCE;
                 $url = 'AllergyIntolerance/' . $currData->ID_ALLERGY_INTOLERANCE;
             }
@@ -504,6 +504,7 @@ class AllergyIntoleranceController extends Controller
                     $allergy_satusehat->crtdt = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
                     $allergy_satusehat->crtusr = 'system';
                     $allergy_satusehat->status_sinkron = 1;
+                    $allergy_satusehat->idunit = $id_unit;
                     $allergy_satusehat->sinkron_date = Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s');
                     $allergy_satusehat->save();
 
