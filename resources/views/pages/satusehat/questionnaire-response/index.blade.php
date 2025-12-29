@@ -25,6 +25,32 @@
         transition: all 0.3s ease;
         cursor: pointer
     }
+
+    tbody td {
+        vertical-align: middle !important
+    }
+
+    /* Fix modal z-index issue */
+    .modal {
+        z-index: 1050 !important;
+    }
+
+    .modal-backdrop {
+        z-index: 1040 !important;
+    }
+
+    .modal-dialog {
+        z-index: 1051 !important;
+        margin-top: 50px;
+    }
+
+    .modal-content {
+        position: relative;
+        background-color: #fff;
+        border: 1px solid rgba(0,0,0,.2);
+        border-radius: 0.3rem;
+        outline: 0;
+    }
 </style>
 <link href="{{ asset('assets/plugins/bootstrap-material-datetimepicker/css/bootstrap-material-datetimepicker.css') }}"
     rel="stylesheet">
@@ -174,31 +200,7 @@
     </div>
 </div>
 
-<!-- Modal Respon Kuesioner -->
-<div class="modal fade" id="questionnaireModal" tabindex="-1" role="dialog" aria-labelledby="questionnaireModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="questionnaireModalLabel">Respon Kuesioner</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="questionnaireForm">
-                    <div id="questionsContainer">
-                        <!-- Questions will be loaded here -->
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-primary" onclick="saveResponse()">Simpan Respon</button>
-            </div>
-        </div>
-    </div>
-</div>
-
+@include('modals.modal_questionnaire')
 @endsection
 
 
@@ -209,6 +211,11 @@
 <script>
     var table
     $(function() {
+        // Initialize modal on page load
+        $('#questionnaireModal').modal({
+            show: false
+        });
+
         // format tanggal sesuai dengan setting datepicker
         const today = moment().format('YYYY-MM-DD');
         $("#start_date").bootstrapMaterialDatePicker({
@@ -462,7 +469,15 @@
                 
                 $('#questionsContainer').html(questionsHtml);
                 $('#questionnaireModal').data('visitId', id);
-                $('#questionnaireModal').modal('show');
+                
+                // Ensure modal is shown properly
+                setTimeout(function() {
+                    $('#questionnaireModal').modal({
+                        backdrop: 'static',
+                        keyboard: false,
+                        show: true
+                    });
+                }, 100);
             },
             error: function(xhr) {
                 Swal.close();
