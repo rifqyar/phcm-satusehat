@@ -28,133 +28,101 @@ class MedicationRequestController extends Controller
     public function datatable(Request $request)
     {
         $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
-        $jenis = $request->input('jenis'); // ri / rj
-        $ketLayanan = $jenis === 'ri' ? 'INAP' : 'JALAN';
-        $id_unit = Session::get('id_unit', '001');
+        $endDate   = $request->input('end_date');
+        $jenis     = $request->input('jenis'); // ri / rj
 
+        $ketLayanan = $jenis === 'ri' ? 'INAP' : 'JALAN';
+        $id_unit    = Session::get('id_unit', '001');
 
         if (!$startDate || !$endDate) {
-            $endDate = now();
-            $startDate = now()->subDays(30);
+            $endDate   = now()->toDateString();
+            $startDate = now()->subDays(30)->toDateString();
         }
 
-        // Tentukan tabel kunjungan berdasarkan input jenis
-        $kunjunganTable = $jenis === 'ri'
-            ? 'SIRS_PHCM.dbo.v_kunjungan_ri'
-            : 'SIRS_PHCM.dbo.v_kunjungan_rj';
+        // 🔹 Query utama pakai VIEW
+        $query = DB::table('dbo.v_rj_satusehat_medication_status')
+            ->where('IDUNIT', $id_unit)
+            ->where('KET_LAYANAN', $ketLayanan)
+            ->whereBetween('TGL_KARCIS', [$startDate, $endDate])
+            ->select([
+                'ID_TRANS',
+                'KARCIS',
+                'PASIEN',
+                'DOKTER',
+                'TGL_KARCIS',
+                'STATUS_MAPPING',
+                'LOG_STATUS',
+                'LOG_CREATED_AT',
+            ]);
 
-        $query = DB::table('SIRS_PHCM.dbo.IF_HTRANS_OL as a')
-            ->distinct()
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as b', 'a.KARCIS', '=', 'b.karcis')
-            ->leftJoin("$kunjunganTable as c", 'a.KARCIS', '=', 'c.ID_TRANSAKSI')
-            ->leftJoin(DB::raw("
-                (
-                    SELECT
-                        ol.ID_TRANS,
-                        CASE
-                            WHEN COUNT(CASE WHEN kfa.KD_BRG_KFA IS NULL THEN 1 END) > 0
-                            THEN '000'
-                            ELSE '100'
-                        END AS STATUS_MAPPING
-                    FROM SIRS_PHCM.dbo.IF_TRANS_OL ol
-                    LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA kfa
-                        ON ol.KDBRG_CENTRA = kfa.KDBRG_CENTRA
-                    GROUP BY ol.ID_TRANS
-                ) as d
-            "), 'd.ID_TRANS', '=', 'a.ID_TRANS')
-            ->leftJoin(DB::raw("
-                (
-                    SELECT
-                        LOCAL_ID,
-                        MAX(ID) AS MAX_ID
-                    FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
-                    WHERE LOG_TYPE = 'MedicationRequest'
-                    AND STATUS = 'success'
-                    GROUP BY LOCAL_ID
-                ) AS log_latest
-            "), 'log_latest.LOCAL_ID', '=', 'a.ID_TRANS')
-            ->leftJoin(
-                'SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION as SSM',
-                'SSM.ID',
-                '=',
-                DB::raw('log_latest.MAX_ID')
-            )
-            ->where('a.IDUNIT', $id_unit)
-            ->where('a.ACTIVE', '1')
-            ->whereBetween(DB::raw('CAST(c.TANGGAL AS date)'), [$startDate, $endDate])
-            ->where('a.KET_LAYANAN', $ketLayanan)
-            ->select(
-                'b.id',
-                'b.id_satusehat_encounter',
-                'a.ID_TRANS',
-                DB::raw('CAST(c.TANGGAL AS date) AS TGL_KARCIS'),
-                'a.KARCIS',
-                DB::raw('c.NAMA_PASIEN AS PASIEN'),
-                DB::raw('c.DOKTER AS DOKTER'),
-                DB::raw("
-                    CASE
-                        WHEN SSM.ID IS NOT NULL THEN '200'
-                        ELSE d.STATUS_MAPPING
-                    END AS STATUS_MAPPING
-                "),
-                DB::raw('SSM.STATUS AS LOG_STATUS'),
-                DB::raw('SSM.CREATED_AT AS LOG_CREATED_AT')
-            );
+            $start = microtime(true);
 
-        // 🔢 Summary count
+$data = $query->get(); // ⚠️ query dieksekusi di sini
+
+$time = microtime(true) - $start;
+
+dd([
+    'rows' => $data->count(),
+    'seconds' => $time,
+]);
+
+        // 🔢 Summary
         $recordsTotal = (clone $query)->count();
 
         $sentCount = (clone $query)
-            ->whereRaw("
-            CASE
-                WHEN SSM.ID IS NOT NULL THEN '200'
-                ELSE d.STATUS_MAPPING
-            END = '200'
-        ")
+            ->where('STATUS_MAPPING', '200')
             ->count();
 
         $unsentCount = $recordsTotal - $sentCount;
 
-        // 🚀 DataTables server-side
+        // 🚀 DataTables
         $dataTable = DataTables::of($query)
-            ->filterColumn('KARCIS', function ($query, $keyword) {
-                $query->where('a.KARCIS', 'like', "%{$keyword}%");
-            })
-            ->filterColumn('ID_TRANS', function ($query, $keyword) {
-                $query->where('a.ID_TRANS', 'like', "%{$keyword}%");
-            })
-            ->filterColumn('DOKTER', function ($query, $keyword) {
-                $query->where('c.DOKTER', 'like', "%{$keyword}%");
-            })
-            ->filterColumn('PASIEN', function ($query, $keyword) {
-                $query->where('c.NAMA_PASIEN', 'like', "%{$keyword}%");
-            })
+            ->filterColumn(
+                'KARCIS',
+                fn($q, $v) =>
+                $q->where('KARCIS', 'like', "%{$v}%")
+            )
+            ->filterColumn(
+                'ID_TRANS',
+                fn($q, $v) =>
+                $q->where('ID_TRANS', 'like', "%{$v}%")
+            )
+            ->filterColumn(
+                'DOKTER',
+                fn($q, $v) =>
+                $q->where('DOKTER', 'like', "%{$v}%")
+            )
+            ->filterColumn(
+                'PASIEN',
+                fn($q, $v) =>
+                $q->where('PASIEN', 'like', "%{$v}%")
+            )
             ->filter(function ($query) use ($request) {
-                if ($search = $request->get('search')['value']) {
+                if ($search = $request->input('search.value')) {
                     $query->where(function ($q) use ($search) {
-                        $q->where('a.KARCIS', 'like', "%{$search}%")
-                            ->orWhere('a.ID_TRANS', 'like', "%{$search}%")
-                            ->orWhere('c.DOKTER', 'like', "%{$search}%")
-                            ->orWhere('c.NAMA_PASIEN', 'like', "%{$search}%");
+                        $q->where('KARCIS', 'like', "%{$search}%")
+                            ->orWhere('ID_TRANS', 'like', "%{$search}%")
+                            ->orWhere('DOKTER', 'like', "%{$search}%")
+                            ->orWhere('PASIEN', 'like', "%{$search}%");
                     });
                 }
             })
             ->order(function ($query) {
-                $query->orderBy('a.ID_TRANS', 'desc');
+                $query->orderBy('ID_TRANS', 'desc');
             })
             ->make(true);
 
-        // Tambahkan summary
+        // 📦 Inject summary
         $json = $dataTable->getData(true);
         $json['summary'] = [
-            'all' => $recordsTotal,
-            'sent' => $sentCount,
+            'all'    => $recordsTotal,
+            'sent'   => $sentCount,
             'unsent' => $unsentCount,
         ];
 
         return response()->json($json);
     }
+
 
     public function getDetailObat(Request $request)
     {
@@ -470,7 +438,6 @@ class MedicationRequestController extends Controller
                 'message' => 'Semua MedicationRequest telah diproses.',
                 'results' => $results
             ], 200, [], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-
         } catch (\Exception $e) {
             DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert([
                 'LOG_TYPE' => 'MedicationRequest',
@@ -618,13 +585,11 @@ class MedicationRequestController extends Controller
                                 ]
                             )->onQueue('MedicationRequest');
                         }
-
                     } else {
                         // error lain -> jangan lanjut untuk row ini
                         $rowResult['status'] = 'error';
                         $rowResult['message'] = $result_kirim_medication['message'] ?? 'Gagal Kirim Medication';
                     }
-
                 }
 
                 $summary[] = $rowResult;
@@ -650,7 +615,6 @@ class MedicationRequestController extends Controller
                 ],
                 'results' => $summary
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -696,12 +660,12 @@ class MedicationRequestController extends Controller
         ", [$idTrans, $kdbrg]);
 
 
-        $id_unit = Session::get('id_unit', '001');
-        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
-            $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
-        } else {
-            $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
-        }
+            $id_unit = Session::get('id_unit', '001');
+            if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+                $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+            } else {
+                $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+            }
 
             foreach ($data as $index => $item) {
                 $uniqueId = date('YmdHis') . '-' . str_pad($index + 1, 3, '0', STR_PAD_LEFT);
@@ -803,7 +767,6 @@ class MedicationRequestController extends Controller
                 'KDBRG' => $kdbrg,
                 'payload' => $payload
             ];
-
         } catch (\Exception $e) {
             return [
                 'status' => 'error',
@@ -811,5 +774,4 @@ class MedicationRequestController extends Controller
             ];
         }
     }
-
 }
