@@ -51,9 +51,15 @@ class QuestionnaireResponseController extends Controller
 
         // build summary counts
         $total = count($rows);
-        $rjAll = collect($rows)->filter(fn($r) => $r['JENIS_PERAWATAN'] === 'Rawat Jalan')->count();
-        $ri = collect($rows)->filter(fn($r) => $r['JENIS_PERAWATAN'] === 'Rawat Inap')->count();
-        $total_integrated = collect($rows)->filter(fn($r) => str_contains($r['status_integrasi'], 'Sudah Integrasi'))->count();
+        $rjAll = collect($rows)->filter(function($r){
+            return $r['JENIS_PERAWATAN'] === 'Rawat Jalan';
+        })->count();
+        $ri = collect($rows)->filter(function($r){
+            return $r['JENIS_PERAWATAN'] === 'Rawat Inap';
+        })->count();
+        $total_integrated = collect($rows)->filter(function($r){
+            return str_contains($r['status_integrasi'], 'Sudah Integrasi');
+        })->count();
         $total_unmapped = $total - $total_integrated;
 
         return response()->json([
