@@ -92,6 +92,24 @@ class QuestionnaireResponseController extends Controller
             'total_belum_integrasi' => $summary->total_belum_integrasi ?? 0,
         ];
 
+        // Fetch all log statuses in one query to avoid N+1 problem
+        $allTransaksiIds = $dataKunjungan->pluck('ID_TRANSAKSI')->filter()->unique()->toArray();
+        $logStatuses = [];
+        
+        if (!empty($allTransaksiIds)) {
+            $logs = DB::connection('sqlsrv')
+                ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_RESPON_KUESIONER')
+                ->whereIn('karcis', $allTransaksiIds)
+                ->get();
+            
+            // Group by karcis and take the latest one for each
+            foreach ($logs as $log) {
+                if (!isset($logStatuses[$log->karcis])) {
+                    $logStatuses[$log->karcis] = $log;
+                }
+            }
+        }
+
         return DataTables::of($dataKunjungan)
             ->addIndexColumn()
             ->editColumn('JENIS_PERAWATAN', function ($row) {
@@ -112,10 +130,30 @@ class QuestionnaireResponseController extends Controller
                 }
             })
             ->addColumn('action', function ($row) {
-                return '<button class="btn btn-sm btn-primary" onclick="tambahRespon(\'' . $row->ID_TRANSAKSI . '\')">Isi Respon Kuesioner</button>';
+                $jenisPerawatan = $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
+                $id_transaksi = LZString::compressToEncodedURIComponent($row->ID_TRANSAKSI);
+                $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
+                $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
+                $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS ?? '');
+                $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" . $kdLokasiSS;
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+                $paramEncoded = base64_encode($paramSatuSehat);
+                
+                return '<button class="btn btn-sm btn-primary" onclick="tambahRespon(\'' . $row->ID_TRANSAKSI . '\', \'' . $paramEncoded . '\')">Isi Respon Kuesioner</button>';
             })
-            ->addColumn('status_integrasi', function ($row) {
-                return '';
+            ->addColumn('status_integrasi', function ($row) use ($logStatuses) {
+                // Use pre-fetched log status to avoid N+1 query
+                $logStatus = $logStatuses[$row->ID_TRANSAKSI] ?? null;
+                
+                if ($logStatus) {
+                    if ($logStatus->status_code == 201) {
+                        return '<span class="badge badge-success">Terkirim</span><br><small>' . date('d-m-Y H:i', strtotime($logStatus->created_at)) . '</small>';
+                    } else {
+                        return '<span class="badge badge-warning">Gagal</span><br><small>Code: ' . $logStatus->status_code . '</small>';
+                    }
+                } else {
+                    return '<span class="badge badge-secondary">Belum Terkirim</span>';
+                }
             })
             ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi'])
             ->with($totalData)
@@ -134,6 +172,355 @@ class QuestionnaireResponseController extends Controller
         } catch (\Exception $e) {
             return false;
         }
+    }
+
+    public function saveResponse(Request $request)
+    {
+        try {
+            $visitId = $request->input('visit_id');
+            $responses = $request->input('responses');
+            
+            // Store responses in session or temporary table for later use when sending to SatuSehat
+            Session::put('questionnaire_responses_' . $visitId, $responses);
+            
+            return response()->json([
+                'status' => 200,
+                'message' => 'Respon kuesioner berhasil disimpan'
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Gagal menyimpan respon: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function sendSatuSehat(Request $request, $param)
+    {
+        try {
+            $id_unit = Session::get('id_unit', '001');
+            
+            // Parse parameters same as EncounterController
+            $params = base64_decode($param);
+            $params = LZString::decompressFromEncodedURIComponent($params);
+            $parts = explode('&', $params);
+
+            $arrParam = [];
+            $partsParam = explode('=', $parts[0]);
+            $arrParam[$partsParam[0]] = $partsParam[1];
+            for ($i = 1; $i < count($parts); $i++) {
+                $partsParam = explode('=', $parts[$i]);
+                $key = $partsParam[0];
+                $val = $partsParam[1];
+                $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
+            }
+
+            $jenisPerawatan = $arrParam['jenis_perawatan'];
+            $id_transaksi = $arrParam['id_transaksi'];
+            $kdPasienSS = $arrParam['kd_pasien_ss'];
+            $kdNakesSS = $arrParam['kd_nakes_ss'];
+            $kdLokasiSS = $arrParam['kd_lokasi_ss'];
+            
+            // Get visit data
+            $visit = DB::connection('sqlsrv')
+                ->table('SIRS_PHCM.dbo.v_kunjungan_rj as rj')
+                ->leftJoin('SIRS_PHCM.dbo.v_kunjungan_ri as ri', 'rj.ID_TRANSAKSI', '=', 'ri.ID_TRANSAKSI')
+                ->where('rj.ID_TRANSAKSI', $id_transaksi)
+                ->orWhere('ri.ID_TRANSAKSI', $id_transaksi)
+                ->select('rj.*', 'ri.ID_TRANSAKSI as ri_id')
+                ->first();
+                
+            if (!$visit) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Data kunjungan tidak ditemukan',
+                    'redirect' => ['need' => false, 'to' => '']
+                ], 404);
+            }
+            
+            // Get patient data using kdPasienSS
+            $patient = DB::connection('sqlsrv')
+                ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
+                ->where('idpx', $kdPasienSS)
+                ->first();
+                
+            if (!$patient) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Data pasien SatuSehat tidak ditemukan',
+                    'redirect' => ['need' => false, 'to' => '']
+                ], 404);
+            }
+            
+            // Get responses from session
+            $responses = Session::get('questionnaire_responses_' . $id_transaksi, []);
+            
+            if (empty($responses)) {
+                return response()->json([
+                    'status' => 400,
+                    'message' => 'Silakan isi respon kuesioner terlebih dahulu',
+                    'redirect' => ['need' => false, 'to' => '']
+                ], 400);
+            }
+            
+            // Build payload items based on responses
+            $items = [];
+            
+            // Section 1: Persyaratan Administrasi
+            $section1Items = [];
+            foreach (['1.1', '1.2', '1.3', '1.4'] as $linkId) {
+                if (isset($responses[$linkId])) {
+                    $section1Items[] = [
+                        'linkId' => $linkId,
+                        'text' => $this->getQuestionText($linkId),
+                        'answer' => [[
+                            'valueCoding' => [
+                                'system' => 'http://terminology.kemkes.go.id/CodeSystem/clinical-term',
+                                'code' => $responses[$linkId],
+                                'display' => $responses[$linkId] == 'OV000052' ? 'Sesuai' : 'Tidak Sesuai'
+                            ]
+                        ]]
+                    ];
+                }
+            }
+            
+            if (!empty($section1Items)) {
+                $items[] = [
+                    'linkId' => '1',
+                    'text' => 'Persyaratan Administrasi',
+                    'item' => $section1Items
+                ];
+            }
+            
+            // Section 2: Persyaratan Farmasetik
+            $section2Items = [];
+            foreach (['2.1', '2.2', '2.3', '2.4'] as $linkId) {
+                if (isset($responses[$linkId])) {
+                    $section2Items[] = [
+                        'linkId' => $linkId,
+                        'text' => $this->getQuestionText($linkId),
+                        'answer' => [[
+                            'valueCoding' => [
+                                'system' => 'http://terminology.kemkes.go.id/CodeSystem/clinical-term',
+                                'code' => $responses[$linkId],
+                                'display' => $responses[$linkId] == 'OV000052' ? 'Sesuai' : 'Tidak Sesuai'
+                            ]
+                        ]]
+                    ];
+                }
+            }
+            
+            if (!empty($section2Items)) {
+                $items[] = [
+                    'linkId' => '2',
+                    'text' => 'Persyaratan Farmasetik',
+                    'item' => $section2Items
+                ];
+            }
+            
+            // Section 3: Persyaratan Klinis
+            $section3Items = [];
+            foreach (['3.1', '3.2', '3.3', '3.4', '3.5'] as $linkId) {
+                if (isset($responses[$linkId])) {
+                    $answer = [];
+                    if ($linkId == '3.1') {
+                        // valueCoding for 3.1
+                        $answer = [[
+                            'valueCoding' => [
+                                'system' => 'http://terminology.kemkes.go.id/CodeSystem/clinical-term',
+                                'code' => $responses[$linkId],
+                                'display' => $responses[$linkId] == 'OV000052' ? 'Sesuai' : 'Tidak Sesuai'
+                            ]
+                        ]];
+                    } else {
+                        // valueBoolean for 3.2-3.5
+                        $answer = [[
+                            'valueBoolean' => $responses[$linkId] === 'true' ? true : false
+                        ]];
+                    }
+                    
+                    $section3Items[] = [
+                        'linkId' => $linkId,
+                        'text' => $this->getQuestionText($linkId),
+                        'answer' => $answer
+                    ];
+                }
+            }
+            
+            if (!empty($section3Items)) {
+                $items[] = [
+                    'linkId' => '3',
+                    'text' => 'Persyaratan Klinis',
+                    'item' => $section3Items
+                ];
+            }
+            
+            // Section 4: Resep yang dilakukan pengkajian resep (hardcoded)
+            // $items[] = [
+            //     'linkId' => '4',
+            //     'text' => 'Resep yang dilakukan pengkajian resep',
+            //     'answer' => [[
+            //         'valueReference' => [
+            //             'reference' => 'MedicationRequest/HARDCODED-MEDICATION-REQUEST-ID'
+            //         ]
+            //     ]]
+            // ];
+            
+            // Get encounter ID
+            $encounter = DB::connection('sqlsrv')
+                ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
+                ->where('karcis', $id_transaksi)
+                ->where('idunit', $id_unit)
+                ->first();
+                
+            if (!$encounter || !$encounter->id_satusehat_encounter) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Data encounter tidak ditemukan',
+                    'redirect' => ['need' => false, 'to' => '']
+                ], 404);
+            }
+            
+            // Get practitioner data (author) using kdNakesSS
+            $practitioner = DB::connection('sqlsrv')
+                ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
+                ->where('idnakes', $kdNakesSS)
+                ->first();
+
+                // dd($practitioner);
+                
+            if (!$practitioner) {
+                return response()->json([
+                    'status' => 404,
+                    'message' => 'Data practitioner tidak ditemukan',
+                    'redirect' => ['need' => false, 'to' => '']
+                ], 404);
+            }
+            
+            $practitionerId = $practitioner->idnakes;
+            $practitionerName = $practitioner->nama;
+            
+            // Build final payload
+            $payload = [
+                'resourceType' => 'QuestionnaireResponse',
+                'questionnaire' => 'https://fhir.kemkes.go.id/Questionnaire/Q0007',
+                'status' => 'completed',
+                'subject' => [
+                    'reference' => 'Patient/' . $patient->idpx,
+                    'display' => $patient->nama ?? ''
+                ],
+                'encounter' => [
+                    'reference' => 'Encounter/' . $encounter->id_satusehat_encounter
+                ],
+                'authored' => Carbon::now()->toIso8601String(),
+                'author' => [
+                    'reference' => 'Practitioner/' . $practitionerId,
+                    'display' => $practitionerName
+                ],
+                'source' => [
+                    'reference' => 'Patient/' . $patient->idpx
+                ],
+                'item' => $items
+            ];
+
+
+            // dd($payload);
+            
+            // Get base URL
+            $baseurl = '';
+            if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+                $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
+                $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+            } else {
+                $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
+                $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+            }
+            
+            // Login to get access token
+            $login = $this->login($id_unit);
+            if ($login['metadata']['code'] != 200) {
+                return response()->json([
+                    'status' => 500,
+                    'message' => 'Gagal mendapatkan access token',
+                    'redirect' => ['need' => false, 'to' => '']
+                ], 500);
+            }
+            
+            $token = $login['response']['token'];
+            
+            // Send to SatuSehat using consumeSATUSEHATAPI
+            $url = 'QuestionnaireResponse';
+            $data = json_decode(json_encode($payload));
+            $response = $this->consumeSATUSEHATAPI('POST', $baseurl, $url, $data, true, $token);
+            $statusCode = $response->getStatusCode();
+            $responseBody = json_decode($response->getBody()->getContents(), true);
+            
+            // Log to database
+            DB::connection('sqlsrv')->table('SATUSEHAT.dbo.SATUSEHAT_LOG_RESPON_KUESIONER')->insert([
+                'id_transaksi' => $id_transaksi,
+                'id_satusehat_questionnaire_response' => $responseBody['id'] ?? null,
+                'request' => json_encode($payload),
+                'response' => json_encode($responseBody),
+                'status_code' => $statusCode,
+                'created_at' => Carbon::now(),
+                'created_by' => Session::get('user', 'system')
+            ]);
+            
+            // Clear session
+            Session::forget('questionnaire_responses_' . $id_transaksi);
+            
+            if ($statusCode == 201) {
+                return response()->json([
+                    'status' => 200,
+                    'message' => 'Data berhasil dikirim ke SatuSehat',
+                    'redirect' => ['need' => false, 'to' => '']
+                ]);
+            } else {
+                $msg = '';
+                if (isset($responseBody['issue'])) {
+                    foreach ($responseBody['issue'] as $issue) {
+                        $msg .= $issue['details']['text'] ?? $issue['diagnostics'] ?? 'Unknown error';
+                        $msg .= ' ';
+                    }
+                } else {
+                    $msg = $responseBody['message'] ?? 'Unknown error';
+                }
+                
+                return response()->json([
+                    'status' => $statusCode,
+                    'message' => 'Gagal mengirim data: ' . trim($msg),
+                    'redirect' => ['need' => false, 'to' => '']
+                ], $statusCode);
+            }
+            
+        } catch (Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Error: ' . $e->getMessage(),
+                'redirect' => ['need' => false, 'to' => '']
+            ], 500);
+        }
+    }
+    
+    private function getQuestionText($linkId)
+    {
+        $questions = [
+            '1.1' => 'Apakah nama, umur, jenis kelamin, berat badan dan tinggi badan pasien sudah sesuai?',
+            '1.2' => 'Apakah nama, nomor ijin, alamat dan paraf dokter sudah sesuai?',
+            '1.3' => 'Apakah tanggal resep sudah sesuai?',
+            '1.4' => 'Apakah ruangan/unit asal resep sudah sesuai?',
+            '2.1' => 'Apakah nama obat, bentuk dan kekuatan sediaan sudah sesuai?',
+            '2.2' => 'Apakah dosis dan jumlah obat sudah sesuai?',
+            '2.3' => 'Apakah stabilitas obat sudah sesuai?',
+            '2.4' => 'Apakah aturan dan cara penggunaan obat sudah sesuai?',
+            '3.1' => 'Apakah ketepatan indikasi, dosis, dan waktu penggunaan obat sudah sesuai?',
+            '3.2' => 'Apakah terdapat duplikasi pengobatan?',
+            '3.3' => 'Apakah terdapat alergi dan reaksi obat yang tidak dikehendaki (ROTD)?',
+            '3.4' => 'Apakah terdapat kontraindikasi pengobatan?',
+            '3.5' => 'Apakah terdapat dampak interaksi obat?'
+        ];
+        
+        return $questions[$linkId] ?? '';
     }
 
     public function getQuestions(Request $request)

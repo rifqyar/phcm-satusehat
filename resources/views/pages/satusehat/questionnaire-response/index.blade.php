@@ -385,7 +385,7 @@
     });
 
     // Handler for "Isi Respon Kuesioner"
-    window.tambahRespon = function(id) {
+    window.tambahRespon = function(id, paramEncoded) {
         // Show loading
         Swal.fire({
             title: 'Memuat...',
@@ -469,6 +469,7 @@
                 
                 $('#questionsContainer').html(questionsHtml);
                 $('#questionnaireModal').data('visitId', id);
+                $('#questionnaireModal').data('paramEncoded', paramEncoded);
                 
                 // Ensure modal is shown properly
                 setTimeout(function() {
@@ -493,6 +494,7 @@
     // Save questionnaire response
     window.saveResponse = function() {
         const visitId = $('#questionnaireModal').data('visitId');
+        const paramEncoded = $('#questionnaireModal').data('paramEncoded');
         const responses = {};
         
         // Collect all radio button values
@@ -515,30 +517,7 @@
             return;
         }
 
-        // Show loading
-        Swal.fire({
-            title: 'Menyimpan...',
-            text: 'Sedang menyimpan respon',
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            willOpen: () => {
-                Swal.showLoading()
-            }
-        });
-
-        // Send responses to backend (placeholder)
-        setTimeout(() => {
-            Swal.close();
-            $('#questionnaireModal').modal('hide');
-            
-            Swal.fire({
-                title: 'Berhasil!',
-                text: 'Respon kuesioner berhasil disimpan',
-                icon: 'success'
-            }).then(() => {
-                table.ajax.reload();
-            });
-        }, 1500);
+        sendSatuSehat(paramEncoded);
     }
 
     function search(type) {
@@ -549,7 +528,28 @@
     function sendSatuSehat(param) {
         Swal.fire({
             title: "Konfirmasi Pengiriman",
-            text: `Kirim data kunjungan Pasien?`,
+            text: `Kirim respon kuesioner ke SatuSehat?`,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Ya, kirim!",
+            cancelButtonText: "Batal",
+        }).then(async (conf) => {
+            if (conf.value || conf.isConfirmed) {
+                await ajaxGetJson(
+                    `{{ route('satusehat.questionnaire-response.send', '') }}/${param}`,
+                    "input_success",
+                    ""
+                );
+            }
+        });
+    }
+
+    function resendSatuSehat(param) {
+        Swal.fire({
+            title: "Konfirmasi Pengiriman Ulang",
+            text: `Kirim Ulang Respon Kuesioner ke SatuSehat?`,
             icon: "question",
             showCancelButton: true,
             confirmButtonColor: "#3085d6",
@@ -565,63 +565,6 @@
                 );
             }
         });
-        // Swal.fire({
-        //     title: "Apakah anda yakin ingin mengirim data kunjungan ke Satu Sehat?",
-        //     type: "question",
-        //     showCancelButton: true,
-        //     confirmButtonColor: "#3085d6",
-        //     cancelButtonColor: "#d33",
-        //     confirmButtonText: "Ya",
-        // }).then(async (conf) => {
-        //     if (conf.value == true) {
-        //         await ajaxGetJson(
-        //             `{{ route('satusehat.questionnaire-response.send', '') }}/${btoa(param)}`,
-        //             "input_success",
-        //             ""
-        //         );
-        //     } else {
-        //         return false;
-        //     }
-        // });
-    }
-
-    function resendSatuSehat(param) {
-        Swal.fire({
-            title: "Konfirmasi Pengiriman Ulang",
-            text: `Kirim Ulang Data Kunjungan Pasien?`,
-            icon: "question",
-            showCancelButton: true,
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-            confirmButtonText: "Ya, kirim!",
-            cancelButtonText: "Batal",
-        }).then(async (conf) => {
-            if (conf.value || conf.isConfirmed) {
-                await ajaxGetJson(
-                    `{{ route('satusehat.questionnaire-response.resend', '') }}/${btoa(param)}`,
-                    "input_success",
-                    ""
-                );
-            }
-        });
-        // Swal.fire({
-        //     title: "Apakah anda yakin ingin mengirim data kunjungan ke Satu Sehat?",
-        //     type: "question",
-        //     showCancelButton: true,
-        //     confirmButtonColor: "#3085d6",
-        //     cancelButtonColor: "#d33",
-        //     confirmButtonText: "Ya",
-        // }).then(async (conf) => {
-        //     if (conf.value == true) {
-        //         await ajaxGetJson(
-        //             `{{ route('satusehat.questionnaire-response.send', '') }}/${btoa(param)}`,
-        //             "input_success",
-        //             ""
-        //         );
-        //     } else {
-        //         return false;
-        //     }
-        // });
     }
 
     function input_success(res) {
