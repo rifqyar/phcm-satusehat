@@ -55,18 +55,18 @@ class MedicationRequestController extends Controller
                 'LOG_CREATED_AT',
             ]);
 
-            $start = microtime(true);
+        $start = microtime(true);
 
-$data = $query->get(); // ⚠️ query dieksekusi di sini
+        $data = $query->get(); // query dieksekusi di sini
 
-$time = microtime(true) - $start;
+        $time = microtime(true) - $start;
 
-dd([
-    'rows' => $data->count(),
-    'seconds' => $time,
-]);
+        // dd([
+        //     'rows' => $data->count(),
+        //     'seconds' => $time,
+        // ]);
 
-        // 🔢 Summary
+        //  Summary
         $recordsTotal = (clone $query)->count();
 
         $sentCount = (clone $query)
@@ -75,7 +75,7 @@ dd([
 
         $unsentCount = $recordsTotal - $sentCount;
 
-        // 🚀 DataTables
+        //  DataTables
         $dataTable = DataTables::of($query)
             ->filterColumn(
                 'KARCIS',
@@ -112,7 +112,7 @@ dd([
             })
             ->make(true);
 
-        // 📦 Inject summary
+        // Inject summary
         $json = $dataTable->getData(true);
         $json['summary'] = [
             'all'    => $recordsTotal,
@@ -460,7 +460,6 @@ dd([
     public function prepMedicationRequest(Request $request)
     {
         try {
-            // --- ambil parameter dari request ---
             $idTrans = $request->input('id_trans');
 
             if (empty($idTrans)) {
@@ -470,151 +469,9 @@ dd([
                 ], 400);
             }
 
-            $data = DB::table('SIRS_PHCM.dbo.IF_TRANS_OL as A')
-                ->leftJoin('SIRS_PHCM.dbo.M_TRANS_KFA as B', 'A.KDBRG', '=', 'B.KDBRG_CENTRA')
-                ->select(
-                    'A.ID_TRANS',
-                    'A.KDBRG',
-                    'A.NAMABRG',
-                    'B.FHIR_ID',
-                    'B.KD_BRG_KFA'
-                )
-                ->where('A.ID_TRANS', $idTrans)
-                ->get();
+            $result = $this->sendMedRequestPayload($idTrans);
 
-            if ($data->isEmpty()) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Data transaksi obat ' . $idTrans . ' tidak ditemukan.'
-                ], 404);
-            }
-
-            // cari row yang belum dimapping KD_BRG_KFA (jika ada -> stop, tampilkan list KDBRG)
-            $missingMapping = [];
-            foreach ($data as $row) {
-                if (empty($row->KD_BRG_KFA)) {
-                    $missingMapping[] = $row->KDBRG;
-                }
-            }
-
-            if (!empty($missingMapping)) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Kode KFA (KD_BRG_KFA) belum dimapping untuk transaksi ' . $idTrans,
-                    'missing_kdbrg' => $missingMapping
-                ], 400);
-            }
-
-            // proses setiap row: cek sudah dikirim, jika ok/duplicate -> create payload
-            $summary = []; // akan berisi hasil per KDBRG
-
-            foreach ($data as $row) {
-                $kdbrg = $row->KDBRG;
-                $result_kirim_medication = $this->cekSudahKirimMedication($kdbrg);
-
-
-                // default hasil untuk row ini
-                $rowResult = [
-                    'KDBRG' => $kdbrg,
-                    'NAMABRG' => $row->NAMABRG,
-                    'KD_BRG_KFA' => $row->KD_BRG_KFA,
-                    'status' => 'skipped',
-                    'message' => null,
-                    'created' => false
-                ];
-
-                // kalo success -> lanjut buat payload
-                if (isset($result_kirim_medication['status']) && $result_kirim_medication['status'] === 'success') {
-                    $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg);
-                    $rowResult['status'] = $payloadResult['status'] ?? 'error';
-                    $rowResult['message'] = $payloadResult['message'] ?? null;
-                    $rowResult['created'] = ($payloadResult['status'] ?? '') === 'success';
-                    if (($payloadResult['status'] ?? '') === 'success') {
-                        // KIRIM PAYLOAD KE JOB MEDICATION REQUEST
-                        SendMedicationRequest::dispatch(
-                            $payloadResult['payload'],
-                            [
-                                'idTrans' => $idTrans,
-                                'item' => [
-                                    'KD_BRG_KFA' => $row->KD_BRG_KFA,
-                                    'NAMABRG_KFA' => $row->NAMABRG,
-                                    'medicationReference' => $result_kirim_medication['medicationReference'] ?? null,
-                                    'ID_PASIEN' => $payloadResult['payload']['subject']['reference'] ?? null,
-                                    'id_satusehat_encounter' => $payloadResult['payload']['encounter']['reference'] ?? null,
-                                ]
-                            ]
-                        )->onQueue('MedicationRequest');
-                    }
-                } else {
-                    // decode message (bisa jadi JSON string dari FHIR)
-                    $decoded = null;
-                    if (isset($result_kirim_medication['message'])) {
-                        $decoded = @json_decode($result_kirim_medication['message'], true);
-                    }
-
-                    if ($decoded && isset($decoded['issue'][0]['code']) && $decoded['issue'][0]['code'] === 'duplicate') {
-                        // duplicat OK => lanjut buat payload
-                        // echo $idTrans.$kdbrg; die();
-                        $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg);
-
-                        // echo json_encode($payloadResult); die();
-                        $rowResult['status'] = $payloadResult['status'] ?? 'error';
-                        $rowResult['message'] = $payloadResult['message'] ?? null;
-                        $rowResult['idTrans'] = $payloadResult['idTrans'] ?? null;
-                        $rowResult['KDBRG'] = $payloadResult['KDBRG'] ?? null;
-                        $rowResult['created'] = ($payloadResult['status'] ?? '') === 'success';
-                        $rowResult['payload'] = $payloadResult['payload'] ?? null;
-                        $rowResult['note'] = 'previously duplicate'; // simpan catatan
-
-                        // ==========================================
-                        //  DISPATCH JOB di sini (duplicate case)
-                        // ==========================================
-                        if (($payloadResult['status'] ?? '') === 'success') {
-
-                            SendMedicationRequest::dispatch(
-                                $payloadResult['payload'],
-                                [
-                                    'idTrans' => $idTrans,
-                                    'item' => [
-                                        'KD_BRG_KFA' => $row->KD_BRG_KFA,
-                                        'NAMABRG_KFA' => $row->NAMABRG,
-                                        'medicationReference' => $row->FHIR_ID ?? null,
-                                        'ID_PASIEN' => $payloadResult['payload']['subject']['reference'] ?? null,
-                                        'id_satusehat_encounter' => $payloadResult['payload']['encounter']['reference'] ?? null,
-                                    ],
-                                ]
-                            )->onQueue('MedicationRequest');
-                        }
-                    } else {
-                        // error lain -> jangan lanjut untuk row ini
-                        $rowResult['status'] = 'error';
-                        $rowResult['message'] = $result_kirim_medication['message'] ?? 'Gagal Kirim Medication';
-                    }
-                }
-
-                $summary[] = $rowResult;
-            }
-
-            // hitung ringkasan
-            $createdCount = 0;
-            $errorCount = 0;
-            foreach ($summary as $s) {
-                if (isset($s['created']) && $s['created'])
-                    $createdCount++;
-                if ($s['status'] === 'error')
-                    $errorCount++;
-            }
-
-            return response()->json([
-                'status' => ($errorCount === 0) ? 'success' : (($createdCount > 0) ? 'partial' : 'error'),
-                'message' => ($errorCount === 0) ? 'Semua row diproses' : 'Sebagian row diproses, ada error pada beberapa row',
-                'summary' => [
-                    'total_rows' => count($summary),
-                    'created' => $createdCount,
-                    'errors' => $errorCount
-                ],
-                'results' => $summary
-            ], 200);
+            return response()->json($result, 200);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -622,6 +479,170 @@ dd([
             ], 500);
         }
     }
+
+
+    public function sendMedRequestPayload(string $idTrans): array
+    {
+        $data = DB::table('SIRS_PHCM.dbo.IF_TRANS_OL as A')
+            ->leftJoin('SIRS_PHCM.dbo.M_TRANS_KFA as B', 'A.KDBRG', '=', 'B.KDBRG_CENTRA')
+            ->select(
+                'A.ID_TRANS',
+                'A.KDBRG',
+                'A.NAMABRG',
+                'B.FHIR_ID',
+                'B.KD_BRG_KFA'
+            )
+            ->where('A.ID_TRANS', $idTrans)
+            ->get();
+
+        if ($data->isEmpty()) {
+            return [
+                'status' => 'error',
+                'message' => 'Data transaksi obat ' . $idTrans . ' tidak ditemukan.'
+            ];
+        }
+
+        $summary = [];
+
+        foreach ($data as $row) {
+
+            // ===============================
+            // SKIP: belum mapping KFA
+            // ===============================
+            if (empty($row->KD_BRG_KFA) || $row->KD_BRG_KFA === '0') {
+                $summary[] = [
+                    'KDBRG' => $row->KDBRG,
+                    'NAMABRG' => $row->NAMABRG,
+                    'KD_BRG_KFA' => $row->KD_BRG_KFA,
+                    'status' => 'skipped',
+                    'message' => 'KD_BRG_KFA belum dimapping'
+                ];
+                continue;
+            }
+
+            // ===============================
+            // SKIP: alat kesehatan
+            // ===============================
+            if ($row->KD_BRG_KFA === '000') {
+                $summary[] = [
+                    'KDBRG' => $row->KDBRG,
+                    'NAMABRG' => $row->NAMABRG,
+                    'KD_BRG_KFA' => $row->KD_BRG_KFA,
+                    'status' => 'skipped',
+                    'message' => 'Alat kesehatan, tidak dikirim sebagai MedicationRequest'
+                ];
+                continue;
+            }
+
+            $kdbrg = $row->KDBRG;
+            $result_kirim_medication = $this->cekSudahKirimMedication($kdbrg);
+
+            $rowResult = [
+                'KDBRG' => $kdbrg,
+                'NAMABRG' => $row->NAMABRG,
+                'KD_BRG_KFA' => $row->KD_BRG_KFA,
+                'status' => 'skipped',
+                'message' => null,
+                'created' => false
+            ];
+
+            // ===============================
+            // BELUM PERNAH / SUCCESS
+            // ===============================
+            if (
+                isset($result_kirim_medication['status']) &&
+                $result_kirim_medication['status'] === 'success'
+            ) {
+                $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg);
+
+                $rowResult['status'] = $payloadResult['status'] ?? 'error';
+                $rowResult['message'] = $payloadResult['message'] ?? null;
+                $rowResult['created'] = ($payloadResult['status'] ?? '') === 'success';
+
+                if ($rowResult['created']) {
+                    SendMedicationRequest::dispatch(
+                        $payloadResult['payload'],
+                        [
+                            'idTrans' => $idTrans,
+                            'item' => [
+                                'KD_BRG_KFA' => $row->KD_BRG_KFA,
+                                'NAMABRG_KFA' => $row->NAMABRG,
+                                'medicationReference' => $result_kirim_medication['medicationReference'] ?? null,
+                                'ID_PASIEN' => $payloadResult['payload']['subject']['reference'] ?? null,
+                                'id_satusehat_encounter' => $payloadResult['payload']['encounter']['reference'] ?? null,
+                            ]
+                        ]
+                    )->onQueue('MedicationRequest');
+                }
+            } else {
+
+                // ===============================
+                // DUPLICATE CASE
+                // ===============================
+                $decoded = isset($result_kirim_medication['message'])
+                    ? @json_decode($result_kirim_medication['message'], true)
+                    : null;
+
+                if ($decoded && ($decoded['issue'][0]['code'] ?? null) === 'duplicate') {
+
+                    $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg);
+
+                    $rowResult['status'] = $payloadResult['status'] ?? 'error';
+                    $rowResult['message'] = $payloadResult['message'] ?? null;
+                    $rowResult['created'] = ($payloadResult['status'] ?? '') === 'success';
+                    $rowResult['note'] = 'previously duplicate';
+
+                    if ($rowResult['created']) {
+                        SendMedicationRequest::dispatch(
+                            $payloadResult['payload'],
+                            [
+                                'idTrans' => $idTrans,
+                                'item' => [
+                                    'KD_BRG_KFA' => $row->KD_BRG_KFA,
+                                    'NAMABRG_KFA' => $row->NAMABRG,
+                                    'medicationReference' => $row->FHIR_ID ?? null,
+                                    'ID_PASIEN' => $payloadResult['payload']['subject']['reference'] ?? null,
+                                    'id_satusehat_encounter' => $payloadResult['payload']['encounter']['reference'] ?? null,
+                                ]
+                            ]
+                        )->onQueue('MedicationRequest');
+                    }
+                } else {
+                    $rowResult['status'] = 'error';
+                    $rowResult['message'] = $result_kirim_medication['message'] ?? 'Gagal Kirim Medication';
+                }
+            }
+
+            $summary[] = $rowResult;
+        }
+
+        // ===============================
+        // RINGKASAN
+        // ===============================
+        $createdCount = 0;
+        $errorCount = 0;
+
+        foreach ($summary as $s) {
+            if (!empty($s['created'])) $createdCount++;
+            if (($s['status'] ?? '') === 'error') $errorCount++;
+        }
+
+        return [
+            'status' => ($errorCount === 0)
+                ? 'success'
+                : (($createdCount > 0) ? 'partial' : 'error'),
+            'message' => ($errorCount === 0)
+                ? 'Semua row diproses'
+                : 'Sebagian row diproses, ada error pada beberapa row',
+            'summary' => [
+                'total_rows' => count($summary),
+                'created' => $createdCount,
+                'errors' => $errorCount
+            ],
+            'results' => $summary
+        ];
+    }
+
     // biar singkat ngecek kirim medication sekalian biar bisa dipanggil di fungsi lain
     function cekSudahKirimMedication($kdbrg)
     {

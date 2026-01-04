@@ -8,6 +8,7 @@ use App\Services\ObservasiService;
 use App\Services\ProcedureService;
 use App\Services\ServiceRequestService;
 use App\Services\SpecimenService;
+use App\Services\MedicationRequestService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -66,6 +67,14 @@ class DispatchToEndpoint implements ShouldQueue
             case 'specimen':
                 app(SpecimenService::class)->process($this->payload);
                 break;
+
+            case 'medication-request':
+                app(MedicationRequestService::class)->process($this->payload);
+                break;    
+
+            case 'medication-dispense':
+                app(MedicationRequestService::class)->process($this->payload);
+                break;    
 
             default:
                 throw new \Exception("Unknown endpoint: {$this->endpoint}");
