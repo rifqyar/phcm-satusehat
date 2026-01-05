@@ -412,12 +412,16 @@
                             </button>`;
                             let btnAction = '';
 
-                            if (data.STATUS_MAPPING === '100') {
+                            if (data.id_satusehat_encounter === null || data.id_satusehat_encounter === '') {
+                                btnAction = `<i class="text-danger">Belum Ada Encounter</i>`;
+                            } 
+                            else if (data.STATUS_MAPPING === '100') {
                                 btnAction = `
-                                <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                                    <i class="fas fa-link mr-2"></i> Kirim SATUSEHAT
-                                </button>`;
-                            } else if (data.STATUS_MAPPING === '200') {
+                                    <button class="btn btn-sm btn-primary w-100"
+                                        onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                        <i class="fas fa-link mr-2"></i> Kirim SATUSEHAT
+                                    </button>`;
+                            }  else if (data.STATUS_MAPPING === '200') {
                                 btnAction = `
                                 <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
                                     <i class="fas fa-link mr-2"></i> Kirim Ulang SATUSEHAT
