@@ -236,7 +236,8 @@
                                     </th>
                                     <th>Jenis Penunjang Medis</th>
                                     <th>Tanggal Masuk</th>
-                                    <th>Jenis Perawatan</th>
+                                    <th>Karcis Asal</th>
+                                    <th>Karcis Rujukan</th>
                                     <th>Nama Pasien</th>
                                     <th>Dokter</th>
                                     <th>No. Peserta</th>
@@ -385,8 +386,12 @@
                         name: 'TANGGAL_ENTRI',
                     },
                     {
-                        data: 'JENIS_PERAWATAN',
-                        name: 'JENIS_PERAWATAN',
+                        data: 'KARCIS_ASAL',
+                        name: 'KARCIS_ASAL',
+                    },
+                    {
+                        data: 'KARCIS_RUJUKAN',
+                        name: 'KARCIS_RUJUKAN',
                     },
                     {
                         data: 'NAMA_PASIEN',

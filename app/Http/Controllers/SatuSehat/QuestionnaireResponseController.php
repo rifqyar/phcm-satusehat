@@ -65,9 +65,18 @@ class QuestionnaireResponseController extends Controller
             $tgl_akhir = Carbon::parse($tgl_akhir)->endOfDay()->format('Y-m-d H:i:s');
         }
 
-        if (!$this->checkDateFormat($tgl_awal) || !$this->checkDateFormat($tgl_akhir)) {
-            return DataTables::of([])->make(true);
-        }
+        // build summary counts
+        $total = count($rows);
+        $rjAll = collect($rows)->filter(function($r){
+            return $r['JENIS_PERAWATAN'] === 'Rawat Jalan';
+        })->count();
+        $ri = collect($rows)->filter(function($r){
+            return $r['JENIS_PERAWATAN'] === 'Rawat Inap';
+        })->count();
+        $total_integrated = collect($rows)->filter(function($r){
+            return str_contains($r['status_integrasi'], 'Sudah Integrasi');
+        })->count();
+        $total_unmapped = $total - $total_integrated;
 
         $tgl_awal_db  = Carbon::parse($tgl_awal)->format('Y-m-d H:i:s');
         $tgl_akhir_db = Carbon::parse($tgl_akhir)->format('Y-m-d H:i:s');

@@ -66,9 +66,9 @@ class HomeController extends Controller
                 'bg_color' => 'card-megna'
             ],
             [
-                'title' => 'Radiologi',
-                'url' => '#',
-                'bg_color' => ''
+                'title' => 'Imaging Study',
+                'url' => 'satusehat.imaging-study.index',
+                'bg_color' => 'card-info'
             ],
             [
                 'title' => 'Permintaan Pemeriksaan (Penunjang Medis)',
