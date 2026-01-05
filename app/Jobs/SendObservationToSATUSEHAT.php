@@ -58,6 +58,9 @@ class SendObservationToSATUSEHAT implements ShouldQueue
      */
     public function handle()
     {
+        DB::disconnect('sqlsrv');
+        DB::reconnect('sqlsrv');
+
         $logChannel = explode('/', $this->url)[0];
         try {
             if (count($this->payload) > 0) {

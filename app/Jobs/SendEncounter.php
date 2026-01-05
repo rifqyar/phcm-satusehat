@@ -10,6 +10,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 
 class SendEncounter implements ShouldQueue
@@ -39,6 +40,9 @@ class SendEncounter implements ShouldQueue
      */
     public function handle()
     {
+        DB::disconnect('sqlsrv');
+        DB::reconnect('sqlsrv');
+
         try {
             $controller = app(EncounterController::class);
             $encodedParam = base64_encode($this->param);

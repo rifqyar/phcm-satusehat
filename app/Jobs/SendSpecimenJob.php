@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class SendSpecimenJob implements ShouldQueue
@@ -37,6 +38,9 @@ class SendSpecimenJob implements ShouldQueue
      */
     public function handle()
     {
+        DB::disconnect('sqlsrv');
+        DB::reconnect('sqlsrv');
+
         try {
             // Resolve controller from container (keeps middleware / traits accessible)
             $controller = app(SpecimenController::class);
@@ -49,7 +53,6 @@ class SendSpecimenJob implements ShouldQueue
                 'param' => $this->param,
                 'status_code' => $result->getStatusCode()
             ]);
-
         } catch (Exception $e) {
             // Log error, job will be retried according to queue config
             Log::error('SendSpecimenJob failed: ' . $e->getMessage(), [
