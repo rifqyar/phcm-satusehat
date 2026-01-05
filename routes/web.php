@@ -201,10 +201,10 @@ Route::middleware(['checkLogin'])->group(function () {
             ->name('questionnaire-response.datatable');
         Route::get('/questionnaire-response/questions', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'getQuestions'])
             ->name('questionnaire-response.questions');
-        Route::post('/questionnaire-response/send', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'send'])
+        Route::post('/questionnaire-response/save', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'saveResponse'])
+            ->name('questionnaire-response.save');
+        Route::get('/questionnaire-response/send/{param}', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'sendSatuSehat'])
             ->name('questionnaire-response.send');
-        Route::post('/questionnaire-response/resend', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'resend'])
-            ->name('questionnaire-response.resend');
 
         // Resume Medis Routes
         Route::get('/resume-medis', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'index'])
