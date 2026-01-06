@@ -203,7 +203,7 @@ Route::middleware(['checkLogin'])->group(function () {
             ->name('questionnaire-response.questions');
         Route::post('/questionnaire-response/save', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'saveResponse'])
             ->name('questionnaire-response.save');
-        Route::get('/questionnaire-response/send/{param}', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'sendSatuSehat'])
+        Route::post('/questionnaire-response/send/{param}', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'sendSatuSehat'])
             ->name('questionnaire-response.send');
 
         // Resume Medis Routes

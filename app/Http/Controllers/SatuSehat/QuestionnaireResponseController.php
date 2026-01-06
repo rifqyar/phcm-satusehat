@@ -35,19 +35,23 @@ class QuestionnaireResponseController extends Controller
             'all'
         ]));
 
-        $summary = $dataKunjungan->first();
+        // Get all karcis IDs
+        $allKarcisIds = $dataKunjungan->pluck('ID_TRANSAKSI')->filter()->unique()->toArray();
+        
+        // Count how many have logs in SATUSEHAT_LOG_RESPON_KUESIONER
+        $integratedCount = 0;
+        if (!empty($allKarcisIds)) {
+            $integratedCount = DB::connection('sqlsrv')
+                ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_RESPON_KUESIONER')
+                ->whereIn('karcis', $allKarcisIds)
+                ->distinct('karcis')
+                ->count('karcis');
+        }
 
-        $totalData = [
-            'total_semua' => $summary->total_semua ?? 0,
-            'rjAll' => $summary->rjAll ?? 0,
-            'ri' => $summary->ri ?? 0,
-            'total_sudah_integrasi' => $summary->total_sudah_integrasi ?? 0,
-            'total_belum_integrasi' => $summary->total_belum_integrasi ?? 0,
-        ];
-
-        $mergedAll = $summary->total_semua ?? 0;
-        $mergedIntegrated = $summary->total_sudah_integrasi ?? 0;
-        $unmapped = $summary->total_belum_integrasi ?? 0;
+        $mergedAll = $dataKunjungan->count();
+        $mergedIntegrated = $integratedCount;
+        $unmapped = $mergedAll - $mergedIntegrated;
+        
         return view('pages.satusehat.questionnaire-response.index', compact('mergedAll', 'mergedIntegrated', 'unmapped'));
     }
 
@@ -55,6 +59,7 @@ class QuestionnaireResponseController extends Controller
     {
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
+        $cari = $request->input('cari'); // Filter: all, sent, pending
         $id_unit = Session::get('id_unit', '001');
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
@@ -64,19 +69,6 @@ class QuestionnaireResponseController extends Controller
             $tgl_awal = Carbon::parse($tgl_awal)->startOfDay()->format('Y-m-d H:i:s');
             $tgl_akhir = Carbon::parse($tgl_akhir)->endOfDay()->format('Y-m-d H:i:s');
         }
-
-        // build summary counts
-        $total = count($rows);
-        $rjAll = collect($rows)->filter(function($r){
-            return $r['JENIS_PERAWATAN'] === 'Rawat Jalan';
-        })->count();
-        $ri = collect($rows)->filter(function($r){
-            return $r['JENIS_PERAWATAN'] === 'Rawat Inap';
-        })->count();
-        $total_integrated = collect($rows)->filter(function($r){
-            return str_contains($r['status_integrasi'], 'Sudah Integrasi');
-        })->count();
-        $total_unmapped = $total - $total_integrated;
 
         $tgl_awal_db  = Carbon::parse($tgl_awal)->format('Y-m-d H:i:s');
         $tgl_akhir_db = Carbon::parse($tgl_akhir)->format('Y-m-d H:i:s');
@@ -90,16 +82,6 @@ class QuestionnaireResponseController extends Controller
             $tgl_akhir_db,
             'all'
         ]));
-
-        $summary = $dataKunjungan->first();
-
-        $totalData = [
-            'total_semua' => $summary->total_semua ?? 0,
-            'rjAll' => $summary->rjAll ?? 0,
-            'ri' => $summary->ri ?? 0,
-            'total_sudah_integrasi' => $summary->total_sudah_integrasi ?? 0,
-            'total_belum_integrasi' => $summary->total_belum_integrasi ?? 0,
-        ];
 
         // Fetch all log statuses in one query to avoid N+1 problem
         $allTransaksiIds = $dataKunjungan->pluck('ID_TRANSAKSI')->filter()->unique()->toArray();
@@ -118,6 +100,39 @@ class QuestionnaireResponseController extends Controller
                 }
             }
         }
+        
+        // Calculate totals based on log existence
+        $total_semua = $dataKunjungan->count();
+        $total_sudah_integrasi = count($logStatuses);
+        $total_belum_integrasi = $total_semua - $total_sudah_integrasi;
+        
+        // Apply filter based on search type
+        if (!empty($cari)) {
+            switch ($cari) {
+                case 'sent':
+                    // Filter only integrated data (has log)
+                    $dataKunjungan = $dataKunjungan->filter(function($row) use ($logStatuses) {
+                        return isset($logStatuses[$row->ID_TRANSAKSI]);
+                    });
+                    break;
+                case 'pending':
+                    // Filter only non-integrated data (no log)
+                    $dataKunjungan = $dataKunjungan->filter(function($row) use ($logStatuses) {
+                        return !isset($logStatuses[$row->ID_TRANSAKSI]);
+                    });
+                    break;
+                case 'all':
+                default:
+                    // No filter, show all data
+                    break;
+            }
+        }
+        
+        $totalData = [
+            'total_semua' => $total_semua,
+            'total_sudah_integrasi' => $total_sudah_integrasi,
+            'total_belum_integrasi' => $total_belum_integrasi,
+        ];
 
         return DataTables::of($dataKunjungan)
             ->addIndexColumn()
@@ -155,13 +170,9 @@ class QuestionnaireResponseController extends Controller
                 $logStatus = $logStatuses[$row->ID_TRANSAKSI] ?? null;
                 
                 if ($logStatus) {
-                    if ($logStatus->status_code == 201) {
-                        return '<span class="badge badge-success">Terkirim</span><br><small>' . date('d-m-Y H:i', strtotime($logStatus->created_at)) . '</small>';
-                    } else {
-                        return '<span class="badge badge-warning">Gagal</span><br><small>Code: ' . $logStatus->status_code . '</small>';
-                    }
+                    return '<span class="badge badge-success">Sudah Integrasi</span><br><small>' . date('d-m-Y H:i', strtotime($logStatus->crtdt)) . '</small>';
                 } else {
-                    return '<span class="badge badge-secondary">Belum Terkirim</span>';
+                    return '<span class="badge badge-secondary">Belum Integrasi</span>';
                 }
             })
             ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi'])
@@ -180,27 +191,6 @@ class QuestionnaireResponseController extends Controller
             return true;
         } catch (\Exception $e) {
             return false;
-        }
-    }
-
-    public function saveResponse(Request $request)
-    {
-        try {
-            $visitId = $request->input('visit_id');
-            $responses = $request->input('responses');
-            
-            // Store responses in session or temporary table for later use when sending to SatuSehat
-            Session::put('questionnaire_responses_' . $visitId, $responses);
-            
-            return response()->json([
-                'status' => 200,
-                'message' => 'Respon kuesioner berhasil disimpan'
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                'status' => 500,
-                'message' => 'Gagal menyimpan respon: ' . $e->getMessage()
-            ], 500);
         }
     }
 
@@ -261,13 +251,13 @@ class QuestionnaireResponseController extends Controller
                 ], 404);
             }
             
-            // Get responses from session
-            $responses = Session::get('questionnaire_responses_' . $id_transaksi, []);
+            // Get responses from request
+            $responses = $request->input('responses', []);
             
             if (empty($responses)) {
                 return response()->json([
                     'status' => 400,
-                    'message' => 'Silakan isi respon kuesioner terlebih dahulu',
+                    'message' => 'Respon kuesioner tidak ditemukan',
                     'redirect' => ['need' => false, 'to' => '']
                 ], 400);
             }
@@ -466,17 +456,19 @@ class QuestionnaireResponseController extends Controller
             
             // Log to database
             DB::connection('sqlsrv')->table('SATUSEHAT.dbo.SATUSEHAT_LOG_RESPON_KUESIONER')->insert([
-                'id_transaksi' => $id_transaksi,
-                'id_satusehat_questionnaire_response' => $responseBody['id'] ?? null,
-                'request' => json_encode($payload),
-                'response' => json_encode($responseBody),
-                'status_code' => $statusCode,
-                'created_at' => Carbon::now(),
-                'created_by' => Session::get('user', 'system')
+                'karcis' => $id_transaksi,
+                'id_satusehat_respon_kuesioner' => $responseBody['id'] ?? null,
+                'id_satusehat_encounter' => $encounter->id_satusehat_encounter,
+                'id_satusehat_px' => $patient->idpx,
+                'id_satusehat_dokter' => $practitionerId,
+                'kbuku' => $visit->KBUKU ?? null,
+                'no_peserta' => $visit->NO_PESERTA ?? null,
+                'idunit' => $id_unit,
+                'status_sinkron' => $statusCode == 201 ? 1 : 0,
+                'crtdt' => Carbon::now(),
+                'crtusr' => Session::get('user', 'system'),
+                'sinkron_date' => $statusCode == 201 ? Carbon::now() : null
             ]);
-            
-            // Clear session
-            Session::forget('questionnaire_responses_' . $id_transaksi);
             
             if ($statusCode == 201) {
                 return response()->json([
