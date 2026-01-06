@@ -517,7 +517,7 @@
             return;
         }
 
-        sendSatuSehat(paramEncoded);
+        sendSatuSehat(paramEncoded, responses);
     }
 
     function search(type) {
@@ -525,7 +525,7 @@
         table.ajax.reload()
     }
 
-    function sendSatuSehat(param) {
+    function sendSatuSehat(param, responses) {
         Swal.fire({
             title: "Konfirmasi Pengiriman",
             text: `Kirim respon kuesioner ke SatuSehat?`,
@@ -537,11 +537,34 @@
             cancelButtonText: "Batal",
         }).then(async (conf) => {
             if (conf.value || conf.isConfirmed) {
-                await ajaxGetJson(
-                    `{{ route('satusehat.questionnaire-response.send', '') }}/${param}`,
-                    "input_success",
-                    ""
-                );
+                Swal.fire({
+                    title: 'Mengirim...',
+                    text: 'Mengirim respon kuesioner ke SatuSehat',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    willOpen: () => {
+                        Swal.showLoading()
+                    }
+                });
+
+                $.ajax({
+                    url: `{{ route('satusehat.questionnaire-response.send', '') }}/${param}`,
+                    type: 'POST',
+                    data: {
+                        _token: $('meta[name="csrf-token"]').attr('content'),
+                        responses: responses
+                    },
+                    success: function(res) {
+                        Swal.close();
+                        $('#questionnaireModal').modal('hide');
+                        input_success(res);
+                    },
+                    error: function(xhr) {
+                        Swal.close();
+                        const res = xhr.responseJSON || {};
+                        input_error(res);
+                    }
+                });
             }
         });
     }
