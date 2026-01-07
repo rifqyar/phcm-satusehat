@@ -597,7 +597,7 @@
                             if (showSwal) {
                                 swal({
                                     title: 'Berhasil!',
-                                    text: `Transaksi ${idTrans} berhasil dikirim ke SATUSEHAT.`,
+                                    text: `Transaksi ${idTrans} berhasil dimasukkan ke antrian pengiriman SATUSEHAT.`,
                                     type: 'success',
                                     timer: 2000,
                                     showConfirmButton: false
