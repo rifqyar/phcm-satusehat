@@ -230,5 +230,7 @@ Route::middleware(['checkLogin'])->group(function () {
         // Med Statement
         Route::get('/medstatement', [App\Http\Controllers\SatuSehat\MedStatementController::class, 'index'])->name('medstatement.index');
         Route::post('/medstatement/datatabel', [App\Http\Controllers\SatuSehat\MedStatementController::class, 'datatabel'])->name('medstatement.datatabel');
+        Route::post('/medstatement/detail', [App\Http\Controllers\SatuSehat\MedStatementController::class, 'detail'])->name('medstatement.detail');
+        Route::post('/medstatement/sendpayload', [App\Http\Controllers\SatuSehat\MedStatementController::class, 'fetchMedStatementRequest'])->name('medstatement.sendpayload');
     });
 });
