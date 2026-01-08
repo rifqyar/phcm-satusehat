@@ -48,15 +48,15 @@ class ProcedureService
         $data = null;
         if (strtoupper($payload['jenis_layanan']) == 'JALAN' || str_contains(strtoupper($payload['jenis_layanan']), 'JALAN')) {
             $data = collect(DB::select("
-                EXEC dbo.sp_getTindakanRawatJalan ?
+                EXEC dbo.sp_getTindakanRawatJalan ?, ?
             ", [
-                $id_unit
+                $payload['karcis'], $id_unit
             ]))->first();
         } else {
             $data = collect(DB::select("
-                EXEC dbo.sp_getTindakanRawatInap ?
+                EXEC dbo.sp_getTindakanRawatInap ?, ?
             ", [
-                $id_unit
+                $payload['karcis'], $id_unit
             ]))->first();
         }
 

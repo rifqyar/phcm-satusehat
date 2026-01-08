@@ -334,6 +334,8 @@
                     },
                     dataSrc: function(json) {
                         console.log(json)
+                        $('#total_rawat_jalan').text(json.total_rawat_jalan);
+                        $('#total_rawat_inap').text(json.total_rawat_inap);
                         $('#total_all').text(json.total_semua);
                         $('#total_integrasi').text(json.total_sudah_integrasi);
                         $('#total_belum_integrasi').text(json.total_belum_integrasi);
