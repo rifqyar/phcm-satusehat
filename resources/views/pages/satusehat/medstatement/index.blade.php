@@ -100,19 +100,30 @@
                 </div>
 
                 <!-- KANAN: Filter Tanggal -->
-                <div class="d-flex align-items-center">
-                    <label class="mb-0 mr-2 text-muted">Periode</label>
+            <div class="d-flex align-items-center">
+                <label class="mb-0 mr-2 text-muted">Periode</label>
 
-                    <input type="date" id="start_date" class="form-control form-control-sm mr-2" style="width: 150px">
+                <input type="text"
+                    id="start_date"
+                    class="form-control form-control-sm mr-2"
+                    style="width: 150px"
+                    placeholder="dd-mm-yyyy"
+                    autocomplete="off">
 
-                    <span class="mr-2">-</span>
+                <span class="mr-2">-</span>
 
-                    <input type="date" id="end_date" class="form-control form-control-sm mr-2" style="width: 150px">
+                <input type="text"
+                    id="end_date"
+                    class="form-control form-control-sm mr-2"
+                    style="width: 150px"
+                    placeholder="dd-mm-yyyy"
+                    autocomplete="off">
 
-                    <button class="btn btn-primary btn-sm" id="btnFilter">
-                        <i class="fas fa-filter"></i>
-                    </button>
-                </div>
+                <button class="btn btn-primary btn-sm" id="btnFilter">
+                    <i class="fas fa-filter"></i>
+                </button>
+            </div>
+
 
             </div>
 
@@ -255,11 +266,14 @@
                 table.ajax.reload();
             });
 
-            table.on('xhr.dt', (e, s, json) => {
-                $('span[data-count="all"]').text(json.summary?.all ?? 0);
-                $('span[data-count="sent"]').text(json.summary?.sent ?? 0);
-                $('span[data-count="unsent"]').text(json.summary?.unsent ?? 0);
+            table.on('xhr.dt', function (e, settings, json) {
+                if (!json || !json.summary) return;
+
+                $('span[data-count="all"]').text(json.summary.all ?? 0);
+                $('span[data-count="sent"]').text(json.summary.sudah_kirim ?? 0);
+                $('span[data-count="unsent"]').text(json.summary.belum_kirim ?? 0);
             });
+
 
             $("#checkAll").change(() => $('.checkbox-item').prop('checked', $("#checkAll").is(':checked')));
 

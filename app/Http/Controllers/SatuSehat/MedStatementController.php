@@ -50,7 +50,9 @@ class MedStatementController extends Controller
     public function datatabel(Request $request)
     {
         $startDate = $request->get('start_date', date('Y-m-d'));
-        $endDate   = $request->get('end_date', date('Y-m-d'));
+        $endDate = $request->get('end_date', date('Y-m-d'));
+        $endDate = date('Y-m-d', strtotime($endDate . ' +1 day'));
+
 
         $sql = "
             SELECT 
@@ -119,13 +121,57 @@ class MedStatementController extends Controller
             ->make(true);
 
         $json = $dataTable->getData(true);
+
+        $summary = DB::selectOne("
+                SELECT
+                    COUNT(1) AS all_data,
+                    SUM(T.is_sudah_kirim) AS sudah_kirim
+                FROM (
+                    SELECT
+                        A.ID_TRANS,
+                        CASE 
+                            WHEN MS.LOCAL_ID IS NOT NULL THEN 1
+                            ELSE 0
+                        END AS is_sudah_kirim
+                    FROM IF_HTRANS A
+                    JOIN IF_HTRANS_OL AA 
+                        ON A.ID_TRANS_OL = AA.ID_TRANS
+                    JOIN (
+                        SELECT *
+                        FROM (
+                            SELECT *,
+                                ROW_NUMBER() OVER (
+                                    PARTITION BY LOCAL_ID
+                                    ORDER BY CREATED_AT DESC
+                                ) AS rn
+                            FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
+                            WHERE LOG_TYPE = 'MedicationDispense'
+                            AND STATUS = 'success'
+                        ) x
+                        WHERE rn = 1
+                    ) B
+                        ON A.ID_TRANS = B.LOCAL_ID
+                    LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION MS
+                        ON MS.LOCAL_ID = A.ID_TRANS
+                        AND MS.LOG_TYPE = 'MedicationStatement'
+                        AND MS.STATUS = 'success'
+                    WHERE B.CREATED_AT BETWEEN ? AND ?
+                    GROUP BY A.ID_TRANS, MS.LOCAL_ID
+                ) T
+            ", [$startDate, $endDate]);
+
+
+
         $json['summary'] = [
-            'all' => $recordsTotal,
+            'all'         => (int) $summary->all_data,
+            'sudah_kirim' => (int) $summary->sudah_kirim,
+            'belum_kirim' => (int) ($summary->all_data - $summary->sudah_kirim),
             'periode' => [
                 'start' => $startDate,
                 'end'   => $endDate,
             ],
         ];
+
 
         return response()->json($json);
     }
