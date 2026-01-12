@@ -102,21 +102,37 @@ class MedicationRequestController extends Controller
                 DB::raw('SSM.CREATED_AT AS LOG_CREATED_AT')
             );
 
-        // 🔢 Summary count
-        $recordsTotal = (clone $query)->count();
+        $status = $request->input('status', 'all');
 
-        $sentCount = (clone $query)
-            ->whereRaw("
-            CASE
-                WHEN SSM.ID IS NOT NULL THEN '200'
-                ELSE d.STATUS_MAPPING
-            END = '200'
-        ")
+        $statusExpr = "
+        CASE
+            WHEN SSM.ID IS NOT NULL THEN '200'
+            ELSE d.STATUS_MAPPING
+        END
+        ";
+        $baseQuery = clone $query;
+        if ($status === 'sent') {
+            $query->whereRaw("$statusExpr = '200'");
+        }
+        else if ($status === 'unsent') {
+            $query->whereRaw("$statusExpr <> '200'");
+        }
+
+
+        $recordsTotal = (clone $baseQuery)->count();
+
+        $sentCount = (clone $baseQuery)
+            ->whereRaw("$statusExpr = '200'")
             ->count();
+
+        $unsentCount = (clone $baseQuery)
+            ->whereRaw("$statusExpr <> '200'")
+            ->count();
+
 
         $unsentCount = $recordsTotal - $sentCount;
 
-        // 🚀 DataTables server-side
+        // DataTables server-side
         $dataTable = DataTables::of($query)
             ->filterColumn('KARCIS', function ($query, $keyword) {
                 $query->where('a.KARCIS', 'like', "%{$keyword}%");

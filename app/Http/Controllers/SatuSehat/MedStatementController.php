@@ -52,6 +52,7 @@ class MedStatementController extends Controller
         $startDate = $request->get('start_date', date('Y-m-d'));
         $endDate = $request->get('end_date', date('Y-m-d'));
         $endDate = date('Y-m-d', strtotime($endDate . ' +1 day'));
+        $status = $request->get('status', 'all');
 
 
         $sql = "
@@ -97,6 +98,14 @@ class MedStatementController extends Controller
                 $sql
             ) AS dashboard_med_statement")
         )->setBindings([$startDate, $endDate]);
+
+        // filer status yang diklik via card ntar
+        if ($status === 'integrated') {
+            $query->where('STATUS_KIRIM_STATEMENT', 'Integrasi');
+        }
+        elseif ($status === 'not_integrated') {
+            $query->where('STATUS_KIRIM_STATEMENT', 'Belum Integrasi');
+        }
 
 
         $recordsTotal = DB::selectOne(
