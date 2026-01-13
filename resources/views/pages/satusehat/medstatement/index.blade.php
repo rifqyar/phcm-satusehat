@@ -23,6 +23,24 @@
             appearance: auto !important;
             visibility: visible !important;
         }
+                /* ✅ Pastikan kolom pertama untuk checkbox terlihat */
+        table.table th:first-child,
+        table.table td:first-child {
+            width: 50px !important;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        /* ✅ Override styling Bootstrap yang kadang menyembunyikan checkbox */
+        input[type="checkbox"],
+        .form-check-input {
+            appearance: auto !important;
+            -webkit-appearance: checkbox !important;
+            -moz-appearance: checkbox !important;
+            opacity: 1 !important;
+            position: static !important;
+            visibility: visible !important;
+        }
     </style>
 @endpush
 
@@ -100,19 +118,30 @@
                 </div>
 
                 <!-- KANAN: Filter Tanggal -->
-                <div class="d-flex align-items-center">
-                    <label class="mb-0 mr-2 text-muted">Periode</label>
+            <div class="d-flex align-items-center">
+                <label class="mb-0 mr-2 text-muted">Periode</label>
 
-                    <input type="date" id="start_date" class="form-control form-control-sm mr-2" style="width: 150px">
+                <input type="text"
+                    id="start_date"
+                    class="form-control form-control-sm mr-2"
+                    style="width: 150px"
+                    placeholder="dd-mm-yyyy"
+                    autocomplete="off">
 
-                    <span class="mr-2">-</span>
+                <span class="mr-2">-</span>
 
-                    <input type="date" id="end_date" class="form-control form-control-sm mr-2" style="width: 150px">
+                <input type="text"
+                    id="end_date"
+                    class="form-control form-control-sm mr-2"
+                    style="width: 150px"
+                    placeholder="dd-mm-yyyy"
+                    autocomplete="off">
 
-                    <button class="btn btn-primary btn-sm" id="btnFilter">
-                        <i class="fas fa-filter"></i>
-                    </button>
-                </div>
+                <button class="btn btn-primary btn-sm" id="btnFilter">
+                    <i class="fas fa-filter"></i>
+                </button>
+            </div>
+
 
             </div>
 
@@ -160,6 +189,7 @@
 @push('after-script')
     <script>
         let table;
+        var statusFilter = 'all';
 
         $(document).ready(function() {
             const today = new Date();
@@ -182,6 +212,7 @@
                         d._token = '{{ csrf_token() }}';
                         d.start_date = $('#start_date').val();
                         d.end_date = $('#end_date').val();
+                        d.status = statusFilter;
                     }
                 },
                 columns: [{
@@ -255,11 +286,14 @@
                 table.ajax.reload();
             });
 
-            table.on('xhr.dt', (e, s, json) => {
-                $('span[data-count="all"]').text(json.summary?.all ?? 0);
-                $('span[data-count="sent"]').text(json.summary?.sent ?? 0);
-                $('span[data-count="unsent"]').text(json.summary?.unsent ?? 0);
+            table.on('xhr.dt', function (e, settings, json) {
+                if (!json || !json.summary) return;
+
+                $('span[data-count="all"]').text(json.summary.all ?? 0);
+                $('span[data-count="sent"]').text(json.summary.sudah_kirim ?? 0);
+                $('span[data-count="unsent"]').text(json.summary.belum_kirim ?? 0);
             });
+
 
             $("#checkAll").change(() => $('.checkbox-item').prop('checked', $("#checkAll").is(':checked')));
 
@@ -296,24 +330,47 @@
 
 
         // ============ Kirim Medication Statement =====================
-        function kirimSatu(id, btn = null) {
+        function kirimSatu(id, btn = null, done = null) {
 
-            Swal.fire({
-                title: 'Kirim Medication Statement?',
-                text: 'Data ini akan dikirim ke SATUSEHAT',
-                type: 'warning',
-                showCancelButton: true,
-                confirmButtonText: 'Ya, Kirim',
-                cancelButtonText: 'Batal',
-                confirmButtonColor: '#28a745',
-                cancelButtonColor: '#d33'
-            }).then(function(result) {
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = 'Mengirim...';
+            }
 
-                if (result.value) {
-                    kirimSatusehat(id, btn);
+            fetch("{{ route('satusehat.medstatement.sendpayload') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ id_trans: id })
+            })
+            .then(res => res.json())
+            .then(res => {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-paper-plane"></i> Kirim';
                 }
+
+                if (!done) {
+                    // klik manual
+                    if (res.status) {
+                        Swal.fire('Sukses', 'Data berhasil dikirim', 'success');
+                        $('#medicationTable').DataTable().ajax.reload(null, false);
+                    } else {
+                        Swal.fire('Gagal', res.message || 'Gagal kirim data', 'error');
+                    }
+                }
+
+            })
+            .catch(err => {
+                console.error(err);
+            })
+            .finally(() => {
+                if (done) done();
             });
         }
+
 
         function kirimSatusehat(id, btn = null) {
 
@@ -406,5 +463,85 @@
             });
         }
 
+        // ngurusin search by card
+        function search(type) {
+            statusFilter = type;     
+            table.ajax.reload();
+        }
+
+
     </script>
+    <script>
+        document.getElementById('checkAll').addEventListener('change', function () {
+            const checked = this.checked;
+            document.querySelectorAll('.checkbox-item').forEach(cb => {
+                cb.checked = checked;
+            });
+        });
+    </script>
+    <script>
+        document.getElementById('btnKirimDipilih').addEventListener('click', function () {
+
+            const selected = Array.from(document.querySelectorAll('.checkbox-item:checked'))
+                .map(cb => cb.value);
+
+            if (selected.length === 0) {
+                Swal.fire('Info', 'Tidak ada data yang dipilih', 'info');
+                return;
+            }
+
+            Swal.fire({
+                title: `Kirim ${selected.length} data?`,
+                text: 'Semua data yang dipilih akan dikirim ke SATUSEHAT',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Kirim',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#28a745',
+                cancelButtonColor: '#d33'
+            }).then(result => {
+                if (!result.value) return;
+
+                bulkKirimSequential(selected);
+            });
+
+        });
+    </script>
+    <script>
+        function bulkKirimSequential(list) {
+            let index = 0;
+
+            Swal.fire({
+                title: 'Mengirim data…',
+                html: `<b id="bulkStatus">0</b> / ${list.length}`,
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            function next() {
+                if (index >= list.length) {
+                    Swal.fire('Selesai', 'Semua data sudah diproses', 'success');
+                    $('#medicationTable').DataTable().ajax.reload(null, false);
+                    return;
+                }
+
+                const id = list[index];
+
+                // update progress
+                document.getElementById('bulkStatus').innerText = index + 1;
+
+                kirimSatu(id, null, function () {
+                    index++;
+                    setTimeout(next, 400); // kasih delay biar API gak dihajar
+                });
+            }
+
+            next();
+        }
+    </script>
+
+
+
 @endpush
