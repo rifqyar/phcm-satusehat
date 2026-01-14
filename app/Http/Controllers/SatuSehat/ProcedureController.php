@@ -66,18 +66,21 @@ class ProcedureController extends Controller
         $tgl_awal_db  = Carbon::parse($tgl_awal)->format('Y-m-d H:i:s');
         $tgl_akhir_db = Carbon::parse($tgl_akhir)->format('Y-m-d H:i:s');
 
-        $data = collect(DB::select("
+        $data = DB::select("
             EXEC dbo.sp_getTindakanRJRI_All ?, ?, ?, ?
         ", [
-            $tgl_awal_db, $tgl_akhir_db, $id_unit, $request->input('cari')
-        ]));
+            $tgl_awal_db,
+            $tgl_akhir_db,
+            $id_unit,
+            $request->input('cari') == '' ? null : $request->input('cari')
+        ]);
 
         $totalData = [
-            'total_semua' => $data->first()->total_semua ?? 0,
-            'total_sudah_integrasi' => $data->first()->total_sudah_integrasi ?? 0,
-            'total_belum_integrasi' => $data->first()->total_belum_integrasi ?? 0,
-            'total_rawat_jalan' => $data->first()->total_rawat_jalan ?? 0,
-            'total_rawat_inap' => $data->first()->total_rawat_inap ?? 0,
+            'total_semua' => $data[0]->total_semua ?? 0,
+            'total_sudah_integrasi' => $data[0]->total_sudah_integrasi ?? 0,
+            'total_belum_integrasi' => $data[0]->total_belum_integrasi ?? 0,
+            'total_rawat_jalan' => $data[0]->total_rawat_jalan ?? 0,
+            'total_rawat_inap' => $data[0]->total_rawat_inap ?? 0,
         ];
 
         return DataTables::of($data)
@@ -101,25 +104,20 @@ class ProcedureController extends Controller
                 $param = LZString::compressToEncodedURIComponent("karcis=$id_transaksi&kbuku=$KbBuku&jenis_perawatan=$jenisPerawatan");
                 $btn = '';
                 if ($row->ID_PASIEN_SS == null) {
-                    $btn = '<i class="text-muted">Pasien Belum Mapping</i>';
+                    $btn = '<i class="text-muted">Pasien Belum Mapping</i><br>';
                 } else if ($row->ID_NAKES_SS == null) {
-                    $btn .= '<i class="text-muted">Nakes Belum Mapping</i>';
+                    $btn .= '<i class="text-muted">Nakes Belum Mapping</i><br>';
                 } else if ($row->id_satusehat_encounter == null) {
-                    $btn .= '<i class="text-muted">Encounter Belum Kirim</i>';
-                } else {
-                    // if ($row->sudah_integrasi == '0') {
-                    //     $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
-                    // } else {
-                    //     $btn = '<a href="#" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
-                    // }
-                    $btn .= '<a href="javascript:void(0)" onclick="lihatDetail(`' . $param . '`, `' . $paramSatuSehat . '`)" class="mt-2 btn btn-sm btn-info w-100"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</a>';
+                    $btn .= '<i class="text-muted">Encounter Belum Kirim</i><br>';
                 }
+
+                $btn .= '<a href="javascript:void(0)" onclick="lihatDetail(`' . $param . '`, `' . $paramSatuSehat . '`)" class="mt-2 btn btn-sm btn-info w-100"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</a>';
                 return $btn;
             })
             ->addColumn('status_integrasi', function ($row) {
                 if ($row->sudah_integrasi == '0') {
                     $html = '<span class="badge badge-pill badge-danger p-2">Belum Integrasi</span>';
-                    $html .= $this->notif($row);
+                    // $html .= $this->notif($row);
                 } else {
                     $html = '<span class="badge badge-pill badge-success p-2">Sudah Integrasi</span>';
                 }
@@ -131,70 +129,70 @@ class ProcedureController extends Controller
             ->make(true);
     }
 
-    private function notif($row)
-    {
-        $html = '';
-        $karcis = $row->KARCIS;
-        $sql = " SELECT
-                (SELECT COUNT(1)
-                FROM E_RM_PHCM.dbo.ERM_RM_IRJA
-                WHERE karcis = ? AND AKTIF = 1) AS fisik_total,
+    // private function notif($row)
+    // {
+    //     $html = '';
+    //     $karcis = $row->KARCIS;
+    //     $sql = " SELECT
+    //             (SELECT COUNT(1)
+    //             FROM E_RM_PHCM.dbo.ERM_RM_IRJA
+    //             WHERE karcis = ? AND AKTIF = 1) AS fisik_total,
 
-                (SELECT COUNT(1)
-                FROM E_RM_PHCM.dbo.ERM_RM_IRJA eri
-                INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
-                    ON eri.KARCIS = rsp.KARCIS
-                AND eri.NOMOR = rsp.ID_JENIS_TINDAKAN
-                WHERE eri.KARCIS = ? AND eri.AKTIF = 1) AS fisik_integrated,
+    //             (SELECT COUNT(1)
+    //             FROM E_RM_PHCM.dbo.ERM_RM_IRJA eri
+    //             INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
+    //                 ON eri.KARCIS = rsp.KARCIS
+    //             AND eri.NOMOR = rsp.ID_JENIS_TINDAKAN
+    //             WHERE eri.KARCIS = ? AND eri.AKTIF = 1) AS fisik_integrated,
 
-                (SELECT COUNT(1)
-                FROM SIRS_PHCM.dbo.vw_getData_Elab
-                WHERE KARCIS_ASAL = ? AND KLINIK_TUJUAN in ('0017', '0031')) AS lab_total,
+    //             (SELECT COUNT(1)
+    //             FROM SIRS_PHCM.dbo.vw_getData_Elab
+    //             WHERE KARCIS_ASAL = ? AND KLINIK_TUJUAN in ('0017', '0031')) AS lab_total,
 
-                (SELECT COUNT(1)
-                FROM SIRS_PHCM.dbo.vw_getData_Elab vgde
-                INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
-                    ON vgde.KARCIS_ASAL = rsp.KARCIS
-                AND vgde.ID_RIWAYAT_ELAB = rsp.ID_JENIS_TINDAKAN
-                AND rsp.JENIS_TINDAKAN = 'lab'
-                WHERE vgde.KARCIS_ASAL = ? AND KLINIK_TUJUAN in ('0017', '0031')) AS lab_integrated,
+    //             (SELECT COUNT(1)
+    //             FROM SIRS_PHCM.dbo.vw_getData_Elab vgde
+    //             INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
+    //                 ON vgde.KARCIS_ASAL = rsp.KARCIS
+    //             AND vgde.ID_RIWAYAT_ELAB = rsp.ID_JENIS_TINDAKAN
+    //             AND rsp.JENIS_TINDAKAN = 'lab'
+    //             WHERE vgde.KARCIS_ASAL = ? AND KLINIK_TUJUAN in ('0017', '0031')) AS lab_integrated,
 
-                (SELECT COUNT(1)
-                FROM SIRS_PHCM.dbo.vw_getData_Elab
-                WHERE KARCIS_ASAL = ? AND KLINIK_TUJUAN in (SELECT KODE_KLINIK
-                                FROM SIRS_PHCM..RJ_KLINIK_RADIOLOGI)) AS rad_total,
+    //             (SELECT COUNT(1)
+    //             FROM SIRS_PHCM.dbo.vw_getData_Elab
+    //             WHERE KARCIS_ASAL = ? AND KLINIK_TUJUAN in (SELECT KODE_KLINIK
+    //                             FROM SIRS_PHCM..RJ_KLINIK_RADIOLOGI)) AS rad_total,
 
-                (SELECT COUNT(1)
-                FROM SIRS_PHCM.dbo.vw_getData_Elab vr
-                INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
-                    ON vr.KARCIS_ASAL = rsp.KARCIS
-                AND vr.ID_RIWAYAT_ELAB = rsp.ID_JENIS_TINDAKAN
-                AND rsp.JENIS_TINDAKAN = 'rad'
-                WHERE vr.KARCIS_ASAL = ? AND KLINIK_TUJUAN IN (SELECT KODE_KLINIK
-                                FROM SIRS_PHCM..RJ_KLINIK_RADIOLOGI)) AS rad_integrated
-            ";
+    //             (SELECT COUNT(1)
+    //             FROM SIRS_PHCM.dbo.vw_getData_Elab vr
+    //             INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
+    //                 ON vr.KARCIS_ASAL = rsp.KARCIS
+    //             AND vr.ID_RIWAYAT_ELAB = rsp.ID_JENIS_TINDAKAN
+    //             AND rsp.JENIS_TINDAKAN = 'rad'
+    //             WHERE vr.KARCIS_ASAL = ? AND KLINIK_TUJUAN IN (SELECT KODE_KLINIK
+    //                             FROM SIRS_PHCM..RJ_KLINIK_RADIOLOGI)) AS rad_integrated
+    //         ";
 
-        $result = DB::selectOne($sql, [
-            $karcis, // fisik_total
-            $karcis, // fisik_integrated
-            $karcis, // lab_total
-            $karcis, // lab_integrated
-            $karcis, // rad_total
-            $karcis, // rad_integrated
-        ]);
+    //     $result = DB::selectOne($sql, [
+    //         $karcis, // fisik_total
+    //         $karcis, // fisik_integrated
+    //         $karcis, // lab_total
+    //         $karcis, // lab_integrated
+    //         $karcis, // rad_total
+    //         $karcis, // rad_integrated
+    //     ]);
 
-        $totalAllTindakan = $result->fisik_total + $result->lab_total + $result->rad_total;
-        $totalAllIntegrated = $result->fisik_integrated + $result->lab_integrated + $result->rad_integrated;
+    //     $totalAllTindakan = $result->fisik_total + $result->lab_total + $result->rad_total;
+    //     $totalAllIntegrated = $result->fisik_integrated + $result->lab_integrated + $result->rad_integrated;
 
-        $colorStatus = $totalAllTindakan == $totalAllIntegrated ? 'text-success' : 'text-danger';
-        $colorLab = $result->lab_total == $result->lab_integrated ? 'text-success' : 'text-danger';
-        $colorRad = $result->rad_total == $result->rad_integrated ? 'text-success' : 'text-danger';
-        $html .= "<br> <i class='small $colorStatus'>$totalAllIntegrated / $totalAllTindakan Tindakan Terintegrasi</i>";
-        $html .= "<br> <i class='small $colorLab'>$result->lab_total Tindakan Lab</i>";
-        $html .= "<br> <i class='small $colorRad'>$result->rad_total Tindakan Radiologi</i>";
+    //     $colorStatus = $totalAllTindakan == $totalAllIntegrated ? 'text-success' : 'text-danger';
+    //     $colorLab = $result->lab_total == $result->lab_integrated ? 'text-success' : 'text-danger';
+    //     $colorRad = $result->rad_total == $result->rad_integrated ? 'text-success' : 'text-danger';
+    //     $html .= "<br> <i class='small $colorStatus'>$totalAllIntegrated / $totalAllTindakan Tindakan Terintegrasi</i>";
+    //     $html .= "<br> <i class='small $colorLab'>$result->lab_total Tindakan Lab</i>";
+    //     $html .= "<br> <i class='small $colorRad'>$result->rad_total Tindakan Radiologi</i>";
 
-        return $html;
-    }
+    //     return $html;
+    // }
 
     private function checkDateFormat($date)
     {
