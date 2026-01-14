@@ -21,6 +21,7 @@ Route::get('/logout', [App\Http\Controllers\Auth\LoginController::class, 'logout
 // kirim satusehat tanpa middleware
 Route::get('/medication-request/prepsatusehatnm', [App\Http\Controllers\SatuSehat\MedicationRequestController::class, 'prepMedicationRequest'])->name('medication-request.prepsatusehatnm');
 Route::get('/medication-dispense/sendsatusehatnm', [App\Http\Controllers\SatuSehat\MedicationDispenseController::class, 'prepMedicationDispense'])->name('medication-dispense.sendsehatnm');
+Route::get('/diagnosis/sendsatusehat', [App\Http\Controllers\SatuSehat\DiagnosisController::class, 'prepSendDiagnosis'])->name('diagnosis.sendsatusehat');
 
 Route::middleware(['checkLogin'])->group(function () {
     Route::get('logs', [\Rap2hpoutre\LaravelLogViewer\LogViewerController::class, 'index']);
@@ -223,6 +224,8 @@ Route::middleware(['checkLogin'])->group(function () {
         // Diagnosis
         Route::get('/diagnosis', [App\Http\Controllers\SatuSehat\DiagnosisController::class, 'index'])->name('diagnosis.index');
         Route::post('/diagnosis/detail', [App\Http\Controllers\SatuSehat\DiagnosisController::class, 'getDetailDiagnosis'])->name('diagnosis.detail');
+        Route::post('/diagnosis/datatable', [App\Http\Controllers\SatuSehat\DiagnosisController::class, 'datatable'])->name('diagnosis.datatable');
+        Route::post('/diagnosis/sendsatusehat', [App\Http\Controllers\SatuSehat\DiagnosisController::class, 'prepSendDiagnosis'])->name('diagnosis.sendsatusehat');
 
         // Imunisasi
         Route::get('/imunisasi', [App\Http\Controllers\SatuSehat\ImunisasiController::class, 'index'])->name('imunisasi.index');
