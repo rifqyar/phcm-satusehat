@@ -415,12 +415,14 @@ class ResumeMedisController extends Controller
             })
             ->where('RJ_KARCIS.IDUNIT', $id_unit)
             ->first();
+        // dd($dataKarcis);
 
-        $dataEncounterSatuSehat = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NOTA')
+        $dataEncounterSatuSehat = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
             ->where('karcis', $idTransaksi)
             ->where('no_peserta', $dataKarcis->NO_PESERTA)
             ->where('idunit', $id_unit)
             ->first();
+        // dd($dataEncounterSatuSehat);
 
         // $diagnosisSatuSehat = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_DIAGNOSA')
         //     ->where('karcis', $idTransaksi)
@@ -428,11 +430,12 @@ class ResumeMedisController extends Controller
         //     ->where('idunit', $id_unit)
         //     ->first();
 
-        $status = 'finished';
+        $status = 'final';
 
         $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
             ->where('idpx', $kdPasienSS)
             ->first();
+        // dd($patient);
 
         if ($jenisPerawatan == 'RJ') {
             $payloadRJ = $this->definePayloadRawatJalan($dataKarcis, $patient);
@@ -461,8 +464,9 @@ class ResumeMedisController extends Controller
             ->distinct()
             ->limit(100)
             ->get();
+        // dd($dataClinicalImpression);
 
-        $dataAllergy = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_ALLERGYINTOLERANCE')
+        $dataAllergy = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_ALLERGYINTOLERANCE')
             ->select(
                 'karcis',
                 'NO_PESERTA',
@@ -478,6 +482,7 @@ class ResumeMedisController extends Controller
             ->distinct()
             ->limit(100)
             ->get();
+        // dd($dataAllergy);
 
         $dataCondition = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA')
             ->select(
@@ -493,6 +498,7 @@ class ResumeMedisController extends Controller
             ->distinct()
             ->limit(100)
             ->get();
+        // dd($dataCondition);
 
         $dataObservation = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI')
             ->select(
@@ -511,6 +517,7 @@ class ResumeMedisController extends Controller
             ->distinct()
             ->limit(100)
             ->get();
+        // dd($dataObservation);
 
         $dataProcedure = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE')
             ->select(
@@ -530,25 +537,26 @@ class ResumeMedisController extends Controller
             ->distinct()
             ->limit(100)
             ->get();
+        // dd($dataProcedure);
 
-        $dataMedication = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
-            ->select(
-                'LOCAL_ID',
-                'LOG_TYPE',
-                'IDENTIFIER_VALUE',
-                'PATIENT_ID',
-                'ENCOUNTER_ID',
-                'FHIR_MEDICATION_ID',
-                'FHIR_MEDICATION_REQUEST_ID',
-                'KFA_CODE',
-                'NAMA_OBAT',
-                'FHIR_ID',
-                'FHIR_MEDICATION_DISPENSE_ID'
-            )
-            ->where('ENCOUNTER_ID', $dataEncounterSatuSehat->id_satusehat_encounter)
-            ->distinct()
-            ->limit(100)
-            ->get();
+        // $dataMedication = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
+        //     ->select(
+        //         'LOCAL_ID',
+        //         'LOG_TYPE',
+        //         'IDENTIFIER_VALUE',
+        //         'PATIENT_ID',
+        //         'ENCOUNTER_ID',
+        //         'FHIR_MEDICATION_ID',
+        //         'FHIR_MEDICATION_REQUEST_ID',
+        //         'KFA_CODE',
+        //         'NAMA_OBAT',
+        //         'FHIR_ID',
+        //         'FHIR_MEDICATION_DISPENSE_ID'
+        //     )
+        //     ->where('ENCOUNTER_ID', $dataEncounterSatuSehat->id_satusehat_encounter)
+        //     ->distinct()
+        //     ->limit(100)
+        //     ->get();
 
         // $dataKuesioner = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_RESPON_KUESIONER')
         //     ->select(
@@ -588,6 +596,7 @@ class ResumeMedisController extends Controller
             ->distinct()
             ->limit(100)
             ->get();
+        // dd($dataServiceRequest);
 
         $dataSpecimen = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_SPECIMEN')
             ->select(
@@ -608,7 +617,7 @@ class ResumeMedisController extends Controller
             ->distinct()
             ->limit(100)
             ->get();
-
+        // dd($dataSpecimen);
 
         // Anamenesis Sections
         $anamnesisSections = [];
@@ -887,7 +896,7 @@ class ResumeMedisController extends Controller
         if (!empty($payloadClinicalImpression)) {
             $sections[] = $payloadClinicalImpression;
         }
-        dd($sections);
+        // dd($sections);
 
         $nakes = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
             ->where('idnakes', $kdNakesSS)
@@ -910,7 +919,7 @@ class ResumeMedisController extends Controller
             $payload = [
                 "resourceType" => "Composition",
                 "identifier" => [
-                    "system" => "http://sys-ids.kemkes.go.id/encounter/{$organisasi}",
+                    "system" => "http://sys-ids.kemkes.go.id/composition/{$organisasi}",
                     "value" => $arrParam['id_transaksi']
                 ],
                 "status" => $status,
@@ -926,10 +935,10 @@ class ResumeMedisController extends Controller
                     "display" => $patient->nama,
                 ],
                 "date" => Carbon::now()->toIso8601String(),
-                "author" => [
-                    "reference" => "Practitioner/{$kdNakesSS}",
-                    "display" => $nakes->nama,
-                ],
+                "author" => [[
+                    "reference" => "Practitioner/10009880728",
+                    "display" => "dr. Alexander",
+                ]],
                 "custodian" => [
                     "reference" => "Organization/{$organisasi}"
                 ],
@@ -938,6 +947,7 @@ class ResumeMedisController extends Controller
                 ],
                 "section" => $sections,
             ];
+            // dd($payload);
 
             if ($resend) {
                 $encounterId = SATUSEHAT_NOTA::where('karcis', $idTransaksi)
@@ -985,28 +995,6 @@ class ResumeMedisController extends Controller
             } else {
                 DB::beginTransaction();
                 try {
-                    $historyTime = $arrParam['jenis_perawatan'] == 'RJ' ? $this->getHistoryTime($dataKarcis) : $this->getHistoryTimeInap($dataKarcis);
-                    $jam_start = $historyTime['jam_start'];
-                    $jam_progress = $historyTime['jam_progress'];
-                    $jam_finish = $historyTime['jam_finish'];
-
-                    // $dataKarcis = DB::table('RJ_KARCIS as rk')
-                    //     ->leftJoin('RJ_KARCIS_BAYAR as rkb', function ($join) {
-                    //         $join->on('rk.KARCIS', '=', 'rkb.KARCIS')
-                    //             ->on('rk.IDUNIT', '=', 'rkb.IDUNIT')
-                    //             ->whereRaw('ISNULL(rkb.STBTL,0) = 0');
-                    //     })
-                    //     ->select('rk.NO_PESERTA', 'rk.KARCIS', 'rk.NOREG', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU', 'rkb.NOTA')
-                    //     ->where(function ($query) use ($arrParam) {
-                    //         if ($arrParam['jenis_perawatan'] == 'RI') {
-                    //             $query->where('rk.NOREG', $arrParam['id_transaksi']);
-                    //         } else {
-                    //             $query->where('rk.KARCIS', $arrParam['id_transaksi']);
-                    //         }
-                    //     })
-                    //     ->where('rk.IDUNIT', $id_unit)
-                    //     ->orderBy('rk.TGL', 'DESC')
-                    //     ->first();
                     $dataKarcis = Karcis::leftJoin('RJ_KARCIS_BAYAR AS KarcisBayar', function ($query) use ($arrParam, $id_unit) {
                         $query->on('RJ_KARCIS.KARCIS', '=', 'KarcisBayar.KARCIS')
                             ->on('RJ_KARCIS.IDUNIT', '=', 'KarcisBayar.IDUNIT')
@@ -1035,45 +1023,45 @@ class ResumeMedisController extends Controller
                         ->where('KBUKU', $dataKarcis->KBUKU)
                         ->first();
 
-                    $dataEncounter = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NOTA')
+                    $dataEncounter = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
                         ->where('karcis', $arrParam['id_transaksi'])
                         ->where('no_peserta', $dataKarcis->NO_PESERTA)
                         ->where('idunit', $id_unit)
                         ->first();
 
                     $log_composition = [
-                        'karcis' => $arrParam['jenis_perawatan'] == 'RJ' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG,
-                        'nota' => (int)$dataKarcis->NOTA,
-                        'idunit' => $id_unit,
-                        'tgl' => Carbon::now('Asia/Jakarta')->format('Y-m-d'),
-                        'id_satusehat_composition' => $result['id'],
-                        'id_satusehat_encounter' => $dataEncounter->id_satusehat_encounter,
-                        'kbuku' => $dataPeserta->KBUKU,
-                        'no_peserta' => $dataPeserta->NO_PESERTA,
-                        'id_satusehat_px' => $kdPasienSS,
-                        'kddok' => $dataKarcis->KDDOK,
-                        'id_satusehat_dokter' => $kdNakesSS,
-                        'kdklinik' => $dataKarcis->KLINIK,
-                        'status_sinkron' => 1,
-                        'crtusr' => Session::get('nama', 'system'), //Session::get
-                        'crtdate' => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
-                        'sinkron_date' => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
+                        'karcis'                    => $arrParam['jenis_perawatan'] == 'RJ' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG,
+                        'nota'                      => (int)$dataKarcis->NOTA,
+                        'idunit'                    => $id_unit,
+                        'tgl'                       => Carbon::now('Asia/Jakarta')->format('Y-m-d'),
+                        'id_satusehat_composition'  => $result['id'],
+                        'id_satusehat_encounter'    => $dataEncounter->id_satusehat_encounter,
+                        'kbuku'                     => $dataPeserta->KBUKU,
+                        'no_peserta'                => $dataPeserta->NO_PESERTA,
+                        'id_satusehat_px'           => $kdPasienSS,
+                        'kddok'                     => $dataKarcis->KDDOK,
+                        'id_satusehat_dokter'       => $kdNakesSS,
+                        'kdklinik'                  => $dataKarcis->KLINIK,
+                        'status_sinkron'            => 1,
+                        'crtusr'                    => Session::get('nama', 'system'), //Session::get
+                        'crtdt'                     => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
+                        'sinkron_date'              => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
                     ];
 
-                    $exisingComposition = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_COMPOSITION')
+                    $existingComposition = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_COMPOSITION')
                         ->where('karcis', $arrParam['id_transaksi'])
                         ->where('no_peserta', $dataKarcis->NO_PESERTA)
                         ->where('idunit', $id_unit)
                         ->first();
 
-                    if ($exisingComposition) {
-                        DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_COMPOSITION')
+                    if ($existingComposition) {
+                        DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_COMPOSITION')
                             ->where('karcis', $arrParam['id_transaksi'])
                             ->where('no_peserta', $dataKarcis->NO_PESERTA)
                             ->where('idunit', $id_unit)
                             ->update($log_composition);
                     } else {
-                        DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_COMPOSITION')
+                        DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_COMPOSITION')
                             ->insert($log_composition);
                     }
 
@@ -1094,6 +1082,7 @@ class ResumeMedisController extends Controller
                         ]
                     ], 200);
                 } catch (Exception $th) {
+                    DB::rollBack();
                     throw new Exception($th->getMessage(), $th->getCode());
                 }
             }
@@ -1123,10 +1112,11 @@ class ResumeMedisController extends Controller
         ];
 
         $titleComposition = [
-            "title" => "Resume Medis Pasien Rawat Jalan " . $dataPasien->NAMA . "pada tanggal " . Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('d-m-Y'),
+            "title" => "Resume Medis Pasien Rawat Jalan " . $dataPasien->nama . " pada tanggal " . Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('d-m-Y'),
         ];
 
         $payload = array_merge($jenisComposition, $titleComposition);
+        // dd($payload);
         return $payload;
     }
 
@@ -1143,10 +1133,11 @@ class ResumeMedisController extends Controller
         ];
 
         $titleComposition = [
-            "title" => "Resume Medis Pasien Rawat Inap " . $dataPasien->NAMA . "pada tanggal " . Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('d-m-Y'),
+            "title" => "Resume Medis Pasien Rawat Inap " . $dataPasien->nama . " pada tanggal " . Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('d-m-Y'),
         ];
 
         $payload = array_merge($jenisComposition, $titleComposition);
+        // dd($payload);
         return $payload;
     }
 }
