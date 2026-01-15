@@ -233,17 +233,17 @@ class ResumeMedisController extends Controller
             ->editColumn('TANGGAL', function ($row) {
                 return date('Y-m-d', strtotime($row->TANGGAL));
             })
-            ->editColumn('STATUS_SELESAI', function ($row) {
-                if ($row->JENIS_PERAWATAN == 'RAWAT_JALAN') {
-                    if ($row->STATUS_SELESAI == "9" || $row->STATUS_SELESAI == "10") {
-                        return '<span class="badge badge-pill badge-secondary p-2 w-100">Belum Verif</span>';
-                    } else {
-                        return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Verif</span>';
-                    }
-                } else {
-                    return $row->STATUS_SELESAI == 1 ? '<span class="badge badge-pill badge-success p-2 w-100">Sudah Pulang</span>' : '<span class="badge badge-pill badge-secondary p-2 w-100">Belum Pulang</span>';
-                }
-            })
+            // ->editColumn('STATUS_SELESAI', function ($row) {
+            //     if ($row->JENIS_PERAWATAN == 'RAWAT_JALAN') {
+            //         if ($row->STATUS_SELESAI == "9" || $row->STATUS_SELESAI == "10") {
+            //             return '<span class="badge badge-pill badge-secondary p-2 w-100">Belum Verif</span>';
+            //         } else {
+            //             return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Verif</span>';
+            //         }
+            //     } else {
+            //         return $row->STATUS_SELESAI == 1 ? '<span class="badge badge-pill badge-success p-2 w-100">Sudah Pulang</span>' : '<span class="badge badge-pill badge-secondary p-2 w-100">Belum Pulang</span>';
+            //     }
+            // })
             ->addColumn('action', function ($row) {
                 $kdbuku = LZString::compressToEncodedURIComponent($row->KBUKU);
                 $kdDok = LZString::compressToEncodedURIComponent($row->KODE_DOKTER);
@@ -260,6 +260,7 @@ class ResumeMedisController extends Controller
                 $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
                 $btn = '';
+                $btnDetail = '<button type="button" class="btn btn-sm btn-info" onclick="lihatDetail(\'' . $row->ID_TRANSAKSI . '\')"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</button>';
                 if ($row->ID_PASIEN_SS == null) {
                     $btn = '<i class="text-muted">Pasien Belum Mapping</i>';
                 } else if (($row->DOKTER == null || $row->KODE_DOKTER == null) && $row->JENIS_PERAWATAN == 'RAWAT_INAP') {
@@ -274,9 +275,9 @@ class ResumeMedisController extends Controller
                             $btn = '<i class="text-muted">Encounter belum kirim Satu Sehat</i>';
                         } else {
                             if ($row->JUMLAH_RESUME_MEDIS > 0) {
-                                $btn = '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                                $btn = '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                             } else {
-                                $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
+                                $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
                             }
                         }
                     } else {
@@ -284,16 +285,17 @@ class ResumeMedisController extends Controller
                             $btn = '<i class="text-muted">Encounter belum kirim Satu Sehat</i>';
                         } else {
                             if ($row->JUMLAH_RESUME_MEDIS > 0) {
-                                $btn = '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                                $btn = '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                             } else {
-                                $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
+                                $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
                             }
                         }
                     }
                 }
                 // $btn .= '<br>';
                 // $btn .= '<a href="' . route('satusehat.encounter.lihat-erm', $param) . '" class="mt-2 btn btn-sm btn-info w-100"><i class="fas fa-info-circle mr-2"></i>Lihat ERM</a>';
-                return $btn;
+                return $btnDetail . ' ' . $btn;
+                // return $btn;
             })
             ->addColumn('status_integrasi', function ($row) {
                 if ($row->JUMLAH_NOTA_SATUSEHAT > 0) {
@@ -302,7 +304,7 @@ class ResumeMedisController extends Controller
                     return '<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>';
                 }
             })
-            ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi', 'checkbox'])
+            ->rawColumns(['action', 'status_integrasi', 'checkbox'])
             ->with($totalData)
             ->make(true);
     }
@@ -337,31 +339,80 @@ class ResumeMedisController extends Controller
     public function lihatDetail($param)
     {
         // Dummy detail data
-        $dataPasien = [
-            'NAMA' => 'Pasien Dummy',
-            'KBUKU' => 'KBK001',
-            'NO_PESERTA' => 'PES000001',
-            'KARCIS' => 'KRC20250101001',
-            'DOKTER' => 'Dr. Dokter Dummy',
-            'statusIntegrated' => 'Belum Integrasi'
-        ];
+        $decoded = base64_decode($param);
 
-        $dataErm = [
-            'ID_TRANSAKSI' => 'TRX00001',
-            'CRTUSR' => 'Dr. Dokter Dummy',
-            'KELUHAN' => 'Pasien mengeluh demam dan batuk sejak 3 hari yang lalu',
-            'TD' => '120/80 mmHg',
-            'DJ' => '80 x/menit',
-            'P' => '20 x/menit',
-            'SUHU' => '37.5 °C',
-            'TB' => '170 cm',
-            'BB' => '65 kg',
-            'IMT' => '22.5 kg/m² (Normal)',
-            'DIAGNOSA' => 'ISPA (Infeksi Saluran Pernapasan Akut)',
-            'TERAPI' => 'Paracetamol 3x500mg, Amoxicillin 3x500mg',
-            'TINDAKAN' => 'Observasi, istirahat cukup, banyak minum air putih',
-            'ANJURAN' => 'Kontrol kembali jika keluhan tidak membaik dalam 3 hari',
-        ];
+        $dataPasien = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as a')
+            ->select(
+                'b.NAMA as NAMA',
+                'a.kbuku as KBUKU',
+                'a.no_peserta as NO_PESERTA',
+                'a.karcis as KARCIS',
+                'a.kddok as KODE_DOKTER',
+                'c.nama as DOKTER',
+                DB::raw('COUNT(DISTINCT d.id_satusehat_composition) as STATUS_INTEGRATED')
+            )
+            ->leftJoin('SIRS_PHCM.dbo.RIRJ_MASTERPX as b', 'a.no_peserta', '=', 'b.NO_PESERTA')
+            ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as c', 'a.kddok', '=', 'c.kddok')
+            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_COMPOSITION as d', function ($join) {
+                $join->on('a.karcis', '=', 'd.karcis')
+                    ->on('a.id_satusehat_encounter', '=', 'd.id_satusehat_encounter');
+            })
+            ->where('a.karcis', $decoded)
+            ->groupBy(
+                'b.NAMA',
+                'a.kbuku',
+                'a.no_peserta',
+                'a.karcis',
+                'a.kddok',
+                'c.nama'
+            )
+            ->first();
+
+        // $dataPasien = [
+        //     'NAMA' => 'Pasien Dummy',
+        //     'KBUKU' => 'KBK001',
+        //     'NO_PESERTA' => 'PES000001',
+        //     'KARCIS' => 'KRC20250101001',
+        //     'DOKTER' => 'Dr. Dokter Dummy',
+        //     'statusIntegrated' => 'Belum Integrasi'
+        // ];
+
+        $dataErm = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as a')
+            ->select(
+                'a.karcis as ID_TRANSAKSI',
+                'b.ANAMNESE as KELUHAN',
+                'b.PEMERIKSAAN as PEMERIKSAAN',
+                'b.TERAPI as TERAPI',
+                'b.DIAGNOSTIK as ANJURAN',
+                'b.DIAG_UTAMA as DIAGNOSA',
+                DB::raw("ISNULL(CONCAT(b.TD, ' mmHg'), '-') as TD"),
+                DB::raw("ISNULL(CONCAT(b.DJ, ' x/menit'), '-') as DJ"),
+                DB::raw("ISNULL(CONCAT(b.BB, ' kg'), '-') as BB"),
+                DB::raw("ISNULL(CONCAT(b.TB, ' cm'), '-') as TB"),
+                DB::raw("ISNULL(CONCAT(c.SUHU, ' °C'), '-') as SUHU"),
+                DB::raw("ISNULL(CONCAT(c.RR, ' x/menit'), '-') as P"),
+            )
+            ->leftJoin('E_RM_PHCM.dbo.ERM_RM_IRJA as b', 'a.karcis', '=', 'b.KARCIS')
+            ->leftJoin('E_RM_PHCM.dbo.ERM_IGD as c', 'b.NO_KUNJUNG', '=', 'c.NO_KUNJUNG')
+            ->where('a.karcis', $decoded)
+            ->first();
+
+        // $dataErm = [
+        //     'ID_TRANSAKSI' => 'TRX00001',
+        //     'CRTUSR' => 'Dr. Dokter Dummy',
+        //     'KELUHAN' => 'Pasien mengeluh demam dan batuk sejak 3 hari yang lalu',
+        //     'TD' => '120/80 mmHg',
+        //     'DJ' => '80 x/menit',
+        //     'P' => '20 x/menit',
+        //     'SUHU' => '37.5 °C',
+        //     'TB' => '170 cm',
+        //     'BB' => '65 kg',
+        //     'IMT' => '22.5 kg/m² (Normal)',
+        //     'DIAGNOSA' => 'ISPA (Infeksi Saluran Pernapasan Akut)',
+        //     'TERAPI' => 'Paracetamol 3x500mg, Amoxicillin 3x500mg',
+        //     'TINDAKAN' => 'Observasi, istirahat cukup, banyak minum air putih',
+        //     'ANJURAN' => 'Kontrol kembali jika keluhan tidak membaik dalam 3 hari',
+        // ];
 
         return response()->json([
             'dataPasien' => $dataPasien,

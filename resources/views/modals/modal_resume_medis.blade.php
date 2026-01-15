@@ -3,7 +3,7 @@
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Detail Resume Medis Pasien</h5>
+                <h5 class="modal-title font-weight-bold">Detail Resume Medis Pasien</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -13,8 +13,8 @@
                     <!-- Data Pasien -->
                     <div class="col-md-6">
                         <div class="card">
-                            <div class="card-header bg-info text-white">
-                                <h6 class="m-0"><i class="fas fa-user"></i> Data Pasien</h6>
+                            <div class="card-header bg-info ">
+                                <h6 class="m-0 text-white"><i class="fas fa-user"></i> Data Pasien</h6>
                             </div>
                             <div class="card-body">
                                 <table class="table table-sm">
@@ -38,8 +38,8 @@
                     <!-- Data Kunjungan -->
                     <div class="col-md-6">
                         <div class="card">
-                            <div class="card-header bg-primary text-white">
-                                <h6 class="m-0"><i class="fas fa-hospital"></i> Data Kunjungan</h6>
+                            <div class="card-header bg-primary ">
+                                <h6 class="m-0 text-white"><i class="fas fa-hospital"></i> Data Kunjungan</h6>
                             </div>
                             <div class="card-body">
                                 <table class="table table-sm">
@@ -59,8 +59,8 @@
 
                 <!-- Resume Medis -->
                 <div class="card">
-                    <div class="card-header bg-success text-white">
-                        <h6 class="m-0"><i class="fas fa-notes-medical"></i> Resume Medis</h6>
+                    <div class="card-header bg-success">
+                        <h6 class="m-0 text-white"><i class="fas fa-notes-medical"></i> Resume Medis</h6>
                     </div>
                     <div class="card-body">
                         <div class="row">

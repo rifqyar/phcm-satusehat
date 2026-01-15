@@ -204,7 +204,7 @@
                                 </th>
                                 <th>Karcis</th>
                                 <th>Perawatan</th>
-                                <th>Status</th>
+                                {{-- <th>Status</th> --}}
                                 <th>Tgl. Masuk</th>
                                 <th>No. Peserta</th>
                                 <th>No. RM</th>
@@ -404,11 +404,11 @@
                     },
 
                     // 6. Status
-                    {
-                        data: 'STATUS_SELESAI',
-                        name: 'STATUS_SELESAI',
-                        responsivePriority: 2
-                    },
+                    // {
+                    //     data: 'STATUS_SELESAI',
+                    //     name: 'STATUS_SELESAI',
+                    //     responsivePriority: 2
+                    // },
 
                     // 7. Tgl. Masuk → ingin disembunyikan
                     {
@@ -544,9 +544,9 @@
                 // Show status based on integration status
                 $('#integrasi_resume, #success_resume, #failed_resume').hide();
                 
-                if (response.dataPasien.statusIntegrated === 'Belum Integrasi') {
+                if (response.dataPasien.STATUS_INTEGRATED == 0) {
                     $('#integrasi_resume').show();
-                } else if (response.dataPasien.statusIntegrated === 'Sudah Integrasi') {
+                } else if (response.dataPasien.STATUS_INTEGRATED == 1) {
                     $('#success_resume').show();
                 } else {
                     $('#failed_resume').show();
