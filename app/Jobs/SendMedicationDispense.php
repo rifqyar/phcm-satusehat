@@ -131,6 +131,7 @@ class SendMedicationDispense implements ShouldQueue
         $logData = [
             'LOG_TYPE' => 'MedicationDispense',
             'LOCAL_ID' => $item->ID_RESEP_FARMASI,
+            'ENCOUNTER_ID' => $item->id_satusehat_encounter ?? null,
             'FHIR_MEDICATION_ID' => $item->medicationReference_reference ?? null,
             'NAMA_OBAT' => $item->medicationReference_display ?? '-',
             'KFA_CODE' => $item->KD_BRG_KFA ?? '-',
