@@ -204,6 +204,7 @@
     </script>
     <script>
         var table;
+        var statusFilter = 'all';
 
         $(document).ready(function () {
             // 🗓️ datepicker
@@ -236,7 +237,7 @@
                 $('.checkbox-item').prop('checked', $(this).is(':checked'));
             });
 
-            // 🚀 Fungsi utama kirim batch satu per satu
+            //  Fungsi utama kirim batch satu per satu
             async function sendSequential(selected) {
                 let successCount = 0;
                 let failCount = 0;
@@ -245,7 +246,7 @@
 
                 for (let i = 0; i < selected.length; i++) {
                     const idTrans = selected[i];
-                    console.log(`🚀 Mengirim ${i + 1}/${selected.length}: ${idTrans}`);
+                    console.log(` Mengirim ${i + 1}/${selected.length}: ${idTrans}`);
 
                     // tampilkan status swal progress
                     swal({
@@ -266,7 +267,7 @@
                             failIds.push(idTrans);
                         }
                     } catch (err) {
-                        console.error(`❌ Error kirim ${idTrans}:`, err);
+                        console.error(` Error kirim ${idTrans}:`, err);
                         failCount++;
                         failIds.push(idTrans);
                     }
@@ -351,6 +352,7 @@
                         d.start_date = $('#start_date').val();
                         d.end_date = $('#end_date').val();
                         d.jenis      = $('#jenis').val();
+                        d.status     = statusFilter;
                     }
                 },
                 columns: [
@@ -378,7 +380,7 @@
                     },
                     {
                         data: null,
-                        name: 'a.KARCIS', // ✅ pakai alias dari backend
+                        name: 'a.KARCIS', //  pakai alias dari backend
                         render: function (data) {
                             return `
                             ${data.KARCIS ?? '-'}
@@ -387,9 +389,9 @@
                         `;
                         }
                     },
-                    { data: 'DOKTER', name: 'c.DOKTER' }, // ✅ alias backend
-                    { data: 'PASIEN', name: 'c.NAMA_PASIEN', searchable: true }, // ✅ alias backend
-                    { data: 'TGL_KARCIS', name: 'c.TANGGAL' }, // ✅ alias backend
+                    { data: 'DOKTER', name: 'c.DOKTER' }, 
+                    { data: 'PASIEN', name: 'c.NAMA_PASIEN', searchable: true }, 
+                    { data: 'TGL_KARCIS', name: 'c.TANGGAL' }, 
                     {
                         data: null,
                         render: function (data) {
@@ -412,12 +414,16 @@
                             </button>`;
                             let btnAction = '';
 
-                            if (data.STATUS_MAPPING === '100') {
+                            if (data.id_satusehat_encounter === null || data.id_satusehat_encounter === '') {
+                                btnAction = `<i class="text-danger">Belum Ada Encounter</i>`;
+                            } 
+                            else if (data.STATUS_MAPPING === '100') {
                                 btnAction = `
-                                <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                                    <i class="fas fa-link mr-2"></i> Kirim SATUSEHAT
-                                </button>`;
-                            } else if (data.STATUS_MAPPING === '200') {
+                                    <button class="btn btn-sm btn-primary w-100"
+                                        onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                        <i class="fas fa-link mr-2"></i> Kirim SATUSEHAT
+                                    </button>`;
+                            }  else if (data.STATUS_MAPPING === '200') {
                                 btnAction = `
                                 <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
                                     <i class="fas fa-link mr-2"></i> Kirim Ulang SATUSEHAT
@@ -468,11 +474,12 @@
             table.ajax.reload();
         }
 
-        // 📦 filter by card
+        // filter by card
         function search(type) {
-            $('input[name="search"]').val(type);
+            statusFilter = type;     
             table.ajax.reload();
         }
+
 
             function lihatObat(idTrans) {
                 $('#modalObat').modal('show');
@@ -588,12 +595,12 @@
                     data: { id_trans: idTrans },
                     success: function (res) {
                         if (res.status === 'success') {
-                            console.log(`✅ ${idTrans} sukses dikirim`);
+                            // console.log(` ${idTrans} sukses dikirim`);
 
                             if (showSwal) {
                                 swal({
                                     title: 'Berhasil!',
-                                    text: `Transaksi ${idTrans} berhasil dikirim ke SATUSEHAT.`,
+                                    text: `Transaksi ${idTrans} berhasil dimasukkan ke antrian pengiriman SATUSEHAT.`,
                                     type: 'success',
                                     timer: 2000,
                                     showConfirmButton: false

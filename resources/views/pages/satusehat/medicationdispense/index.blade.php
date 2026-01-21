@@ -201,7 +201,7 @@
     </script>
     <script>
         var table;
-
+        var statusFilter = 'all';
         $(document).ready(function() {
             // 🗓️ inisialisasi datepicker
             var endDate = moment();
@@ -236,6 +236,7 @@
                         d.start_date = $('#start_date').val();
                         d.end_date = $('#end_date').val();
                         d.jenis = $('#jenis').val();
+                        d.status = statusFilter;
                     }
                 },
                 columns: [{
@@ -288,7 +289,7 @@
                         className: 'text-center',
                         render: function(status) {
                             if (status === '200') {
-                                return `<span class="badge badge-success">Sudah Dikirim</span>`;
+                                return `<span class="badge badge-success">Sudah Integrasi</span>`;
                             } else if (status === '100') {
                                 return `<span class="badge badge-warning">Siap Dikirim</span>`;
                             } else {
@@ -447,9 +448,10 @@
         }
 
         function search(type) {
-            $('input[name="search"]').val(type);
+            statusFilter = type;
             table.ajax.reload();
         }
+
 
         // Lihat data obat
         function lihatObat(idTrans) {

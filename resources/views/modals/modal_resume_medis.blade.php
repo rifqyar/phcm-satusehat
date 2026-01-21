@@ -3,7 +3,7 @@
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Detail Resume Medis Pasien</h5>
+                <h5 class="modal-title font-weight-bold">Detail Resume Medis Pasien</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -13,8 +13,8 @@
                     <!-- Data Pasien -->
                     <div class="col-md-6">
                         <div class="card">
-                            <div class="card-header bg-info text-white">
-                                <h6 class="m-0"><i class="fas fa-user"></i> Data Pasien</h6>
+                            <div class="card-header bg-info ">
+                                <h6 class="m-0 text-white"><i class="fas fa-user"></i> Data Pasien</h6>
                             </div>
                             <div class="card-body">
                                 <table class="table table-sm">
@@ -38,8 +38,8 @@
                     <!-- Data Kunjungan -->
                     <div class="col-md-6">
                         <div class="card">
-                            <div class="card-header bg-primary text-white">
-                                <h6 class="m-0"><i class="fas fa-hospital"></i> Data Kunjungan</h6>
+                            <div class="card-header bg-primary ">
+                                <h6 class="m-0 text-white"><i class="fas fa-hospital"></i> Data Kunjungan</h6>
                             </div>
                             <div class="card-body">
                                 <table class="table table-sm">
@@ -57,10 +57,31 @@
                     </div>
                 </div>
 
+                <!-- Data Alergi -->
+                <div class="card">
+                    <div class="card-header bg-info ">
+                        <h6 class="m-0 text-white"><i class="fas fa-hospital"></i> Data Alergi</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive" id="tableAlergi">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Jenis Alergi</th>
+                                        <th>Nama Alergen</th>
+                                        <th>Kode Alergen Satu Sehat</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyAlergi"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Resume Medis -->
                 <div class="card">
-                    <div class="card-header bg-success text-white">
-                        <h6 class="m-0"><i class="fas fa-notes-medical"></i> Resume Medis</h6>
+                    <div class="card-header bg-success">
+                        <h6 class="m-0 text-white"><i class="fas fa-notes-medical"></i> Resume Medis</h6>
                     </div>
                     <div class="card-body">
                         <div class="row">
@@ -145,9 +166,9 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
-                <button type="button" class="btn btn-primary" onclick="sendSatuSehat(paramSatuSehat)">
-                    <i class="fas fa-paper-plane"></i> Kirim ke SatuSehat
-                </button>
+                <a href="javascript:void(0)" class="btn btn-primary" id="btn-send-satusehat">
+                    <i class="fas fa-link mr-2"></i>Kirim Satu Sehat
+                </a>
             </div>
         </div>
     </div>

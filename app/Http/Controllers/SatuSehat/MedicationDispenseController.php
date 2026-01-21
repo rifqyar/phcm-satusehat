@@ -24,6 +24,7 @@ class MedicationDispenseController extends Controller
         $endDate = $request->input('end_date');
         $jenis = $request->input('jenis'); // ri / rj
         $id_unit = Session::get('id_unit', '001');
+        $status = $request->input('status', 'all');
 
         if (!$startDate || !$endDate) {
             $endDate = now();
@@ -133,8 +134,36 @@ class MedicationDispenseController extends Controller
                 DB::raw('SSM_DISP.CREATED_AT AS DISP_CREATED_AT'),
             );
 
+            $statusExpr = "
+        CASE
+            WHEN SSM_DISP.ID IS NOT NULL THEN '200'
+            WHEN SSM_REQ.ID  IS NOT NULL THEN '100'
+            ELSE d.STATUS_MAPPING
+        END
+        ";
+
+        $status = $request->input('status', 'all');
+
+        $baseQuery = clone $query;
+
+        if ($status === 'sent') {
+            $query->whereRaw("$statusExpr = '200'");
+        }
+        else if ($status === 'unsent') {
+            $query->whereRaw("$statusExpr <> '200'");
+        }
+
+
         // COUNT
-        $recordsTotal = (clone $query)->count();
+        $recordsTotal = (clone $baseQuery)->count();
+
+        $sent = (clone $baseQuery)
+            ->whereRaw("$statusExpr = '200'")
+            ->count();
+
+        $unsent = (clone $baseQuery)
+            ->whereRaw("$statusExpr <> '200'")
+            ->count();
 
         $dataTable = DataTables::of($query)
             ->filterColumn('KARCIS', function ($q, $k) {
@@ -164,7 +193,11 @@ class MedicationDispenseController extends Controller
             ->make(true);
 
         $json = $dataTable->getData(true);
-        $json['summary'] = ['all' => $recordsTotal];
+        $json['summary'] = [
+            'all'    => $recordsTotal,
+            'sent'   => $sent,
+            'unsent' => $unsent
+        ];
 
         return response()->json($json);
     }

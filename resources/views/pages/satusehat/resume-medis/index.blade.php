@@ -65,7 +65,7 @@
                                             <i class="fas fa-hospital" style="font-size: 48px"></i>
                                             <div class="ml-3">
                                                 <span style="font-size: 24px"
-                                                    id="total_rawat_jalan">{{ $result['total_rawat_jalan'] }}</span>
+                                                    id="total_rj">{{ $rjAll }}</span>
                                                 <h4 class="text-white">Total Rawat Jalan</h4>
                                             </div>
                                         </div>
@@ -81,7 +81,7 @@
                                             <i class="fas fa-bed" style="font-size: 48px"></i>
                                             <div class="ml-3">
                                                 <span style="font-size: 24px"
-                                                    id="total_rawat_inap">{{ $result['total_rawat_inap'] }}</span>
+                                                    id="total_ri">{{ $ri }}</span>
                                                 <h4 class="text-white">Total Rawat Inap</h4>
                                             </div>
                                         </div>
@@ -97,7 +97,7 @@
                                             <i class="fas fa-info-circle" style="font-size: 48px"></i>
                                             <div class="ml-3">
                                                 <span style="font-size: 24px"
-                                                    id="total_all">{{ $result['total_semua'] }}</span>
+                                                    id="total_all">{{ $mergedAll }}</span>
                                                 <h4 class="text-white">Total Data</h4>
                                             </div>
                                         </div>
@@ -113,7 +113,7 @@
                                             <i class="fas fa-link" style="font-size: 48px"></i>
                                             <div class="ml-3">
                                                 <span style="font-size: 24px"
-                                                    id="total_integrasi">{{ $result['total_sudah_integrasi'] }}</span>
+                                                    id="total_integrasi">{{ $mergedIntegrated }}</span>
                                                 <h4 class="text-white">Data Terintegrasi</h4>
                                             </div>
                                         </div>
@@ -129,7 +129,7 @@
                                             <i class="fas fa-unlink" style="font-size: 48px"></i>
                                             <div class="ml-3">
                                                 <span style="font-size: 24px"
-                                                    id="total_belum_integrasi">{{ $result['total_belum_integrasi'] }}</span>
+                                                    id="total_belum_integrasi">{{ $unmapped }}</span>
                                                 <h4 class="text-white">Data belum terintegrasi</h4>
                                             </div>
                                         </div>
@@ -194,7 +194,7 @@
                         <thead>
                             <tr>
                                 <th></th>
-                                <th>#</th>
+                                <th>NO</th>
                                 <th>
                                     <input type="checkbox" id="selectAll" value="selected-all"
                                         class="chk-col-purple" />
@@ -202,15 +202,16 @@
                                         style="margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500">
                                         Select All </label>
                                 </th>
-                                <th>ID Transaksi</th>
-                                <th>Jenis Perawatan</th>
+                                <th>Karcis</th>
+                                <th>Perawatan</th>
+                                {{-- <th>Status</th> --}}
+                                <th>Tgl. Masuk</th>
                                 <th>No. Peserta</th>
                                 <th>No. RM</th>
-                                <th>Nama Pasien</th>
-                                <th>Tgl. Masuk</th>
+                                <th>Nama</th>
                                 <th>Dokter</th>
-                                <th>Status</th>
-                                <th>Aksi</th>
+                                <th>Status Integrasi</th>
+                                <th></th>
                             </tr>
                         </thead>
                     </table>
@@ -337,112 +338,161 @@
     }
 
     function getAllData() {
-        table = $('.data-table').DataTable({
-            responsive: {
-                details: {
-                    type: 'column',
-                    target: 'td.dtr-control'
+            table = $('.data-table').DataTable({
+                responsive: {
+                    details: {
+                        type: 'column',
+                        target: 'td.dtr-control'
+                    }
+                },
+                processing: true,
+                serverSide: true,
+                scrollX: false,
+                ajax: {
+                    url: `{{ route('satusehat.resume-medis.datatable') }}`,
+                    method: "POST",
+                    data: function(data) {
+                        data._token = `${$('meta[name="csrf-token"]').attr("content")}`;
+                        data.cari = $('input[name="search"]').val();
+                        data.tgl_awal = $('input[name="tgl_awal"]').val();
+                        data.tgl_akhir = $('input[name="tgl_akhir"]').val();
+                    },
+                    dataSrc: function(json) {
+                        $('#total_all').text(json.total_semua)
+                        $('#total_rj').text(json.rjAll)
+                        $('#total_ri').text(json.ri)
+                        $('#total_integrasi').text(json.total_sudah_integrasi)
+                        $('#total_belum_integrasi').text(json.total_belum_integrasi)
+                        return json.data
+                    }
+                },
+                columns: [{
+                        className: 'dtr-control',
+                        orderable: false,
+                        searchable: false,
+                        data: null,
+                        defaultContent: '',
+                        responsivePriority: 1
+                    },
+                    {
+                        data: 'DT_RowIndex',
+                        name: 'DT_RowIndex',
+                        orderable: false,
+                        searchable: false,
+                        responsivePriority: 1
+                    },
+                    {
+                        data: 'checkbox',
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-center',
+                        responsivePriority: 1
+                    },
+
+                    // 4. Karcis
+                    {
+                        data: 'ID_TRANSAKSI',
+                        name: 'ID_TRANSAKSI',
+                        responsivePriority: 2
+                    },
+
+                    // 5. Perawatan
+                    {
+                        data: 'JENIS_PERAWATAN',
+                        name: 'JENIS_PERAWATAN',
+                        responsivePriority: 2
+                    },
+
+                    // 6. Status
+                    // {
+                    //     data: 'STATUS_SELESAI',
+                    //     name: 'STATUS_SELESAI',
+                    //     responsivePriority: 2
+                    // },
+
+                    // 7. Tgl. Masuk → ingin disembunyikan
+                    {
+                        data: 'TANGGAL',
+                        name: 'TANGGAL',
+                        responsivePriority: 5
+                    },
+
+                    // 8. No Peserta → disembunyikan
+                    {
+                        data: 'NO_PESERTA',
+                        name: 'NO_PESERTA',
+                        responsivePriority: 5
+                    },
+
+                    // 9. No RM
+                    {
+                        data: 'KBUKU',
+                        name: 'KBUKU',
+                        responsivePriority: 4
+                    },
+
+                    // 10. Nama
+                    {
+                        data: 'NAMA_PASIEN',
+                        name: 'NAMA_PASIEN',
+                        responsivePriority: 3
+                    },
+
+                    // 11. Dokter → disembunyikan
+                    {
+                        data: 'DOKTER',
+                        name: 'DOKTER',
+                        responsivePriority: 5
+                    },
+
+                    // 12. Status Integrasi
+                    {
+                        data: 'status_integrasi',
+                        name: 'status_integrasi',
+                        responsivePriority: 3
+                    },
+
+                    // 13. Action
+                    {
+                        data: 'action',
+                        name: 'action',
+                        orderable: false,
+                        searchable: false,
+                        responsivePriority: 1
+                    },
+                ],
+                order: [
+                    [1, 'asc']
+                ],
+                lengthMenu: [
+                    [10, 25, 50, -1],
+                    [10, 25, 50, "All"]
+                ],
+                pageLength: 10,
+                drawCallback: function(settings) {
+                    $('.select-row').each(function() {
+                        const id = $(this).val();
+                        $(this).prop('checked', selectedIds.includes(id));
+                    });
+
+                    if ($('#selectAll').is(':checked')) {
+                        $('.select-row').each(function() {
+                            const id = $(this).val();
+                            const param = $(this).data('param');
+                            $(this).prop('checked', true);
+                            if (!selectedIds.includes(id)) {
+                                selectedIds.push({
+                                    id: id,
+                                    param: param
+                                });
+                            }
+                        });
+                    }
+
+                    updateSelectAllCheckbox();
                 }
-            },
-            processing: true,
-            serverSide: false,
-            scrollX: true,
-            ajax: {
-                url: `{{ route('satusehat.resume-medis.datatable') }}`,
-                method: "POST",
-                data: function(data) {
-                    data._token = `${$('meta[name="csrf-token"]').attr("content")}`;
-                    data.cari = $('input[name="search"]').val();
-                    data.tgl_awal = $('input[name="tgl_awal"]').val();
-                    data.tgl_akhir = $('input[name="tgl_akhir"]').val();
-                },
-                dataSrc: function(json) {
-                    $('#total_all').text(json.total_semua);
-                    $('#total_rawat_jalan').text(json.total_rawat_jalan);
-                    $('#total_rawat_inap').text(json.total_rawat_inap);
-                    $('#total_integrasi').text(json.total_sudah_integrasi);
-                    $('#total_belum_integrasi').text(json.total_belum_integrasi);
-                    return json.data;
-                }
-            },
-            columns: [{
-                    className: 'dtr-control',
-                    orderable: false,
-                    searchable: false,
-                    data: null,
-                    defaultContent: ''
-                }, 
-                {
-                    data: 'DT_RowIndex',
-                    name: 'DT_RowIndex',
-                    orderable: false,
-                    searchable: false
-                },
-                {
-                    data: 'checkbox',
-                    name: 'checkbox',
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 2
-                },
-                {
-                    data: 'ID_TRANSAKSI',
-                    name: 'ID_TRANSAKSI',
-                    responsivePriority: 3
-                },
-                {
-                    data: 'JENIS_PERAWATAN',
-                    name: 'JENIS_PERAWATAN',
-                    responsivePriority: 4
-                },
-                {
-                    data: 'NO_PESERTA',
-                    name: 'NO_PESERTA',
-                    responsivePriority: 6
-                },
-                {
-                    data: 'KBUKU',
-                    name: 'KBUKU',
-                    responsivePriority: 7
-                },
-                {
-                    data: 'NAMA',
-                    name: 'NAMA',
-                    responsivePriority: 5
-                },
-                {
-                    data: 'TGL_MASUK',
-                    name: 'TGL_MASUK',
-                    responsivePriority: 8
-                },
-                {
-                    data: 'DOKTER',
-                    name: 'DOKTER',
-                    responsivePriority: 9
-                },
-                {
-                    data: 'status_integrasi',
-                    name: 'status_integrasi',
-                    responsivePriority: 3
-                },
-                {
-                    data: 'action',
-                    name: 'action',
-                    orderable: false,
-                    searchable: false,
-                    responsivePriority: 1
-                },
-            ],
-            order: [
-                [8, 'desc']
-            ],
-            lengthMenu: [
-                [10, 25, 50, -1],
-                [10, 25, 50, "All"]
-            ],
-            pageLength: 10,
-        })
-    }
+            })
+        }
 
     $('.data-table').on('click', 'button, a', function(e) {
         e.stopPropagation();
@@ -477,6 +527,19 @@
                 $('#no_karcis').text(response.dataPasien.KARCIS || '-');
                 $('#dokter').text(response.dataPasien.DOKTER || '-');
 
+                // Populate allergy data
+                let allergyHtml = '';
+                if (response.dataAlergi && response.dataAlergi.length > 0) {
+                    response.dataAlergi.forEach(function(allergy) {
+                        allergyHtml += '<tr><td>' + (allergy.JENIS || '-') + '</td><td>' 
+                            + (allergy.ALERGEN || '-') + '</td><td>' 
+                            + (allergy.ID_ALERGEN_SS || '-') + '</td></tr>';
+                    });
+                } else {
+                    allergyHtml = '<tr><td colspan="3" class="text-center text-muted">Tidak ada data alergi</td></tr>';
+                }
+                $('#tbodyAlergi').html(allergyHtml);
+
                 // Populate resume medis data
                 $('#keluhan').text(response.dataErm.KELUHAN || '-');
                 $('#td').text(response.dataErm.TD || '-');
@@ -494,9 +557,9 @@
                 // Show status based on integration status
                 $('#integrasi_resume, #success_resume, #failed_resume').hide();
                 
-                if (response.dataPasien.statusIntegrated === 'Belum Integrasi') {
+                if (response.dataPasien.STATUS_INTEGRATED == 0) {
                     $('#integrasi_resume').show();
-                } else if (response.dataPasien.statusIntegrated === 'Sudah Integrasi') {
+                } else if (response.dataPasien.STATUS_INTEGRATED == 1) {
                     $('#success_resume').show();
                 } else {
                     $('#failed_resume').show();
@@ -515,6 +578,12 @@
             }
         });
     }
+
+    $('#btn-send-satusehat').on('click', function() {
+        if (paramSatuSehat != '') {
+            sendSatuSehat(paramSatuSehat)
+        }
+    })
 
     function sendSatuSehat(param) {
         Swal.fire({

@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,13 +25,17 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        DB::listen(function () {
-        try {
-            $pdo = DB::connection()->getPdo();
-        } catch (\Exception $e) {
-            DB::disconnect('sqlsrv');
-            DB::reconnect('sqlsrv');
+        if (app()->environment('production')) {
+            URL::forceScheme('https');
         }
-    });
+        
+        DB::listen(function () {
+            try {
+                $pdo = DB::connection()->getPdo();
+            } catch (\Exception $e) {
+                DB::disconnect('sqlsrv');
+                DB::reconnect('sqlsrv');
+            }
+        });
     }
 }

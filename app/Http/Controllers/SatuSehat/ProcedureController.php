@@ -33,195 +33,15 @@ class ProcedureController extends Controller
     {
         $startDate = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
         $endDate   = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
-
-        $data = DB::table('v_kunjungan_rj as vkr')
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.KARCIS')
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
-                $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
-                    ->on('vkr.KBUKU', '=', 'rsn.kbuku');
-            })
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', function ($join) {
-                $join->on('vkr.ID_TRANSAKSI', '=', 'rsp.KARCIS')
-                    ->on('vkr.KBUKU', '=', 'rsp.KBUKU');
-            })
-            ->where('eri.AKTIF', 1)
-            ->whereBetween('vkr.TANGGAL', [$startDate, $endDate])
-            ->selectRaw("
-                vkr.ID_TRANSAKSI as KARCIS,
-                MAX(vkr.TANGGAL) as TANGGAL,
-                MAX(vkr.NO_PESERTA) as NO_PESERTA,
-                MAX(vkr.KBUKU) as KBUKU,
-                MAX(vkr.NAMA_PASIEN) as NAMA_PASIEN,
-                MAX(vkr.DOKTER) as DOKTER,
-                MAX(vkr.ID_PASIEN_SS) as ID_PASIEN_SS,
-                MAX(vkr.ID_NAKES_SS) as ID_NAKES_SS,
-                MAX(rsn.id_satusehat_encounter) as id_satusehat_encounter,
-                MAX(rsp.ID_SATUSEHAT_PROCEDURE) as ID_SATUSEHAT_PROCEDURE,
-                'RAWAT_JALAN' AS JENIS_PERAWATAN,
-                CASE
-                    WHEN
-                        (
-                            NOT EXISTS (
-                                SELECT 1 FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI op
-                                WHERE op.KARCIS = vkr.ID_TRANSAKSI
-                            )
-                            OR EXISTS (
-                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p1
-                                WHERE p1.KARCIS = vkr.ID_TRANSAKSI
-                                AND p1.JENIS_TINDAKAN = 'operasi'
-                                AND p1.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                            )
-                        )
-                        AND
-                        (
-                            NOT EXISTS (
-                                SELECT 1 FROM vw_getData_Elab lab
-                                WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
-                                AND lab.KLINIK_TUJUAN = '0017'
-                            )
-                            OR EXISTS (
-                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p2
-                                WHERE p2.KARCIS = vkr.ID_TRANSAKSI
-                                AND p2.JENIS_TINDAKAN = 'lab'
-                                AND p2.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                            )
-                        )
-                        AND
-                        (
-                            NOT EXISTS (
-                                SELECT 1 FROM vw_getData_Elab rad
-                                WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
-                                AND rad.KLINIK_TUJUAN = '0015' OR rad.KLINIK_TUJUAN = '0016'
-                            )
-                            OR EXISTS (
-                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p3
-                                WHERE p3.KARCIS = vkr.ID_TRANSAKSI
-                                AND p3.JENIS_TINDAKAN = 'rad'
-                                AND p3.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                            )
-                        )
-                        AND
-                        (
-                            EXISTS (
-                                SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p4
-                                WHERE p4.KARCIS = vkr.ID_TRANSAKSI
-                                AND p4.JENIS_TINDAKAN = 'anamnese'
-                                AND p4.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                            )
-                        )
-                    THEN 1
-                    ELSE 0
-                END AS sudah_integrasi,
-                CASE WHEN MAX(eri.KARCIS) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
-            ")
-            ->groupBy('vkr.ID_TRANSAKSI')
-            ->orderByDesc(DB::raw('MAX(vkr.TANGGAL)'))
-            ->get();
-
-        $dataRi = DB::table('v_kunjungan_ri as vkr')
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.NOREG')
-            ->leftJoin('vw_getData_Elab as ere', 'eri.NOREG', '=', 'ere.KARCIS_ASAL')
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI as erflo', 'eri.NOREG', '=', 'erflo.NOREG')
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
-                $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
-                    ->on('vkr.KBUKU', '=', 'rsn.kbuku');
-            })
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', function ($join) {
-                $join->on('vkr.ID_TRANSAKSI', '=', 'rsp.KARCIS')
-                    ->on('vkr.KBUKU', '=', 'rsp.KBUKU');
-            })
-            ->where('eri.AKTIF', 1)
-            ->whereBetween('vkr.TANGGAL', [$startDate, $endDate])
-            ->selectRaw("
-                vkr.ID_TRANSAKSI as KARCIS,
-                MAX(vkr.TANGGAL) as TANGGAL,
-                MAX(vkr.NO_PESERTA) as NO_PESERTA,
-                MAX(vkr.KBUKU) as KBUKU,
-                MAX(vkr.NAMA_PASIEN) as NAMA_PASIEN,
-                MAX(vkr.DOKTER) as DOKTER,
-                MAX(vkr.ID_PASIEN_SS) as ID_PASIEN_SS,
-                MAX(vkr.ID_NAKES_SS) as ID_NAKES_SS,
-                MAX(rsn.id_satusehat_encounter) as id_satusehat_encounter,
-                MAX(rsp.ID_SATUSEHAT_PROCEDURE) as ID_SATUSEHAT_PROCEDURE,
-                'RAWAT_INAP' AS JENIS_PERAWATAN,
-
-                CASE
-                    WHEN
-                    (
-                        NOT EXISTS (
-                            SELECT 1 FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI op
-                            WHERE op.KARCIS = vkr.ID_TRANSAKSI
-                        )
-                        OR EXISTS (
-                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p1
-                            WHERE p1.KARCIS = vkr.ID_TRANSAKSI
-                            AND p1.JENIS_TINDAKAN = 'operasi'
-                            AND p1.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                        )
-                    )
-                    AND
-                    (
-                        NOT EXISTS (
-                            SELECT 1 FROM vw_getData_Elab lab
-                            WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
-                            AND lab.KLINIK_TUJUAN = '0017'
-                        )
-                        OR EXISTS (
-                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p2
-                            WHERE p2.KARCIS = vkr.ID_TRANSAKSI
-                            AND p2.JENIS_TINDAKAN = 'lab'
-                            AND p2.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                        )
-                    )
-                    AND
-                    (
-                        NOT EXISTS (
-                            SELECT 1 FROM vw_getData_Elab rad
-                            WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
-                            AND rad.KLINIK_TUJUAN = '0015' OR rad.KLINIK_TUJUAN = '0016'
-                        )
-                        OR EXISTS (
-                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p3
-                            WHERE p3.KARCIS = vkr.ID_TRANSAKSI
-                            AND p3.JENIS_TINDAKAN = 'rad'
-                            AND p3.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                        )
-                    )
-                    AND
-                    (
-                        EXISTS (
-                            SELECT 1 FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p4
-                            WHERE p4.KARCIS = vkr.ID_TRANSAKSI
-                            AND p4.JENIS_TINDAKAN = 'anamnese'
-                            AND p4.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                        )
-                    )
-                THEN 1
-                ELSE 0
-                END AS sudah_integrasi,
-
-                CASE WHEN MAX(eri.NOREG) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
-            ")
-            ->groupBy('vkr.ID_TRANSAKSI')
-            ->orderByDesc(DB::raw('MAX(vkr.TANGGAL)'))
-            ->get();
-
-        $mergedAll = $data->merge($dataRi)
-            ->sortByDesc('TANGGAL')
-            ->values();
-
-        $totalAll = $mergedAll->count();
-        $totalSudahIntegrasi = $mergedAll->where('sudah_integrasi', 1)->count();
-        $totalBelumIntegrasi = $totalAll - $totalSudahIntegrasi;
+        $id_unit = Session::get('id_unit', '001');
 
         $result = [
-            'total_semua' => $totalAll,
-            'total_sudah_integrasi' => $totalSudahIntegrasi,
-            'total_belum_integrasi' => $totalBelumIntegrasi,
-            'total_rawat_jalan' => $mergedAll->where('JENIS_PERAWATAN', 'RAWAT_JALAN')->count(),
-            'total_rawat_inap' => $mergedAll->where('JENIS_PERAWATAN', 'RAWAT_INAP')->count(),
+            'total_semua' => 0,
+            'total_sudah_integrasi' => 0,
+            'total_belum_integrasi' => 0,
+            'total_rawat_jalan' => 0,
+            'total_rawat_inap' => 0,
         ];
-
         return view('pages.satusehat.procedure.index', compact('result'));
     }
 
@@ -246,219 +66,22 @@ class ProcedureController extends Controller
         $tgl_awal_db  = Carbon::parse($tgl_awal)->format('Y-m-d H:i:s');
         $tgl_akhir_db = Carbon::parse($tgl_akhir)->format('Y-m-d H:i:s');
 
-        $dataQuery = DB::table('v_kunjungan_rj as vkr')
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.KARCIS')
-            ->leftJoin('vw_getData_Elab as ere', 'eri.KARCIS', 'ere.KARCIS_ASAL')
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI as erflo', 'eri.KARCIS', 'erflo.KARCIS')
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
-                $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
-                    ->on('vkr.KBUKU', '=', 'rsn.kbuku');
-            })
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', function ($join) {
-                $join->on('vkr.ID_TRANSAKSI', '=', 'rsp.KARCIS')
-                    ->on('vkr.KBUKU', '=', 'rsp.KBUKU');
-            })
-            ->where('eri.AKTIF', 1)
-            ->whereBetween('vkr.TANGGAL', [$tgl_awal_db, $tgl_akhir_db])
-            ->selectRaw("
-                vkr.ID_TRANSAKSI as KARCIS,
-                MAX(vkr.TANGGAL) as TANGGAL,
-                MAX(vkr.NO_PESERTA) as NO_PESERTA,
-                MAX(vkr.KBUKU) as KBUKU,
-                MAX(vkr.NAMA_PASIEN) as NAMA_PASIEN,
-                MAX(vkr.DOKTER) as DOKTER,
-                MAX(vkr.ID_PASIEN_SS) as ID_PASIEN_SS,
-                MAX(vkr.ID_NAKES_SS) as ID_NAKES_SS,
-                MAX(rsn.id_satusehat_encounter) as id_satusehat_encounter,
-                MAX(rsp.ID_SATUSEHAT_PROCEDURE) as ID_SATUSEHAT_PROCEDURE,
-                'RAWAT_JALAN' AS JENIS_PERAWATAN,
-                CASE
-                    WHEN
-                        NOT (
-                            EXISTS (
-                                SELECT 1
-                                FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI op
-                                WHERE op.KARCIS = vkr.ID_TRANSAKSI
-                            )
-                            AND NOT EXISTS (
-                                SELECT 1
-                                FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
-                                WHERE p.KARCIS = vkr.ID_TRANSAKSI
-                                AND p.JENIS_TINDAKAN = 'operasi'
-                                AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                            )
-                        )
-                        AND NOT (
-                            EXISTS (
-                                SELECT 1
-                                FROM vw_getData_Elab lab
-                                WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
-                                AND lab.KLINIK_TUJUAN = '0017'
-                            )
-                            AND NOT EXISTS (
-                                SELECT 1
-                                FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
-                                WHERE p.KARCIS = vkr.ID_TRANSAKSI
-                                AND p.JENIS_TINDAKAN = 'lab'
-                                AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                            )
-                        )
-                        AND NOT (
-                            EXISTS (
-                                SELECT 1
-                                FROM vw_getData_Elab rad
-                                WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
-                                AND rad.KLINIK_TUJUAN IN ('0015', '0016')
-                            )
-                            AND NOT EXISTS (
-                                SELECT 1
-                                FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
-                                WHERE p.KARCIS = vkr.ID_TRANSAKSI
-                                AND p.JENIS_TINDAKAN = 'rad'
-                                AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                            )
-                        )
-                        AND EXISTS (
-                            SELECT 1
-                            FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
-                            WHERE p.KARCIS = vkr.ID_TRANSAKSI
-                            AND p.JENIS_TINDAKAN = 'anamnese'
-                            AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                        )
-                    THEN 1
-                    ELSE 0
-                END AS sudah_integrasi,
-                CASE WHEN MAX(eri.KARCIS) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
-            ")
-            ->groupBy('vkr.ID_TRANSAKSI');
-
-        $riQuery = DB::table('v_kunjungan_ri as vkr')
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.NOREG')
-            ->leftJoin('vw_getData_Elab as ere', 'eri.NOREG', '=', 'ere.KARCIS_ASAL')
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI as erflo', 'eri.NOREG', '=', 'erflo.NOREG')
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
-                $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
-                    ->on('vkr.KBUKU', '=', 'rsn.kbuku');
-            })
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE as rsp', function ($join) {
-                $join->on('vkr.ID_TRANSAKSI', '=', 'rsp.KARCIS')
-                    ->on('vkr.KBUKU', '=', 'rsp.KBUKU');
-            })
-            ->where('eri.AKTIF', 1)
-            ->whereBetween('vkr.TANGGAL', [$tgl_awal_db, $tgl_akhir_db])
-            ->selectRaw("
-                vkr.ID_TRANSAKSI as KARCIS,
-                MAX(vkr.TANGGAL) as TANGGAL,
-                MAX(vkr.NO_PESERTA) as NO_PESERTA,
-                MAX(vkr.KBUKU) as KBUKU,
-                MAX(vkr.NAMA_PASIEN) as NAMA_PASIEN,
-                MAX(vkr.DOKTER) as DOKTER,
-                MAX(vkr.ID_PASIEN_SS) as ID_PASIEN_SS,
-                MAX(vkr.ID_NAKES_SS) as ID_NAKES_SS,
-                MAX(rsn.id_satusehat_encounter) as id_satusehat_encounter,
-                MAX(rsp.ID_SATUSEHAT_PROCEDURE) as ID_SATUSEHAT_PROCEDURE,
-                'RAWAT_INAP' AS JENIS_PERAWATAN,
-                CASE
-                    WHEN
-                        NOT (
-                            EXISTS (
-                                SELECT 1
-                                FROM E_RM_PHCM.dbo.ERM_RI_F_LAP_OPERASI op
-                                WHERE op.KARCIS = vkr.ID_TRANSAKSI
-                            )
-                            AND NOT EXISTS (
-                                SELECT 1
-                                FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
-                                WHERE p.KARCIS = vkr.ID_TRANSAKSI
-                                AND p.JENIS_TINDAKAN = 'operasi'
-                                AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                            )
-                        )
-                        AND NOT (
-                            EXISTS (
-                                SELECT 1
-                                FROM vw_getData_Elab lab
-                                WHERE lab.KARCIS_ASAL = vkr.ID_TRANSAKSI
-                                AND lab.KLINIK_TUJUAN = '0017'
-                            )
-                            AND NOT EXISTS (
-                                SELECT 1
-                                FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
-                                WHERE p.KARCIS = vkr.ID_TRANSAKSI
-                                AND p.JENIS_TINDAKAN = 'lab'
-                                AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                            )
-                        )
-                        AND NOT (
-                            EXISTS (
-                                SELECT 1
-                                FROM vw_getData_Elab rad
-                                WHERE rad.KARCIS_ASAL = vkr.ID_TRANSAKSI
-                                AND rad.KLINIK_TUJUAN IN ('0015', '0016')
-                            )
-                            AND NOT EXISTS (
-                                SELECT 1
-                                FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
-                                WHERE p.KARCIS = vkr.ID_TRANSAKSI
-                                AND p.JENIS_TINDAKAN = 'rad'
-                                AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                            )
-                        )
-                        AND EXISTS (
-                            SELECT 1
-                            FROM SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE p
-                            WHERE p.KARCIS = vkr.ID_TRANSAKSI
-                            AND p.JENIS_TINDAKAN = 'anamnese'
-                            AND p.ID_SATUSEHAT_PROCEDURE IS NOT NULL
-                        )
-                    THEN 1
-                    ELSE 0
-                END AS sudah_integrasi,
-                CASE WHEN MAX(eri.NOREG) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
-            ")
-            ->groupBy('vkr.ID_TRANSAKSI');
-
-        $mergedQuery = $dataQuery->unionAll($riQuery);
-
-        $dataAll = DB::query()
-            ->fromSub($mergedQuery, 'x')
-            ->groupBy([
-                'x.JENIS_PERAWATAN',
-                'x.SUDAH_INTEGRASI',
-                'x.SUDAH_PROSES_DOKTER',
-                'x.KARCIS',
-                'x.TANGGAL',
-                'x.NO_PESERTA',
-                'x.KBUKU',
-                'x.NAMA_PASIEN',
-                'x.DOKTER',
-                'x.ID_PASIEN_SS',
-                'x.ID_NAKES_SS',
-                'x.id_satusehat_encounter',
-                'x.ID_SATUSEHAT_PROCEDURE',
-            ]);
-
-        $totalData = $dataAll->get();
-        $totalAll = $totalData->count();
-        $totalSudahIntegrasi = $totalData->where('sudah_integrasi', 1)->count();
-        $totalBelumIntegrasi = $totalAll - $totalSudahIntegrasi;
+        $data = DB::select("
+            EXEC dbo.sp_getTindakanRJRI_All ?, ?, ?, ?
+        ", [
+            $tgl_awal_db,
+            $tgl_akhir_db,
+            $id_unit,
+            $request->input('cari') == '' ? null : $request->input('cari')
+        ]);
 
         $totalData = [
-            'total_semua' => $totalAll,
-            'total_sudah_integrasi' => $totalSudahIntegrasi,
-            'total_belum_integrasi' => $totalBelumIntegrasi,
-            'total_rawat_jalan' => $totalData->where('JENIS_PERAWATAN', 'RAWAT_JALAN')->count(),
-            'total_rawat_inap' => $totalData->where('JENIS_PERAWATAN', 'RAWAT_INAP')->count(),
+            'total_semua' => $data[0]->total_semua ?? 0,
+            'total_sudah_integrasi' => $data[0]->total_sudah_integrasi ?? 0,
+            'total_belum_integrasi' => $data[0]->total_belum_integrasi ?? 0,
+            'total_rawat_jalan' => $data[0]->total_rawat_jalan ?? 0,
+            'total_rawat_inap' => $data[0]->total_rawat_inap ?? 0,
         ];
-
-        $cari = $request->input('cari');
-        if ($cari === 'mapped') {
-            $dataAll->whereNotNull('x.ID_SATUSEHAT_PROCEDURE');
-        } elseif ($cari === 'unmapped') {
-            $dataAll->whereNull('x.ID_SATUSEHAT_PROCEDURE');
-        }
-
-        $data = $dataAll->orderByDesc(DB::raw('MAX(x.TANGGAL)'))->get();
 
         return DataTables::of($data)
             ->addIndexColumn()
@@ -481,25 +104,20 @@ class ProcedureController extends Controller
                 $param = LZString::compressToEncodedURIComponent("karcis=$id_transaksi&kbuku=$KbBuku&jenis_perawatan=$jenisPerawatan");
                 $btn = '';
                 if ($row->ID_PASIEN_SS == null) {
-                    $btn = '<i class="text-muted">Pasien Belum Mapping</i>';
+                    $btn = '<i class="text-muted">Pasien Belum Mapping</i><br>';
                 } else if ($row->ID_NAKES_SS == null) {
-                    $btn .= '<i class="text-muted">Nakes Belum Mapping</i>';
+                    $btn .= '<i class="text-muted">Nakes Belum Mapping</i><br>';
                 } else if ($row->id_satusehat_encounter == null) {
-                    $btn .= '<i class="text-muted">Encounter Belum Kirim</i>';
-                } else {
-                    // if ($row->sudah_integrasi == '0') {
-                    //     $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
-                    // } else {
-                    //     $btn = '<a href="#" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
-                    // }
-                    $btn .= '<a href="javascript:void(0)" onclick="lihatDetail(`' . $param . '`, `' . $paramSatuSehat . '`)" class="mt-2 btn btn-sm btn-info w-100"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</a>';
+                    $btn .= '<i class="text-muted">Encounter Belum Kirim</i><br>';
                 }
+
+                $btn .= '<a href="javascript:void(0)" onclick="lihatDetail(`' . $param . '`, `' . $paramSatuSehat . '`)" class="mt-2 btn btn-sm btn-info w-100"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</a>';
                 return $btn;
             })
             ->addColumn('status_integrasi', function ($row) {
                 if ($row->sudah_integrasi == '0') {
                     $html = '<span class="badge badge-pill badge-danger p-2">Belum Integrasi</span>';
-                    $html .= $this->notif($row);
+                    // $html .= $this->notif($row);
                 } else {
                     $html = '<span class="badge badge-pill badge-success p-2">Sudah Integrasi</span>';
                 }
@@ -511,70 +129,70 @@ class ProcedureController extends Controller
             ->make(true);
     }
 
-    private function notif($row)
-    {
-        $html = '';
-        $karcis = $row->KARCIS;
-        $sql = " SELECT
-                (SELECT COUNT(1)
-                FROM E_RM_PHCM.dbo.ERM_RM_IRJA
-                WHERE karcis = ? AND AKTIF = 1) AS fisik_total,
+    // private function notif($row)
+    // {
+    //     $html = '';
+    //     $karcis = $row->KARCIS;
+    //     $sql = " SELECT
+    //             (SELECT COUNT(1)
+    //             FROM E_RM_PHCM.dbo.ERM_RM_IRJA
+    //             WHERE karcis = ? AND AKTIF = 1) AS fisik_total,
 
-                (SELECT COUNT(1)
-                FROM E_RM_PHCM.dbo.ERM_RM_IRJA eri
-                INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
-                    ON eri.KARCIS = rsp.KARCIS
-                AND eri.NOMOR = rsp.ID_JENIS_TINDAKAN
-                WHERE eri.KARCIS = ? AND eri.AKTIF = 1) AS fisik_integrated,
+    //             (SELECT COUNT(1)
+    //             FROM E_RM_PHCM.dbo.ERM_RM_IRJA eri
+    //             INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
+    //                 ON eri.KARCIS = rsp.KARCIS
+    //             AND eri.NOMOR = rsp.ID_JENIS_TINDAKAN
+    //             WHERE eri.KARCIS = ? AND eri.AKTIF = 1) AS fisik_integrated,
 
-                (SELECT COUNT(1)
-                FROM SIRS_PHCM.dbo.vw_getData_Elab
-                WHERE KARCIS_ASAL = ? AND KLINIK_TUJUAN in ('0017', '0031')) AS lab_total,
+    //             (SELECT COUNT(1)
+    //             FROM SIRS_PHCM.dbo.vw_getData_Elab
+    //             WHERE KARCIS_ASAL = ? AND KLINIK_TUJUAN in ('0017', '0031')) AS lab_total,
 
-                (SELECT COUNT(1)
-                FROM SIRS_PHCM.dbo.vw_getData_Elab vgde
-                INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
-                    ON vgde.KARCIS_ASAL = rsp.KARCIS
-                AND vgde.ID_RIWAYAT_ELAB = rsp.ID_JENIS_TINDAKAN
-                AND rsp.JENIS_TINDAKAN = 'lab'
-                WHERE vgde.KARCIS_ASAL = ? AND KLINIK_TUJUAN in ('0017', '0031')) AS lab_integrated,
+    //             (SELECT COUNT(1)
+    //             FROM SIRS_PHCM.dbo.vw_getData_Elab vgde
+    //             INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
+    //                 ON vgde.KARCIS_ASAL = rsp.KARCIS
+    //             AND vgde.ID_RIWAYAT_ELAB = rsp.ID_JENIS_TINDAKAN
+    //             AND rsp.JENIS_TINDAKAN = 'lab'
+    //             WHERE vgde.KARCIS_ASAL = ? AND KLINIK_TUJUAN in ('0017', '0031')) AS lab_integrated,
 
-                (SELECT COUNT(1)
-                FROM SIRS_PHCM.dbo.vw_getData_Elab
-                WHERE KARCIS_ASAL = ? AND KLINIK_TUJUAN in (SELECT KODE_KLINIK
-                                FROM SIRS_PHCM..RJ_KLINIK_RADIOLOGI)) AS rad_total,
+    //             (SELECT COUNT(1)
+    //             FROM SIRS_PHCM.dbo.vw_getData_Elab
+    //             WHERE KARCIS_ASAL = ? AND KLINIK_TUJUAN in (SELECT KODE_KLINIK
+    //                             FROM SIRS_PHCM..RJ_KLINIK_RADIOLOGI)) AS rad_total,
 
-                (SELECT COUNT(1)
-                FROM SIRS_PHCM.dbo.vw_getData_Elab vr
-                INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
-                    ON vr.KARCIS_ASAL = rsp.KARCIS
-                AND vr.ID_RIWAYAT_ELAB = rsp.ID_JENIS_TINDAKAN
-                AND rsp.JENIS_TINDAKAN = 'rad'
-                WHERE vr.KARCIS_ASAL = ? AND KLINIK_TUJUAN IN (SELECT KODE_KLINIK
-                                FROM SIRS_PHCM..RJ_KLINIK_RADIOLOGI)) AS rad_integrated
-            ";
+    //             (SELECT COUNT(1)
+    //             FROM SIRS_PHCM.dbo.vw_getData_Elab vr
+    //             INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
+    //                 ON vr.KARCIS_ASAL = rsp.KARCIS
+    //             AND vr.ID_RIWAYAT_ELAB = rsp.ID_JENIS_TINDAKAN
+    //             AND rsp.JENIS_TINDAKAN = 'rad'
+    //             WHERE vr.KARCIS_ASAL = ? AND KLINIK_TUJUAN IN (SELECT KODE_KLINIK
+    //                             FROM SIRS_PHCM..RJ_KLINIK_RADIOLOGI)) AS rad_integrated
+    //         ";
 
-        $result = DB::selectOne($sql, [
-            $karcis, // fisik_total
-            $karcis, // fisik_integrated
-            $karcis, // lab_total
-            $karcis, // lab_integrated
-            $karcis, // rad_total
-            $karcis, // rad_integrated
-        ]);
+    //     $result = DB::selectOne($sql, [
+    //         $karcis, // fisik_total
+    //         $karcis, // fisik_integrated
+    //         $karcis, // lab_total
+    //         $karcis, // lab_integrated
+    //         $karcis, // rad_total
+    //         $karcis, // rad_integrated
+    //     ]);
 
-        $totalAllTindakan = $result->fisik_total + $result->lab_total + $result->rad_total;
-        $totalAllIntegrated = $result->fisik_integrated + $result->lab_integrated + $result->rad_integrated;
+    //     $totalAllTindakan = $result->fisik_total + $result->lab_total + $result->rad_total;
+    //     $totalAllIntegrated = $result->fisik_integrated + $result->lab_integrated + $result->rad_integrated;
 
-        $colorStatus = $totalAllTindakan == $totalAllIntegrated ? 'text-success' : 'text-danger';
-        $colorLab = $result->lab_total == $result->lab_integrated ? 'text-success' : 'text-danger';
-        $colorRad = $result->rad_total == $result->rad_integrated ? 'text-success' : 'text-danger';
-        $html .= "<br> <i class='small $colorStatus'>$totalAllIntegrated / $totalAllTindakan Tindakan Terintegrasi</i>";
-        $html .= "<br> <i class='small $colorLab'>$result->lab_total Tindakan Lab</i>";
-        $html .= "<br> <i class='small $colorRad'>$result->rad_total Tindakan Radiologi</i>";
+    //     $colorStatus = $totalAllTindakan == $totalAllIntegrated ? 'text-success' : 'text-danger';
+    //     $colorLab = $result->lab_total == $result->lab_integrated ? 'text-success' : 'text-danger';
+    //     $colorRad = $result->rad_total == $result->rad_integrated ? 'text-success' : 'text-danger';
+    //     $html .= "<br> <i class='small $colorStatus'>$totalAllIntegrated / $totalAllTindakan Tindakan Terintegrasi</i>";
+    //     $html .= "<br> <i class='small $colorLab'>$result->lab_total Tindakan Lab</i>";
+    //     $html .= "<br> <i class='small $colorRad'>$result->rad_total Tindakan Radiologi</i>";
 
-        return $html;
-    }
+    //     return $html;
+    // }
 
     private function checkDateFormat($date)
     {
