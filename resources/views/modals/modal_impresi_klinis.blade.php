@@ -12,9 +12,9 @@
                 <div class="row">
                     <!-- Data Pasien -->
                     <div class="col-md-6">
-                        <div class="card">
+                        <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
                             <div class="card-header bg-info text-white">
-                                <h6 class="m-0"><i class="fas fa-user"></i> Data Pasien</h6>
+                                <h6 class="m-0 text-white"><i class="fas fa-user text-white"></i> Data Pasien</h6>
                             </div>
                             <div class="card-body">
                                 <table class="table table-sm">
@@ -37,10 +37,11 @@
 
                     <!-- Data Kunjungan -->
                     <div class="col-md-6">
-                        <div class="card">
+                        <div class="card shadow-lg border-0 rounded-4 overflow-hidden">
                             <div class="card-header bg-primary text-white">
-                                <h6 class="m-0"><i class="fas fa-hospital"></i> Data Kunjungan</h6>
+                                <h6 class="m-0 text-white"><i class="fas fa-hospital text-white"></i> Data Kunjungan</h6>
                             </div>
+
                             <div class="card-body">
                                 <table class="table table-sm">
                                     <tr>
@@ -58,96 +59,51 @@
                 </div>
 
                 <!-- Resume Medis -->
-                <div class="card">
+                <div class="ribbon-wrapper card shadow-lg border-0 rounded-4 overflow-hidden mt-4">
                     <div class="card-header bg-success text-white">
-                        <h6 class="m-0"><i class="fas fa-notes-medical"></i> Resume Medis</h6>
+                        <h6 class="m-0 text-white"><i class="fas fa-notes-medical text-white"></i> Resume Medis</h6>
                     </div>
-                    <div class="card-body">
+
+                    <div class="ribbon ribbon-info" id="integrasi_prognosis">
+                        <i class="fas fa-info-circle text-white"></i>
+                        Data Prognosis Belum Integrasi
+                    </div>
+                    <div class="ribbon ribbon-success" id="success_prognosis" style="display:none">
+                        <i class="fas fa-check-circle text-white"></i>
+                        Data Prognosis Sudah Integrasi
+                    </div>
+                    <div class="ribbon ribbon-danger" id="failed_prognosis" style="display:none">
+                        <i class="fas fa-times-circle text-white"></i>
+                        Data Prognosis Gagal Integrasi
+                    </div>
+
+                    <div class="card-body ribbon-content">
                         <div class="row">
                             <div class="col-md-12 mb-3">
                                 <h6 class="font-weight-bold">Keluhan Utama</h6>
                                 <p id="keluhan" class="border p-2 bg-light">-</p>
                             </div>
 
-                            <div class="col-md-12 mb-3">
-                                <h6 class="font-weight-bold">Tanda Vital</h6>
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <label>Tekanan Darah</label>
-                                        <p id="td" class="border p-2 bg-light">-</p>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label>Denyut Jantung</label>
-                                        <p id="dj" class="border p-2 bg-light">-</p>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label>Pernapasan</label>
-                                        <p id="p" class="border p-2 bg-light">-</p>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label>Suhu</label>
-                                        <p id="suhu" class="border p-2 bg-light">-</p>
-                                    </div>
-                                </div>
-                                <div class="row">
-                                    <div class="col-md-3">
-                                        <label>Tinggi Badan</label>
-                                        <p id="tb" class="border p-2 bg-light">-</p>
-                                    </div>
-                                    <div class="col-md-3">
-                                        <label>Berat Badan</label>
-                                        <p id="bb" class="border p-2 bg-light">-</p>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <label>IMT</label>
-                                        <p id="IMT" class="border p-2 bg-light">-</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="col-md-12 mb-3">
+                            <div class="col-md-6 mb-3">
                                 <h6 class="font-weight-bold">Diagnosa</h6>
                                 <p id="diagnosa" class="border p-2 bg-light">-</p>
                             </div>
 
-                            <div class="col-md-12 mb-3">
-                                <h6 class="font-weight-bold">Terapi / Pengobatan</h6>
-                                <p id="terapi" class="border p-2 bg-light">-</p>
+                            <div class="col-md-6 mb-3">
+                                <h6 class="font-weight-bold">Prognosis</h6>
+                                <select style="width: 100%;" id="prognosis" name="prognosis" class="form-control">
+                                    <option value="170968001" selected>Prognosis good / Baik</option>
+                                    <option value="65872000">Fair prognosis / Cukup Baik</option>
+                                    <option value="67334001">Guarded prognosis / Cenderung Tidak Baik</option>
+                                    <option value="170969009">Prognosis bad / Buruk</option>
+                                </select>
                             </div>
-
-                            <div class="col-md-12 mb-3">
-                                <h6 class="font-weight-bold">Tindakan</h6>
-                                <p id="tindakan" class="border p-2 bg-light">-</p>
-                            </div>
-
-                            <div class="col-md-12 mb-3">
-                                <h6 class="font-weight-bold">Anjuran</h6>
-                                <p id="anjuran" class="border p-2 bg-light">-</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Status Integrasi -->
-                <div class="card">
-                    <div class="card-body text-center">
-                        <div id="integrasi_resume" class="alert alert-info" style="display:none;">
-                            <i class="fas fa-info-circle"></i> Belum Terintegrasi dengan SatuSehat
-                        </div>
-                        <div id="success_resume" class="alert alert-success" style="display:none;">
-                            <i class="fas fa-check-circle"></i> Sudah Terintegrasi dengan SatuSehat
-                        </div>
-                        <div id="failed_resume" class="alert alert-danger" style="display:none;">
-                            <i class="fas fa-times-circle"></i> Gagal Integrasi dengan SatuSehat
                         </div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
-                <button type="button" class="btn btn-primary" onclick="sendSatuSehat(paramSatuSehat)">
-                    <i class="fas fa-paper-plane"></i> Kirim ke SatuSehat
-                </button>
             </div>
         </div>
     </div>
