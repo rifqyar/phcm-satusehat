@@ -206,8 +206,8 @@
         var table;
         var statusFilter = 'all';
 
-        $(document).ready(function () {
-            // 🗓️ datepicker
+        $(document).ready(function() {
+            // datepicker
             var endDate = moment();
             var startDate = moment().subtract(7, 'days');
 
@@ -228,12 +228,12 @@
             $('#start_date').val(startDate.format('YYYY-MM-DD'));
             $('#end_date').val(endDate.format('YYYY-MM-DD'));
 
-            // ✅ Checkbox select-all
-            $(document).on('change', '#checkAll', function () {
+            //  Checkbox select-all
+            $(document).on('change', '#checkAll', function() {
                 $('.checkbox-item').prop('checked', $(this).is(':checked'));
             });
 
-            $(document).on('change', '#checkAll', function () {
+            $(document).on('change', '#checkAll', function() {
                 $('.checkbox-item').prop('checked', $(this).is(':checked'));
             });
 
@@ -291,15 +291,15 @@
                     width: '600px',
                     confirmButtonText: 'Tutup',
                     confirmButtonColor: failCount === 0 ? '#28a745' : '#f0ad4e'
-                }).then(function () {
+                }).then(function() {
                     table.ajax.reload(null, false);
                 });
             }
 
 
-            // ⚡ Event tombol "Kirim Dipilih"
-            $('#btnKirimDipilih').on('click', function () {
-                const selected = $('.checkbox-item:checked').map(function () {
+            //  Event tombol "Kirim Dipilih"
+            $('#btnKirimDipilih').on('click', function() {
+                const selected = $('.checkbox-item:checked').map(function() {
                     return $(this).val();
                 }).get();
 
@@ -322,7 +322,7 @@
                     cancelButtonText: 'Batal',
                     confirmButtonColor: '#3085d6',
                     cancelButtonColor: '#d33'
-                }).then(function (result) {
+                }).then(function(result) {
                     // SweetAlert2 v7 pakai `result.value`
                     if (!result.value) return;
 
@@ -340,28 +340,27 @@
                 });
             });
 
-            // ⚙️ DataTable
+            //  DataTable
             table = $('#medicationTable').DataTable({
                 processing: true,
                 serverSide: true,
                 ajax: {
                     url: '{{ route('satusehat.medication-request.datatable') }}',
                     type: 'POST',
-                    data: function (d) {
+                    data: function(d) {
                         d._token = '{{ csrf_token() }}';
                         d.start_date = $('#start_date').val();
                         d.end_date = $('#end_date').val();
-                        d.jenis      = $('#jenis').val();
-                        d.status     = statusFilter;
+                        d.jenis = $('#jenis').val();
+                        d.status = statusFilter;
                     }
                 },
-                columns: [
-                    {
+                columns: [{
                         data: null,
                         orderable: false,
                         searchable: false,
                         className: 'text-center',
-                        render: function (data, type, row, meta) {
+                        render: function(data, type, row, meta) {
                             return meta.row + meta.settings._iDisplayStart + 1;
                         }
                     },
@@ -370,7 +369,7 @@
                         orderable: false,
                         searchable: false,
                         className: 'text-center',
-                        render: function (data) {
+                        render: function(data) {
                             if (data.STATUS_MAPPING === '100' || data.STATUS_MAPPING === '200') {
                                 return `<input type="checkbox" class="checkbox-item" value="${data.ID_TRANS}">`;
                             } else {
@@ -381,7 +380,7 @@
                     {
                         data: null,
                         name: 'a.KARCIS', //  pakai alias dari backend
-                        render: function (data) {
+                        render: function(data) {
                             return `
                             ${data.KARCIS ?? '-'}
                             <br/>
@@ -389,15 +388,25 @@
                         `;
                         }
                     },
-                    { data: 'DOKTER', name: 'c.DOKTER' }, 
-                    { data: 'PASIEN', name: 'c.NAMA_PASIEN', searchable: true }, 
-                    { data: 'TGL_KARCIS', name: 'c.TANGGAL' }, 
+                    {
+                        data: 'DOKTER',
+                        name: 'c.DOKTER'
+                    },
+                    {
+                        data: 'PASIEN',
+                        name: 'c.NAMA_PASIEN',
+                        searchable: true
+                    },
+                    {
+                        data: 'TGL_KARCIS',
+                        name: 'c.TANGGAL'
+                    },
                     {
                         data: null,
-                        render: function (data) {
-                            let badge = (data.STATUS_MAPPING === '200')
-                                ? `<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>`
-                                : `<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>`;
+                        render: function(data) {
+                            let badge = (data.STATUS_MAPPING === '200') ?
+                                `<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>` :
+                                `<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>`;
                             const idEncounter = data.id_satusehat_encounter || '-';
                             return `${badge}<br/><small class="text-muted">${idEncounter}</small>`;
                         }
@@ -406,7 +415,7 @@
                         data: null,
                         orderable: false,
                         searchable: false,
-                        render: function (data) {
+                        render: function(data) {
                             const btnLihat = `
                             <br/>
                             <button class="btn btn-sm btn-info w-100" onclick="lihatObat('${data.ID_TRANS}')">
@@ -414,16 +423,16 @@
                             </button>`;
                             let btnAction = '';
 
-                            if (data.id_satusehat_encounter === null || data.id_satusehat_encounter === '') {
+                            if (data.id_satusehat_encounter === null || data
+                                .id_satusehat_encounter === '') {
                                 btnAction = `<i class="text-danger">Belum Ada Encounter</i>`;
-                            } 
-                            else if (data.STATUS_MAPPING === '100') {
+                            } else if (data.STATUS_MAPPING === '100') {
                                 btnAction = `
                                     <button class="btn btn-sm btn-primary w-100"
                                         onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
                                         <i class="fas fa-link mr-2"></i> Kirim SATUSEHAT
                                     </button>`;
-                            }  else if (data.STATUS_MAPPING === '200') {
+                            } else if (data.STATUS_MAPPING === '200') {
                                 btnAction = `
                                 <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
                                     <i class="fas fa-link mr-2"></i> Kirim Ulang SATUSEHAT
@@ -436,11 +445,13 @@
                         }
                     }
                 ],
-                order: [[1, 'desc']]
+                order: [
+                    [1, 'desc']
+                ]
             });
 
 
-            table.on('xhr.dt', function (e, settings, json, xhr) {
+            table.on('xhr.dt', function(e, settings, json, xhr) {
                 if (json && json.summary) {
                     $('span[data-count="all"]').text(json.summary.all ?? 0);
                     $('span[data-count="sent"]').text(json.summary.sent ?? 0);
@@ -448,14 +459,14 @@
                 }
             });
 
-            // 🔍 tombol cari
-            $("#search-data").on("submit", function (e) {
+            //  tombol cari
+            $("#search-data").on("submit", function(e) {
                 e.preventDefault();
                 table.ajax.reload();
             });
 
-            // 🆕 tombol kirim SATUSEHAT
-            $("#btnSendSatusehat").on("click", function () {
+            //  tombol kirim SATUSEHAT
+            $("#btnSendSatusehat").on("click", function() {
                 if (confirm("Yakin ingin mengirim data ke SATUSEHAT?")) {
                     // nanti ganti dengan ajax atau route yang sesuai
                     alert("Fungsi kirim SATUSEHAT akan ditambahkan di tahap berikutnya 🚀");
@@ -463,7 +474,7 @@
             });
         });
 
-        // 🔄 reset filter
+        //  reset filter
         function resetSearch() {
             var endDate = moment();
             var startDate = moment().subtract(30, 'days');
@@ -476,25 +487,24 @@
 
         // filter by card
         function search(type) {
-            statusFilter = type;     
+            statusFilter = type;
             table.ajax.reload();
         }
 
+        function lihatObat(idTrans) {
+            $('#modalObat').modal('show');
+            $('#obatDetailContent').html(`<p class='text-center text-muted'>Memuat data obat...</p>`);
 
-            function lihatObat(idTrans) {
-                $('#modalObat').modal('show');
-                $('#obatDetailContent').html(`<p class='text-center text-muted'>Memuat data obat...</p>`);
-
-                $.ajax({
-                    url: `{{ route('satusehat.medication-request.detail') }}`,
-                    type: 'POST',
-                    data: {
-                        _token: '{{ csrf_token() }}',
-                        id: idTrans // 🆕 kirim ID_TRANS
-                    },
-                    success: function (res) {
-                        if (res.status === 'success') {
-                            let html = `
+            $.ajax({
+                url: `{{ route('satusehat.medication-request.detail') }}`,
+                type: 'POST',
+                data: {
+                    _token: '{{ csrf_token() }}',
+                    id: idTrans // 🆕 kirim ID_TRANS
+                },
+                success: function(res) {
+                    if (res.status === 'success') {
+                        let html = `
                                                                         <table class="table table-sm table-bordered">
                                                                             <thead class="thead-light">
                                                                                 <tr>
@@ -509,8 +519,8 @@
                                                                             </thead>
                                                                             <tbody>`;
 
-                            res.data.forEach((row, index) => {
-                                html += `
+                        res.data.forEach((row, index) => {
+                            html += `
                                                                             <tr>
                                                                                 <td>${index + 1}</td>
                                                                                 <td>${row.NAMA_OBAT ?? '-'}</td>
@@ -526,27 +536,27 @@
                                                                                                 : row.KD_BRG_KFA
                                                                                         )
                                                                                         : `<a href="/master_obat?kode=${row.KDBRG}" class="btn btn-sm btn-primary" target="_blank">
-                                                                                                <i class='fa fa-link'></i> Mapping
-                                                                                        </a>`
+                                                                                                    <i class='fa fa-link'></i> Mapping
+                                                                                            </a>`
                                                                                 }
                                                                             </td>
                                                                                 <td>${row.NAMABRG_KFA ?? '-'}</td>
                                                                             </tr>`;
-                            });
+                        });
 
-                            html += `</tbody></table>`;
-                            $('#obatDetailContent').html(html);
-                        } else {
-                            $('#obatDetailContent').html(`<p class='text-danger text-center'>${res.message}</p>`);
-                        }
-                    },
-                    error: function (err) {
-                        $('#obatDetailContent').html(
-                            `<p class='text-danger text-center'>Terjadi kesalahan saat memuat data obat.</p>`);
-                        console.error(err);
+                        html += `</tbody></table>`;
+                        $('#obatDetailContent').html(html);
+                    } else {
+                        $('#obatDetailContent').html(`<p class='text-danger text-center'>${res.message}</p>`);
                     }
-                });
-            }
+                },
+                error: function(err) {
+                    $('#obatDetailContent').html(
+                        `<p class='text-danger text-center'>Terjadi kesalahan saat memuat data obat.</p>`);
+                    console.error(err);
+                }
+            });
+        }
         //function confirmKirim
         function confirmkirimSatusehat(idTrans) {
             if (!idTrans) return;
@@ -592,8 +602,10 @@
                 $.ajax({
                     url: '{{ route('satusehat.medication-request.prepsatusehat') }}',
                     type: 'GET',
-                    data: { id_trans: idTrans },
-                    success: function (res) {
+                    data: {
+                        id_trans: idTrans
+                    },
+                    success: function(res) {
                         if (res.status === 'success') {
                             // console.log(` ${idTrans} sukses dikirim`);
 
@@ -607,7 +619,10 @@
                                 });
                             }
 
-                            resolve({ success: true, id: idTrans });
+                            resolve({
+                                success: true,
+                                id: idTrans
+                            });
                         } else {
                             console.warn(`⚠️ ${idTrans} gagal:`, res.message);
 
@@ -620,10 +635,13 @@
                                 });
                             }
 
-                            resolve({ success: false, id: idTrans });
+                            resolve({
+                                success: false,
+                                id: idTrans
+                            });
                         }
                     },
-                    error: function (xhr) {
+                    error: function(xhr) {
                         console.error(`❌ Error kirim ${idTrans}:`, xhr);
 
                         // Ambil pesan error dari API
@@ -645,9 +663,13 @@
                             });
                         }
 
-                        resolve({ success: false, id: idTrans, message: errMsg });
+                        resolve({
+                            success: false,
+                            id: idTrans,
+                            message: errMsg
+                        });
                     },
-                    complete: function () {
+                    complete: function() {
                         if (btn) {
                             btn.disabled = false;
                             btn.innerHTML = originalText;
@@ -656,8 +678,5 @@
                 });
             });
         }
-
-
-
     </script>
 @endpush
