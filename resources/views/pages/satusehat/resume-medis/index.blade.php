@@ -310,7 +310,7 @@
                 }
             },
             processing: true,
-            serverSide: true,
+            serverSide: false,
             scrollX: false,
             ajax: {
                 url: `{{ route('satusehat.resume-medis.datatable') }}`,

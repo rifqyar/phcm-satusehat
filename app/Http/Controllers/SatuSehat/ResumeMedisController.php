@@ -221,7 +221,7 @@ class ResumeMedisController extends Controller
                 // return $btn;
             })
             ->addColumn('status_integrasi', function ($row) {
-                if ($row->JUMLAH_NOTA_SATUSEHAT > 0) {
+                if ($row->JUMLAH_RESUME_MEDIS > 0) {
                     return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
                 } else {
                     return '<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>';
