@@ -559,10 +559,15 @@
                         $('#questionnaireModal').modal('hide');
                         input_success(res);
                     },
-                    error: function(xhr) {
-                        Swal.close();
-                        const res = xhr.responseJSON || {};
-                        input_error(res);
+                    error: function(res) {
+                        // console.log(res.)
+                        // Swal.close();
+                        // const res = xhr.responseJSON || {};
+                         Swal.fire({
+                            title: 'Gagal mengirim data',
+                            text: res.responseJSON.message,
+                            icon: 'error'
+                        });
                     }
                 });
             }
