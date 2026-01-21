@@ -103,85 +103,6 @@ class ResumeMedisController extends Controller
             'total_belum_integrasi' => $summary->total_belum_integrasi ?? 0,
         ];
 
-        // $dataResumeMedis = DB::connection('sqlsrv')
-        //     ->table('SIRS_PHCM.dbo.RJ_KARCIS as A')
-        //     ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS_BAYAR as B', function ($join) {
-        //         $join->on('B.KARCIS', '=', 'A.KARCIS')
-        //             ->on('B.IDUNIT', '=', 'A.IDUNIT');
-        //     })
-        //     ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as C', function ($join) {
-        //         $join->on('C.karcis', '=', 'A.KARCIS')
-        //             ->on('C.idunit', '=', 'A.IDUNIT');
-        //     })
-        //     ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'A.KDDOK', '=', 'dk.kdDok')
-        //     ->join('SIRS_PHCM.dbo.RIRJ_MASTERPX as ps', DB::raw("LEFT(CONCAT(RTRIM(ps.kbuku), '00'), 8)"), '=', 'A.KBUKU')
-        //     ->join('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as mb', 'A.KD_TINDAKAN', '=', 'mb.KD_TIND')
-        //     ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN_MAPPING as psm', DB::raw("LEFT(CONCAT(RTRIM(psm.kbuku), '00'), 8)"), '=', 'A.KBUKU')
-        //     ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'A.KDDOK', '=', 'nk.kddok')
-        //     ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'A.KARCIS_RUJUKAN', '=', 'ss.karcis')
-        //     ->select([
-        //         DB::raw('ps.NAMA as NAMA_PASIEN'),
-        //         'psm.idpx as ID_PASIEN_SS',
-        //         'nk.idnakes as ID_NAKES_SS',
-        //         'A.KBUKU',
-        //         'A.NO_PESERTA',
-        //         'A.IDUNIT',
-        //         'A.KLINIK_TUJUAN',
-        //         'A.TANGGAL_ENTRI',
-        //         'A.ID_RIWAYAT_ELAB',
-        //         'A.KARCIS_ASAL',
-        //         'A.KARCIS_RUJUKAN',
-        //         'A.KD_TINDAKAN',
-        //         'mb.NM_TIND as NM_TINDAKAN',
-        //         'dk.kdDok',
-        //         'nk.idnakes',
-        //         'dk.nmDok',
-        //         DB::raw('1 as STATUS_SELESAI'),
-        //         DB::raw('1 as AllServiceRequestExist'),
-        //         DB::raw('CASE WHEN ss.id_satusehat_servicerequest IS NOT NULL THEN 1 ELSE 0 END AS SATUSEHAT'),
-        //     ])
-        //     ->whereBetween(DB::raw('CAST(elab.TANGGAL_ENTRI AS DATE)'), [$tgl_awal, $tgl_akhir])
-        //     ->where('elab.IDUNIT', $id_unit);
-
-        // Return dummy data to populate the table and summary counters
-        // $rows = [];
-
-        // // create 12 dummy rows
-        // for ($i = 1; $i <= 12; $i++) {
-        //     $statusIntegrated = ($i % 3 === 0);
-        //     $jenisPerawatan = ($i % 2 == 0) ? 'Rawat Jalan' : 'Rawat Inap';
-        //     $idTransaksi = 'TRX' . str_pad($i, 5, '0', STR_PAD_LEFT);
-
-        //     $rows[] = [
-        //         'DT_RowIndex' => $i,
-        //         'checkbox' => '<input type="checkbox" class="row-checkbox chk-col-purple" data-id="' . $idTransaksi . '" id="check_' . $i . '"><label for="check_' . $i . '"></label>',
-        //         'ID_TRANSAKSI' => $idTransaksi,
-        //         'JENIS_PERAWATAN' => $jenisPerawatan,
-        //         'NO_PESERTA' => 'PES' . str_pad($i, 6, '0', STR_PAD_LEFT),
-        //         'KBUKU' => 'KBK' . str_pad($i, 3, '0', STR_PAD_LEFT),
-        //         'NAMA' => 'Pasien ' . $i,
-        //         'TGL_MASUK' => Carbon::now()->subDays($i)->format('Y-m-d'),
-        //         'DOKTER' => 'Dr. Dokter ' . $i,
-        //         'sudah_integrasi' => $statusIntegrated ? 1 : 0,
-        //         'status_integrasi' => $statusIntegrated
-        //             ? '<span class="badge badge-success">Sudah Integrasi</span>'
-        //             : '<span class="badge badge-warning">Belum Integrasi</span>',
-        //         'action' => $this->generateActionButtons($idTransaksi, $statusIntegrated),
-        //     ];
-        // }
-
-        // $total = count($rows);
-        // $rjAll = collect($rows)->filter(function ($r) {
-        //     return $r['JENIS_PERAWATAN'] === 'Rawat Jalan';
-        // })->count();
-        // $ri = collect($rows)->filter(function ($r) {
-        //     return $r['JENIS_PERAWATAN'] === 'Rawat Inap';
-        // })->count();
-        // $total_integrated = collect($rows)->filter(function ($r) {
-        //     return $r['sudah_integrasi'] === 1;
-        // })->count();
-        // $total_unmapped = $total - $total_integrated;
-
         return DataTables::of($dataResumeMedis)
             ->addIndexColumn()
             ->addColumn('checkbox', function ($row) {
@@ -338,7 +259,7 @@ class ResumeMedisController extends Controller
 
     public function lihatDetail($param)
     {
-        // Dummy detail data
+        // decode param = karcis
         $decoded = base64_decode($param);
 
         $dataPasien = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as a')
@@ -367,6 +288,27 @@ class ResumeMedisController extends Controller
                 'c.nama'
             )
             ->first();
+
+        $dataAlergi = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as eri')
+            ->select([
+                'ead.JENIS',
+                'ead.ALERGEN',
+                'ead.ID_ALERGEN_SS'
+            ])
+            ->leftJoin('E_RM_PHCM.dbo.ERM_ALERGIPX as ea', function ($join) {
+                $join->on('eri.KARCIS', '=', 'ea.KARCIS');
+            })
+            ->leftJoin('E_RM_PHCM.dbo.ERM_ALERGIPX_DTL as ead', function ($join) {
+                $join->on('ea.ID_ALERGI_PX', '=', 'ead.ID_HDR');
+            })
+            ->where('eri.KARCIS', $decoded)
+            ->groupBy([
+                'ead.JENIS',
+                'ead.ALERGEN',
+                'ead.ID_ALERGEN_SS'
+            ])
+            ->where('ea.STATUS_AKTIF', '1')
+            ->get();
 
         // $dataPasien = [
         //     'NAMA' => 'Pasien Dummy',
@@ -417,6 +359,7 @@ class ResumeMedisController extends Controller
         return response()->json([
             'dataPasien' => $dataPasien,
             'dataErm' => $dataErm,
+            'dataAlergi' => $dataAlergi,
         ]);
     }
 
@@ -590,24 +533,29 @@ class ResumeMedisController extends Controller
             ->get();
         // dd($dataProcedure);
 
-        // $dataMedication = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
-        //     ->select(
-        //         'LOCAL_ID',
-        //         'LOG_TYPE',
-        //         'IDENTIFIER_VALUE',
-        //         'PATIENT_ID',
-        //         'ENCOUNTER_ID',
-        //         'FHIR_MEDICATION_ID',
-        //         'FHIR_MEDICATION_REQUEST_ID',
-        //         'KFA_CODE',
-        //         'NAMA_OBAT',
-        //         'FHIR_ID',
-        //         'FHIR_MEDICATION_DISPENSE_ID'
-        //     )
-        //     ->where('ENCOUNTER_ID', $dataEncounterSatuSehat->id_satusehat_encounter)
-        //     ->distinct()
-        //     ->limit(100)
-        //     ->get();
+        $dataMedication = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
+            ->select(
+                'LOCAL_ID',
+                'LOG_TYPE',
+                'IDENTIFIER_VALUE',
+                'PATIENT_ID',
+                'ENCOUNTER_ID',
+                'FHIR_MEDICATION_ID',
+                'FHIR_MEDICATION_REQUEST_ID',
+                'KFA_CODE',
+                'NAMA_OBAT',
+                'FHIR_ID',
+                'FHIR_MEDICATION_DISPENSE_ID',
+                'STATUS'
+            )
+            ->whereRaw("
+                RIGHT(ENCOUNTER_ID, LEN(ENCOUNTER_ID) - CHARINDEX('/', ENCOUNTER_ID)) = ?
+            ", [$dataEncounterSatuSehat->id_satusehat_encounter])
+            ->where('STATUS', 'success')
+            ->distinct()
+            ->limit(100)
+            ->get();
+        // dd($dataMedication);
 
         // $dataKuesioner = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_RESPON_KUESIONER')
         //     ->select(
@@ -732,7 +680,6 @@ class ResumeMedisController extends Controller
                 ],
                 "section" => $anamnesisSections
             ];
-            // dd($payloadAnamnesis);
         }
 
         // observation
@@ -772,7 +719,6 @@ class ResumeMedisController extends Controller
                 ],
                 "section" => $observationSections
             ];
-            // dd($payloadObservation);
         }
 
         // clinical impression 
@@ -797,7 +743,6 @@ class ResumeMedisController extends Controller
                 ],
                 "entry" => $perencanaanPerawatanEntries
             ];
-            // dd($payloadClinicalImpression);
         }
 
         // Service Request (LAB & RAD)
@@ -890,7 +835,6 @@ class ResumeMedisController extends Controller
                 ],
                 "section" => $ServiceRequestSections
             ];
-            // dd($payloadServiceRequest);
         }
 
         // procedure
@@ -917,7 +861,61 @@ class ResumeMedisController extends Controller
                 ],
                 "entry" => $procedureEntries
             ];
-            // dd($payloadProcedure);
+        }
+
+        // medication
+        $farmasiEntries = [];
+        if ($dataMedication && count($dataMedication) > 0) {
+            foreach ($dataMedication as $item) {
+                // MedicationRequest
+                if (
+                    $item->LOG_TYPE === 'MedicationRequest' ||
+                    $item->LOG_TYPE === 'MedicationRequestFromDispense'
+                ) {
+                    if (!empty($item->FHIR_MEDICATION_REQUEST_ID)) {
+                        $farmasiEntries[] = [
+                            "reference" => "MedicationRequest/" . $item->FHIR_MEDICATION_REQUEST_ID
+                        ];
+                    }
+                }
+
+                // MedicationDispense
+                if ($item->LOG_TYPE === 'MedicationDispense') {
+                    if (!empty($item->FHIR_MEDICATION_DISPENSE_ID)) {
+                        $farmasiEntries[] = [
+                            "reference" => "MedicationDispense/" . $item->FHIR_MEDICATION_DISPENSE_ID
+                        ];
+                    }
+                }
+            }
+
+            $payloadFarmasi = [
+                "title" => "Farmasi",
+                "code" => [
+                    "coding" => [
+                        [
+                            "system"  => "http://terminology.kemkes.go.id",
+                            "code"    => "TK000013",
+                            "display" => "Obat"
+                        ]
+                    ]
+                ],
+                "section" => [
+                    [
+                        "title" => "Obat Saat Kunjungan",
+                        "code" => [
+                            "coding" => [
+                                [
+                                    "system"  => "http://loinc.org",
+                                    "code"    => "42346-7",
+                                    "display" => "Medications on admission (narrative)"
+                                ]
+                            ]
+                        ],
+                        "entry" => $farmasiEntries
+                    ]
+                ]
+            ];
         }
 
         // combine into one section
@@ -947,7 +945,11 @@ class ResumeMedisController extends Controller
         if (!empty($payloadClinicalImpression)) {
             $sections[] = $payloadClinicalImpression;
         }
-        // dd($sections);
+
+        // push farmasi
+        if (!empty($payloadFarmasi)) {
+            $sections[] = $payloadFarmasi;
+        }
 
         $nakes = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
             ->where('idnakes', $kdNakesSS)
@@ -965,6 +967,39 @@ class ResumeMedisController extends Controller
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
             $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
+
+        $payload = [
+            "resourceType" => "Composition",
+            "identifier" => [
+                "system" => "http://sys-ids.kemkes.go.id/composition/{$organisasi}",
+                "value" => $arrParam['id_transaksi']
+            ],
+            "status" => $status,
+            "category" => [[
+                "coding" => [[
+                    "system" => "http://loinc.org",
+                    "code" => "LP173421-1",
+                    "display" => "Report"
+                ]]
+            ]],
+            "subject" => [
+                "reference" => "Patient/{$kdPasienSS}",
+                "display" => $patient->nama,
+            ],
+            "date" => Carbon::now()->toIso8601String(),
+            "author" => [[
+                "reference" => "Practitioner/10009880728",
+                "display" => "dr. Alexander",
+            ]],
+            "custodian" => [
+                "reference" => "Organization/{$organisasi}"
+            ],
+            "encounter" => [
+                "reference" => "Encounter/{$dataEncounterSatuSehat->id_satusehat_encounter}"
+            ],
+            "section" => $sections,
+        ];
+        dd($payload);
 
         try {
             $payload = [
@@ -998,7 +1033,6 @@ class ResumeMedisController extends Controller
                 ],
                 "section" => $sections,
             ];
-            // dd($payload);
 
             if ($resend) {
                 $encounterId = SATUSEHAT_NOTA::where('karcis', $idTransaksi)

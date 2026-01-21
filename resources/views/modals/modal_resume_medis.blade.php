@@ -57,6 +57,27 @@
                     </div>
                 </div>
 
+                <!-- Data Alergi -->
+                <div class="card">
+                    <div class="card-header bg-info ">
+                        <h6 class="m-0 text-white"><i class="fas fa-hospital"></i> Data Alergi</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive" id="tableAlergi">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Jenis Alergi</th>
+                                        <th>Nama Alergen</th>
+                                        <th>Kode Alergen Satu Sehat</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyAlergi"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Resume Medis -->
                 <div class="card">
                     <div class="card-header bg-success">
@@ -145,9 +166,9 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Tutup</button>
-                <button type="button" class="btn btn-primary" onclick="sendSatuSehat(paramSatuSehat)">
-                    <i class="fas fa-paper-plane"></i> Kirim ke SatuSehat
-                </button>
+                <a href="javascript:void(0)" class="btn btn-primary" id="btn-send-satusehat">
+                    <i class="fas fa-link mr-2"></i>Kirim Satu Sehat
+                </a>
             </div>
         </div>
     </div>

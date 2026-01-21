@@ -527,6 +527,19 @@
                 $('#no_karcis').text(response.dataPasien.KARCIS || '-');
                 $('#dokter').text(response.dataPasien.DOKTER || '-');
 
+                // Populate allergy data
+                let allergyHtml = '';
+                if (response.dataAlergi && response.dataAlergi.length > 0) {
+                    response.dataAlergi.forEach(function(allergy) {
+                        allergyHtml += '<tr><td>' + (allergy.JENIS || '-') + '</td><td>' 
+                            + (allergy.ALERGEN || '-') + '</td><td>' 
+                            + (allergy.ID_ALERGEN_SS || '-') + '</td></tr>';
+                    });
+                } else {
+                    allergyHtml = '<tr><td colspan="3" class="text-center text-muted">Tidak ada data alergi</td></tr>';
+                }
+                $('#tbodyAlergi').html(allergyHtml);
+
                 // Populate resume medis data
                 $('#keluhan').text(response.dataErm.KELUHAN || '-');
                 $('#td').text(response.dataErm.TD || '-');
@@ -565,6 +578,12 @@
             }
         });
     }
+
+    $('#btn-send-satusehat').on('click', function() {
+        if (paramSatuSehat != '') {
+            sendSatuSehat(paramSatuSehat)
+        }
+    })
 
     function sendSatuSehat(param) {
         Swal.fire({
