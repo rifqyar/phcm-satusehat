@@ -5,6 +5,7 @@ namespace App\Http\Controllers\SatuSehat;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\LogTraits;
 use App\Http\Traits\SATUSEHATTraits;
+use App\Jobs\SendResumeMedis;
 use App\Lib\LZCompressor\LZString;
 use App\Models\GlobalParameter;
 use App\Models\Karcis;
@@ -15,6 +16,7 @@ use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Yajra\DataTables\Facades\DataTables;
 
@@ -361,6 +363,99 @@ class ResumeMedisController extends Controller
             'dataErm' => $dataErm,
             'dataAlergi' => $dataAlergi,
         ]);
+    }
+
+    public function bulkSend(Request $request)
+    {
+        try {
+            $selectedIds = $request->input('selected_ids', []);
+            // dd($selectedIds);
+
+            // Debug logging
+            Log::info('Bulk send request received', [
+                'selected_ids_count' => count($selectedIds),
+                'first_few_params' => array_slice($selectedIds, 0, 2),
+                'user_id' => Session::get('nama', 'system')
+            ]);
+
+            if (empty($selectedIds)) {
+                return response()->json([
+                    'status' => 422,
+                    'message' => 'Tidak ada data yang dipilih untuk dikirim'
+                ], 422);
+            }
+
+            $dispatched = 0;
+            $errors = [];
+
+            foreach ($selectedIds as $param) {
+                try {
+                    // Validate that param is not empty and has proper format
+                    if (empty($param) || !is_string($param)) {
+                        $errors[] = "Invalid parameter format: " . json_encode($param);
+                        continue;
+                    }
+
+                    // Dispatch job to queue for background processing
+                    SendResumeMedis::dispatch($param)->onQueue('Composition');
+                    $dispatched++;
+                } catch (Exception $e) {
+                    $errors[] = "Failed to dispatch job for param: " . $e->getMessage();
+                    Log::error('Failed to dispatch single job', [
+                        'param' => $param,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            if ($dispatched === 0) {
+                return response()->json([
+                    'status' => 500,
+                    'message' => 'Gagal mengirim ke antrian untuk semua item yang dipilih.'
+                ], 500);
+            }
+
+            // Log the bulk dispatch
+            Log::info('Bulk composition jobs dispatched', [
+                'total_dispatched' => $dispatched,
+                'total_errors' => count($errors),
+                'user_id' => Session::get('nama', 'system'),
+                'params_count' => count($selectedIds)
+            ]);
+
+            $message = "Berhasil mengirim {$dispatched} composition ke antrian untuk diproses. Pengiriman akan berlanjut di background.";
+
+            if (!empty($errors)) {
+                $message .= " " . count($errors) . " item gagal dikirim ke antrian.";
+                Log::warning('Some jobs failed to dispatch', ['errors' => $errors]);
+            }
+
+            return response()->json([
+                'status' => JsonResponse::HTTP_OK,
+                'message' => $message,
+                'data' => [
+                    'dispatched_count' => $dispatched,
+                    'error_count' => count($errors),
+                    'total_selected' => count($selectedIds),
+                    'errors' => !empty($errors) ? array_slice($errors, 0, 3) : [] // Show first 3 errors
+                ]
+            ], 200);
+        } catch (Exception $e) {
+            Log::error('Bulk send dispatch failed', [
+                'error' => $e->getMessage(),
+                'user_id' => Session::get('nama', 'system') // Session::get('id')
+            ]);
+
+            return response()->json([
+                'status' => 500,
+                'message' => 'Gagal mengirim ke antrian: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function resendSatuSehat($param)
+    {
+        return $this->sendSatuSehat($param, true);
     }
 
     public function sendSatuSehat($param, $resend = false)
@@ -999,7 +1094,7 @@ class ResumeMedisController extends Controller
             ],
             "section" => $sections,
         ];
-        dd($payload);
+        // dd($payload);
 
         try {
             $payload = [

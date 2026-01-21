@@ -270,233 +270,254 @@
             e.stopPropagation();
         });
 
-        // Handle select all checkbox
-        $(document).on('change', '#selectAll', function() {
-            var isChecked = $(this).is(':checked');
-            $('.row-checkbox').prop('checked', isChecked);
-            
-            if (isChecked) {
-                $('.row-checkbox:checked').each(function() {
-                    var id = $(this).data('id');
-                    if (!selectedIds.includes(id)) {
-                        selectedIds.push(id);
-                    }
-                });
-            } else {
-                selectedIds = [];
-            }
-            
-            updateSelectAllCheckbox();
-        });
+    });
 
-        // Handle individual checkbox
-        $(document).on('change', '.row-checkbox', function() {
-            var id = $(this).data('id');
-            var isChecked = $(this).is(':checked');
-            
-            if (isChecked) {
-                if (!selectedIds.includes(id)) {
-                    selectedIds.push(id);
+    function resetSearch() {
+        // Reset all form inputs
+        $('input[name="search"]').val('');
+        $('input[name="tgl_awal"]').val('');
+        $('input[name="tgl_akhir"]').val('');
+        $("#search-data").removeClass("was-validated");
+
+        // Clear selections
+        selectedIds = [];
+        $('#selectAll').prop('checked', false);
+        $('.select-row').prop('checked', false);
+
+        if (typeof table !== 'undefined' && table) {
+            table.ajax.reload();
+        }
+
+        // Update button state
+        updateSelectAllCheckbox();
+
+        $.toast?.({
+            heading: "Pencarian direset",
+            text: "Filter pencarian dikosongkan.",
+            position: "top-right",
+            icon: "info",
+            textColor: "white",
+            hideAfter: 2000,
+        });
+    }
+
+    function getAllData() {
+        table = $('.data-table').DataTable({
+            responsive: {
+                details: {
+                    type: 'column',
+                    target: 'td.dtr-control'
                 }
+            },
+            processing: true,
+            serverSide: true,
+            scrollX: false,
+            ajax: {
+                url: `{{ route('satusehat.resume-medis.datatable') }}`,
+                method: "POST",
+                data: function(data) {
+                    data._token = `${$('meta[name="csrf-token"]').attr("content")}`;
+                    data.cari = $('input[name="search"]').val();
+                    data.tgl_awal = $('input[name="tgl_awal"]').val();
+                    data.tgl_akhir = $('input[name="tgl_akhir"]').val();
+                },
+                dataSrc: function(json) {
+                    $('#total_all').text(json.total_semua)
+                    $('#total_rj').text(json.rjAll)
+                    $('#total_ri').text(json.ri)
+                    $('#total_integrasi').text(json.total_sudah_integrasi)
+                    $('#total_belum_integrasi').text(json.total_belum_integrasi)
+                    return json.data
+                }
+            },
+            columns: [{
+                    className: 'dtr-control',
+                    orderable: false,
+                    searchable: false,
+                    data: null,
+                    defaultContent: '',
+                    responsivePriority: 1
+                },
+                {
+                    data: 'DT_RowIndex',
+                    name: 'DT_RowIndex',
+                    orderable: false,
+                    searchable: false,
+                    responsivePriority: 1
+                },
+                {
+                    data: 'checkbox',
+                    orderable: false,
+                    searchable: false,
+                    className: 'text-center',
+                    responsivePriority: 1
+                },
+
+                // 4. Karcis
+                {
+                    data: 'ID_TRANSAKSI',
+                    name: 'ID_TRANSAKSI',
+                    responsivePriority: 2
+                },
+
+                // 5. Perawatan
+                {
+                    data: 'JENIS_PERAWATAN',
+                    name: 'JENIS_PERAWATAN',
+                    responsivePriority: 2
+                },
+
+                // 6. Status
+                // {
+                //     data: 'STATUS_SELESAI',
+                //     name: 'STATUS_SELESAI',
+                //     responsivePriority: 2
+                // },
+
+                // 7. Tgl. Masuk → ingin disembunyikan
+                {
+                    data: 'TANGGAL',
+                    name: 'TANGGAL',
+                    responsivePriority: 5
+                },
+
+                // 8. No Peserta → disembunyikan
+                {
+                    data: 'NO_PESERTA',
+                    name: 'NO_PESERTA',
+                    responsivePriority: 5
+                },
+
+                // 9. No RM
+                {
+                    data: 'KBUKU',
+                    name: 'KBUKU',
+                    responsivePriority: 4
+                },
+
+                // 10. Nama
+                {
+                    data: 'NAMA_PASIEN',
+                    name: 'NAMA_PASIEN',
+                    responsivePriority: 3
+                },
+
+                // 11. Dokter → disembunyikan
+                {
+                    data: 'DOKTER',
+                    name: 'DOKTER',
+                    responsivePriority: 5
+                },
+
+                // 12. Status Integrasi
+                {
+                    data: 'status_integrasi',
+                    name: 'status_integrasi',
+                    responsivePriority: 3
+                },
+
+                // 13. Action
+                {
+                    data: 'action',
+                    name: 'action',
+                    orderable: false,
+                    searchable: false,
+                    responsivePriority: 1
+                },
+            ],
+            order: [
+                [1, 'asc']
+            ],
+            lengthMenu: [
+                [10, 25, 50, -1],
+                [10, 25, 50, "All"]
+            ],
+            pageLength: 10,
+            drawCallback: function(settings) {
+                $('.select-row').each(function() {
+                    const id = $(this).val();
+                    $(this).prop('checked', selectedIds.includes(id));
+                });
+
+                if ($('#selectAll').is(':checked')) {
+                    $('.select-row').each(function() {
+                        const id = $(this).val();
+                        $(this).prop('checked', true);
+                        if (!selectedIds.includes(id)) selectedIds.push(id);
+                    });
+                }
+
+                updateSelectAllCheckbox();
+            }
+        })
+    }
+
+    // Select single row
+    $(document).on('change', '.select-row', function(e) {
+        e.stopPropagation();
+        const id = $(this).val();
+
+        if ($(this).is(':checked')) {
+            if (!selectedIds.includes(id)) selectedIds.push(id);
+        } else {
+            selectedIds = selectedIds.filter(item => item !== id);
+        }
+        updateSelectAllCheckbox();
+    });
+
+    $(document).on('click', '.select-row', function(e) {
+        e.stopPropagation();
+    });
+
+    // Select All (current page)
+    $('#selectAll').on('click', function(e) {
+        e.stopPropagation();
+        const rows = $('.select-row');
+        const checked = this.checked;
+        rows.each(function() {
+            const id = $(this).val();
+            $(this).prop('checked', checked);
+
+            if (checked) {
+                if (!selectedIds.includes(id)) selectedIds.push(id);
             } else {
                 selectedIds = selectedIds.filter(item => item !== id);
             }
-            
-            updateSelectAllCheckbox();
-        });
 
-        // Preserve checkbox state on table draw
-        table.on('draw', function() {
-            $('.row-checkbox').each(function() {
-                var id = $(this).data('id');
-                if (selectedIds.includes(id)) {
-                    $(this).prop('checked', true);
-                }
-            });
             updateSelectAllCheckbox();
         });
     });
 
     function updateSelectAllCheckbox() {
-        var totalVisible = $('.row-checkbox:visible').length;
-        var totalChecked = $('.row-checkbox:checked').length;
-        
-        $('#selectAll').prop('checked', totalVisible > 0 && totalVisible === totalChecked);
-        $('#bulk-send-btn').prop('disabled', selectedIds.length === 0);
-    }
+        const totalCheckboxes = $('.select-row').length;
+        const checkedCount = $('.select-row:checked').length;
 
-    function resetSearch() {
-        $("#search-data").find("input.form-control").val("").trigger("blur");
-        $("#search-data").find("input.form-control").removeClass("was-validated");
-        $('input[name="search"]').val("false");
-        table.ajax.reload();
-    }
+        // centang setengah (indeterminate) kalau sebagian terpilih
+        $('#selectAll').prop('checked', checkedCount === totalCheckboxes && totalCheckboxes > 0);
+        $('#selectAll').prop('indeterminate', checkedCount > 0 && checkedCount < totalCheckboxes);
 
-    function search(type) {
-        $('input[name="search"]').val(type);
-        table.ajax.reload();
-    }
-
-    function getAllData() {
-            table = $('.data-table').DataTable({
-                responsive: {
-                    details: {
-                        type: 'column',
-                        target: 'td.dtr-control'
-                    }
-                },
-                processing: true,
-                serverSide: true,
-                scrollX: false,
-                ajax: {
-                    url: `{{ route('satusehat.resume-medis.datatable') }}`,
-                    method: "POST",
-                    data: function(data) {
-                        data._token = `${$('meta[name="csrf-token"]').attr("content")}`;
-                        data.cari = $('input[name="search"]').val();
-                        data.tgl_awal = $('input[name="tgl_awal"]').val();
-                        data.tgl_akhir = $('input[name="tgl_akhir"]').val();
-                    },
-                    dataSrc: function(json) {
-                        $('#total_all').text(json.total_semua)
-                        $('#total_rj').text(json.rjAll)
-                        $('#total_ri').text(json.ri)
-                        $('#total_integrasi').text(json.total_sudah_integrasi)
-                        $('#total_belum_integrasi').text(json.total_belum_integrasi)
-                        return json.data
-                    }
-                },
-                columns: [{
-                        className: 'dtr-control',
-                        orderable: false,
-                        searchable: false,
-                        data: null,
-                        defaultContent: '',
-                        responsivePriority: 1
-                    },
-                    {
-                        data: 'DT_RowIndex',
-                        name: 'DT_RowIndex',
-                        orderable: false,
-                        searchable: false,
-                        responsivePriority: 1
-                    },
-                    {
-                        data: 'checkbox',
-                        orderable: false,
-                        searchable: false,
-                        className: 'text-center',
-                        responsivePriority: 1
-                    },
-
-                    // 4. Karcis
-                    {
-                        data: 'ID_TRANSAKSI',
-                        name: 'ID_TRANSAKSI',
-                        responsivePriority: 2
-                    },
-
-                    // 5. Perawatan
-                    {
-                        data: 'JENIS_PERAWATAN',
-                        name: 'JENIS_PERAWATAN',
-                        responsivePriority: 2
-                    },
-
-                    // 6. Status
-                    // {
-                    //     data: 'STATUS_SELESAI',
-                    //     name: 'STATUS_SELESAI',
-                    //     responsivePriority: 2
-                    // },
-
-                    // 7. Tgl. Masuk → ingin disembunyikan
-                    {
-                        data: 'TANGGAL',
-                        name: 'TANGGAL',
-                        responsivePriority: 5
-                    },
-
-                    // 8. No Peserta → disembunyikan
-                    {
-                        data: 'NO_PESERTA',
-                        name: 'NO_PESERTA',
-                        responsivePriority: 5
-                    },
-
-                    // 9. No RM
-                    {
-                        data: 'KBUKU',
-                        name: 'KBUKU',
-                        responsivePriority: 4
-                    },
-
-                    // 10. Nama
-                    {
-                        data: 'NAMA_PASIEN',
-                        name: 'NAMA_PASIEN',
-                        responsivePriority: 3
-                    },
-
-                    // 11. Dokter → disembunyikan
-                    {
-                        data: 'DOKTER',
-                        name: 'DOKTER',
-                        responsivePriority: 5
-                    },
-
-                    // 12. Status Integrasi
-                    {
-                        data: 'status_integrasi',
-                        name: 'status_integrasi',
-                        responsivePriority: 3
-                    },
-
-                    // 13. Action
-                    {
-                        data: 'action',
-                        name: 'action',
-                        orderable: false,
-                        searchable: false,
-                        responsivePriority: 1
-                    },
-                ],
-                order: [
-                    [1, 'asc']
-                ],
-                lengthMenu: [
-                    [10, 25, 50, -1],
-                    [10, 25, 50, "All"]
-                ],
-                pageLength: 10,
-                drawCallback: function(settings) {
-                    $('.select-row').each(function() {
-                        const id = $(this).val();
-                        $(this).prop('checked', selectedIds.includes(id));
-                    });
-
-                    if ($('#selectAll').is(':checked')) {
-                        $('.select-row').each(function() {
-                            const id = $(this).val();
-                            const param = $(this).data('param');
-                            $(this).prop('checked', true);
-                            if (!selectedIds.includes(id)) {
-                                selectedIds.push({
-                                    id: id,
-                                    param: param
-                                });
-                            }
-                        });
-                    }
-
-                    updateSelectAllCheckbox();
-                }
-            })
+        // Update bulk send button state
+        const bulkSendBtn = $('#bulk-send-btn');
+        if (selectedIds.length > 0) {
+            bulkSendBtn.prop('disabled', false);
+            bulkSendBtn.html(`<i class="mdi mdi-send-outline"></i> Kirim ${selectedIds.length} Data ke SatuSehat`);
+        } else {
+            bulkSendBtn.prop('disabled', true);
+            bulkSendBtn.html('<i class="mdi mdi-send-outline"></i> Kirim Terpilih ke SatuSehat');
         }
+    }
 
     $('.data-table').on('click', 'button, a', function(e) {
         e.stopPropagation();
     });
+
+    function search(type) {
+        $('input[name="search"]').val(type)
+        selectedIds = [];
+        updateSelectAllCheckbox();
+
+        table.ajax.reload()
+    }
 
     function lihatDetail(param) {
         paramSatuSehat = param;
@@ -629,48 +650,76 @@
 
     function bulkSend() {
         if (selectedIds.length === 0) {
-            Swal.fire({
-                title: 'Peringatan!',
-                text: 'Pilih minimal 1 data untuk dikirim',
-                icon: 'warning'
+            $.toast({
+                heading: "Peringatan!",
+                text: "Pilih data yang akan dikirim terlebih dahulu.",
+                position: "top-right",
+                icon: "warning",
+                hideAfter: 3000
             });
             return;
         }
 
-        Swal.fire({
-            title: "Konfirmasi Pengiriman Massal",
-            text: `Kirim ${selectedIds.length} data terpilih ke SatuSehat?`,
-            icon: "question",
-            showCancelButton: true,
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-            confirmButtonText: "Ya, kirim!",
-            cancelButtonText: "Batal",
-        }).then(async (conf) => {
-            if (conf.value || conf.isConfirmed) {
-                // TODO: Implement bulk send logic
-                Swal.fire({
-                    title: 'Proses Pengiriman',
-                    text: 'Sedang mengirim data...',
-                    allowOutsideClick: false,
-                    showConfirmButton: false,
-                    willOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
+        $.ajax({
+            url: `{{ route('satusehat.resume-medis.bulk-send') }}`,
+            type: "POST",
+            data: {
+                _token: $('meta[name="csrf-token"]').attr("content"),
+                selected_ids: selectedIds
+            },
+            success: function(response) {
+                Swal.close();
                 
-                // Placeholder - implement actual bulk send
-                setTimeout(() => {
-                    Swal.close();
-                    Swal.fire({
-                        title: 'Berhasil!',
-                        text: `${selectedIds.length} data berhasil dikirim`,
-                        icon: 'success'
-                    }).then(() => {
-                        selectedIds = [];
-                        table.ajax.reload();
+                if (response.status === 200) {
+                    $.toast({
+                        heading: "Berhasil!",
+                        text: response.message,
+                        position: "top-right",
+                        icon: "success",
+                        hideAfter: 7000
                     });
-                }, 2000);
+                    
+                    // Show additional info about background processing
+                    setTimeout(() => {
+                        $.toast({
+                            heading: "Info",
+                            text: "Data sedang diproses di background. Refresh halaman dalam beberapa menit untuk melihat hasil.",
+                            position: "top-right",
+                            icon: "info",
+                            hideAfter: 5000
+                        });
+                    }, 2000);
+                    
+                    // Clear selections and reload table
+                    selectedIds = [];
+                    $('#selectAll').prop('checked', false);
+                    $('.select-row').prop('checked', false);
+                    table.ajax.reload();
+                } else {
+                    $.toast({
+                        heading: "Error!",
+                        text: response.message,
+                        position: "top-right",
+                        icon: "error",
+                        hideAfter: 5000
+                    });
+                }
+            },
+            error: function(xhr) {
+                Swal.close();
+                let errorMessage = "Terjadi kesalahan saat mengirim data";
+                
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                }
+                
+                $.toast({
+                    heading: "Error!",
+                    text: errorMessage,
+                    position: "top-right",
+                    icon: "error",
+                    hideAfter: 5000
+                });
             }
         });
     }
