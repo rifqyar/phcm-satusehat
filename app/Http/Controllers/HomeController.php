@@ -58,7 +58,7 @@ class HomeController extends Controller
             [
                 'title' => 'Tebus Obat',
                 'url' => 'satusehat.medication-dispense.index',
-                'bg_color' => 'card-info'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Alergi Intoleran',
@@ -78,7 +78,7 @@ class HomeController extends Controller
             [
                 'title' => 'Impresi Klinis (ClinicalImpression)',
                 'url' => 'satusehat.clinical-impression.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-info'
             ],
             [
                 'title' => 'Spesimen',
@@ -98,7 +98,7 @@ class HomeController extends Controller
             [
                 'title' => 'Catatan Pengobatan',
                 'url' => 'satusehat.medstatement.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-info'
             ],
             [
                 'title' => 'Respon Kuesioner',
