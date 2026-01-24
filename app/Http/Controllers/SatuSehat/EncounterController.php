@@ -106,7 +106,7 @@ class EncounterController extends Controller
         ]));
 
         if($pageNumber > 1){
-            dd($dataKunjungan);
+            dd($pageNumber, $pageSize);
         }
 
         if ($dataKunjungan->isEmpty()) {
