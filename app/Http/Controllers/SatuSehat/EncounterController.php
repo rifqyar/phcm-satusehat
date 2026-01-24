@@ -105,6 +105,10 @@ class EncounterController extends Controller
 
         ]));
 
+        if($pageNumber > 1){
+            dd($dataKunjungan);
+        }
+
         if ($dataKunjungan->isEmpty()) {
             return response()->json([
                 "draw" => $draw,
