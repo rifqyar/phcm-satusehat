@@ -125,13 +125,17 @@ class EncounterController extends Controller
         $recordsTotal    = $summary->total_semua ?? 0;
         $recordsFiltered = $summary->recordsFiltered ?? $recordsTotal;
 
-        return DataTables::of($dataKunjungan)
-            ->addIndexColumn()
-            ->setRowId(function ($row) use ($request) {
-                $start = $request->input('start', 0);
+        $dataTable = DataTables::of($dataKunjungan)
+            // ->addIndexColumn()
+            ->addColumn('DT_RowIndex', function ($row) use ($start) {
                 static $i = 0;
                 return $start + (++$i);
             })
+            // ->setRowId(function ($row) use ($request) {
+            //     $start = $request->input('start', 0);
+            //     static $i = 0;
+            //     return $start + (++$i);
+            // })
             ->addColumn('checkbox', function ($row) {
                 $checkBox = '';
                 $jenisPerawatan = $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
@@ -246,13 +250,23 @@ class EncounterController extends Controller
                 }
             })
             ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi', 'checkbox'])
-            ->with([
-                "draw" => $draw,
-                "recordsTotal" => $recordsTotal,
-                "recordsFiltered" => $recordsFiltered,
-                "summary" => $totalData
-            ])
+            // ->with([
+            //     "draw" => $draw,
+            //     "recordsTotal" => $recordsTotal,
+            //     "recordsFiltered" => $recordsFiltered,
+            //     "summary" => $totalData
+            // ])
             ->make(true);
+
+        $response = $dataTable->getData(true);
+
+        return response()->json([
+            "draw" => intval($request->draw),
+            "recordsTotal" => $recordsTotal,
+            "recordsFiltered" => $recordsFiltered,
+            "data" => $response['data'],
+            "summary" => $totalData
+        ]);
     }
 
     private function checkDateFormat($date)
