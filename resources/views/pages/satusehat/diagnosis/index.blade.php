@@ -125,28 +125,28 @@
                             <div class="row justify-content-center align-items-end">
 
                                 <!-- Tanggal Mulai -->
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <label for="start_date">Periode Awal</label>
                                     <input type="text" class="form-control" id="start_date">
                                     <span class="bar"></span>
                                 </div>
 
                                 <!-- Tanggal Akhir -->
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <label for="end_date">Periode Akhir</label>
                                     <input type="text" class="form-control" id="end_date">
                                     <span class="bar"></span>
                                 </div>
 
                                 <!-- Jenis Pelayanan -->
-                                <div class="col-md-4">
+                                {{-- <div class="col-md-4">
                                     <label for="jenis">Jenis Pelayanan</label>
                                     <select id="jenis" name="jenis" class="form-control">
                                         <option value="">Rawat Jalan</option>
                                         <option value="ri">Rawat Inap</option>
                                     </select>
                                     <span class="bar"></span>
-                                </div>
+                                </div> --}}
 
                             </div>
                         </div>

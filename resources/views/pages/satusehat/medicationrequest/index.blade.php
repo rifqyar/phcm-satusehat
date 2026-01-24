@@ -233,10 +233,6 @@
                 $('.checkbox-item').prop('checked', $(this).is(':checked'));
             });
 
-            $(document).on('change', '#checkAll', function() {
-                $('.checkbox-item').prop('checked', $(this).is(':checked'));
-            });
-
             //  Fungsi utama kirim batch satu per satu
             async function sendSequential(selected) {
                 let successCount = 0;
@@ -343,7 +339,10 @@
             //  DataTable
             table = $('#medicationTable').DataTable({
                 processing: true,
-                serverSide: true,
+                serverSide: false,
+                deferRender: true,
+                pageLength: 10,
+
                 ajax: {
                     url: '{{ route('satusehat.medication-request.datatable') }}',
                     type: 'POST',
@@ -353,9 +352,20 @@
                         d.end_date = $('#end_date').val();
                         d.jenis = $('#jenis').val();
                         d.status = statusFilter;
+                    },
+                    dataSrc: function(json) {
+                        // 🔹 update summary di sini
+                        $('#summary-all').text(json.summary.all);
+                        $('#summary-sent').text(json.summary.sent);
+                        $('#summary-unsent').text(json.summary.unsent);
+
+                        // 🔹 kembalikan data array
+                        return json.data;
                     }
                 },
-                columns: [{
+
+                columns: [
+                    {
                         data: null,
                         orderable: false,
                         searchable: false,
@@ -372,41 +382,31 @@
                         render: function(data) {
                             if (data.STATUS_MAPPING === '100' || data.STATUS_MAPPING === '200') {
                                 return `<input type="checkbox" class="checkbox-item" value="${data.ID_TRANS}">`;
-                            } else {
-                                return `<i class="text-muted">-</i>`;
                             }
+                            return `<i class="text-muted">-</i>`;
                         }
                     },
                     {
                         data: null,
-                        name: 'a.KARCIS', //  pakai alias dari backend
+                        name: 'a.KARCIS',
                         render: function(data) {
                             return `
-                            ${data.KARCIS ?? '-'}
-                            <br/>
-                            <small class="text-muted">ID: ${data.ID_TRANS ?? '-'}</small>
-                        `;
+                                ${data.KARCIS ?? '-'}
+                                <br/>
+                                <small class="text-muted">ID: ${data.ID_TRANS ?? '-'}</small>
+                            `;
                         }
                     },
-                    {
-                        data: 'DOKTER',
-                        name: 'c.DOKTER'
-                    },
-                    {
-                        data: 'PASIEN',
-                        name: 'c.NAMA_PASIEN',
-                        searchable: true
-                    },
-                    {
-                        data: 'TGL_KARCIS',
-                        name: 'c.TANGGAL'
-                    },
+                    { data: 'DOKTER' },
+                    { data: 'PASIEN' },
+                    { data: 'TGL_KARCIS' },
                     {
                         data: null,
                         render: function(data) {
-                            let badge = (data.STATUS_MAPPING === '200') ?
-                                `<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>` :
-                                `<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>`;
+                            let badge = (data.STATUS_MAPPING === '200')
+                                ? `<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>`
+                                : `<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>`;
+
                             const idEncounter = data.id_satusehat_encounter || '-';
                             return `${badge}<br/><small class="text-muted">${idEncounter}</small>`;
                         }
@@ -417,14 +417,15 @@
                         searchable: false,
                         render: function(data) {
                             const btnLihat = `
-                            <br/>
-                            <button class="btn btn-sm btn-info w-100" onclick="lihatObat('${data.ID_TRANS}')">
-                                <i class="fas fa-eye"></i> Lihat Obat
-                            </button>`;
+                                <br/>
+                                <button class="btn btn-sm btn-info w-100"
+                                    onclick="lihatObat('${data.ID_TRANS}')">
+                                    <i class="fas fa-eye"></i> Lihat Obat
+                                </button>`;
+
                             let btnAction = '';
 
-                            if (data.id_satusehat_encounter === null || data
-                                .id_satusehat_encounter === '') {
+                            if (!data.id_satusehat_encounter) {
                                 btnAction = `<i class="text-danger">Belum Ada Encounter</i>`;
                             } else if (data.STATUS_MAPPING === '100') {
                                 btnAction = `
@@ -434,9 +435,10 @@
                                     </button>`;
                             } else if (data.STATUS_MAPPING === '200') {
                                 btnAction = `
-                                <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                                    <i class="fas fa-link mr-2"></i> Kirim Ulang SATUSEHAT
-                                </button>`;
+                                    <button class="btn btn-sm btn-warning w-100"
+                                        onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                        <i class="fas fa-link mr-2"></i> Kirim Ulang SATUSEHAT
+                                    </button>`;
                             } else {
                                 btnAction = `<i class="text-muted">Data obat belum termapping</i>`;
                             }
@@ -445,24 +447,19 @@
                         }
                     }
                 ],
-                order: [
-                    [1, 'desc']
-                ]
+
+                order: [[2, 'desc']] 
             });
 
-
-            table.on('xhr.dt', function(e, settings, json, xhr) {
-                if (json && json.summary) {
-                    $('span[data-count="all"]').text(json.summary.all ?? 0);
-                    $('span[data-count="sent"]').text(json.summary.sent ?? 0);
-                    $('span[data-count="unsent"]').text(json.summary.unsent ?? 0);
-                }
+            table.on('draw', function () {
+                $('#checkAll').prop('checked', false);
             });
+
 
             //  tombol cari
             $("#search-data").on("submit", function(e) {
                 e.preventDefault();
-                table.ajax.reload();
+                table.ajax.reload(null, false);
             });
 
             //  tombol kirim SATUSEHAT
@@ -482,13 +479,13 @@
             $('#start_date').val(startDate.format('YYYY-MM-DD'));
             $('#end_date').val(endDate.format('YYYY-MM-DD'));
             $('input[name="search"]').val('');
-            table.ajax.reload();
+            table.ajax.reload(null, false);
         }
 
         // filter by card
         function search(type) {
             statusFilter = type;
-            table.ajax.reload();
+            table.ajax.reload(null, false);
         }
 
         function lihatObat(idTrans) {
