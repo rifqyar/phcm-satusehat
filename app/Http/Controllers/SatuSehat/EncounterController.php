@@ -126,6 +126,9 @@ class EncounterController extends Controller
         $recordsFiltered = $summary->recordsFiltered ?? $recordsTotal;
 
         $dataTable = DataTables::of($dataKunjungan)
+            ->skipPaging()
+            ->setTotalRecords($recordsTotal)
+            ->setFilteredRecords($recordsFiltered)
             // ->addIndexColumn()
             ->addColumn('DT_RowIndex', function ($row) use ($start) {
                 static $i = 0;
