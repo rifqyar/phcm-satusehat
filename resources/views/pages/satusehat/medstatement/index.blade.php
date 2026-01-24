@@ -69,7 +69,7 @@
             <div class="row mb-4">
 
                 <div class="col-md-4">
-                    <div class="card card-inverse card-primary card-mapping" onclick="search('all')">
+                    <div class="card card-inverse card-primary card-mapping" onclick="filterStatus('all')">
                         <div class="card-body d-flex align-items-center">
                             <i class="fas fa-users text-white" style="font-size: 40px"></i>
                             <div class="ml-3">
@@ -81,7 +81,7 @@
                 </div>
 
                 <div class="col-md-4">
-                    <div class="card card-inverse card-success card-mapping" onclick="search('integrated')">
+                    <div class="card card-inverse card-success card-mapping" onclick="filterStatus('integrated')">
                         <div class="card-body d-flex align-items-center">
                             <i class="fas fa-paper-plane text-white" style="font-size: 40px"></i>
                             <div class="ml-3">
@@ -93,7 +93,7 @@
                 </div>
 
                 <div class="col-md-4">
-                    <div class="card card-inverse card-danger card-mapping" onclick="search('not_integrated')">
+                    <div class="card card-inverse card-danger card-mapping" onclick="filterStatus('not_integrated')">
                         <div class="card-body d-flex align-items-center">
                             <i class="fas fa-times-circle text-white" style="font-size: 40px"></i>
                             <div class="ml-3">
@@ -206,7 +206,7 @@
         </script>
         <script>
             let table;
-            var statusFilter = 'all';
+            var statusFilter = 'not_integrated';
 
             $(document).ready(function() {
                 // set default range
@@ -235,7 +235,7 @@
 
                 table = $('#medicationTable').DataTable({
                     processing: true,
-                    serverSide: true,
+                    serverSide: false,
                     ajax: {
                         url: '{{ route('satusehat.medstatement.datatabel') }}',
                         type: 'POST',
@@ -285,24 +285,44 @@
                             data: 'STATUS_KIRIM_STATEMENT',
                             render: v => {
                                 if (v === 'Integrasi') {
-                                    return `<span class="badge badge-success">Integrasi</span>`;
+                                    return `<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>`;
                                 }
-                                return `<span class="badge badge-danger">Belum Integrasi</span>`;
+                                return `<span class="badge badge-pill badge-secondary p-2 w-100">Belum Integrasi</span>`;
                             }
                         },
                         {
                             data: null,
-                            render: r => `
-                        <button class="btn btn-sm btn-success w-100 mb-1"
-                                onclick="kirimSatu('${r.ID_TRANS}', this)">
-                            <i class="fas fa-link mr-2"></i>Kirim Satu Sehat
-                        </button>
+                            render: function (r) {
 
-                        <button class="btn btn-sm btn-info w-100" onclick="lihatDetail('${r.ID_TRANS}')">
-                            <i class="fas fa-eye"></i> Detail
-                        </button>
+                                let kirimButton = '';
 
-                    `
+                                if (r.STATUS_KIRIM_STATEMENT === 'Integrasi') {
+                                    kirimButton = `
+                                        <button class="btn btn-sm btn-warning w-100 mb-1"
+                                                onclick="kirimSatu('${r.ID_TRANS}', this, true)">
+                                            <i class="fas fa-link mr-2"></i>
+                                            Kirim Ulang Satu Sehat
+                                        </button>
+                                    `;
+                                } else {
+                                    kirimButton = `
+                                        <button class="btn btn-sm btn-primary w-100 mb-1"
+                                                onclick="kirimSatu('${r.ID_TRANS}', this)">
+                                            <i class="fas fa-link mr-2"></i>
+                                            Kirim Satu Sehat
+                                        </button>
+                                    `;
+                                }
+
+                                return `
+                                    ${kirimButton}
+
+                                    <button class="btn btn-sm btn-info w-100"
+                                            onclick="lihatDetail('${r.ID_TRANS}')">
+                                        <i class="fas fa-eye"></i> Detail
+                                    </button>
+                                `;
+                            }
                         }
                     ]
                 });
@@ -335,6 +355,15 @@
                 $('#end_date').val('');
                 table.ajax.reload();
             }
+
+            function filterStatus(status) {
+                statusFilter = status;
+                const params = new URLSearchParams(window.location.search);
+                params.set('status', status);
+                history.pushState({}, '', '?' + params.toString());
+                table.ajax.reload(null, false);
+            }
+
 
 
 
