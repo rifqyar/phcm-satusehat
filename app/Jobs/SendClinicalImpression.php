@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Http\Controllers\SatuSehat\EncounterController;
+use App\Http\Controllers\SatuSehat\ClinicalImpressionController;
 use App\Http\Traits\LogTraits;
 use Exception;
 use Illuminate\Bus\Queueable;
@@ -13,13 +13,13 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
 
-class SendEncounter implements ShouldQueue
+class SendClinicalImpression implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, LogTraits;
 
     public $param;
-    public $tries = 3; // Number of attempts
-    public $timeout = 30; // Timeout in seconds
+    // public $tries = 3; // Number of attempts
+    public $timeout = 5; // Timeout in seconds
     public $resend = false;
     /**
      * Create a new job instance.
@@ -30,7 +30,7 @@ class SendEncounter implements ShouldQueue
     {
         $this->param = $param;
         $this->resend = $resend;
-        $this->onQueue('encounter');
+        $this->onQueue('ClinicalImpression');
     }
 
     /**
@@ -44,16 +44,16 @@ class SendEncounter implements ShouldQueue
         DB::reconnect('sqlsrv');
 
         try {
-            $controller = app(EncounterController::class);
+            $controller = app(ClinicalImpressionController::class);
             $encodedParam = base64_encode($this->param);
             $result = $controller->sendSatuSehat($encodedParam, $this->resend);
-            $this->logInfo('encounter', 'Sending Encounter Using Jobs', [
+            $this->logInfo('ClinicalImpression', 'Sending ClinicalImpression Using Jobs', [
                 'payload' => $this->param,
                 'response' => $result,
                 'user_id' => Session::get('nama', 'system')
             ]);
         } catch (Exception $e) {
-            $this->logError('encounter', 'Failed Sending Encounter Using Jobs', [
+            $this->logError('ClinicalImpression', 'Failed Sending ClinicalImpression Using Jobs', [
                 'payload' => $this->param,
                 'response' => $e->getMessage(),
                 'user_id' => Session::get('nama', 'system') //Session::get('id')

@@ -65,7 +65,7 @@
                                             <i class="fas fa-hospital" style="font-size: 48px"></i>
                                             <div class="ml-3">
                                                 <span style="font-size: 24px"
-                                                    id="total_rawat_jalan">{{ $result['total_rawat_jalan'] }}</span>
+                                                    id="total_rj">{{ $rjAll }}</span>
                                                 <h4 class="text-white">Total Rawat Jalan</h4>
                                             </div>
                                         </div>
@@ -81,7 +81,7 @@
                                             <i class="fas fa-bed" style="font-size: 48px"></i>
                                             <div class="ml-3">
                                                 <span style="font-size: 24px"
-                                                    id="total_rawat_inap">{{ $result['total_rawat_inap'] }}</span>
+                                                    id="total_ri">{{ $ri }}</span>
                                                 <h4 class="text-white">Total Rawat Inap</h4>
                                             </div>
                                         </div>
@@ -97,7 +97,7 @@
                                             <i class="fas fa-info-circle" style="font-size: 48px"></i>
                                             <div class="ml-3">
                                                 <span style="font-size: 24px"
-                                                    id="total_all">{{ $result['total_semua'] }}</span>
+                                                    id="total_all">{{ $mergedAll }}</span>
                                                 <h4 class="text-white">Total Data</h4>
                                             </div>
                                         </div>
@@ -113,7 +113,7 @@
                                             <i class="fas fa-link" style="font-size: 48px"></i>
                                             <div class="ml-3">
                                                 <span style="font-size: 24px"
-                                                    id="total_integrasi">{{ $result['total_sudah_integrasi'] }}</span>
+                                                    id="total_integrasi">{{ $mergedIntegrated }}</span>
                                                 <h4 class="text-white">Data Terintegrasi</h4>
                                             </div>
                                         </div>
@@ -129,7 +129,7 @@
                                             <i class="fas fa-unlink" style="font-size: 48px"></i>
                                             <div class="ml-3">
                                                 <span style="font-size: 24px"
-                                                    id="total_belum_integrasi">{{ $result['total_belum_integrasi'] }}</span>
+                                                    id="total_belum_integrasi">{{ $unmapped }}</span>
                                                 <h4 class="text-white">Data belum terintegrasi</h4>
                                             </div>
                                         </div>
@@ -194,7 +194,7 @@
                         <thead>
                             <tr>
                                 <th></th>
-                                <th>#</th>
+                                <th>NO</th>
                                 <th>
                                     <input type="checkbox" id="selectAll" value="selected-all"
                                         class="chk-col-purple" />
@@ -202,15 +202,16 @@
                                         style="margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500">
                                         Select All </label>
                                 </th>
-                                <th>ID Transaksi</th>
-                                <th>Jenis Perawatan</th>
+                                <th>Karcis</th>
+                                <th>Perawatan</th>
+                                {{-- <th>Status</th> --}}
+                                <th>Tgl. Masuk</th>
                                 <th>No. Peserta</th>
                                 <th>No. RM</th>
-                                <th>Nama Pasien</th>
-                                <th>Tgl. Masuk</th>
+                                <th>Nama</th>
                                 <th>Dokter</th>
-                                <th>Status</th>
-                                <th>Aksi</th>
+                                <th>Status Integrasi</th>
+                                <th></th>
                             </tr>
                         </thead>
                     </table>
@@ -269,71 +270,35 @@
             e.stopPropagation();
         });
 
-        // Handle select all checkbox
-        $(document).on('change', '#selectAll', function() {
-            var isChecked = $(this).is(':checked');
-            $('.row-checkbox').prop('checked', isChecked);
-            
-            if (isChecked) {
-                $('.row-checkbox:checked').each(function() {
-                    var id = $(this).data('id');
-                    if (!selectedIds.includes(id)) {
-                        selectedIds.push(id);
-                    }
-                });
-            } else {
-                selectedIds = [];
-            }
-            
-            updateSelectAllCheckbox();
-        });
-
-        // Handle individual checkbox
-        $(document).on('change', '.row-checkbox', function() {
-            var id = $(this).data('id');
-            var isChecked = $(this).is(':checked');
-            
-            if (isChecked) {
-                if (!selectedIds.includes(id)) {
-                    selectedIds.push(id);
-                }
-            } else {
-                selectedIds = selectedIds.filter(item => item !== id);
-            }
-            
-            updateSelectAllCheckbox();
-        });
-
-        // Preserve checkbox state on table draw
-        table.on('draw', function() {
-            $('.row-checkbox').each(function() {
-                var id = $(this).data('id');
-                if (selectedIds.includes(id)) {
-                    $(this).prop('checked', true);
-                }
-            });
-            updateSelectAllCheckbox();
-        });
     });
 
-    function updateSelectAllCheckbox() {
-        var totalVisible = $('.row-checkbox:visible').length;
-        var totalChecked = $('.row-checkbox:checked').length;
-        
-        $('#selectAll').prop('checked', totalVisible > 0 && totalVisible === totalChecked);
-        $('#bulk-send-btn').prop('disabled', selectedIds.length === 0);
-    }
-
     function resetSearch() {
-        $("#search-data").find("input.form-control").val("").trigger("blur");
-        $("#search-data").find("input.form-control").removeClass("was-validated");
-        $('input[name="search"]').val("false");
-        table.ajax.reload();
-    }
+        // Reset all form inputs
+        $('input[name="search"]').val('');
+        $('input[name="tgl_awal"]').val('');
+        $('input[name="tgl_akhir"]').val('');
+        $("#search-data").removeClass("was-validated");
 
-    function search(type) {
-        $('input[name="search"]').val(type);
-        table.ajax.reload();
+        // Clear selections
+        selectedIds = [];
+        $('#selectAll').prop('checked', false);
+        $('.select-row').prop('checked', false);
+
+        if (typeof table !== 'undefined' && table) {
+            table.ajax.reload();
+        }
+
+        // Update button state
+        updateSelectAllCheckbox();
+
+        $.toast?.({
+            heading: "Pencarian direset",
+            text: "Filter pencarian dikosongkan.",
+            position: "top-right",
+            icon: "info",
+            textColor: "white",
+            hideAfter: 2000,
+        });
     }
 
     function getAllData() {
@@ -346,7 +311,7 @@
             },
             processing: true,
             serverSide: false,
-            scrollX: true,
+            scrollX: false,
             ajax: {
                 url: `{{ route('satusehat.resume-medis.datatable') }}`,
                 method: "POST",
@@ -357,12 +322,12 @@
                     data.tgl_akhir = $('input[name="tgl_akhir"]').val();
                 },
                 dataSrc: function(json) {
-                    $('#total_all').text(json.total_semua);
-                    $('#total_rawat_jalan').text(json.total_rawat_jalan);
-                    $('#total_rawat_inap').text(json.total_rawat_inap);
-                    $('#total_integrasi').text(json.total_sudah_integrasi);
-                    $('#total_belum_integrasi').text(json.total_belum_integrasi);
-                    return json.data;
+                    $('#total_all').text(json.total_semua)
+                    $('#total_rj').text(json.rjAll)
+                    $('#total_ri').text(json.ri)
+                    $('#total_integrasi').text(json.total_sudah_integrasi)
+                    $('#total_belum_integrasi').text(json.total_belum_integrasi)
+                    return json.data
                 }
             },
             columns: [{
@@ -370,61 +335,88 @@
                     orderable: false,
                     searchable: false,
                     data: null,
-                    defaultContent: ''
-                }, 
+                    defaultContent: '',
+                    responsivePriority: 1
+                },
                 {
                     data: 'DT_RowIndex',
                     name: 'DT_RowIndex',
                     orderable: false,
-                    searchable: false
+                    searchable: false,
+                    responsivePriority: 1
                 },
                 {
                     data: 'checkbox',
-                    name: 'checkbox',
                     orderable: false,
                     searchable: false,
-                    responsivePriority: 2
+                    className: 'text-center',
+                    responsivePriority: 1
                 },
+
+                // 4. Karcis
                 {
                     data: 'ID_TRANSAKSI',
                     name: 'ID_TRANSAKSI',
-                    responsivePriority: 3
+                    responsivePriority: 2
                 },
+
+                // 5. Perawatan
                 {
                     data: 'JENIS_PERAWATAN',
                     name: 'JENIS_PERAWATAN',
-                    responsivePriority: 4
+                    responsivePriority: 2
                 },
+
+                // 6. Status
+                // {
+                //     data: 'STATUS_SELESAI',
+                //     name: 'STATUS_SELESAI',
+                //     responsivePriority: 2
+                // },
+
+                // 7. Tgl. Masuk → ingin disembunyikan
+                {
+                    data: 'TANGGAL',
+                    name: 'TANGGAL',
+                    responsivePriority: 5
+                },
+
+                // 8. No Peserta → disembunyikan
                 {
                     data: 'NO_PESERTA',
                     name: 'NO_PESERTA',
-                    responsivePriority: 6
+                    responsivePriority: 5
                 },
+
+                // 9. No RM
                 {
                     data: 'KBUKU',
                     name: 'KBUKU',
-                    responsivePriority: 7
+                    responsivePriority: 4
                 },
+
+                // 10. Nama
                 {
-                    data: 'NAMA',
-                    name: 'NAMA',
-                    responsivePriority: 5
+                    data: 'NAMA_PASIEN',
+                    name: 'NAMA_PASIEN',
+                    responsivePriority: 3
                 },
-                {
-                    data: 'TGL_MASUK',
-                    name: 'TGL_MASUK',
-                    responsivePriority: 8
-                },
+
+                // 11. Dokter → disembunyikan
                 {
                     data: 'DOKTER',
                     name: 'DOKTER',
-                    responsivePriority: 9
+                    responsivePriority: 5
                 },
+
+                // 12. Status Integrasi
                 {
                     data: 'status_integrasi',
                     name: 'status_integrasi',
                     responsivePriority: 3
                 },
+
+                // 13. Action
                 {
                     data: 'action',
                     name: 'action',
@@ -434,19 +426,98 @@
                 },
             ],
             order: [
-                [8, 'desc']
+                [1, 'asc']
             ],
             lengthMenu: [
                 [10, 25, 50, -1],
                 [10, 25, 50, "All"]
             ],
             pageLength: 10,
+            drawCallback: function(settings) {
+                $('.select-row').each(function() {
+                    const id = $(this).val();
+                    $(this).prop('checked', selectedIds.includes(id));
+                });
+
+                if ($('#selectAll').is(':checked')) {
+                    $('.select-row').each(function() {
+                        const id = $(this).val();
+                        $(this).prop('checked', true);
+                        if (!selectedIds.includes(id)) selectedIds.push(id);
+                    });
+                }
+
+                updateSelectAllCheckbox();
+            }
         })
+    }
+
+    // Select single row
+    $(document).on('change', '.select-row', function(e) {
+        e.stopPropagation();
+        const id = $(this).val();
+
+        if ($(this).is(':checked')) {
+            if (!selectedIds.includes(id)) selectedIds.push(id);
+        } else {
+            selectedIds = selectedIds.filter(item => item !== id);
+        }
+        updateSelectAllCheckbox();
+    });
+
+    $(document).on('click', '.select-row', function(e) {
+        e.stopPropagation();
+    });
+
+    // Select All (current page)
+    $('#selectAll').on('click', function(e) {
+        e.stopPropagation();
+        const rows = $('.select-row');
+        const checked = this.checked;
+        rows.each(function() {
+            const id = $(this).val();
+            $(this).prop('checked', checked);
+
+            if (checked) {
+                if (!selectedIds.includes(id)) selectedIds.push(id);
+            } else {
+                selectedIds = selectedIds.filter(item => item !== id);
+            }
+
+            updateSelectAllCheckbox();
+        });
+    });
+
+    function updateSelectAllCheckbox() {
+        const totalCheckboxes = $('.select-row').length;
+        const checkedCount = $('.select-row:checked').length;
+
+        // centang setengah (indeterminate) kalau sebagian terpilih
+        $('#selectAll').prop('checked', checkedCount === totalCheckboxes && totalCheckboxes > 0);
+        $('#selectAll').prop('indeterminate', checkedCount > 0 && checkedCount < totalCheckboxes);
+
+        // Update bulk send button state
+        const bulkSendBtn = $('#bulk-send-btn');
+        if (selectedIds.length > 0) {
+            bulkSendBtn.prop('disabled', false);
+            bulkSendBtn.html(`<i class="mdi mdi-send-outline"></i> Kirim ${selectedIds.length} Data ke SatuSehat`);
+        } else {
+            bulkSendBtn.prop('disabled', true);
+            bulkSendBtn.html('<i class="mdi mdi-send-outline"></i> Kirim Terpilih ke SatuSehat');
+        }
     }
 
     $('.data-table').on('click', 'button, a', function(e) {
         e.stopPropagation();
     });
+
+    function search(type) {
+        $('input[name="search"]').val(type)
+        selectedIds = [];
+        updateSelectAllCheckbox();
+
+        table.ajax.reload()
+    }
 
     function lihatDetail(param) {
         paramSatuSehat = param;
@@ -477,6 +548,19 @@
                 $('#no_karcis').text(response.dataPasien.KARCIS || '-');
                 $('#dokter').text(response.dataPasien.DOKTER || '-');
 
+                // Populate allergy data
+                let allergyHtml = '';
+                if (response.dataAlergi && response.dataAlergi.length > 0) {
+                    response.dataAlergi.forEach(function(allergy) {
+                        allergyHtml += '<tr><td>' + (allergy.JENIS || '-') + '</td><td>' 
+                            + (allergy.ALERGEN || '-') + '</td><td>' 
+                            + (allergy.ID_ALERGEN_SS || '-') + '</td></tr>';
+                    });
+                } else {
+                    allergyHtml = '<tr><td colspan="3" class="text-center text-muted">Tidak ada data alergi</td></tr>';
+                }
+                $('#tbodyAlergi').html(allergyHtml);
+
                 // Populate resume medis data
                 $('#keluhan').text(response.dataErm.KELUHAN || '-');
                 $('#td').text(response.dataErm.TD || '-');
@@ -494,9 +578,9 @@
                 // Show status based on integration status
                 $('#integrasi_resume, #success_resume, #failed_resume').hide();
                 
-                if (response.dataPasien.statusIntegrated === 'Belum Integrasi') {
+                if (response.dataPasien.STATUS_INTEGRATED == 0) {
                     $('#integrasi_resume').show();
-                } else if (response.dataPasien.statusIntegrated === 'Sudah Integrasi') {
+                } else if (response.dataPasien.STATUS_INTEGRATED == 1) {
                     $('#success_resume').show();
                 } else {
                     $('#failed_resume').show();
@@ -515,6 +599,12 @@
             }
         });
     }
+
+    $('#btn-send-satusehat').on('click', function() {
+        if (paramSatuSehat != '') {
+            sendSatuSehat(paramSatuSehat)
+        }
+    })
 
     function sendSatuSehat(param) {
         Swal.fire({
@@ -560,48 +650,76 @@
 
     function bulkSend() {
         if (selectedIds.length === 0) {
-            Swal.fire({
-                title: 'Peringatan!',
-                text: 'Pilih minimal 1 data untuk dikirim',
-                icon: 'warning'
+            $.toast({
+                heading: "Peringatan!",
+                text: "Pilih data yang akan dikirim terlebih dahulu.",
+                position: "top-right",
+                icon: "warning",
+                hideAfter: 3000
             });
             return;
         }
 
-        Swal.fire({
-            title: "Konfirmasi Pengiriman Massal",
-            text: `Kirim ${selectedIds.length} data terpilih ke SatuSehat?`,
-            icon: "question",
-            showCancelButton: true,
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-            confirmButtonText: "Ya, kirim!",
-            cancelButtonText: "Batal",
-        }).then(async (conf) => {
-            if (conf.value || conf.isConfirmed) {
-                // TODO: Implement bulk send logic
-                Swal.fire({
-                    title: 'Proses Pengiriman',
-                    text: 'Sedang mengirim data...',
-                    allowOutsideClick: false,
-                    showConfirmButton: false,
-                    willOpen: () => {
-                        Swal.showLoading();
-                    }
-                });
+        $.ajax({
+            url: `{{ route('satusehat.resume-medis.bulk-send') }}`,
+            type: "POST",
+            data: {
+                _token: $('meta[name="csrf-token"]').attr("content"),
+                selected_ids: selectedIds
+            },
+            success: function(response) {
+                Swal.close();
                 
-                // Placeholder - implement actual bulk send
-                setTimeout(() => {
-                    Swal.close();
-                    Swal.fire({
-                        title: 'Berhasil!',
-                        text: `${selectedIds.length} data berhasil dikirim`,
-                        icon: 'success'
-                    }).then(() => {
-                        selectedIds = [];
-                        table.ajax.reload();
+                if (response.status === 200) {
+                    $.toast({
+                        heading: "Berhasil!",
+                        text: response.message,
+                        position: "top-right",
+                        icon: "success",
+                        hideAfter: 7000
                     });
-                }, 2000);
+                    
+                    // Show additional info about background processing
+                    setTimeout(() => {
+                        $.toast({
+                            heading: "Info",
+                            text: "Data sedang diproses di background. Refresh halaman dalam beberapa menit untuk melihat hasil.",
+                            position: "top-right",
+                            icon: "info",
+                            hideAfter: 5000
+                        });
+                    }, 2000);
+                    
+                    // Clear selections and reload table
+                    selectedIds = [];
+                    $('#selectAll').prop('checked', false);
+                    $('.select-row').prop('checked', false);
+                    table.ajax.reload();
+                } else {
+                    $.toast({
+                        heading: "Error!",
+                        text: response.message,
+                        position: "top-right",
+                        icon: "error",
+                        hideAfter: 5000
+                    });
+                }
+            },
+            error: function(xhr) {
+                Swal.close();
+                let errorMessage = "Terjadi kesalahan saat mengirim data";
+                
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                }
+                
+                $.toast({
+                    heading: "Error!",
+                    text: errorMessage,
+                    position: "top-right",
+                    icon: "error",
+                    hideAfter: 5000
+                });
             }
         });
     }

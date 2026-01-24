@@ -157,24 +157,28 @@ Route::middleware(['checkLogin'])->group(function () {
             ->name('clinical-impression.index');
         Route::post('/clinical-impression/datatable', [App\Http\Controllers\SatuSehat\ClinicalImpressionController::class, 'datatable'])
             ->name('clinical-impression.datatable');
-        Route::post('/clinical-impression/lihat-detail/{param}', [App\Http\Controllers\SatuSehat\ClinicalImpressionController::class, 'lihatDetail'])
+        Route::get('/clinical-impression/lihat-detail/{param}', [App\Http\Controllers\SatuSehat\ClinicalImpressionController::class, 'lihatDetail'])
             ->name('clinical-impression.lihat-detail');
-        Route::get('/clinical-impression/send/{param}', [App\Http\Controllers\SatuSehat\ClinicalImpressionController::class, 'send'])
+        Route::post('/clinical-impression/send', [App\Http\Controllers\SatuSehat\ClinicalImpressionController::class, 'send'])
             ->name('clinical-impression.send');
-        Route::get('/clinical-impression/resend/{param}', [App\Http\Controllers\SatuSehat\ClinicalImpressionController::class, 'resend'])
+        Route::post('/clinical-impression/resend/', [App\Http\Controllers\SatuSehat\ClinicalImpressionController::class, 'resend'])
             ->name('clinical-impression.resend');
+        Route::post('/clinical-impression/bulk-send', [App\Http\Controllers\SatuSehat\ClinicalImpressionController::class, 'bulkSend'])
+            ->name('clinical-impression.bulk-send');
 
         // Care Plan
         Route::get('/care-plan', [App\Http\Controllers\SatuSehat\CarePlanController::class, 'index'])
             ->name('care-plan.index');
         Route::post('/care-plan/datatable', [App\Http\Controllers\SatuSehat\CarePlanController::class, 'datatable'])
             ->name('care-plan.datatable');
-        Route::post('/care-plan/lihat-detail/{param}', [App\Http\Controllers\SatuSehat\CarePlanController::class, 'lihatDetail'])
+        Route::get('/care-plan/lihat-detail/{param}', [App\Http\Controllers\SatuSehat\CarePlanController::class, 'lihatDetail'])
             ->name('care-plan.lihat-detail');
-        Route::get('/care-plan/send/{param}', [App\Http\Controllers\SatuSehat\CarePlanController::class, 'send'])
+        Route::post('/care-plan/send', [App\Http\Controllers\SatuSehat\CarePlanController::class, 'send'])
             ->name('care-plan.send');
-        Route::get('/care-plan/resend/{param}', [App\Http\Controllers\SatuSehat\CarePlanController::class, 'resend'])
+        Route::post('/care-plan/resend', [App\Http\Controllers\SatuSehat\CarePlanController::class, 'resend'])
             ->name('care-plan.resend');
+        Route::post('/care-plan/bulk-send', [App\Http\Controllers\SatuSehat\CarePlanController::class, 'bulkSend'])
+            ->name('care-plan.bulk-send');
 
         // Medication
         Route::get('/medication', [App\Http\Controllers\SatuSehat\MedicationController::class, 'index'])->name('medication.index');
@@ -202,10 +206,10 @@ Route::middleware(['checkLogin'])->group(function () {
             ->name('questionnaire-response.datatable');
         Route::get('/questionnaire-response/questions', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'getQuestions'])
             ->name('questionnaire-response.questions');
-        Route::post('/questionnaire-response/send', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'send'])
+        Route::post('/questionnaire-response/save', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'saveResponse'])
+            ->name('questionnaire-response.save');
+        Route::post('/questionnaire-response/send/{param}', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'sendSatuSehat'])
             ->name('questionnaire-response.send');
-        Route::post('/questionnaire-response/resend', [App\Http\Controllers\SatuSehat\QuestionnaireResponseController::class, 'resend'])
-            ->name('questionnaire-response.resend');
 
         // Resume Medis Routes
         Route::get('/resume-medis', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'index'])
@@ -214,10 +218,12 @@ Route::middleware(['checkLogin'])->group(function () {
             ->name('resume-medis.datatable');
         Route::post('/resume-medis/lihat-detail/{param}', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'lihatDetail'])
             ->name('resume-medis.lihat-detail');
-        Route::get('/resume-medis/send/{param}', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'send'])
+        Route::get('/resume-medis/send/{param}', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'sendSatuSehat'])
             ->name('resume-medis.send');
-        Route::get('/resume-medis/resend/{param}', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'resend'])
+        Route::get('/resume-medis/resend/{param}', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'resendSatuSehat'])
             ->name('resume-medis.resend');
+        Route::post('/resume-medis/bulk-send', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'bulkSend'])
+            ->name('resume-medis.bulk-send');
 
         // Diagnosis
         Route::get('/diagnosis', [App\Http\Controllers\SatuSehat\DiagnosisController::class, 'index'])->name('diagnosis.index');

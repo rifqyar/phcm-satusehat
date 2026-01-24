@@ -311,11 +311,11 @@
                         data.tgl_akhir = $('input[name="tgl_akhir"]').val();
                     },
                     dataSrc: function(json) {
-                        $('#total_all').text(json.total_semua)
-                        $('#total_rj').text(json.rjAll)
-                        $('#total_ri').text(json.ri)
-                        $('#total_integrasi').text(json.total_sudah_integrasi)
-                        $('#total_belum_integrasi').text(json.total_belum_integrasi)
+                        $('#total_all').text(json.summary.total_semua)
+                        $('#total_rj').text(json.summary.rjAll)
+                        $('#total_ri').text(json.summary.ri)
+                        $('#total_integrasi').text(json.summary.total_sudah_integrasi)
+                        $('#total_belum_integrasi').text(json.summary.total_belum_integrasi)
                         return json.data
                     }
                 },
@@ -415,7 +415,7 @@
                     },
                 ],
                 order: [
-                    [1, 'asc']
+                    [6, 'desc']
                 ],
                 lengthMenu: [
                     [10, 25, 50, -1],

@@ -1,5 +1,5 @@
 <!-- Modal Resume Medis Detail -->
-<div class="modal fade" id="modalResumeMedis" tabindex="-1" role="dialog">
+<div class="modal fade" id="modalCarePlan" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -64,39 +64,29 @@
                         <h6 class="m-0 text-white"><i class="fas fa-notes-medical text-white"></i> Resume Medis</h6>
                     </div>
 
-                    <div class="ribbon ribbon-info" id="integrasi_prognosis">
+                    <div class="ribbon ribbon-info" id="integrasi_care_plan">
                         <i class="fas fa-info-circle text-white"></i>
-                        Data Prognosis Belum Integrasi
+                        Data Care Plan Belum Integrasi
                     </div>
-                    <div class="ribbon ribbon-success" id="success_prognosis" style="display:none">
+                    <div class="ribbon ribbon-success" id="success_care_plan" style="display:none">
                         <i class="fas fa-check-circle text-white"></i>
-                        Data Prognosis Sudah Integrasi
+                        Data Care Plan Sudah Integrasi
                     </div>
-                    <div class="ribbon ribbon-danger" id="failed_prognosis" style="display:none">
+                    <div class="ribbon ribbon-danger" id="failed_care_plan" style="display:none">
                         <i class="fas fa-times-circle text-white"></i>
-                        Data Prognosis Gagal Integrasi
+                        Data Care Plan Gagal Integrasi
                     </div>
 
                     <div class="card-body ribbon-content">
                         <div class="row">
                             <div class="col-md-12 mb-3">
-                                <h6 class="font-weight-bold">Keluhan Utama</h6>
-                                <p id="keluhan" class="border p-2 bg-light">-</p>
+                                <h6 class="font-weight-bold">Rencana Perawatan</h6>
+                                <p id="plan" class="border p-2 bg-light">-</p>
                             </div>
 
                             <div class="col-md-6 mb-3">
                                 <h6 class="font-weight-bold">Diagnosa</h6>
                                 <p id="diagnosa" class="border p-2 bg-light">-</p>
-                            </div>
-
-                            <div class="col-md-6 mb-3">
-                                <h6 class="font-weight-bold">Prognosis</h6>
-                                <select style="width: 100%;" id="prognosis" name="prognosis" class="form-control">
-                                    <option value="170968001" selected>Prognosis good / Baik</option>
-                                    <option value="65872000">Fair prognosis / Cukup Baik</option>
-                                    <option value="67334001">Guarded prognosis / Cenderung Tidak Baik</option>
-                                    <option value="170969009">Prognosis bad / Buruk</option>
-                                </select>
                             </div>
                         </div>
                     </div>

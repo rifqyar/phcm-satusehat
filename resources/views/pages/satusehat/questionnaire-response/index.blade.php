@@ -25,6 +25,32 @@
         transition: all 0.3s ease;
         cursor: pointer
     }
+
+    tbody td {
+        vertical-align: middle !important
+    }
+
+    /* Fix modal z-index issue */
+    .modal {
+        z-index: 1050 !important;
+    }
+
+    .modal-backdrop {
+        z-index: 1040 !important;
+    }
+
+    .modal-dialog {
+        z-index: 1051 !important;
+        margin-top: 50px;
+    }
+
+    .modal-content {
+        position: relative;
+        background-color: #fff;
+        border: 1px solid rgba(0,0,0,.2);
+        border-radius: 0.3rem;
+        outline: 0;
+    }
 </style>
 <link href="{{ asset('assets/plugins/bootstrap-material-datetimepicker/css/bootstrap-material-datetimepicker.css') }}"
     rel="stylesheet">
@@ -48,7 +74,7 @@
     </div>
 </div>
 
-<div class="card">
+<div class="card" id="data-section">
     <div class="card-body">
         <h4 class="card-title">Respon Kuesioner</h4>
         <form action="javascript:void(0)" id="search-data" class="m-t-40">
@@ -62,8 +88,8 @@
                             <div class="row align-items-center ml-1">
                                 <!-- <i class="fas fa-question- text-white" style="font-size: 48px"></i> -->
                                 <div class="ml-3">
-                                    <span data-count="all" class="text-white" style="font-size: 24px">
-                                        0
+                                    <span id="total_all" class="text-white" style="font-size: 24px">
+                                        {{ $mergedAll ?? 0 }}
                                     </span>
                                     <h4 class="text-white">Semua Data Kunjungan<br></h4>
                                 </div>
@@ -78,8 +104,8 @@
                             <div class="row align-items-center ml-1">
                                 <i class="fas fa-check-circle text-white" style="font-size: 48px"></i>
                                 <div class="ml-3">
-                                    <span data-count="sent" class="text-white" style="font-size: 24px">
-                                        0
+                                    <span id="total_sent" class="text-white" style="font-size: 24px">
+                                        {{ $mergedIntegrated ?? 0 }}
                                     </span>
                                     <h4 class="text-white">Data Terkirim<br></h4>
                                 </div>
@@ -94,8 +120,8 @@
                             <div class="row align-items-center ml-1">
                                 <i class="fas fa-clock text-white" style="font-size: 48px"></i>
                                 <div class="ml-3">
-                                    <span data-count="pending" class="text-white" style="font-size: 24px">
-                                        0
+                                    <span id="total_unsent" class="text-white" style="font-size: 24px">
+                                        {{ $unmapped ?? 0 }}
                                     </span>
                                     <h4 class="text-white">Data Belum Terkirim<br></h4>
                                 </div>
@@ -111,7 +137,7 @@
                         <div class="row justify-content-center align-items-end">
                             <div class="col-5">
                                 <label for="start_date">Periode Tanggal Upload</label>
-                                <input type="text" class="form-control" id="start_date">
+                                <input type="text" class="form-control" name="tgl_awal" id="start_date">
                                 <span class="bar"></span>
                             </div>
                             <div class="col-2 text-center">
@@ -120,7 +146,7 @@
                             </div>
                             <div class="col-5">
                                 <label for="end_date">&nbsp;</label>
-                                <input type="text" class="form-control" id="end_date">
+                                <input type="text" class="form-control" name="tgl_akhir" id="end_date">
                                 <span class="bar"></span>
                             </div>
                         </div>
@@ -174,31 +200,7 @@
     </div>
 </div>
 
-<!-- Modal Respon Kuesioner -->
-<div class="modal fade" id="questionnaireModal" tabindex="-1" role="dialog" aria-labelledby="questionnaireModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="questionnaireModalLabel">Respon Kuesioner</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <form id="questionnaireForm">
-                    <div id="questionsContainer">
-                        <!-- Questions will be loaded here -->
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-primary" onclick="saveResponse()">Simpan Respon</button>
-            </div>
-        </div>
-    </div>
-</div>
-
+@include('modals.modal_questionnaire')
 @endsection
 
 
@@ -209,6 +211,11 @@
 <script>
     var table
     $(function() {
+        // Initialize modal on page load
+        $('#questionnaireModal').modal({
+            show: false
+        });
+
         // format tanggal sesuai dengan setting datepicker
         const today = moment().format('YYYY-MM-DD');
         $("#start_date").bootstrapMaterialDatePicker({
@@ -246,9 +253,18 @@
     })
 
     function resetSearch() {
-        $("#search-data").find("input.form-control").val("").trigger("blur");
-        $("#search-data").find("input.form-control").removeClass("was-validated");
-        $('input[name="search"]').val("false");
+        // Reset date inputs to today
+        const today = moment().format('YYYY-MM-DD');
+        $('#start_date').val(today);
+        $('#end_date').val(today);
+        
+        // Reset search type
+        $('input[name="search"]').val('');
+        
+        // Remove validation classes
+        $("#search-data").removeClass("was-validated");
+        
+        // Reload table
         table.ajax.reload();
     }
 
@@ -261,8 +277,8 @@
                 }
             },
             processing: true,
-            serverSide: false,
-            scrollX: true,
+            serverSide: true,
+            scrollX: false,
             ajax: {
                 url: `{{ route('satusehat.questionnaire-response.datatable') }}`,
                 method: "POST",
@@ -274,10 +290,8 @@
                 },
                 dataSrc: function(json) {
                     $('#total_all').text(json.total_semua)
-                    $('#total_rj').text(json.rjAll)
-                    $('#total_ri').text(json.ri)
-                    $('#total_integrasi').text(json.total_sudah_integrasi)
-                    $('#total_belum_integrasi').text(json.total_belum_integrasi)
+                    $('#total_sent').text(json.total_sudah_integrasi)
+                    $('#total_unsent').text(json.total_belum_integrasi)
                     return json.data
                 }
             },
@@ -286,12 +300,14 @@
                     orderable: false,
                     searchable: false,
                     data: null,
-                    defaultContent: ''
+                    defaultContent: '',
+                    responsivePriority: 1
                 }, {
                     data: 'DT_RowIndex',
                     name: 'DT_RowIndex',
                     orderable: false,
-                    searchable: false
+                    searchable: false,
+                    responsivePriority: 1
                 },
                 {
                     data: 'ID_TRANSAKSI',
@@ -354,7 +370,7 @@
                 },
             ],
             order: [
-                [5, 'desc']
+                [1, 'asc']
             ],
             lengthMenu: [
                 [10, 25, 50, -1],
@@ -369,7 +385,7 @@
     });
 
     // Handler for "Isi Respon Kuesioner"
-    window.tambahRespon = function(id) {
+    window.tambahRespon = function(id, paramEncoded) {
         // Show loading
         Swal.fire({
             title: 'Memuat...',
@@ -389,53 +405,80 @@
             success: function(response) {
                 Swal.close();
                 
-                // Populate modal with questions
-                let questionsHtml = `
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th width="50">No</th>
-                                <th>Pertanyaan</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                `;
+                // Populate modal with structured questions
+                let questionsHtml = '';
+                let questionNumber = 1;
                 
-                response.questions.forEach(function(question, index) {
+                response.sections.forEach(function(section, sectionIndex) {
                     questionsHtml += `
-                        <tr>
-                            <td class="text-center">${index + 1}</td>
-                            <td>
-                                <div class="mb-2">
-                                    <span style="color:var(--dark)">${question.text}</span>
-                                </div>
-                                <div class="mt-2">
+                        <div class="card mb-3">
+                            <div class="card-header bg-primary text-white">
+                                ${section.linkId}. ${section.title}
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-borderless">
+                                    <tbody>
+                    `;
+                    
+                    section.questions.forEach(function(question) {
+                        const isBoolean = question.type === 'valueBoolean';
+                        const yesLabel = isBoolean ? 'Ya (Ada)' : 'Sesuai';
+                        const noLabel = isBoolean ? 'Tidak (Tidak Ada)' : 'Tidak Sesuai';
+                        const yesValue = isBoolean ? 'true' : 'OV000052';
+                        const noValue = isBoolean ? 'false' : 'OV000053';
+                        
+                        questionsHtml += `
+                            <tr>
+                                <td style="width: 70%">
+                                    <strong>${question.linkId}.</strong> ${question.text}
+                                </td>
+                                <td style="width: 30%">
                                     <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="question_${question.id}" id="yes_${question.id}" value="yes">
-                                        <label class="form-check-label" for="yes_${question.id}">
-                                            <span style="color:var(--dark)">Ya</span>
+                                        <input class="form-check-input" type="radio" 
+                                               name="question_${question.linkId}" 
+                                               id="yes_${question.linkId}" 
+                                               value="${yesValue}"
+                                               data-type="${question.type}"
+                                               checked>
+                                        <label class="form-check-label" for="yes_${question.linkId}">
+                                            ${yesLabel}
                                         </label>
                                     </div>
                                     <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" name="question_${question.id}" id="no_${question.id}" value="no">
-                                        <label class="form-check-label" for="no_${question.id}">
-                                            <span style="color:var(--dark)">Tidak</span>
+                                        <input class="form-check-input" type="radio" 
+                                               name="question_${question.linkId}" 
+                                               id="no_${question.linkId}" 
+                                               value="${noValue}"
+                                               data-type="${question.type}">
+                                        <label class="form-check-label" for="no_${question.linkId}">
+                                            ${noLabel}
                                         </label>
                                     </div>
-                                </div>
-                            </td>
-                        </tr>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    
+                    questionsHtml += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     `;
                 });
                 
-                questionsHtml += `
-                        </tbody>
-                    </table>
-                `;
-                
                 $('#questionsContainer').html(questionsHtml);
                 $('#questionnaireModal').data('visitId', id);
-                $('#questionnaireModal').modal('show');
+                $('#questionnaireModal').data('paramEncoded', paramEncoded);
+                
+                // Ensure modal is shown properly
+                setTimeout(function() {
+                    $('#questionnaireModal').modal({
+                        backdrop: 'static',
+                        keyboard: false,
+                        show: true
+                    });
+                }, 100);
             },
             error: function(xhr) {
                 Swal.close();
@@ -451,6 +494,7 @@
     // Save questionnaire response
     window.saveResponse = function() {
         const visitId = $('#questionnaireModal').data('visitId');
+        const paramEncoded = $('#questionnaireModal').data('paramEncoded');
         const responses = {};
         
         // Collect all radio button values
@@ -473,30 +517,7 @@
             return;
         }
 
-        // Show loading
-        Swal.fire({
-            title: 'Menyimpan...',
-            text: 'Sedang menyimpan respon',
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            willOpen: () => {
-                Swal.showLoading()
-            }
-        });
-
-        // Send responses to backend (placeholder)
-        setTimeout(() => {
-            Swal.close();
-            $('#questionnaireModal').modal('hide');
-            
-            Swal.fire({
-                title: 'Berhasil!',
-                text: 'Respon kuesioner berhasil disimpan',
-                icon: 'success'
-            }).then(() => {
-                table.ajax.reload();
-            });
-        }, 1500);
+        sendSatuSehat(paramEncoded, responses);
     }
 
     function search(type) {
@@ -504,10 +525,59 @@
         table.ajax.reload()
     }
 
-    function sendSatuSehat(param) {
+    function sendSatuSehat(param, responses) {
         Swal.fire({
             title: "Konfirmasi Pengiriman",
-            text: `Kirim data kunjungan Pasien?`,
+            text: `Kirim respon kuesioner ke SatuSehat?`,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Ya, kirim!",
+            cancelButtonText: "Batal",
+        }).then(async (conf) => {
+            if (conf.value || conf.isConfirmed) {
+                Swal.fire({
+                    title: 'Mengirim...',
+                    text: 'Mengirim respon kuesioner ke SatuSehat',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    willOpen: () => {
+                        Swal.showLoading()
+                    }
+                });
+
+                $.ajax({
+                    url: `{{ route('satusehat.questionnaire-response.send', '') }}/${param}`,
+                    type: 'POST',
+                    data: {
+                        _token: $('meta[name="csrf-token"]').attr('content'),
+                        responses: responses
+                    },
+                    success: function(res) {
+                        Swal.close();
+                        $('#questionnaireModal').modal('hide');
+                        input_success(res);
+                    },
+                    error: function(res) {
+                        // console.log(res.)
+                        // Swal.close();
+                        // const res = xhr.responseJSON || {};
+                         Swal.fire({
+                            title: 'Gagal mengirim data',
+                            text: res.responseJSON.message,
+                            icon: 'error'
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    function resendSatuSehat(param) {
+        Swal.fire({
+            title: "Konfirmasi Pengiriman Ulang",
+            text: `Kirim Ulang Respon Kuesioner ke SatuSehat?`,
             icon: "question",
             showCancelButton: true,
             confirmButtonColor: "#3085d6",
@@ -523,63 +593,6 @@
                 );
             }
         });
-        // Swal.fire({
-        //     title: "Apakah anda yakin ingin mengirim data kunjungan ke Satu Sehat?",
-        //     type: "question",
-        //     showCancelButton: true,
-        //     confirmButtonColor: "#3085d6",
-        //     cancelButtonColor: "#d33",
-        //     confirmButtonText: "Ya",
-        // }).then(async (conf) => {
-        //     if (conf.value == true) {
-        //         await ajaxGetJson(
-        //             `{{ route('satusehat.questionnaire-response.send', '') }}/${btoa(param)}`,
-        //             "input_success",
-        //             ""
-        //         );
-        //     } else {
-        //         return false;
-        //     }
-        // });
-    }
-
-    function resendSatuSehat(param) {
-        Swal.fire({
-            title: "Konfirmasi Pengiriman Ulang",
-            text: `Kirim Ulang Data Kunjungan Pasien?`,
-            icon: "question",
-            showCancelButton: true,
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-            confirmButtonText: "Ya, kirim!",
-            cancelButtonText: "Batal",
-        }).then(async (conf) => {
-            if (conf.value || conf.isConfirmed) {
-                await ajaxGetJson(
-                    `{{ route('satusehat.questionnaire-response.resend', '') }}/${btoa(param)}`,
-                    "input_success",
-                    ""
-                );
-            }
-        });
-        // Swal.fire({
-        //     title: "Apakah anda yakin ingin mengirim data kunjungan ke Satu Sehat?",
-        //     type: "question",
-        //     showCancelButton: true,
-        //     confirmButtonColor: "#3085d6",
-        //     cancelButtonColor: "#d33",
-        //     confirmButtonText: "Ya",
-        // }).then(async (conf) => {
-        //     if (conf.value == true) {
-        //         await ajaxGetJson(
-        //             `{{ route('satusehat.questionnaire-response.send', '') }}/${btoa(param)}`,
-        //             "input_success",
-        //             ""
-        //         );
-        //     } else {
-        //         return false;
-        //     }
-        // });
     }
 
     function input_success(res) {

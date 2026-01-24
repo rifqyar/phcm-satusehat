@@ -14,6 +14,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 
 class DispatchToEndpoint implements ShouldQueue
 {
@@ -43,6 +44,9 @@ class DispatchToEndpoint implements ShouldQueue
      */
     public function handle()
     {
+        DB::disconnect('sqlsrv');
+        DB::reconnect('sqlsrv');
+
         switch ($this->endpoint) {
             case 'encounter':
                 app(EncounterService::class)->process($this->payload);

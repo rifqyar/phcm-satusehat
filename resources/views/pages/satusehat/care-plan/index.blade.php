@@ -220,7 +220,7 @@
         </div>
     </div>
 
-    @include('modals.modal_impresi_klinis')
+    @include('modals.modal_care_plan')
 @endsection
 
 
@@ -316,18 +316,14 @@
             });
         });
 
-        function updateSelectAllCheckbox() {
-            var totalVisible = $('.row-checkbox:visible').length;
-            var totalChecked = $('.row-checkbox:checked').length;
-
-            $('#selectAll').prop('checked', totalVisible > 0 && totalVisible === totalChecked);
-            $('#bulk-send-btn').prop('disabled', selectedIds.length === 0);
-        }
-
         function resetSearch() {
             $("#search-data").find("input.form-control").val("").trigger("blur");
             $("#search-data").find("input.form-control").removeClass("was-validated");
             $('input[name="search"]').val("false");
+
+            selectedIds = [];
+            updateSelectAllCheckbox();
+
             table.ajax.reload();
         }
 
@@ -335,6 +331,75 @@
             $('input[name="search"]').val(type);
             table.ajax.reload();
         }
+
+        function updateSelectAllCheckbox() {
+            const totalCheckboxes = $('.select-row').length;
+            const checkedCount = $('.select-row:checked').length;
+
+            // centang setengah (indeterminate) kalau sebagian terpilih
+            $('#selectAll').prop('checked', checkedCount === totalCheckboxes && totalCheckboxes > 0);
+            $('#selectAll').prop('indeterminate', checkedCount > 0 && checkedCount < totalCheckboxes);
+
+            // Update bulk send button state
+            const bulkSendBtn = $('#bulk-send-btn');
+            if (selectedIds.length > 0) {
+                bulkSendBtn.prop('disabled', false);
+                bulkSendBtn.html(`<i class="mdi mdi-send-outline"></i> Kirim ${selectedIds.length} Data ke SatuSehat`);
+            } else {
+                bulkSendBtn.prop('disabled', true);
+                bulkSendBtn.html('<i class="mdi mdi-send-outline"></i> Kirim Terpilih ke SatuSehat');
+            }
+        }
+
+        // Select single row
+        $(document).on('change', '.select-row', function(e) {
+            e.stopPropagation();
+            const id = $(this).val();
+            const param = $(this).data('param');
+
+            if ($(this).is(':checked')) {
+                if (!selectedIds.some(item => item.id === id)) {
+                    selectedIds.push({
+                        id: id,
+                        param: param,
+                        resend: $(this).data('resend')
+                    });
+                }
+            } else {
+                selectedIds = selectedIds.filter(item => item.id !== id);
+            }
+            updateSelectAllCheckbox();
+        });
+
+        $(document).on('click', '.select-row', function(e) {
+            e.stopPropagation();
+        });
+
+        // Select All (current page)
+        $('#selectAll').on('click', function(e) {
+            e.stopPropagation();
+            const rows = $('.select-row');
+            const checked = this.checked;
+            rows.each(function() {
+                const id = $(this).val();
+                const param = $(this).data('param');
+                $(this).prop('checked', checked);
+
+                if (checked) {
+                    if (!selectedIds.some(item => item.id === id)) {
+                        selectedIds.push({
+                            id: id,
+                            param: param,
+                            resend: $(this).data('resend')
+                        });
+                    }
+                } else {
+                    selectedIds = selectedIds.filter(item => item.id !== id);
+                }
+
+                updateSelectAllCheckbox();
+            });
+        });
 
         function getAllData() {
             table = $('.data-table').DataTable({
@@ -346,9 +411,9 @@
                 },
                 processing: true,
                 serverSide: false,
-                scrollX: true,
+                scrollX: false,
                 ajax: {
-                    url: `{{ route('satusehat.clinical-impression.datatable') }}`,
+                    url: `{{ route('satusehat.care-plan.datatable') }}`,
                     method: "POST",
                     data: function(data) {
                         data._token = `${$('meta[name="csrf-token"]').attr("content")}`;
@@ -406,13 +471,13 @@
                         responsivePriority: 7
                     },
                     {
-                        data: 'NAMA',
-                        name: 'NAMA',
+                        data: 'NAMA_PASIEN',
+                        name: 'NAMA_PASIEN',
                         responsivePriority: 5
                     },
                     {
-                        data: 'TGL_MASUK',
-                        name: 'TGL_MASUK',
+                        data: 'TANGGAL',
+                        name: 'TANGGAL',
                         responsivePriority: 8
                     },
                     {
@@ -450,76 +515,45 @@
 
         function lihatDetail(param) {
             paramSatuSehat = param;
+            ajaxGetJson(
+                `{{ route('satusehat.care-plan.lihat-detail', '') }}/${btoa(param)}`,
+                "show_modal",
+                ""
+            );
+        }
 
-            Swal.fire({
-                title: 'Loading...',
-                text: 'Sedang memuat data',
-                allowOutsideClick: false,
-                showConfirmButton: false,
-                willOpen: () => {
-                    Swal.showLoading();
-                }
-            });
+        function show_modal(response) {
+            $('#nama_pasien').text(response.dataPasien.NAMA || '-');
+            $('#no_rm').text(response.dataPasien.KBUKU || '-');
+            $('#no_peserta').text(response.dataPasien.NO_PESERTA || '-');
+            $('#no_karcis').text(response.dataPasien.KARCIS || '-');
+            $('#dokter').text(response.dataPasien.DOKTER || '-');
 
-            $.ajax({
-                url: `{{ route('satusehat.clinical-impression.lihat-detail', '') }}/${btoa(param)}`,
-                method: 'POST',
-                data: {
-                    _token: $('meta[name="csrf-token"]').attr('content')
-                },
-                success: function(response) {
-                    Swal.close();
+            // Populate resume medis data
+            $('#plan').text(response.dataErm.PLAN_TERAPI || '-');
+            $('#diagnosa').text(response.dataErm.DIAGNOSA || '-');
 
-                    // Populate patient data
-                    $('#nama_pasien').text(response.dataPasien.NAMA || '-');
-                    $('#no_rm').text(response.dataPasien.KBUKU || '-');
-                    $('#no_peserta').text(response.dataPasien.NO_PESERTA || '-');
-                    $('#no_karcis').text(response.dataPasien.KARCIS || '-');
-                    $('#dokter').text(response.dataPasien.DOKTER || '-');
+            // Show status based on integration status
+            $('#integrasi_care_plan, #success_care_plan, #failed_care_plan').hide();
 
-                    // Populate resume medis data
-                    $('#keluhan').text(response.dataErm.KELUHAN || '-');
-                    $('#td').text(response.dataErm.TD || '-');
-                    $('#dj').text(response.dataErm.DJ || '-');
-                    $('#p').text(response.dataErm.P || '-');
-                    $('#suhu').text(response.dataErm.SUHU || '-');
-                    $('#tb').text(response.dataErm.TB || '-');
-                    $('#bb').text(response.dataErm.BB || '-');
-                    $('#IMT').text(response.dataErm.IMT || '-');
-                    $('#diagnosa').text(response.dataErm.DIAGNOSA || '-');
-                    $('#terapi').text(response.dataErm.TERAPI || '-');
-                    $('#tindakan').text(response.dataErm.TINDAKAN || '-');
-                    $('#anjuran').text(response.dataErm.ANJURAN || '-');
+            if (!response.dataPasien.statusIntegrated) {
+                $('#integrasi_care_plan').show();
+            } else if (response.dataPasien.statusIntegrated) {
+                $('#success_care_plan').show();
+            }
 
-                    // Show status based on integration status
-                    $('#integrasi_resume, #success_resume, #failed_resume').hide();
-
-                    if (response.dataPasien.statusIntegrated === 'Belum Integrasi') {
-                        $('#integrasi_resume').show();
-                    } else if (response.dataPasien.statusIntegrated === 'Sudah Integrasi') {
-                        $('#success_resume').show();
-                    } else {
-                        $('#failed_resume').show();
-                    }
-
-                    // Show modal
-                    $('#modalResumeMedis').modal('show');
-                },
-                error: function(xhr) {
-                    Swal.close();
-                    Swal.fire({
-                        title: 'Error!',
-                        text: 'Gagal memuat data resume medis',
-                        icon: 'error'
-                    });
-                }
-            });
+            // Show modal
+            $('#modalCarePlan').modal('show');
         }
 
         function sendSatuSehat(param) {
+            var formData = new FormData();
+            formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
+            formData.append('param', param);
+
             Swal.fire({
                 title: "Konfirmasi Pengiriman",
-                text: `Kirim data Impresi Klinis ke SatuSehat?`,
+                text: `Kirim data Rencana Perawatan (Care Plan) ke SatuSehat?`,
                 icon: "question",
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
@@ -528,19 +562,23 @@
                 cancelButtonText: "Batal",
             }).then(async (conf) => {
                 if (conf.value || conf.isConfirmed) {
-                    await ajaxGetJson(
-                        `{{ route('satusehat.clinical-impression.send', '') }}/${btoa(param)}`,
+                    await ajaxPostFile(
+                        `{{ route('satusehat.care-plan.send') }}`,
+                        formData,
                         "input_success",
-                        ""
                     );
                 }
             });
         }
 
         function resendSatuSehat(param) {
+            var formData = new FormData();
+            formData.append('_token', $('meta[name="csrf-token"]').attr('content'));
+            formData.append('param', param);
+
             Swal.fire({
                 title: "Konfirmasi Pengiriman Ulang",
-                text: `Kirim ulang data Impresi Klinis?`,
+                text: `Kirim ulang Rencana Perawatan (Care Plan)?`,
                 icon: "question",
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
@@ -549,10 +587,10 @@
                 cancelButtonText: "Batal",
             }).then(async (conf) => {
                 if (conf.value || conf.isConfirmed) {
-                    await ajaxGetJson(
-                        `{{ route('satusehat.clinical-impression.resend', '') }}/${btoa(param)}`,
+                    await ajaxPostFile(
+                        `{{ route('satusehat.care-plan.resend', '') }}`,
+                        formData,
                         "input_success",
-                        ""
                     );
                 }
             });
@@ -560,48 +598,31 @@
 
         function bulkSend() {
             if (selectedIds.length === 0) {
-                Swal.fire({
-                    title: 'Peringatan!',
-                    text: 'Pilih minimal 1 data untuk dikirim',
-                    icon: 'warning'
+                $.toast({
+                    heading: "Peringatan!",
+                    text: "Pilih data yang akan dikirim terlebih dahulu.",
+                    position: "top-right",
+                    icon: "warning",
+                    hideAfter: 3000
                 });
                 return;
             }
 
             Swal.fire({
-                title: "Konfirmasi Pengiriman Massal",
-                text: `Kirim ${selectedIds.length} data terpilih ke SatuSehat?`,
+                title: "Konfirmasi Bulk Send",
+                text: `Kirim ${selectedIds.length} data Rencana Perawatan (Care Plan) ke SatuSehat?`,
                 icon: "question",
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
                 cancelButtonColor: "#d33",
-                confirmButtonText: "Ya, kirim!",
+                confirmButtonText: "Ya, kirim semua!",
                 cancelButtonText: "Batal",
-            }).then(async (conf) => {
-                if (conf.value || conf.isConfirmed) {
-                    // TODO: Implement bulk send logic
-                    Swal.fire({
-                        title: 'Proses Pengiriman',
-                        text: 'Sedang mengirim data...',
-                        allowOutsideClick: false,
-                        showConfirmButton: false,
-                        willOpen: () => {
-                            Swal.showLoading();
-                        }
-                    });
-
-                    // Placeholder - implement actual bulk send
-                    setTimeout(() => {
-                        Swal.close();
-                        Swal.fire({
-                            title: 'Berhasil!',
-                            text: `${selectedIds.length} data berhasil dikirim`,
-                            icon: 'success'
-                        }).then(() => {
-                            selectedIds = [];
-                            table.ajax.reload();
-                        });
-                    }, 2000);
+            }).then(async (result) => {
+                if (result.value) {
+                    await ajaxPostJson(`{{ route('satusehat.care-plan.bulk-send') }}`, {
+                        _token: $('meta[name="csrf-token"]').attr("content"),
+                        selected_ids: selectedIds
+                    }, "input_success", "");
                 }
             });
         }
