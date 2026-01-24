@@ -207,8 +207,8 @@
         let filterStatus = 'all';
         $(document).ready(function() {
             // 🗓️ datepicker
-            var endDate = moment();
-            var startDate = moment().subtract(240, 'days');
+            var startDate = moment().startOf('day');
+            var endDate = moment().endOf('day');
 
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
@@ -488,8 +488,8 @@
         function resetSearch() {
             filterStatus = 'all';
 
-            var endDate = moment();
-            var startDate = moment().subtract(30, 'days');
+            var startDate = moment().startOf('day');
+            var endDate = moment().endOf('day');
 
             $('#start_date').val(startDate.format('YYYY-MM-DD'));
             $('#end_date').val(endDate.format('YYYY-MM-DD'));
@@ -684,7 +684,8 @@
                             if (showSwal) {
                                 swal({
                                     title: 'Berhasil',
-                                    text: res.message || 'Diagnosis berhasil dikirim ke SATUSEHAT',
+                                    text: res.message ||
+                                        'Diagnosis berhasil dikirim ke SATUSEHAT',
                                     type: 'success',
                                     confirmButtonText: 'OK'
                                 });
