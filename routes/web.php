@@ -218,10 +218,12 @@ Route::middleware(['checkLogin'])->group(function () {
             ->name('resume-medis.datatable');
         Route::post('/resume-medis/lihat-detail/{param}', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'lihatDetail'])
             ->name('resume-medis.lihat-detail');
-        Route::get('/resume-medis/send/{param}', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'send'])
+        Route::get('/resume-medis/send/{param}', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'sendSatuSehat'])
             ->name('resume-medis.send');
-        Route::get('/resume-medis/resend/{param}', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'resend'])
+        Route::get('/resume-medis/resend/{param}', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'resendSatuSehat'])
             ->name('resume-medis.resend');
+        Route::post('/resume-medis/bulk-send', [App\Http\Controllers\SatuSehat\ResumeMedisController::class, 'bulkSend'])
+            ->name('resume-medis.bulk-send');
 
         // Diagnosis
         Route::get('/diagnosis', [App\Http\Controllers\SatuSehat\DiagnosisController::class, 'index'])->name('diagnosis.index');

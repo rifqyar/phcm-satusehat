@@ -163,7 +163,7 @@ class QuestionnaireResponseController extends Controller
                 $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
                 $paramEncoded = base64_encode($paramSatuSehat);
                 
-                return '<button class="btn btn-sm btn-primary" onclick="tambahRespon(\'' . $row->ID_TRANSAKSI . '\', \'' . $paramEncoded . '\')">Isi Respon Kuesioner</button>';
+                return '<button style="white-space: nowrap" class="btn btn-sm btn-primary" onclick="tambahRespon(\'' . $row->ID_TRANSAKSI . '\', \'' . $paramEncoded . '\')">Isi respon kuesioner</button>';
             })
             ->addColumn('status_integrasi', function ($row) use ($logStatuses) {
                 // Use pre-fetched log status to avoid N+1 query
@@ -375,7 +375,7 @@ class QuestionnaireResponseController extends Controller
             if (!$encounter || !$encounter->id_satusehat_encounter) {
                 return response()->json([
                     'status' => 404,
-                    'message' => 'Data encounter tidak ditemukan',
+                    'message' => 'Encounter SatuSehat tidak ditemukan',
                     'redirect' => ['need' => false, 'to' => '']
                 ], 404);
             }
