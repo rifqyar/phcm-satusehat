@@ -93,7 +93,7 @@ class HomeController extends Controller
             [
                 'title' => 'Rencana Perawatan',
                 'url' => 'satusehat.care-plan.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Catatan Pengobatan',
