@@ -94,7 +94,7 @@ class EncounterController extends Controller
 
 
         $dataKunjungan = collect(DB::select("
-            EXEC dbo.sp_getDataEncounter ?, ?, ?, ?
+            EXEC dbo.sp_getDataEncounter ?, ?, ?, ?, ?, ?
         ", [
             $id_unit,
             $tgl_awal_db,
