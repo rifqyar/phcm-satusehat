@@ -30,145 +30,64 @@ class DiagnosisController extends Controller
             $startDate = now()->subDays(30)->toDateString();
         }
 
-        /*
-     |--------------------------------------------------------------------------
-     | BASE RAW SQL
-     |--------------------------------------------------------------------------
-     | SENT = id_satusehat_condition IS NOT NULL
-     |--------------------------------------------------------------------------
-     */
         $baseSql = "
-        SELECT
-            SE.id_satusehat_encounter,
-            SP.nama AS PASIEN,
-            b.KODE_SUB_CRTUSR AS DOKTER,
-            SD.id_satusehat_condition,
-            b.KARCIS,
-            b.TGL,
-            a.NOTA,
-            d.REKENING AS KLINIK,
-            SE.jam_datang,
-            SE.jam_progress,
-            SE.jam_selesai
-        FROM SIRS_PHCM..RJ_KARCIS_BAYAR a
-        JOIN SIRS_PHCM..RJ_KARCIS b 
-            ON a.KARCIS = b.KARCIS
-        JOIN SIRS_PHCM..RJ_MKLINIK d 
-            ON d.KDKLINIK = b.KLINIK
-        JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE 
-            ON b.KARCIS = SE.karcis
-        JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN SP
-            ON SE.id_satusehat_px = SP.idpx
-        JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES SN
-            ON SE.id_satusehat_dokter = SN.idnakes
-        LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA SD
-            ON b.KARCIS = SD.karcis
-        WHERE b.TGL BETWEEN ? AND ?
-          AND b.IDUNIT = ?
-          AND a.IDUNIT = ?
-          AND ISNULL(a.STBTL, 0) = 0
-    ";
+            SELECT
+                SE.id_satusehat_encounter,
+                SP.nama AS PASIEN,
+                b.KODE_SUB_CRTUSR AS DOKTER,
+                SD.id_satusehat_condition,
+                b.KARCIS,
+                b.TGL,
+                a.NOTA,
+                d.REKENING AS KLINIK,
+                SE.jam_datang,
+                SE.jam_progress,
+                SE.jam_selesai
+            FROM SIRS_PHCM..RJ_KARCIS_BAYAR a
+            JOIN SIRS_PHCM..RJ_KARCIS b ON a.KARCIS = b.KARCIS
+            JOIN SIRS_PHCM..RJ_MKLINIK d ON d.KDKLINIK = b.KLINIK
+            JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE ON b.KARCIS = SE.karcis
+            JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN SP ON SE.id_satusehat_px = SP.idpx
+            JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES SN ON SE.id_satusehat_dokter = SN.idnakes
+            LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA SD ON b.KARCIS = SD.karcis
+            WHERE b.TGL BETWEEN ? AND ?
+            AND b.IDUNIT = ?
+            AND a.IDUNIT = ?
+            AND ISNULL(a.STBTL, 0) = 0
+        ";
 
-        /*
-     |--------------------------------------------------------------------------
-     | QUERY WRAPPER
-     |--------------------------------------------------------------------------
-     */
-        $query = DB::table(DB::raw("($baseSql) AS x"))
-            ->setBindings([
-                $startDate,
-                $endDate,
-                $id_unit,
-                $id_unit
-            ]);
-
-        /*
-     |--------------------------------------------------------------------------
-     | SUMMARY COUNT
-     |--------------------------------------------------------------------------
-     */
-        $recordsTotal = DB::selectOne("
-        SELECT COUNT(*) AS total FROM ($baseSql) x
-    ", [
+        // 🔥 ambil SEMUA DATA SEKALI
+        $rows = DB::select($baseSql, [
             $startDate,
             $endDate,
             $id_unit,
             $id_unit
-        ])->total;
+        ]);
 
-        $sentCount = DB::selectOne("
-        SELECT COUNT(*) AS total
-        FROM ($baseSql) x
-        WHERE x.id_satusehat_condition IS NOT NULL
-    ", [
-            $startDate,
-            $endDate,
-            $id_unit,
-            $id_unit
-        ])->total;
+        // ======================
+        // SUMMARY (TANPA FILTER)
+        // ======================
+        $sent = 0;
+        $unsent = 0;
 
-        $unsentCount = $recordsTotal - $sentCount;
-
-        /*
-     |--------------------------------------------------------------------------
-     | FILTER STATUS (OPTIONAL)
-     |--------------------------------------------------------------------------
-     */
-        if ($status = $request->input('status')) {
-            if ($status === 'sent') {
-                $query->whereNotNull('x.id_satusehat_condition');
-            } elseif ($status === 'unsent') {
-                $query->whereNull('x.id_satusehat_condition');
+        foreach ($rows as $row) {
+            if ($row->id_satusehat_condition) {
+                $sent++;
+            } else {
+                $unsent++;
             }
         }
 
-        /*
-     |--------------------------------------------------------------------------
-     | DATATABLES
-     |--------------------------------------------------------------------------
-     */
-        $dataTable = DataTables::of($query)
-            ->filterColumn('KARCIS', function ($query, $keyword) {
-                $query->where('x.KARCIS', 'like', "%{$keyword}%");
-            })
-            ->filterColumn('NOTA', function ($query, $keyword) {
-                $query->where('x.NOTA', 'like', "%{$keyword}%");
-            })
-            ->filterColumn('DOKTER', function ($query, $keyword) {
-                $query->where('x.DOKTER', 'like', "%{$keyword}%");
-            })
-            ->filterColumn('PASIEN', function ($query, $keyword) {
-                $query->where('x.PASIEN', 'like', "%{$keyword}%");
-            })
-            ->filter(function ($query) use ($request) {
-                if ($search = $request->get('search')['value'] ?? null) {
-                    $query->where(function ($q) use ($search) {
-                        $q->where('x.KARCIS', 'like', "%{$search}%")
-                            ->orWhere('x.NOTA', 'like', "%{$search}%")
-                            ->orWhere('x.DOKTER', 'like', "%{$search}%")
-                            ->orWhere('x.PASIEN', 'like', "%{$search}%");
-                    });
-                }
-            })
-            ->order(function ($query) {
-                $query->orderBy('x.KARCIS', 'desc');
-            })
-            ->make(true);
-
-        /*
-     |--------------------------------------------------------------------------
-     | APPEND SUMMARY
-     |--------------------------------------------------------------------------
-     */
-        $json = $dataTable->getData(true);
-        $json['summary'] = [
-            'all'    => $recordsTotal,
-            'sent'   => $sentCount,
-            'unsent' => $unsentCount,
-        ];
-
-        return response()->json($json);
+        return response()->json([
+            'data' => $rows,
+            'summary' => [
+                'all'    => count($rows),
+                'sent'   => $sent,
+                'unsent' => $unsent,
+            ]
+        ]);
     }
+
 
 
 

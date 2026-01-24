@@ -166,12 +166,21 @@
             </form>
 
             <hr>
+        </div>
+    </div>
 
-            <!-- 🧾 Tabel Data -->
+    <div class="card">
+        <div class="card-body">
             <div class="mb-3">
-                <button type="button" id="btnKirimDipilih" class="btn btn-success btn-sm">
-                    <i class="fas fa-paper-plane"></i> Kirim Dipilih
-                </button>
+                <div class="row align-items-center justify-content-between m-1">
+                    <div class="card-title">
+                        <h4>Data Pasien</h4>
+                    </div>
+
+                    <button type="button" id="btnKirimDipilih" class="btn btn-warning btn-rounded">
+                        <i class="fas fa-paper-plane"></i> Kirim Terpilih ke SatuSehat
+                    </button>
+                </div>
             </div>
 
             <div class="table-responsive">
@@ -205,6 +214,30 @@
     <script>
         var table;
         let filterStatus = 'all';
+        $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+
+            if (settings.nTable.id !== 'diagnosisTable') {
+                return true;
+            }
+
+            if (filterStatus === 'all') {
+                return true;
+            }
+
+            const row = table.row(dataIndex).data();
+            const isSent = !!row.id_satusehat_condition;
+
+            if (filterStatus === 'sent') {
+                return isSent;
+            }
+
+            if (filterStatus === 'unsent') {
+                return !isSent;
+            }
+
+            return true;
+        });
+
         $(document).ready(function() {
             // 🗓️ datepicker
             var startDate = moment().startOf('day');
@@ -339,10 +372,11 @@
                 });
             });
 
+
             // ⚙️ DataTable
             table = $('#diagnosisTable').DataTable({
                 processing: true,
-                serverSide: true,
+                serverSide: false,
                 ajax: {
                     url: '{{ route('satusehat.diagnosis.datatable') }}',
                     type: 'POST',
@@ -351,7 +385,7 @@
                         d.start_date = $('#start_date').val();
                         d.end_date = $('#end_date').val();
                         d.jenis = $('#jenis').val();
-                        d.status = filterStatus;
+                        d.jenis = $('#jenis').val();
                     }
                 },
                 columns: [{
@@ -494,15 +528,14 @@
             $('#start_date').val(startDate.format('YYYY-MM-DD'));
             $('#end_date').val(endDate.format('YYYY-MM-DD'));
 
-            table.ajax.reload();
+            table.draw();
         }
 
 
         function search(type) {
-            filterStatus = type; // all | sent | unsent
-            table.ajax.reload();
+            filterStatus = type;   // all | sent | unsent
+            table.draw();
         }
-
 
         function cekData(idTrans) {
             $('#modalLihatDiagnosa').modal('show');
@@ -643,7 +676,7 @@
                     table.ajax.reload();
                 } else {
                     console.log("Dibatalkan");
-                    table.ajax.reload();
+                    table.draw();
                 }
             });
         }
