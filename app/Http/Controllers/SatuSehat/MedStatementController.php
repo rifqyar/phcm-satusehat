@@ -50,140 +50,91 @@ class MedStatementController extends Controller
     public function datatabel(Request $request)
     {
         $startDate = $request->get('start_date', date('Y-m-d'));
-        $endDate = $request->get('end_date', date('Y-m-d'));
-        $endDate = date('Y-m-d', strtotime($endDate . ' +1 day'));
+        $endDate   = date('Y-m-d', strtotime(
+            $request->get('end_date', date('Y-m-d')) . ' +1 day'
+        ));
         $status = $request->get('status', 'all');
 
-
         $sql = "
-            SELECT 
-                AA.KARCIS,
-                A.ID_TRANS,
-                A.NMPX,
-                A.TGL,
-                B.CREATED_AT AS WAKTU_KIRIM_DISPENSE,
-                CASE 
-                    WHEN EXISTS (
-                        SELECT 1
-                        FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION MS
-                        WHERE MS.LOG_TYPE = 'MedicationStatement'
-                        AND MS.LOCAL_ID = A.ID_TRANS
-                        AND MS.STATUS = 'success'
-                    )
-                    THEN 'Integrasi'
-                    ELSE 'Belum Integrasi'
-                END AS STATUS_KIRIM_STATEMENT
-            FROM IF_HTRANS A
-            JOIN IF_HTRANS_OL AA 
-                ON A.ID_TRANS_OL = AA.ID_TRANS
-            JOIN (
-                SELECT *
-                FROM (
-                    SELECT *,
-                        ROW_NUMBER() OVER (
-                            PARTITION BY LOCAL_ID
-                            ORDER BY CREATED_AT DESC
-                        ) AS rn
-                    FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
-                    WHERE LOG_TYPE = 'MedicationDispense'
-                    AND STATUS = 'success'
-                ) x
-                WHERE rn = 1
-            ) B
-                ON A.ID_TRANS = B.LOCAL_ID
-        WHERE B.CREATED_AT BETWEEN ? AND ?";
+        SELECT 
+            AA.KARCIS,
+            A.ID_TRANS,
+            A.NMPX,
+            A.TGL,
+            B.CREATED_AT AS WAKTU_KIRIM_DISPENSE,
+            CASE 
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION MS
+                    WHERE MS.LOG_TYPE = 'MedicationStatement'
+                      AND MS.LOCAL_ID = A.ID_TRANS
+                      AND MS.STATUS = 'success'
+                )
+                THEN 'Integrasi'
+                ELSE 'Belum Integrasi'
+            END AS STATUS_KIRIM_STATEMENT
+        FROM IF_HTRANS A
+        JOIN IF_HTRANS_OL AA 
+            ON A.ID_TRANS_OL = AA.ID_TRANS
+        JOIN (
+            SELECT *
+            FROM (
+                SELECT *,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY LOCAL_ID
+                        ORDER BY CREATED_AT DESC
+                    ) AS rn
+                FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
+                WHERE LOG_TYPE = 'MedicationDispense'
+                  AND STATUS = 'success'
+            ) x
+            WHERE rn = 1
+        ) B ON A.ID_TRANS = B.LOCAL_ID
+        WHERE B.CREATED_AT BETWEEN ? AND ?
+    ";
 
-        $query = DB::table(
-            DB::raw("(
-                $sql
-            ) AS dashboard_med_statement")
-        )->setBindings([$startDate, $endDate]);
+        $query = DB::select($sql, [$startDate, $endDate]);
 
-        // filer status yang diklik via card ntar
-        if ($status === 'integrated') {
-            $query->where('STATUS_KIRIM_STATEMENT', 'Integrasi');
-        }
-        elseif ($status === 'not_integrated') {
-            $query->where('STATUS_KIRIM_STATEMENT', 'Belum Integrasi');
-        }
+// ========================
+// QUERY DATA TABLE (PAKAI FILTER STATUS)
+// ========================
+$dataQuery = DB::select($sql, [$startDate, $endDate]);
 
+if ($status !== 'all') {
+    $dataQuery = array_values(array_filter($dataQuery, function ($row) use ($status) {
+        return $status === 'integrated'
+            ? $row->STATUS_KIRIM_STATEMENT === 'Integrasi'
+            : $row->STATUS_KIRIM_STATEMENT === 'Belum Integrasi';
+    }));
+}
 
-        $recordsTotal = DB::selectOne(
-            "SELECT COUNT(1) AS total FROM ($sql) x",
-            [$startDate, $endDate]
-        )->total;
+// ========================
+// QUERY SUMMARY (TANPA FILTER STATUS)
+// ========================
+$summaryQuery = DB::select($sql, [$startDate, $endDate]);
 
-        $dataTable = DataTables::of($query)
-            ->filter(function ($query) use ($request) {
-                if ($search = $request->get('search')['value']) {
-                    $query->where(function ($q) use ($search) {
-                        $q->where('KARCIS', 'like', "%{$search}%")
-                            ->orWhere('ID_TRANS', 'like', "%{$search}%")
-                            ->orWhere('NMPX', 'like', "%{$search}%")
-                            ->orWhere('STATUS_KIRIM_STATEMENT', 'like', "%{$search}%");
-                    });
-                }
-            })
-            ->order(function ($query) {
-                $query->orderBy('WAKTU_KIRIM_DISPENSE', 'desc');
-            })
-            ->make(true);
+$sudahKirim = 0;
+$belumKirim = 0;
 
-        $json = $dataTable->getData(true);
-
-        $summary = DB::selectOne("
-                SELECT
-                    COUNT(1) AS all_data,
-                    SUM(T.is_sudah_kirim) AS sudah_kirim
-                FROM (
-                    SELECT
-                        A.ID_TRANS,
-                        CASE 
-                            WHEN MS.LOCAL_ID IS NOT NULL THEN 1
-                            ELSE 0
-                        END AS is_sudah_kirim
-                    FROM IF_HTRANS A
-                    JOIN IF_HTRANS_OL AA 
-                        ON A.ID_TRANS_OL = AA.ID_TRANS
-                    JOIN (
-                        SELECT *
-                        FROM (
-                            SELECT *,
-                                ROW_NUMBER() OVER (
-                                    PARTITION BY LOCAL_ID
-                                    ORDER BY CREATED_AT DESC
-                                ) AS rn
-                            FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
-                            WHERE LOG_TYPE = 'MedicationDispense'
-                            AND STATUS = 'success'
-                        ) x
-                        WHERE rn = 1
-                    ) B
-                        ON A.ID_TRANS = B.LOCAL_ID
-                    LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION MS
-                        ON MS.LOCAL_ID = A.ID_TRANS
-                        AND MS.LOG_TYPE = 'MedicationStatement'
-                        AND MS.STATUS = 'success'
-                    WHERE B.CREATED_AT BETWEEN ? AND ?
-                    GROUP BY A.ID_TRANS, MS.LOCAL_ID
-                ) T
-            ", [$startDate, $endDate]);
-
-
-
-        $json['summary'] = [
-            'all'         => (int) $summary->all_data,
-            'sudah_kirim' => (int) $summary->sudah_kirim,
-            'belum_kirim' => (int) ($summary->all_data - $summary->sudah_kirim),
-            'periode' => [
-                'start' => $startDate,
-                'end'   => $endDate,
-            ],
-        ];
-
-
-        return response()->json($json);
+foreach ($summaryQuery as $row) {
+    if ($row->STATUS_KIRIM_STATEMENT === 'Integrasi') {
+        $sudahKirim++;
+    } else {
+        $belumKirim++;
     }
+}
+
+return response()->json([
+    'data' => $dataQuery,
+    'summary' => [
+        'all'         => count($summaryQuery),
+        'sudah_kirim' => $sudahKirim,
+        'belum_kirim' => $belumKirim,
+    ]
+]);
+
+    }
+
 
     public function detail(Request $request)
     {

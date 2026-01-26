@@ -84,17 +84,37 @@ class EncounterController extends Controller
         $tgl_awal_db  = Carbon::parse($tgl_awal)->format('Y-m-d H:i:s');
         $tgl_akhir_db = Carbon::parse($tgl_akhir)->format('Y-m-d H:i:s');
 
+        // ================= DATATABLES PAGINATION =================
+        $start  = (int) $request->input('start', 0);
+        $length = (int) $request->input('length', 10);
+        $draw   = (int) $request->input('draw', 1);
+
+        $pageNumber = ($start / $length) + 1;
+        $pageSize   = $length;
+
+
         $dataKunjungan = collect(DB::select("
-            EXEC dbo.sp_getDataEncounter ?, ?, ?, ?
+            EXEC dbo.sp_getDataEncounter ?, ?, ?, ?, ?, ?
         ", [
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
-            $request->input('cari') ?? 'all'
+            $request->input('cari') ?? 'all',
+            $pageNumber,
+            $pageSize
+
         ]));
 
-        $summary = $dataKunjungan->first();
+        if ($dataKunjungan->isEmpty()) {
+            return response()->json([
+                "draw" => $draw,
+                "recordsTotal" => 0,
+                "recordsFiltered" => 0,
+                "data" => []
+            ]);
+        }
 
+        $summary = $dataKunjungan->first();
         $totalData = [
             'total_semua' => $summary->total_semua ?? 0,
             'rjAll' => $summary->rjAll ?? 0,
@@ -102,9 +122,23 @@ class EncounterController extends Controller
             'total_sudah_integrasi' => $summary->total_sudah_integrasi ?? 0,
             'total_belum_integrasi' => $summary->total_belum_integrasi ?? 0,
         ];
+        $recordsTotal    = $summary->total_semua ?? 0;
+        $recordsFiltered = $summary->recordsFiltered ?? $recordsTotal;
 
-        return DataTables::of($dataKunjungan)
-            ->addIndexColumn()
+        $dataTable = DataTables::of($dataKunjungan)
+            ->skipPaging()
+            ->setTotalRecords($recordsTotal)
+            ->setFilteredRecords($recordsFiltered)
+            // ->addIndexColumn()
+            ->addColumn('DT_RowIndex', function ($row) use ($start) {
+                static $i = 0;
+                return $start + (++$i);
+            })
+            // ->setRowId(function ($row) use ($request) {
+            //     $start = $request->input('start', 0);
+            //     static $i = 0;
+            //     return $start + (++$i);
+            // })
             ->addColumn('checkbox', function ($row) {
                 $checkBox = '';
                 $jenisPerawatan = $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
@@ -219,8 +253,23 @@ class EncounterController extends Controller
                 }
             })
             ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi', 'checkbox'])
-            ->with($totalData)
+            // ->with([
+            //     "draw" => $draw,
+            //     "recordsTotal" => $recordsTotal,
+            //     "recordsFiltered" => $recordsFiltered,
+            //     "summary" => $totalData
+            // ])
             ->make(true);
+
+        $response = $dataTable->getData(true);
+
+        return response()->json([
+            "draw" => intval($request->draw),
+            "recordsTotal" => $recordsTotal,
+            "recordsFiltered" => $recordsFiltered,
+            "data" => $response['data'],
+            "summary" => $totalData
+        ]);
     }
 
     private function checkDateFormat($date)

@@ -155,6 +155,13 @@ return [
             'level' => 'info',
             'days' => 7
         ],
+
+        'CarePlan' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/CarePlan.log'),
+            'level' => 'info',
+            'days' => 7
+        ],
     ],
 
 ];
