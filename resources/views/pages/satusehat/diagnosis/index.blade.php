@@ -239,7 +239,7 @@
         });
 
         $(document).ready(function() {
-            // 🗓️ datepicker
+            // datepicker
             var startDate = moment().startOf('day');
             var endDate = moment().endOf('day');
 
@@ -260,7 +260,7 @@
             $('#start_date').val(startDate.format('YYYY-MM-DD'));
             $('#end_date').val(endDate.format('YYYY-MM-DD'));
 
-            // ✅ Checkbox select-all
+            // Checkbox select-all
             $(document).on('change', '#checkAll', function() {
                 $('.checkbox-item').prop('checked', $(this).is(':checked'));
             });
@@ -269,7 +269,7 @@
                 $('.checkbox-item').prop('checked', $(this).is(':checked'));
             });
 
-            // 🚀 Fungsi utama kirim batch satu per satu
+            // Fungsi utama kirim batch satu per satu
             async function sendSequential(selected) {
                 let successCount = 0;
                 let failCount = 0;
@@ -329,7 +329,7 @@
             }
 
 
-            // ⚡ Event tombol "Kirim Dipilih"
+            // Event tombol "Kirim Dipilih"
             $('#btnKirimDipilih').on('click', function() {
                 const selected = $('.checkbox-item:checked').map(function() {
                     return $(this).val();
@@ -373,7 +373,7 @@
             });
 
 
-            // ⚙️ DataTable
+            // DataTable
             table = $('#diagnosisTable').DataTable({
                 processing: true,
                 serverSide: false,
