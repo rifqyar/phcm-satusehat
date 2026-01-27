@@ -324,6 +324,15 @@
                         searchable: false,
                         className: 'text-center',
                         render: function (data, type, row) {
+
+                            if (type !== 'display') {
+                                return '-';
+                            }
+
+                            if (row.SATUSEHAT_STATUS === 'SUCCESS') {
+                                return '-';
+                            }
+
                             return `
                                 <input type="checkbox"
                                     class="checkbox-item"
@@ -360,13 +369,11 @@
                         className: 'text-center',
                         render: function(v, type, row) {
 
-                            // ⬇️ INI PENTING
-                            // untuk search / sort → pakai value asli
+                            // untuk search / sort -> pakai value asli
                             if (type !== 'display') {
                                 return v ?? 'DRAFT';
                             }
 
-                            // ⬇️ untuk tampilan
                             if (v === 'SUCCESS') {
                                 return `
                                     <span class="badge badge-pill badge-success p-2 w-100">
