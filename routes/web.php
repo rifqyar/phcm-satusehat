@@ -196,6 +196,8 @@ Route::middleware(['checkLogin'])->group(function () {
             ->name('diagnostic-report.datatable');
         Route::post('/diagnostic-report/sendsatusehat/{id}', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'sendSatuSehat'])
             ->name('diagnostic-report.send-satu-sehat');
+        Route::post('/diagnostic-report/resendsatusehat/{id}', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'reSendSatuSehat'])
+            ->name('diagnostic-report.resend-satu-sehat');
         Route::post('/diagnostic-report/bulk-send', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'bulkSend'])
             ->name('diagnostic-report.bulk-send');
 
