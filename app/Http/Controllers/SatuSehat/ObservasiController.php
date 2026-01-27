@@ -162,11 +162,11 @@ class ObservasiController extends Controller
         ]));
 
         $totalData = [
-            'total_semua' => $data->first()->total_semua,
-            'total_sudah_integrasi' => $data->first()->total_sudah_integrasi,
-            'total_belum_integrasi' => $data->first()->total_belum_integrasi,
-            'total_rawat_jalan' => $data->first()->total_rawat_jalan,
-            'total_rawat_inap' => $data->first()->total_rawat_inap,
+            'total_semua' => $data->first()->total_semua ?? 0,
+            'total_sudah_integrasi' => $data->first()->total_sudah_integrasi ?? 0,
+            'total_belum_integrasi' => $data->first()->total_belum_integrasi ?? 0,
+            'total_rawat_jalan' => $data->first()->total_rawat_jalan ?? 0,
+            'total_rawat_inap' => $data->first()->total_rawat_inap ?? 0,
         ];
 
 
