@@ -32,6 +32,7 @@ class DiagnosisController extends Controller
 
         $baseSql = "
             SELECT
+                A.ID_IMUNISASI_PX,
                 SE.id_satusehat_encounter,
                 SP.nama AS PASIEN,
                 b.KODE_SUB_CRTUSR AS DOKTER,

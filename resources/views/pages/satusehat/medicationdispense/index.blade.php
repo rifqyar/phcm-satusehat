@@ -25,7 +25,7 @@
             cursor: pointer;
         }
 
-        /* ✅ Kolom checkbox */
+        /* Kolom checkbox */
         table.table th:first-child,
         table.table td:first-child {
             width: 50px !important;
@@ -74,11 +74,9 @@
                         <div class="card card-inverse card-primary card-mapping" onclick="search('all')">
                             <div class="card-body">
                                 <div class="row align-items-center ml-1">
-                                    <i class="fas fa-pills text-white" style="font-size: 48px"></i>
+                                    <i class="fas fa-pills text-white" style="font-size:48px"></i>
                                     <div class="ml-3">
-                                        <span data-count="all" class="text-white" style="font-size: 24px">
-                                            {{ count($mergedAll ?? []) }}
-                                        </span>
+                                        <h2 id="summary-all" class="text-white mb-0">0</h2>
                                         <h4 class="text-white">Semua Data</h4>
                                     </div>
                                 </div>
@@ -90,11 +88,9 @@
                         <div class="card card-inverse card-success card-mapping" onclick="search('sent')">
                             <div class="card-body">
                                 <div class="row align-items-center ml-1">
-                                    <i class="fas fa-paper-plane text-white" style="font-size: 48px"></i>
+                                    <i class="fas fa-paper-plane text-white" style="font-size:48px"></i>
                                     <div class="ml-3">
-                                        <span data-count="sent" class="text-white" style="font-size: 24px">
-                                            {{ count($sentData ?? []) }}
-                                        </span>
+                                        <h2 id="summary-sent" class="text-white mb-0">0</h2>
                                         <h4 class="text-white">Data Terkirim</h4>
                                     </div>
                                 </div>
@@ -106,11 +102,9 @@
                         <div class="card card-inverse card-danger card-mapping" onclick="search('unsent')">
                             <div class="card-body">
                                 <div class="row align-items-center ml-1">
-                                    <i class="fas fa-hourglass-half text-white" style="font-size: 48px"></i>
+                                    <i class="fas fa-hourglass-half text-white" style="font-size:48px"></i>
                                     <div class="ml-3">
-                                        <span data-count="unsent" class="text-white" style="font-size: 24px">
-                                            {{ count($unsentData ?? []) }}
-                                        </span>
+                                        <h2 id="summary-unsent" class="text-white mb-0">0</h2>
                                         <h4 class="text-white">Belum Terkirim</h4>
                                     </div>
                                 </div>
@@ -165,10 +159,14 @@
 
             <hr>
 
-            <!-- 🧾 Tabel Data -->
-            <div class="mb-3">
-                <button type="button" id="btnKirimDipilih" class="btn btn-success btn-sm">
-                    <i class="fas fa-paper-plane"></i> Kirim Dipilih
+            <!-- Tabel Data -->
+            <div class="row align-items-center justify-content-between m-1">
+                <div class="card-title">
+                    <h4>Data Pasien</h4>
+                </div>
+
+                <button type="button" id="btnKirimDipilih" class="btn btn-warning btn-rounded">
+                    <i class="fas fa-paper-plane"></i> Kirim Terpilih ke SatuSehat
                 </button>
             </div>
 
@@ -203,7 +201,7 @@
         var table;
         var statusFilter = 'all';
         $(document).ready(function() {
-            // 🗓️ inisialisasi datepicker
+            // inisialisasi datepicker
             var endDate = moment();
             var startDate = moment().subtract(7, 'days');
 
@@ -224,10 +222,24 @@
             $('#start_date').val(startDate.format('YYYY-MM-DD'));
             $('#end_date').val(endDate.format('YYYY-MM-DD'));
 
-            // ⚙️ DataTable
+            // DataTable
             table = $('#dispenseTable').DataTable({
                 processing: true,
-                serverSide: true,
+                serverSide: false,
+                deferRender: true,
+                pageLength: 10,
+
+                drawCallback: function() {
+                    var api = this.api();
+                    var start = api.page.info().start;
+
+                    api.column(0, {
+                        page: 'current'
+                    }).nodes().each(function(cell, i) {
+                        cell.innerHTML = start + i + 1;
+                    });
+                },
+
                 ajax: {
                     url: '{{ route('satusehat.medication-dispense.datatable') }}',
                     type: 'POST',
@@ -237,16 +249,21 @@
                         d.end_date = $('#end_date').val();
                         d.jenis = $('#jenis').val();
                         d.status = statusFilter;
+                    },
+                    dataSrc: function(json) {
+                        $('#summary-all').text(json.summary?.all ?? 0);
+                        $('#summary-sent').text(json.summary?.sent ?? 0);
+                        $('#summary-unsent').text(json.summary?.unsent ?? 0);
+
+                        return json.data || [];
                     }
                 },
+
                 columns: [{
                         data: null,
                         orderable: false,
                         searchable: false,
-                        className: 'text-center',
-                        render: function(data, type, row, meta) {
-                            return meta.row + meta.settings._iDisplayStart + 1;
-                        }
+                        className: 'text-center'
                     },
                     {
                         data: null,
@@ -256,45 +273,39 @@
                         render: function(data) {
                             if (data.STATUS_MAPPING === '100' || data.STATUS_MAPPING === '200') {
                                 return `<input type="checkbox" class="checkbox-item" value="${data.ID_TRANS}">`;
-                            } else {
-                                return `<i class="text-muted">-</i>`;
                             }
+                            return `<i class="text-muted">-</i>`;
                         }
                     },
                     {
                         data: null,
-                        name: 'src.NomorKarcis', // ✅ sinkron ke backend alias
                         render: function(data) {
                             return `
-                        <div>
-                            <strong>${data.KARCIS}</strong><br>
-                            <small class="text-muted">#${data.ID_TRANS}</small>
-                        </div>`;
+                                <div>
+                                    <strong>${data.KARCIS}</strong><br>
+                                    <small class="text-muted">#${data.ID_TRANS}</small>
+                                </div>
+                            `;
                         }
                     },
                     {
-                        data: 'DOKTER',
-                        name: 'src.DOKTER'
+                        data: 'DOKTER'
                     },
                     {
-                        data: 'PASIEN',
-                        name: 'src.PASIEN'
+                        data: 'PASIEN'
                     },
                     {
-                        data: 'TGL_KARCIS',
-                        name: 'src.TGL_KARCIS'
+                        data: 'TGL_KARCIS'
                     },
                     {
                         data: 'STATUS_MAPPING',
                         className: 'text-center',
                         render: function(status) {
-                            if (status === '200') {
-                                return `<span class="badge badge-success">Sudah Integrasi</span>`;
-                            } else if (status === '100') {
-                                return `<span class="badge badge-warning">Siap Dikirim</span>`;
-                            } else {
-                                return `<span class="badge badge-danger">Belum Integrasi</span>`;
-                            }
+                            if (status === '200')
+                            return `<span class="badge badge-success">Sudah Integrasi</span>`;
+                            if (status === '100')
+                            return `<span class="badge badge-warning">Siap Dikirim</span>`;
+                            return `<span class="badge badge-danger">Belum Integrasi</span>`;
                         }
                     },
                     {
@@ -303,49 +314,48 @@
                         searchable: false,
                         render: function(data) {
                             let btn = `
-                        <button class="btn btn-sm btn-info w-100 mb-2" onclick="lihatObat('${data.ID_TRANS}')">
-                            <i class="fas fa-eye"></i> Lihat Obat
-                        </button>`;
+                                <button class="btn btn-sm btn-info w-100 mb-2"
+                                    onclick="lihatObat('${data.ID_TRANS}')">
+                                    <i class="fas fa-eye"></i> Lihat Obat
+                                </button>
+                            `;
 
                             if (data.STATUS_MAPPING === '100') {
                                 btn += `
-                            <button class="btn btn-sm btn-primary w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                                <i class="fas fa-paper-plane"></i> Kirim SATUSEHAT
-                            </button>`;
+                                    <button class="btn btn-sm btn-primary w-100"
+                                        onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                        <i class="fas fa-paper-plane"></i> Kirim SATUSEHAT
+                                    </button>`;
                             } else if (data.STATUS_MAPPING === '200') {
                                 btn += `
-                            <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                                <i class="fas fa-redo"></i> Kirim Ulang
-                            </button>`;
+                                    <button class="btn btn-sm btn-warning w-100"
+                                        onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                        <i class="fas fa-redo"></i> Kirim Ulang
+                                    </button>`;
                             } else {
                                 btn += `
-                            <span class="badge badge-secondary w-100 py-2">
-                                <i class="fas fa-ban"></i> Belum ada MedicationRequest
-                            </span>`;
+                                    <span class="badge badge-secondary w-100 py-2">
+                                        <i class="fas fa-ban"></i> Data Obat Belum Termapping
+                                    </span>`;
                             }
 
                             return btn;
                         }
                     }
                 ],
+
                 order: [
                     [4, 'desc']
                 ]
             });
 
-
-            // reload summary
-            table.on('xhr.dt', function(e, settings, json) {
-                if (json && json.summary) {
-                    $('span[data-count="all"]').text(json.summary.all ?? 0);
-                    $('span[data-count="sent"]').text(json.summary.sent ?? 0);
-                    $('span[data-count="unsent"]').text(json.summary.unsent ?? 0);
-                }
-            });
-
             $("#search-data").on("submit", function(e) {
                 e.preventDefault();
-                table.ajax.reload();
+                table.ajax.reload(null, false);
+            });
+            table.on('draw', function() {
+                $('#checkAll').prop('checked', false);
+                $('.checkbox-item').prop('checked', false);
             });
         });
 
@@ -355,14 +365,14 @@
             $('#start_date').val(startDate.format('YYYY-MM-DD'));
             $('#end_date').val(endDate.format('YYYY-MM-DD'));
             $('input[name="search"]').val('');
-            table.ajax.reload();
+            table.ajax.reload(null, false);
         }
-        // ✅ Checkbox select all
+        // Checkbox select all
         $(document).on('change', '#checkAll', function() {
             $('.checkbox-item').prop('checked', $(this).is(':checked'));
         });
 
-        // ✅ Tombol batch send
+        // Tombol batch send
         $('#btnKirimDipilih').on('click', function() {
             const selected = $('.checkbox-item:checked').map(function() {
                 return $(this).val();
@@ -394,7 +404,7 @@
         });
 
 
-        // 🚀 Proses sequential
+        // Proses sequential
         async function sendSequential(selected) {
             let successCount = 0;
             let failCount = 0;
@@ -426,7 +436,7 @@
                 }
             }
 
-            // 🧾 Ringkasan akhir
+            //Ringkasan akhir
             let summaryHtml = `
                         <div style="text-align:left; max-height:300px; overflow-y:auto;">
                             <strong>Sukses (${successCount}):</strong><br>
@@ -541,39 +551,39 @@
                         `<p class='text-danger text-center'>Gagal memuat data obat.</p>`);
                 }
             });
-                $(document).on('click', '.btnKirimDispense', function (e) {
-                    e.preventDefault();
+            $(document).on('click', '.btnKirimDispense', function(e) {
+                e.preventDefault();
 
-                    const btn    = $(this);
-                    const idTrans = btn.data('id');
-                    const kfa     = btn.data('kfa');
+                const btn = $(this);
+                const idTrans = btn.data('id');
+                const kfa = btn.data('kfa');
 
-                    btn.prop('disabled', true).text('Mengirim...');
+                btn.prop('disabled', true).text('Mengirim...');
 
-                    $.ajax({
-                        url: '/satu-sehat/medication-dispense/requestfromdispense',
-                        method: 'GET', // sesuai route kamu sekarang
-                        data: {
-                            idTrans: idTrans,
-                            kdbrg: kfa
-                        },
-                        success: function (res) {
-                            if (res.status === 'success') {
-                                // ganti tombol dengan badge sukses di kolom Status Medication Request
-                                btn.closest('td').html(
-                                    '<span class="badge bg-success">Sukses</span>'
-                                );
-                            } else {
-                                alert(res.message || 'Gagal mengirim Medication Request');
-                                btn.prop('disabled', false).text('Kirim Dispense sebagai Request');
-                            }
-                        },
-                        error: function (xhr) {
-                            alert('Terjadi kesalahan saat mengirim Medication Request');
+                $.ajax({
+                    url: '/satu-sehat/medication-dispense/requestfromdispense',
+                    method: 'GET', // sesuai route kamu sekarang
+                    data: {
+                        idTrans: idTrans,
+                        kdbrg: kfa
+                    },
+                    success: function(res) {
+                        if (res.status === 'success') {
+                            // ganti tombol dengan badge sukses di kolom Status Medication Request
+                            btn.closest('td').html(
+                                '<span class="badge bg-success">Sukses</span>'
+                            );
+                        } else {
+                            alert(res.message || 'Gagal mengirim Medication Request');
                             btn.prop('disabled', false).text('Kirim Dispense sebagai Request');
                         }
-                    });
+                    },
+                    error: function(xhr) {
+                        alert('Terjadi kesalahan saat mengirim Medication Request');
+                        btn.prop('disabled', false).text('Kirim Dispense sebagai Request');
+                    }
                 });
+            });
         }
 
         function confirmkirimSatusehat(idTrans) {
