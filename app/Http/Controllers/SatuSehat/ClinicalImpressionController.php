@@ -68,7 +68,7 @@ class ClinicalImpressionController extends Controller
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
-            $request->input('cari', 'all'),
+            $request->cari != '' || $request->cari != null ? $request->cari : 'unmapped',
         ]));
 
         $totalData = [

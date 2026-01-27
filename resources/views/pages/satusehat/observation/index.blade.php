@@ -106,7 +106,7 @@
                         <input type="hidden" name="search" value="{{ request('search') }}">
                         <div class="row justify-content-center">
                             <div class="col-6">
-                                <div class="card card-inverse card-info card-mapping" onclick="search('all')">
+                                <div class="card card-inverse card-info card-mapping" onclick="search('rj')">
                                     <div class="card-body">
                                         <div class="card-title">
                                             <div class="row align-items-center ml-1">
@@ -122,7 +122,7 @@
                                 </div>
                             </div>
                             <div class="col-6">
-                                <div class="card card-inverse card-warning card-mapping" onclick="search('all')">
+                                <div class="card card-inverse card-warning card-mapping" onclick="search('ri')">
                                     <div class="card-body">
                                         <div class="card-title">
                                             <div class="row align-items-center ml-1">
@@ -357,11 +357,11 @@
                         data.tgl_akhir = $('input[name="tgl_akhir"]').val();
                     },
                     dataSrc: function(json) {
-                        $('#total_all').text(json.total_semua);
-                        $('#total_integrasi').text(json.total_sudah_integrasi);
-                        $('#total_belum_integrasi').text(json.total_belum_integrasi);
-                        $('#total_rawat_jalan').text(json.total_rawat_jalan);
-                        $('#total_rawat_inap').text(json.total_rawat_inap);
+                        $('#total_all').text(json.summary.total_semua);
+                        $('#total_integrasi').text(json.summary.total_sudah_integrasi);
+                        $('#total_belum_integrasi').text(json.summary.total_belum_integrasi);
+                        $('#total_rawat_jalan').text(json.summary.total_rawat_jalan);
+                        $('#total_rawat_inap').text(json.summary.total_rawat_inap);
                         return json.data;
                     }
                 },

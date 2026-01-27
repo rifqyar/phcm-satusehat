@@ -99,7 +99,7 @@ class EncounterController extends Controller
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
-            $request->input('cari') ?? 'all',
+            $request->input('cari') ?? 'unmapped',
             $pageNumber,
             $pageSize
 

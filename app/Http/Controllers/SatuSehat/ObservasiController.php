@@ -180,8 +180,8 @@ class ObservasiController extends Controller
                 "data" => [],
                 "summary" => [
                     'total_semua' => 0,
-                    'rjAll' => 0,
-                    'ri' => 0,
+                    'total_rawat_jalan' => 0,
+                    'total_rawat_inap' => 0,
                     'total_sudah_integrasi' => 0,
                     'total_belum_integrasi' => 0,
                 ]
@@ -191,8 +191,8 @@ class ObservasiController extends Controller
         $summary = $data->first();
         $totalData = [
             'total_semua' => $summary->total_semua ?? 0,
-            'rjAll' => $summary->rjAll ?? 0,
-            'ri' => $summary->ri ?? 0,
+            'total_rawat_jalan' => $summary->total_rawat_jalan ?? 0,
+            'total_rawat_inap' => $summary->total_rawat_inap ?? 0,
             'total_sudah_integrasi' => $summary->total_sudah_integrasi ?? 0,
             'total_belum_integrasi' => $summary->total_belum_integrasi ?? 0,
         ];
