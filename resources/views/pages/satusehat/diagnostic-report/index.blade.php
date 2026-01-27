@@ -166,21 +166,24 @@
 
         <!-- 🧾 Tabel Data -->
         <div class="table-responsive">
-            <table id="diagnosticTable" class="table table-striped table-bordered" style="width:100%">
+            <table id="diagnosticTable" class="display nowrap table data-table">
                 <thead>
                     <tr>
+                        <th></th>
                         <th>NO</th>
-                        <th style="width:150px">
+                        <th>
                             <input type="checkbox" id="selectAll" value="selected-all"
                                 class="chk-col-purple" />
                             <label for="selectAll"
                                 style="margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500">
                                 Select All </label>
                         </th>
-                        <th>Pasien</th>
+                        <th>Karcis Asal</th>
+                        <th>Karcis Rujukan</th>
                         <th>Kategori</th>
-                        <th>File</th>
+                        <th>Pasien</th>
                         <th>Item Lab</th>
+                        <th>File</th>
                         <th>Diupload Oleh</th>
                         <th>Tanggal Upload</th>
                         <th>Status Integrasi</th>
@@ -231,8 +234,15 @@
 
         // ⚙️ DataTable
         table = $('#diagnosticTable').DataTable({
+            responsive: {
+                details: {
+                    type: 'column',
+                    target: 'td.dtr-control'
+                }
+            },
             processing: true,
-            serverSide: true,
+            serverSide: false,
+            scrollX: false,
             ajax: {
                 url: "{{ route('satusehat.diagnostic-report.datatable') }}",
                 type: 'POST',
@@ -243,12 +253,22 @@
                     d.search = $('input[name="search"]').val();
                 }
             },
-            columns: [{
+            columns: [
+                {
+                    className: 'dtr-control',
+                    orderable: false,
+                    searchable: false,
+                    data: null,
+                    defaultContent: '',
+                    responsivePriority: 1
+                },
+                {
                     data: 'DT_RowIndex',
                     name: 'DT_RowIndex',
                     orderable: false,
                     searchable: false,
-                    className: 'text-center'
+                    className: 'text-center',
+                    responsivePriority: 1
                 },
                 {
                     data: 'checkbox',
@@ -258,47 +278,82 @@
                     responsivePriority: 1
                 },
                 {
-                    data: 'pasien',
-                    name: 'c.NAMA'
+                    data: 'karcis_asal',
+                    name: 'l.karcis_asal',
+                    responsivePriority: 3
+                },
+                {
+                    data: 'karcis_rujukan',
+                    name: 'l.karcis_rujukan',
+                    responsivePriority: 1
                 },
                 {
                     data: 'kategori',
-                    name: 'b.nama_kategori'
+                    name: 'b.nama_kategori',
+                    responsivePriority: 1
                 },
                 {
-                    data: 'file',
-                    name: 'a.file_name',
-                    orderable: false
+                    data: 'pasien',
+                    name: 'c.NAMA',
+                    responsivePriority: 1
                 },
                 {
                     data: 'item_lab',
                     name: 'm.NM_TIND',
-                    orderable: false
+                    orderable: false,
+                    responsivePriority: 1
+                },
+                {
+                    data: 'file',
+                    name: 'a.file_name',
+                    orderable: false,
+                    responsivePriority: 3
                 },
                 {
                     data: 'diupload_oleh',
-                    name: 'a.usr_crt'
+                    name: 'a.usr_crt',
+                    responsivePriority: 5
                 },
                 {
                     data: 'tanggal_upload',
                     name: 'a.crt_dt',
-                    type: 'date'
+                    type: 'date',
+                    responsivePriority: 5
                 },
                 {
                     data: 'status_integrasi',
                     name: 'status_integrasi',
-
+                    responsivePriority: 1
                 },
                 {
                     data: 'aksi',
                     name: 'aksi',
                     orderable: false,
-                    searchable: false
+                    searchable: false,
+                    responsivePriority: 1
                 }
             ],
-            order: [
-                [7, 'desc'] // Order by tanggal_upload column (index 7) descending
-            ]
+            lengthMenu: [
+                [10, 25, 50, -1],
+                [10, 25, 50, "All"]
+            ],
+            pageLength: 10,
+            drawCallback: function(settings) {
+                $('.select-row').each(function() {
+                    const id = $(this).val();
+                    $(this).prop('checked', selectedIds.includes(id));
+                });
+
+                if ($('#selectAll').is(':checked')) {
+                    $('.select-row').each(function() {
+                        const id = $(this).val();
+                        $(this).prop('checked', true);
+                        if (!selectedIds.includes(id)) selectedIds.push(id);
+                    });
+                }
+
+                updateSelectAllCheckbox();
+            }
         });
 
         // maintain checkbox state after draw
@@ -411,6 +466,7 @@
         const totalCheckboxes = $('.select-row').length;
         const checkedCount = $('.select-row:checked').length;
 
+        // centang setengah (indeterminate) kalau sebagian terpilih
         $('#selectAll').prop('checked', checkedCount === totalCheckboxes && totalCheckboxes > 0);
         $('#selectAll').prop('indeterminate', checkedCount > 0 && checkedCount < totalCheckboxes);
 
@@ -425,65 +481,84 @@
         }
     }
 
+    $('.data-table').on('click', 'button, a', function(e) {
+        e.stopPropagation();
+    });
+
     // Bulk send handler
     function bulkSend() {
         if (selectedIds.length === 0) {
-            swal('Peringatan', 'Pilih setidaknya satu dokumen untuk dikirim.', 'warning');
+            $.toast({
+                heading: "Peringatan!",
+                text: "Pilih data yang akan dikirim terlebih dahulu.",
+                position: "top-right",
+                icon: "warning",
+                hideAfter: 3000
+            });
             return;
         }
 
-        swal({
-            title: 'Kirim Dokumen Terpilih?',
-            text: `Yakin ingin mengirim ${selectedIds.length} dokumen terpilih ke SatuSehat?`,
-            type: 'question',
-            showCancelButton: true,
-            confirmButtonText: 'Ya, kirim',
-            cancelButtonText: 'Batal'
-        }, function(confirmed) {
-            if (!confirmed) return;
-
-            // Show loading
-            swal({
-                title: 'Mengirim...',
-                text: 'Sedang memproses pengiriman data.',
-                type: 'info',
-                showConfirmButton: false,
-                allowOutsideClick: false
-            });
-
-            // Call backend endpoint
-            $.ajax({
-                url: '{{ route("satusehat.diagnostic-report.bulk-send") }}',
-                type: 'POST',
-                data: {
-                    _token: '{{ csrf_token() }}',
-                    ids: selectedIds
-                },
-                success: function(response) {
-                    swal({
-                        title: 'Berhasil!',
-                        text: response.message || 'Data berhasil dikirim.',
-                        type: 'success'
-                    }, function() {
-                        // Reset selection
-                        selectedIds = [];
-                        $('#selectAll').prop('checked', false);
-                        $('.select-row').prop('checked', false);
-                        updateSelectAllCheckbox();
-
-                        // Reload table
-                        table.ajax.reload();
+        $.ajax({
+            url: `{{ route('satusehat.diagnostic-report.bulk-send') }}`,
+            type: "POST",
+            data: {
+                _token: $('meta[name="csrf-token"]').attr("content"),
+                selected_ids: selectedIds
+            },
+            success: function(response) {
+                Swal.close();
+                
+                if (response.status === 200) {
+                    $.toast({
+                        heading: "Berhasil!",
+                        text: response.message,
+                        position: "top-right",
+                        icon: "success",
+                        hideAfter: 7000
                     });
-                },
-                error: function(xhr) {
-                    const response = xhr.responseJSON;
-                    swal({
-                        title: 'Error!',
-                        text: response?.message || 'Terjadi kesalahan saat mengirim data.',
-                        type: 'error'
+                    
+                    // Show additional info about background processing
+                    setTimeout(() => {
+                        $.toast({
+                            heading: "Info",
+                            text: "Data sedang diproses di background. Refresh halaman dalam beberapa menit untuk melihat hasil.",
+                            position: "top-right",
+                            icon: "info",
+                            hideAfter: 5000
+                        });
+                    }, 2000);
+                    
+                    // Clear selections and reload table
+                    selectedIds = [];
+                    $('#selectAll').prop('checked', false);
+                    $('.select-row').prop('checked', false);
+                    table.ajax.reload();
+                } else {
+                    $.toast({
+                        heading: "Error!",
+                        text: response.message,
+                        position: "top-right",
+                        icon: "error",
+                        hideAfter: 5000
                     });
                 }
-            });
+            },
+            error: function(xhr) {
+                Swal.close();
+                let errorMessage = "Terjadi kesalahan saat mengirim data";
+                
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                }
+                
+                $.toast({
+                    heading: "Error!",
+                    text: errorMessage,
+                    position: "top-right",
+                    icon: "error",
+                    hideAfter: 5000
+                });
+            }
         });
     }
 
@@ -524,6 +599,68 @@
                     "input_success"
                 );
             }
+        });
+    }
+
+    function reSendSatuSehat(param) {
+        Swal.fire({
+            title: "Konfirmasi Pengiriman Ulang",
+            text: `Kirim ulang data resume medis?`,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Ya, kirim!",
+            cancelButtonText: "Batal",
+        }).then(async (conf) => {
+            if (conf.value || conf.isConfirmed) {
+                await ajaxPostJson(
+                    `{{ route('satusehat.diagnostic-report.resend-satu-sehat', '') }}/${param}`, {
+                        _token: '{{ csrf_token() }}'
+                    },
+                    "input_success"
+                );
+            }
+        });
+    }
+
+    function input_success(res) {
+        if (res.status != 200) {
+            input_error(res);
+            return false;
+        }
+
+        $.toast({
+            heading: "Berhasil!",
+            text: res.message,
+            position: "top-right",
+            icon: "success",
+            hideAfter: 2500,
+            beforeHide: function() {
+                let text = "";
+                if (res.redirect.need) {
+                    text =
+                        "<h5>Berhasil Kirim Data,<br> Mengembalikan Anda ke halaman sebelumnya...</h5>";
+                } else {
+                    text = "<h5>Berhasil Kirim Data</h5>";
+                }
+
+                Swal.fire({
+                    html: text,
+                    showConfirmButton: false,
+                    allowOutsideClick: false,
+                });
+
+                Swal.showLoading();
+            },
+            afterHidden: function() {
+                if (res.redirect.need) {
+                    window.location.href = res.redirect.to;
+                } else {
+                    Swal.close();
+                    table.ajax.reload()
+                }
+            },
         });
     }
 </script>
