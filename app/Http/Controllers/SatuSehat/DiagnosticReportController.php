@@ -5,14 +5,17 @@ namespace App\Http\Controllers\SatuSehat;
 use App\Http\Controllers\Controller;
 use App\Http\Traits\LogTraits;
 use App\Http\Traits\SATUSEHATTraits;
+use App\Jobs\SendDiagnosticReport;
 use App\Lib\LZCompressor\LZString;
 use App\Models\GlobalParameter;
+use App\Models\SATUSEHAT\SATUSEHAT_NOTA;
 use App\Models\SATUSEHAT\SS_Kode_API;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
 use Yajra\DataTables\Facades\DataTables;
 
@@ -34,20 +37,26 @@ class DiagnosticReportController extends Controller
         // Build the base query
         $query = DB::connection('sqlsrv')
             ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
+            ->join(DB::raw('SIRS_PHCM.dbo.vw_getData_Elab as l'), function ($join) {
+                $join->on('a.karcis', '=', 'l.KARCIS_ASAL')
+                    ->on('a.kd_tindakan', '=', 'l.KD_TINDAKAN');
+            })
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX_KATEGORI as b'), 'a.id_kategori', '=', 'b.id')
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MASTERPX as c'), 'a.kbuku', '=', 'c.kbuku')
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as m'), 'a.kd_tindakan', '=', 'm.KD_TIND')
             ->leftJoin(DB::raw('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as sr'), function ($join) {
-                $join->on('a.karcis', '=', 'sr.karcis')
+                $join->on('l.karcis_rujukan', '=', 'sr.karcis')
                     ->on('a.kbuku', '=', 'sr.kbuku');
             })
             ->leftJoin(DB::raw('SATUSEHAT.dbo.SATUSEHAT_LOG_DIAGNOSTICREPORT as sdr'), function ($join) {
-                $join->on('a.karcis', '=', 'sdr.karcis')
+                $join->on('l.karcis_rujukan', '=', 'sdr.karcis')
                     ->on('a.kbuku', '=', 'sdr.kbuku')
                     ->on('a.id', '=', 'sdr.iddokumen');
             })
             ->select([
                 'a.id',
+                'l.karcis_asal',
+                'l.karcis_rujukan',
                 'a.kbuku',
                 'c.NAMA as NM_PASIEN',
                 'm.NM_TIND as NM_TIND',
@@ -60,8 +69,11 @@ class DiagnosticReportController extends Controller
                 DB::raw('COUNT(DISTINCT sdr.id_satusehat_diagnosticreport) AS SATUSEHAT'), // Placeholder for SATUSEHAT status
             ])
             ->where('a.AKTIF', 1)
+            ->where('a.id_kategori', 1)
             ->groupBy(
                 'a.id',
+                'l.karcis_asal',
+                'l.karcis_rujukan',
                 'a.kbuku',
                 'c.NAMA',
                 'm.NM_TIND',
@@ -101,7 +113,8 @@ class DiagnosticReportController extends Controller
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX_KATEGORI as b'), 'a.id_kategori', '=', 'b.id')
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MASTERPX as c'), 'a.kbuku', '=', 'c.kbuku')
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as m'), 'a.kd_tindakan', '=', 'm.KD_TIND')
-            ->where('a.AKTIF', 1);
+            ->where('a.AKTIF', 1)
+            ->where('a.id_kategori', 1);
 
         // Apply same date filter for counts
         if (!empty($tgl_awal) && !empty($tgl_akhir)) {
@@ -119,6 +132,8 @@ class DiagnosticReportController extends Controller
 
         // Don't add ORDER BY here - let DataTables handle it
         // $query->orderBy('a.id', 'desc');
+        // dd($query->toSql(), $query->getBindings());
+        // dd($query->get());
 
         $dataTable = DataTables::of($query)
             ->addIndexColumn()
@@ -126,10 +141,20 @@ class DiagnosticReportController extends Controller
                 return $row->NM_PASIEN ?? '-';
             })
             ->addColumn('checkbox', function ($row) {
-                return '
-                    <input type="checkbox"  class="select-row chk-col-purple" value="' . $row->id . '" id="checkbox_' . $row->id . '" />
-                    <label for="checkbox_' . $row->id . '"></label>
-                ';
+                if ($row->JUMLAH_SERVICE_REQUEST > 0) {
+                    if ($row->SATUSEHAT == 0) {
+                        return '
+                            <input type="checkbox"  class="select-row chk-col-purple" value="' . $row->id . '" id="checkbox_' . $row->id . '" />
+                            <label for="checkbox_' . $row->id . '"></label>
+                        ';
+                    }
+                }
+            })
+            ->addColumn('karcis_asal', function ($row) {
+                return $row->karcis_asal ?? '-';
+            })
+            ->addColumn('karcis_rujukan', function ($row) {
+                return $row->karcis_rujukan ?? '-';
             })
             ->addColumn('item_lab', function ($row) {
                 return $row->NM_TIND ?? '-';
@@ -144,7 +169,7 @@ class DiagnosticReportController extends Controller
                 return $row->nama_kategori ?? '-';
             })
             ->addColumn('file', function ($row) {
-                return ($row->file_name ?? '-') . '<br>' . ($row->keterangan ?? '');
+                return $row->file_name ?? '-';
             })
             ->addColumn('status_integrasi', function ($row) {
                 if ($row->SATUSEHAT > 0) {
@@ -164,13 +189,13 @@ class DiagnosticReportController extends Controller
                     if ($row->SATUSEHAT == 0) {
                         $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $row->id . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
                     } else {
-                        $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $row->id . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                        $btn = '<a href="javascript:void(0)" onclick="reSendSatuSehat(`' . $row->id . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                     }
                 } else {
                     $btn = '<span class="badge badge-pill badge-secondary p-2 w-100">Belum Integrasi Service Request</span>';
                 }
 
-                return '<div style="min-width: 200px;">' . $btn . '</div>';
+                return '<div style="min-width: 100px;">' . $btn . '</div>';
             })
             ->rawColumns(['kategori', 'file', 'aksi', 'checkbox', 'status_integrasi'])
             ->with([
@@ -227,17 +252,98 @@ class DiagnosticReportController extends Controller
      */
     public function bulkSend(Request $request)
     {
-        $ids = $request->input('ids', []);
+        try {
+            $selectedIds = $request->input('selected_ids', []);
+            // dd($selectedIds);
 
-        // For now just return the received IDs and a success message.
-        return response()->json([
-            'status' => JsonResponse::HTTP_OK,
-            'message' => 'Received ids for bulk send (handler stub).',
-            'data' => $ids,
-        ], 200);
+            // Debug logging
+            Log::info('Bulk send request received', [
+                'selected_ids_count' => count($selectedIds),
+                'first_few_params' => array_slice($selectedIds, 0, 2),
+                'user_id' => Session::get('nama', 'system')
+            ]);
+
+            if (empty($selectedIds)) {
+                return response()->json([
+                    'status' => 422,
+                    'message' => 'Tidak ada data yang dipilih untuk dikirim'
+                ], 422);
+            }
+
+            $dispatched = 0;
+            $errors = [];
+
+            foreach ($selectedIds as $param) {
+                try {
+                    // Validate that param is not empty and has proper format
+                    if (empty($param) || !is_string($param)) {
+                        $errors[] = "Invalid parameter format: " . json_encode($param);
+                        continue;
+                    }
+
+                    // Dispatch job to queue for background processing
+                    SendDiagnosticReport::dispatch($param)->onQueue('DiagnosticReport');
+                    $dispatched++;
+                } catch (Exception $e) {
+                    $errors[] = "Failed to dispatch job for param: " . $e->getMessage();
+                    Log::error('Failed to dispatch single job', [
+                        'param' => $param,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            if ($dispatched === 0) {
+                return response()->json([
+                    'status' => 500,
+                    'message' => 'Gagal mengirim ke antrian untuk semua item yang dipilih.'
+                ], 500);
+            }
+
+            // Log the bulk dispatch
+            Log::info('Bulk diagnostic report jobs dispatched', [
+                'total_dispatched' => $dispatched,
+                'total_errors' => count($errors),
+                'user_id' => Session::get('nama', 'system'),
+                'params_count' => count($selectedIds)
+            ]);
+
+            $message = "Berhasil mengirim {$dispatched} diagnostic report ke antrian untuk diproses. Pengiriman akan berlanjut di background.";
+
+            if (!empty($errors)) {
+                $message .= " " . count($errors) . " item gagal dikirim ke antrian.";
+                Log::warning('Some jobs failed to dispatch', ['errors' => $errors]);
+            }
+
+            return response()->json([
+                'status' => JsonResponse::HTTP_OK,
+                'message' => $message,
+                'data' => [
+                    'dispatched_count' => $dispatched,
+                    'error_count' => count($errors),
+                    'total_selected' => count($selectedIds),
+                    'errors' => !empty($errors) ? array_slice($errors, 0, 3) : [] // Show first 3 errors
+                ]
+            ], 200);
+        } catch (Exception $e) {
+            Log::error('Bulk send dispatch failed', [
+                'error' => $e->getMessage(),
+                'user_id' => Session::get('nama', 'system') // Session::get('id')
+            ]);
+
+            return response()->json([
+                'status' => 500,
+                'message' => 'Gagal mengirim ke antrian: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
-    public function sendSatuSehat($idDokumenPx)
+    public function reSendSatuSehat($idDokumenPx)
+    {
+        return $this->sendSatuSehat($idDokumenPx, true);
+    }
+
+    public function sendSatuSehat($idDokumenPx, $resend = false)
     {
         $id_unit = Session::get('id_unit', '001');
         $status = 'final';
@@ -295,15 +401,44 @@ class DiagnosticReportController extends Controller
             ->first();
 
         $serviceRequest = DB::connection('sqlsrv')
-            ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
-            ->where('KARCIS', $dokumen_px->karcis)
-            ->where('KBUKU', $dokumen_px->kbuku)
+            ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
+            ->leftJoin(DB::raw('SIRS_PHCM.dbo.vw_getData_Elab as l'), function ($join) {
+                $join->on('a.karcis', '=', 'l.KARCIS_ASAL')
+                    ->on('a.kd_tindakan', '=', 'l.KD_TINDAKAN');
+            })
+            ->leftJoin(DB::raw('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as s'), function ($join) {
+                $join->on('l.karcis_rujukan', '=', 's.karcis')
+                    ->on('l.kbuku', '=', 's.kbuku');
+            })
+            ->where('a.id', $idDokumenPx)
+            ->orderBy('s.crtdt', 'desc')
             ->first();
-
+        // dd($dokumen_px, $riwayat, $patient, $dokter, $encounter, $observation, $serviceRequest);
 
         $dateTimeNow = Carbon::now()->toIso8601String();
         $categories = [];
+        $codings = [
+            "coding" => []
+        ];
 
+        foreach ($dokumen_px_codings as $coding) {
+            $codings['coding'][] = [
+                "system" => "http://loinc.org",
+                "code" => $coding->loinc_num,
+                "display" => $coding->loinc_common_name
+            ];
+        }
+
+        $baseurl = '';
+        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
+            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+        } else {
+            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
+            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+        }
+
+        // Category
         if ($dokumen_px->nama_kategori === 'HASIL LAB') {
             $categories = [
                 [
@@ -316,6 +451,13 @@ class DiagnosticReportController extends Controller
                     ]
                 ]
             ];
+            $identifier = [
+                [
+                    "system" => "http://sys-ids.kemkes.go.id/diagnostic/{$organisasi}/lab",
+                    "use" => "official",
+                    "value" => "$riwayat->ID_RIWAYAT_ELAB"
+                ]
+            ];
         } else if ($dokumen_px->nama_kategori === 'HASIL RADIOLOGI') {
             $categories = [
                 [
@@ -326,6 +468,13 @@ class DiagnosticReportController extends Controller
                             "display" => "Radiology"
                         ]
                     ]
+                ]
+            ];
+            $identifier = [
+                [
+                    "system" => "http://sys-ids.kemkes.go.id/diagnostic/{$organisasi}/rad",
+                    "use" => "official",
+                    "value" => "$riwayat->ID_RIWAYAT_ELAB"
                 ]
             ];
         } else {
@@ -342,36 +491,9 @@ class DiagnosticReportController extends Controller
             ];
         }
 
-
-        $codings = [
-            "coding" => []
-        ];
-
-        foreach ($dokumen_px_codings as $coding) {
-            $codings['coding'][] = [
-                "system" => "http://loinc.org",
-                "code" => $coding->loinc_num,
-                "display" => $coding->loinc_common_name
-            ];
-        }
-
-        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
-            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
-            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
-        } else {
-            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
-            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
-        }
-
         $data = [
             "resourceType" => "DiagnosticReport",
-            "identifier" => [
-                [
-                    "system" => "http://sys-ids.kemkes.go.id/diagnostic/{$organisasi}/lab",
-                    "use" => "official",
-                    "value" => "$riwayat->ID_RIWAYAT_ELAB"
-                ]
-            ],
+            "identifier" => $identifier,
             "status" => "$status",
             "category" => $categories,
             "code" => $codings,
@@ -382,8 +504,6 @@ class DiagnosticReportController extends Controller
             "encounter" => [
                 "reference" => "Encounter/{$encounter->id_satusehat_encounter}"
             ],
-            // "effectiveDateTime" => "2012-12-01T12:00:00+01:00",
-            // "issued" => "2012-12-01T12:00:00+01:00",
             "performer" => [
                 [
                     "reference" => "Practitioner/{$dokter->idnakes}",
@@ -393,11 +513,6 @@ class DiagnosticReportController extends Controller
                     "reference" => "Organization/{$organisasi}"
                 ]
             ],
-            // "imagingStudy" => [
-            //     [
-            //         "reference" => "ImagingStudy/{{ImagingStudy_id}}"
-            //     ]
-            // ],
             "result" => [
                 [
                     "reference" => "Observation/$observation->ID_SATUSEHAT_OBSERVASI",
@@ -409,41 +524,34 @@ class DiagnosticReportController extends Controller
                 ]
             ],
             'conclusion' => $dokumen_px->keterangan ?? '',
-            // "specimen" => [
-            //     [
-            //         "reference" => "Specimen/3095e36e-1624-487e-9ee4-737387e7b55f"
-            //     ]
-            // ],
-            // "conclusionCode" => [
-            //     [
-            //         "coding" => [
-            //             [
-            //                 "system" => "http://snomed.info/sct",
-            //                 "code" => "260347006",
-            //                 "display" => "+"
-            //             ]
-            //         ]
-            //     ]
-            // ]
         ];
 
-        dd($data);
+        // dd($data);
 
         try {
             $login = $this->login($id_unit);
+            if ($login['metadata']['code'] != 200) {
+                $hasil = $login;
+            }
 
             $token = $login['response']['token'];
 
-            if (!$token) {
-                throw new Exception('Gagal auth dengan satu sehat');
-            }
+            if ($resend) {
+                $diagnosticRep = DB::connection('sqlsrv')
+                    ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_DIAGNOSTICREPORT')
+                    ->where('iddokumen', $idDokumenPx)
+                    ->where('idunit', $id_unit)
+                    ->first();
 
-            $data = json_decode(json_encode($data));
+                if ($diagnosticRep) {
+                    $data['id'] = $diagnosticRep->id_satusehat_diagnosticreport;
+                }
+            }
 
             // dd($data);
 
-            $diagnosticReportRequest = $this->consumeSATUSEHATAPI('POST', $baseurl, 'DiagnosticReport', $data, true, $token);
-
+            $url = $resend ? 'DiagnosticReport/' . $diagnosticRep->id_satusehat_diagnosticreport : 'DiagnosticReport';
+            $diagnosticReportRequest = $this->consumeSATUSEHATAPI($resend ? 'PUT' : 'POST', $baseurl, $url, $data, true, $token);
             $result = json_decode($diagnosticReportRequest->getBody()->getContents(), true);
 
             if ($diagnosticReportRequest->getStatusCode() >= 400) {
@@ -458,7 +566,6 @@ class DiagnosticReportController extends Controller
                 $this->logDb(json_encode($response), 'DiagnosticReport', json_encode($data), 'system');
 
                 $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Diagnostic Report';
-
                 throw new Exception($msg, $diagnosticReportRequest->getStatusCode());
             } else {
                 try {
@@ -473,7 +580,7 @@ class DiagnosticReportController extends Controller
 
                     $dataServiceRequest = DB::connection('sqlsrv')
                         ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
-                        ->where('karcis', $dataKarcis->KARCIS)
+                        ->where('karcis', $dokumen_px->karcis)
                         ->first();
 
                     $dataPeserta = DB::connection('sqlsrv')
@@ -484,25 +591,26 @@ class DiagnosticReportController extends Controller
                     DB::connection('sqlsrv')
                         ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_DIAGNOSTICREPORT')
                         ->insert([
-                            'karcis'                      => $dataKarcis->KARCIS,
-                            'nota'                        => $encounter->nota,
-                            'idriwayat'                   => $riwayat->ID_RIWAYAT_ELAB,
-                            'iddokumen'                   => $idDokumenPx,
-                            'idunit'                      => $id_unit,
-                            'tgl'                         => Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d'),
-                            'id_satusehat_encounter'      => $encounter->id_satusehat_encounter,
-                            'id_satusehat_servicerequest' => $result['id'],
-                            'kbuku'                       => $dataPeserta->KBUKU,
-                            'no_peserta'                  => $dataPeserta->NO_PESERTA,
-                            'id_satusehat_px'             => $patient->idpx,
-                            'kddok'                       => $dataKarcis->KDDOK,
-                            'id_satusehat_dokter'         => $dokter->idnakes,
-                            'kdklinik'                    => $dataKarcis->KLINIK,
-                            'status_sinkron'              => 1,
-                            'crtdt'                       => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
-                            'crtusr'                      => 'system', // Session::get('id'),
-                            'sinkron_date'                => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
-                            'jam_datang'                  => Carbon::parse($riwayat->TANGGAL_ENTRI, 'Asia/Jakarta')->format('Y-m-d H:i:s'),
+                            'karcis'                        => $serviceRequest->karcis,
+                            'nota'                          => $encounter->nota,
+                            'idriwayat'                     => $riwayat->ID_RIWAYAT_ELAB,
+                            'iddokumen'                     => $idDokumenPx,
+                            'idunit'                        => $id_unit,
+                            'tgl'                           => Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d'),
+                            'id_satusehat_encounter'        => $encounter->id_satusehat_encounter,
+                            'id_satusehat_servicerequest'   => $serviceRequest->id_satusehat_servicerequest,
+                            'id_satusehat_diagnosticreport' => $result['id'],
+                            'kbuku'                         => $dataPeserta->KBUKU,
+                            'no_peserta'                    => $dataPeserta->NO_PESERTA,
+                            'id_satusehat_px'               => $patient->idpx,
+                            'kddok'                         => $dataKarcis->KDDOK,
+                            'id_satusehat_dokter'           => $dokter->idnakes,
+                            'kdklinik'                      => $dataKarcis->KLINIK,
+                            'status_sinkron'                => 1,
+                            'crtdt'                         => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
+                            'crtusr'                        => 'system', // Session::get('id'),
+                            'sinkron_date'                  => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
+                            'jam_datang'                    => Carbon::parse($riwayat->TANGGAL_ENTRI, 'Asia/Jakarta')->format('Y-m-d H:i:s'),
                         ]);
 
                     $this->logInfo('diagnosticreport', 'Sukses kirim data diagnostic report', [
