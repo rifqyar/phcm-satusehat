@@ -110,7 +110,14 @@ class EncounterController extends Controller
                 "draw" => $draw,
                 "recordsTotal" => 0,
                 "recordsFiltered" => 0,
-                "data" => []
+                "data" => [],
+                "summary" => [
+                    'total_semua' => 0,
+                    'rjAll' => 0,
+                    'ri' => 0,
+                    'total_sudah_integrasi' => 0,
+                    'total_belum_integrasi' => 0,
+                ]
             ]);
         }
 
@@ -129,16 +136,10 @@ class EncounterController extends Controller
             ->skipPaging()
             ->setTotalRecords($recordsTotal)
             ->setFilteredRecords($recordsFiltered)
-            // ->addIndexColumn()
             ->addColumn('DT_RowIndex', function ($row) use ($start) {
                 static $i = 0;
                 return $start + (++$i);
             })
-            // ->setRowId(function ($row) use ($request) {
-            //     $start = $request->input('start', 0);
-            //     static $i = 0;
-            //     return $start + (++$i);
-            // })
             ->addColumn('checkbox', function ($row) {
                 $checkBox = '';
                 $jenisPerawatan = $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
@@ -253,12 +254,6 @@ class EncounterController extends Controller
                 }
             })
             ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi', 'checkbox'])
-            // ->with([
-            //     "draw" => $draw,
-            //     "recordsTotal" => $recordsTotal,
-            //     "recordsFiltered" => $recordsFiltered,
-            //     "summary" => $totalData
-            // ])
             ->make(true);
 
         $response = $dataTable->getData(true);
