@@ -155,23 +155,59 @@ class ObservasiController extends Controller
         $tgl_awal_db  = Carbon::parse($tgl_awal)->format('Y-m-d H:i:s');
         $tgl_akhir_db = Carbon::parse($tgl_akhir)->format('Y-m-d H:i:s');
 
-        $data = collect(DB::select('EXEC sp_getObservasi ?, ?, ?', [
+        // ================= DATATABLES PAGINATION =================
+        $start  = (int) $request->input('start', 0);
+        $length = (int) $request->input('length', 10);
+        $draw   = (int) $request->input('draw', 1);
+
+        $pageNumber = ($start / $length) + 1;
+        $pageSize   = $length;
+
+        $data = collect(DB::select('EXEC sp_getObservasi ?, ?, ?, ?, ?, ?', [
+            $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
-            $request->cari // null | mapped | unmapped
+            $request->cari,
+            $pageNumber,
+            $pageSize
         ]));
 
+        if ($data->isEmpty()) {
+            return response()->json([
+                "draw" => $draw,
+                "recordsTotal" => 0,
+                "recordsFiltered" => 0,
+                "data" => [],
+                "summary" => [
+                    'total_semua' => 0,
+                    'rjAll' => 0,
+                    'ri' => 0,
+                    'total_sudah_integrasi' => 0,
+                    'total_belum_integrasi' => 0,
+                ]
+            ]);
+        }
+
+        $summary = $data->first();
         $totalData = [
-            'total_semua' => $data->first()->total_semua ?? 0,
-            'total_sudah_integrasi' => $data->first()->total_sudah_integrasi ?? 0,
-            'total_belum_integrasi' => $data->first()->total_belum_integrasi ?? 0,
-            'total_rawat_jalan' => $data->first()->total_rawat_jalan ?? 0,
-            'total_rawat_inap' => $data->first()->total_rawat_inap ?? 0,
+            'total_semua' => $summary->total_semua ?? 0,
+            'rjAll' => $summary->rjAll ?? 0,
+            'ri' => $summary->ri ?? 0,
+            'total_sudah_integrasi' => $summary->total_sudah_integrasi ?? 0,
+            'total_belum_integrasi' => $summary->total_belum_integrasi ?? 0,
         ];
+        $recordsTotal    = $summary->total_semua ?? 0;
+        $recordsFiltered = $summary->recordsFiltered ?? $recordsTotal;
 
 
-        return DataTables::of($data)
-            ->addIndexColumn()
+        $datatable = DataTables::of($data)
+            ->skipPaging()
+            ->setTotalRecords($recordsTotal)
+            ->setFilteredRecords($recordsFiltered)
+            ->addColumn('DT_RowIndex', function ($row) use ($start) {
+                static $i = 0;
+                return $start + (++$i);
+            })
             ->editColumn('JENIS_PERAWATAN', function ($row) {
                 return $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
             })
@@ -243,8 +279,17 @@ class ObservasiController extends Controller
                 }
             })
             ->rawColumns(['action', 'status_integrasi', 'checkbox'])
-            ->with($totalData)
             ->make(true);
+
+        $response = $datatable->getData(true);
+
+        return response()->json([
+            "draw" => intval($request->draw),
+            "recordsTotal" => $recordsTotal,
+            "recordsFiltered" => $recordsFiltered,
+            "data" => $response['data'],
+            "summary" => $totalData
+        ]);
     }
 
     private function checkDateFormat($date)

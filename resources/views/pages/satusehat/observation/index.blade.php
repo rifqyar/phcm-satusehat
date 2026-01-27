@@ -370,11 +370,13 @@
                         orderable: false,
                         searchable: false,
                         data: null,
-                        defaultContent: ''
+                        defaultContent: '',
+                        responsivePriority: 1
                     },
                     {
                         data: 'DT_RowIndex',
                         name: 'DT_RowIndex',
+                        orderable: false,
                         searchable: false,
                         responsivePriority: 1
                     },
@@ -434,7 +436,7 @@
                     },
                 ],
                 order: [
-                    [4, 'desc']
+                    [5, 'desc']
                 ],
                 lengthMenu: [
                     [10, 25, 50, -1],
