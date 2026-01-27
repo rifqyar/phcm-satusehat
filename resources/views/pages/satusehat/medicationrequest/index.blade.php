@@ -25,7 +25,7 @@
             cursor: pointer;
         }
 
-        /* ✅ Pastikan kolom pertama untuk checkbox terlihat */
+        /* Pastikan kolom pertama untuk checkbox terlihat */
         table.table th:first-child,
         table.table td:first-child {
             width: 50px !important;
@@ -33,7 +33,7 @@
             vertical-align: middle;
         }
 
-        /* ✅ Override styling Bootstrap yang kadang menyembunyikan checkbox */
+        /* Override styling Bootstrap yang kadang menyembunyikan checkbox */
         input[type="checkbox"],
         .form-check-input {
             appearance: auto !important;
@@ -65,21 +65,20 @@
     <div class="card">
         <div class="card-body">
             <h4 class="card-title">Data Transaksi Obat</h4>
+
             <form action="javascript:void(0)" id="search-data" class="m-t-40">
-                <input type="hidden" name="search" value="{{ request('search') }}">
-
                 <div class="row justify-content-center">
-                    <!-- Card summary (tetap sama seperti sebelumnya) -->
+
+                    {{-- ===================== CARD SUMMARY ===================== --}}
                     <div class="col-4">
-                        <div class="card card-inverse card-primary card-mapping" onclick="search('all')">
+                        <div id="card-all" class="card card-inverse card-primary card-mapping summary-card"
+                            onclick="search('all')">
                             <div class="card-body">
                                 <div class="row align-items-center ml-1">
-                                    <i class="fas fa-pills text-white" style="font-size: 48px"></i>
+                                    <i class="fas fa-pills text-white" style="font-size:48px"></i>
                                     <div class="ml-3">
-                                        <span data-count="all" class="text-white" style="font-size: 24px">
-                                            {{ count($mergedAll ?? []) }}
-                                        </span>
-                                        <h4 class="text-white">Semua Data Transaksi Obat<br></h4>
+                                        <h2 id="summary-all" class="text-white mb-0">0</h2>
+                                        <h4 class="text-white">Semua Data Transaksi Obat</h4>
                                     </div>
                                 </div>
                             </div>
@@ -87,15 +86,14 @@
                     </div>
 
                     <div class="col-4">
-                        <div class="card card-inverse card-success card-mapping" onclick="search('sent')">
+                        <div id="card-sent" class="card card-inverse card-success card-mapping summary-card"
+                            onclick="search('sent')">
                             <div class="card-body">
                                 <div class="row align-items-center ml-1">
-                                    <i class="fas fa-paper-plane text-white" style="font-size: 48px"></i>
+                                    <i class="fas fa-paper-plane text-white" style="font-size:48px"></i>
                                     <div class="ml-3">
-                                        <span data-count="sent" class="text-white" style="font-size: 24px">
-                                            {{ count($sentData ?? []) }}
-                                        </span>
-                                        <h4 class="text-white">Data Terkirim<br></h4>
+                                        <h2 id="summary-sent" class="text-white mb-0">0</h2>
+                                        <h4 class="text-white">Data Terkirim</h4>
                                     </div>
                                 </div>
                             </div>
@@ -103,58 +101,49 @@
                     </div>
 
                     <div class="col-4">
-                        <div class="card card-inverse card-danger card-mapping" onclick="search('unsent')">
+                        <div id="card-unsent" class="card card-inverse card-danger card-mapping summary-card"
+                            onclick="search('unsent')">
                             <div class="card-body">
                                 <div class="row align-items-center ml-1">
-                                    <i class="fas fa-hourglass-half text-white" style="font-size: 48px"></i>
+                                    <i class="fas fa-hourglass-half text-white" style="font-size:48px"></i>
                                     <div class="ml-3">
-                                        <span data-count="unsent" class="text-white" style="font-size: 24px">
-                                            {{ count($unsentData ?? []) }}
-                                        </span>
-                                        <h4 class="text-white">Data Belum Terkirim<br></h4>
+                                        <h2 id="summary-unsent" class="text-white mb-0">0</h2>
+                                        <h4 class="text-white">Data Belum Terkirim</h4>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                    {{-- ===================== END CARD SUMMARY ===================== --}}
 
-
-                    <!-- Filter Periode + Jenis Pelayanan -->
+                    {{-- FILTER --}}
                     <div class="col-12 mt-4">
                         <div class="form-group">
                             <div class="row justify-content-center align-items-end">
 
-                                <!-- Tanggal Mulai -->
                                 <div class="col-md-4">
-                                    <label for="start_date">Periode Awal</label>
+                                    <label>Periode Awal</label>
                                     <input type="text" class="form-control" id="start_date">
-                                    <span class="bar"></span>
                                 </div>
 
-                                <!-- Tanggal Akhir -->
                                 <div class="col-md-4">
-                                    <label for="end_date">Periode Akhir</label>
+                                    <label>Periode Akhir</label>
                                     <input type="text" class="form-control" id="end_date">
-                                    <span class="bar"></span>
                                 </div>
 
-                                <!-- Jenis Pelayanan -->
                                 <div class="col-md-4">
-                                    <label for="jenis">Jenis Pelayanan</label>
-                                    <select id="jenis" name="jenis" class="form-control">
+                                    <label>Jenis Pelayanan</label>
+                                    <select id="jenis" class="form-control">
                                         <option value="">Rawat Jalan</option>
                                         <option value="ri">Rawat Inap</option>
                                     </select>
-                                    <span class="bar"></span>
                                 </div>
 
                             </div>
                         </div>
                     </div>
-
                 </div>
 
-                <!-- Tombol Aksi -->
                 <div class="d-flex justify-content-end">
                     <button type="button" class="btn btn-success btn-rounded mr-3" onclick="resetSearch()">
                         Reset Pencarian <i class="mdi mdi-refresh"></i>
@@ -167,21 +156,22 @@
 
             <hr>
 
-            <!-- 🧾 Tabel Data -->
-            <div class="mb-3">
-                <button type="button" id="btnKirimDipilih" class="btn btn-success btn-sm">
-                    <i class="fas fa-paper-plane"></i> Kirim Dipilih
+            <div class="row align-items-center justify-content-between m-1">
+                <div class="card-title">
+                    <h4>Data Pasien</h4>
+                </div>
+
+                <button type="button" id="btnKirimDipilih" class="btn btn-warning btn-rounded">
+                    <i class="fas fa-paper-plane"></i> Kirim Terpilih ke SatuSehat
                 </button>
             </div>
 
             <div class="table-responsive">
-                <table id="medicationTable" class="table table-striped table-bordered" style="width:100%">
+                <table id="medicationTable" class="table table-striped table-bordered">
                     <thead>
                         <tr>
                             <th>No</th>
-                            <th class="text-center">
-                                <input type="checkbox" id="checkAll">
-                            </th>
+                            <th class="text-center"><input type="checkbox" id="checkAll"></th>
                             <th>KARCIS/ID Transaksi</th>
                             <th>Dokter</th>
                             <th>Pasien</th>
@@ -197,6 +187,7 @@
 
     @include('modals.modal_lihat_obat')
 @endsection
+
 
 @push('after-script')
     <script src="{{ asset('assets/plugins/moment/moment.js') }}"></script>
@@ -229,10 +220,6 @@
             $('#end_date').val(endDate.format('YYYY-MM-DD'));
 
             //  Checkbox select-all
-            $(document).on('change', '#checkAll', function() {
-                $('.checkbox-item').prop('checked', $(this).is(':checked'));
-            });
-
             $(document).on('change', '#checkAll', function() {
                 $('.checkbox-item').prop('checked', $(this).is(':checked'));
             });
@@ -342,8 +329,20 @@
 
             //  DataTable
             table = $('#medicationTable').DataTable({
+                drawCallback: function (settings) {
+                    var api = this.api();
+                    var start = api.page.info().start;
+
+                    api.column(0, { page: 'current' }).nodes().each(function (cell, i) {
+                        cell.innerHTML = start + i + 1;
+                    });
+                },
                 processing: true,
-                serverSide: true,
+                serverSide: false,
+                deferRender: true,
+                pageLength: 10,
+
+
                 ajax: {
                     url: '{{ route('satusehat.medication-request.datatable') }}',
                     type: 'POST',
@@ -353,16 +352,23 @@
                         d.end_date = $('#end_date').val();
                         d.jenis = $('#jenis').val();
                         d.status = statusFilter;
+                    },
+                    dataSrc: function(json) {
+                        // 🔹 update summary di sini
+                        $('#summary-all').text(json.summary.all);
+                        $('#summary-sent').text(json.summary.sent);
+                        $('#summary-unsent').text(json.summary.unsent);
+
+                        // 🔹 kembalikan data array
+                        return json.data;
                     }
                 },
+
                 columns: [{
                         data: null,
                         orderable: false,
                         searchable: false,
-                        className: 'text-center',
-                        render: function(data, type, row, meta) {
-                            return meta.row + meta.settings._iDisplayStart + 1;
-                        }
+                        className: 'text-center'
                     },
                     {
                         data: null,
@@ -372,34 +378,29 @@
                         render: function(data) {
                             if (data.STATUS_MAPPING === '100' || data.STATUS_MAPPING === '200') {
                                 return `<input type="checkbox" class="checkbox-item" value="${data.ID_TRANS}">`;
-                            } else {
-                                return `<i class="text-muted">-</i>`;
                             }
+                            return `<i class="text-muted">-</i>`;
                         }
                     },
                     {
                         data: null,
-                        name: 'a.KARCIS', //  pakai alias dari backend
+                        name: 'a.KARCIS',
                         render: function(data) {
                             return `
-                            ${data.KARCIS ?? '-'}
-                            <br/>
-                            <small class="text-muted">ID: ${data.ID_TRANS ?? '-'}</small>
-                        `;
+                                ${data.KARCIS ?? '-'}
+                                <br/>
+                                <small class="text-muted">ID: ${data.ID_TRANS ?? '-'}</small>
+                            `;
                         }
                     },
                     {
-                        data: 'DOKTER',
-                        name: 'c.DOKTER'
+                        data: 'DOKTER'
                     },
                     {
-                        data: 'PASIEN',
-                        name: 'c.NAMA_PASIEN',
-                        searchable: true
+                        data: 'PASIEN'
                     },
                     {
-                        data: 'TGL_KARCIS',
-                        name: 'c.TANGGAL'
+                        data: 'TGL_KARCIS'
                     },
                     {
                         data: null,
@@ -407,6 +408,7 @@
                             let badge = (data.STATUS_MAPPING === '200') ?
                                 `<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>` :
                                 `<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>`;
+
                             const idEncounter = data.id_satusehat_encounter || '-';
                             return `${badge}<br/><small class="text-muted">${idEncounter}</small>`;
                         }
@@ -417,14 +419,15 @@
                         searchable: false,
                         render: function(data) {
                             const btnLihat = `
-                            <br/>
-                            <button class="btn btn-sm btn-info w-100" onclick="lihatObat('${data.ID_TRANS}')">
-                                <i class="fas fa-eye"></i> Lihat Obat
-                            </button>`;
+                                <br/>
+                                <button class="btn btn-sm btn-info w-100"
+                                    onclick="lihatObat('${data.ID_TRANS}')">
+                                    <i class="fas fa-eye"></i> Lihat Obat
+                                </button>`;
+
                             let btnAction = '';
 
-                            if (data.id_satusehat_encounter === null || data
-                                .id_satusehat_encounter === '') {
+                            if (!data.id_satusehat_encounter) {
                                 btnAction = `<i class="text-danger">Belum Ada Encounter</i>`;
                             } else if (data.STATUS_MAPPING === '100') {
                                 btnAction = `
@@ -434,9 +437,10 @@
                                     </button>`;
                             } else if (data.STATUS_MAPPING === '200') {
                                 btnAction = `
-                                <button class="btn btn-sm btn-warning w-100" onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
-                                    <i class="fas fa-link mr-2"></i> Kirim Ulang SATUSEHAT
-                                </button>`;
+                                    <button class="btn btn-sm btn-warning w-100"
+                                        onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                        <i class="fas fa-link mr-2"></i> Kirim Ulang SATUSEHAT
+                                    </button>`;
                             } else {
                                 btnAction = `<i class="text-muted">Data obat belum termapping</i>`;
                             }
@@ -445,24 +449,21 @@
                         }
                     }
                 ],
+
                 order: [
-                    [1, 'desc']
+                    [2, 'desc']
                 ]
             });
 
-
-            table.on('xhr.dt', function(e, settings, json, xhr) {
-                if (json && json.summary) {
-                    $('span[data-count="all"]').text(json.summary.all ?? 0);
-                    $('span[data-count="sent"]').text(json.summary.sent ?? 0);
-                    $('span[data-count="unsent"]').text(json.summary.unsent ?? 0);
-                }
+            table.on('draw', function() {
+                $('#checkAll').prop('checked', false);
             });
+
 
             //  tombol cari
             $("#search-data").on("submit", function(e) {
                 e.preventDefault();
-                table.ajax.reload();
+                table.ajax.reload(null, false);
             });
 
             //  tombol kirim SATUSEHAT
@@ -482,13 +483,13 @@
             $('#start_date').val(startDate.format('YYYY-MM-DD'));
             $('#end_date').val(endDate.format('YYYY-MM-DD'));
             $('input[name="search"]').val('');
-            table.ajax.reload();
+            table.ajax.reload(null, false);
         }
 
         // filter by card
         function search(type) {
             statusFilter = type;
-            table.ajax.reload();
+            table.ajax.reload(null, false);
         }
 
         function lihatObat(idTrans) {
@@ -536,8 +537,8 @@
                                                                                                 : row.KD_BRG_KFA
                                                                                         )
                                                                                         : `<a href="/master_obat?kode=${row.KDBRG}" class="btn btn-sm btn-primary" target="_blank">
-                                                                                                    <i class='fa fa-link'></i> Mapping
-                                                                                            </a>`
+                                                                                                        <i class='fa fa-link'></i> Mapping
+                                                                                                </a>`
                                                                                 }
                                                                             </td>
                                                                                 <td>${row.NAMABRG_KFA ?? '-'}</td>
@@ -583,7 +584,7 @@
         }
 
 
-        // 🚀 fungsi kirim ke SATUSEHAT
+        // fungsi kirim ke SATUSEHAT
         function kirimSatusehat(idTrans, btn = null, showSwal = true) {
             return new Promise((resolve, reject) => {
                 if (!idTrans) return reject('ID_TRANS kosong.');

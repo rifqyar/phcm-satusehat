@@ -125,28 +125,28 @@
                             <div class="row justify-content-center align-items-end">
 
                                 <!-- Tanggal Mulai -->
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <label for="start_date">Periode Awal</label>
                                     <input type="text" class="form-control" id="start_date">
                                     <span class="bar"></span>
                                 </div>
 
                                 <!-- Tanggal Akhir -->
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <label for="end_date">Periode Akhir</label>
                                     <input type="text" class="form-control" id="end_date">
                                     <span class="bar"></span>
                                 </div>
 
                                 <!-- Jenis Pelayanan -->
-                                <div class="col-md-4">
+                                {{-- <div class="col-md-4">
                                     <label for="jenis">Jenis Pelayanan</label>
                                     <select id="jenis" name="jenis" class="form-control">
                                         <option value="">Rawat Jalan</option>
                                         <option value="ri">Rawat Inap</option>
                                     </select>
                                     <span class="bar"></span>
-                                </div>
+                                </div> --}}
 
                             </div>
                         </div>
@@ -239,7 +239,7 @@
         });
 
         $(document).ready(function() {
-            // 🗓️ datepicker
+            // datepicker
             var startDate = moment().startOf('day');
             var endDate = moment().endOf('day');
 
@@ -260,7 +260,7 @@
             $('#start_date').val(startDate.format('YYYY-MM-DD'));
             $('#end_date').val(endDate.format('YYYY-MM-DD'));
 
-            // ✅ Checkbox select-all
+            // Checkbox select-all
             $(document).on('change', '#checkAll', function() {
                 $('.checkbox-item').prop('checked', $(this).is(':checked'));
             });
@@ -269,7 +269,7 @@
                 $('.checkbox-item').prop('checked', $(this).is(':checked'));
             });
 
-            // 🚀 Fungsi utama kirim batch satu per satu
+            // Fungsi utama kirim batch satu per satu
             async function sendSequential(selected) {
                 let successCount = 0;
                 let failCount = 0;
@@ -329,7 +329,7 @@
             }
 
 
-            // ⚡ Event tombol "Kirim Dipilih"
+            // Event tombol "Kirim Dipilih"
             $('#btnKirimDipilih').on('click', function() {
                 const selected = $('.checkbox-item:checked').map(function() {
                     return $(this).val();
@@ -373,7 +373,7 @@
             });
 
 
-            // ⚙️ DataTable
+            // DataTable
             table = $('#diagnosisTable').DataTable({
                 processing: true,
                 serverSide: false,

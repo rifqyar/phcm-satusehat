@@ -28,63 +28,39 @@ class MedicationRequestController extends Controller
     public function datatable(Request $request)
     {
         $startDate = $request->input('start_date');
-        $endDate = $request->input('end_date');
-        $jenis = $request->input('jenis'); // ri / rj
+        $endDate   = $request->input('end_date');
+        $jenis     = $request->input('jenis');
         $ketLayanan = $jenis === 'ri' ? 'INAP' : 'JALAN';
-        $id_unit = Session::get('id_unit', '001');
-
+        $id_unit   = Session::get('id_unit', '001');
 
         if (!$startDate || !$endDate) {
-            $endDate = now();
-            $startDate = now()->subDays(30);
+            $endDate   = now()->format('Y-m-d');
+            $startDate = now()->subDays(30)->format('Y-m-d');
         }
 
-        // Tentukan tabel kunjungan berdasarkan input jenis
-        $kunjunganTable = $jenis === 'ri'
+        $kunjunganView = $jenis === 'ri'
             ? 'SIRS_PHCM.dbo.v_kunjungan_ri'
             : 'SIRS_PHCM.dbo.v_kunjungan_rj';
 
+        // =====================================================
+        // BASE QUERY
+        // =====================================================
         $query = DB::table('SIRS_PHCM.dbo.IF_HTRANS_OL as a')
-            ->distinct()
+            ->join(DB::raw("
+            (
+                SELECT *
+                FROM {$kunjunganView}
+                WHERE TANGGAL >= '{$startDate}'
+                  AND TANGGAL <  DATEADD(day, 1, '{$endDate}')
+            ) as c
+        "), 'a.KARCIS', '=', 'c.ID_TRANSAKSI')
             ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as b', 'a.KARCIS', '=', 'b.karcis')
-            ->leftJoin("$kunjunganTable as c", 'a.KARCIS', '=', 'c.ID_TRANSAKSI')
-            ->leftJoin(DB::raw("
-                (
-                    SELECT
-                        ol.ID_TRANS,
-                        CASE
-                            WHEN COUNT(CASE WHEN kfa.KD_BRG_KFA IS NULL THEN 1 END) > 0
-                            THEN '000'
-                            ELSE '100'
-                        END AS STATUS_MAPPING
-                    FROM SIRS_PHCM.dbo.IF_TRANS_OL ol
-                    LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA kfa
-                        ON ol.KDBRG_CENTRA = kfa.KDBRG_CENTRA
-                    GROUP BY ol.ID_TRANS
-                ) as d
-            "), 'd.ID_TRANS', '=', 'a.ID_TRANS')
-            ->leftJoin(DB::raw("
-                (
-                    SELECT
-                        LOCAL_ID,
-                        MAX(ID) AS MAX_ID
-                    FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
-                    WHERE LOG_TYPE = 'MedicationRequest'
-                    AND STATUS = 'success'
-                    GROUP BY LOCAL_ID
-                ) AS log_latest
-            "), 'log_latest.LOCAL_ID', '=', 'a.ID_TRANS')
-            ->leftJoin(
-                'SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION as SSM',
-                'SSM.ID',
-                '=',
-                DB::raw('log_latest.MAX_ID')
-            )
+
             ->where('a.IDUNIT', $id_unit)
             ->where('a.ACTIVE', '1')
-            ->whereBetween(DB::raw('CAST(c.TANGGAL AS date)'), [$startDate, $endDate])
             ->where('a.KET_LAYANAN', $ketLayanan)
-            ->select(
+
+            ->select([
                 'b.id',
                 'b.id_satusehat_encounter',
                 'a.ID_TRANS',
@@ -92,85 +68,122 @@ class MedicationRequestController extends Controller
                 'a.KARCIS',
                 DB::raw('c.NAMA_PASIEN AS PASIEN'),
                 DB::raw('c.DOKTER AS DOKTER'),
-                DB::raw("
-                    CASE
-                        WHEN SSM.ID IS NOT NULL THEN '200'
-                        ELSE d.STATUS_MAPPING
-                    END AS STATUS_MAPPING
-                "),
-                DB::raw('SSM.STATUS AS LOG_STATUS'),
-                DB::raw('SSM.CREATED_AT AS LOG_CREATED_AT')
-            );
 
+                // ===== STATUS MAPPING =====
+                DB::raw("
+                CASE
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION lm
+                        WHERE lm.LOCAL_ID = a.ID_TRANS
+                          AND lm.LOG_TYPE = 'MedicationRequest'
+                          AND lm.STATUS = 'success'
+                    )
+                    THEN '200'
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM SIRS_PHCM.dbo.IF_TRANS_OL ol
+                        LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA kfa
+                            ON ol.KDBRG_CENTRA = kfa.KDBRG_CENTRA
+                        WHERE ol.ID_TRANS = a.ID_TRANS
+                          AND kfa.KD_BRG_KFA IS NULL
+                    )
+                    THEN '000'
+                    ELSE '100'
+                END AS STATUS_MAPPING
+            "),
+
+                // ===== LOG TERAKHIR (scalar subquery) =====
+                DB::raw("
+                (
+                    SELECT TOP 1 lm.STATUS
+                    FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION lm
+                    WHERE lm.LOCAL_ID = a.ID_TRANS
+                      AND lm.LOG_TYPE = 'MedicationRequest'
+                      AND lm.STATUS = 'success'
+                    ORDER BY lm.ID DESC
+                ) AS LOG_STATUS
+            "),
+
+                DB::raw("
+                (
+                    SELECT TOP 1 lm.CREATED_AT
+                    FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION lm
+                    WHERE lm.LOCAL_ID = a.ID_TRANS
+                      AND lm.LOG_TYPE = 'MedicationRequest'
+                      AND lm.STATUS = 'success'
+                    ORDER BY lm.ID DESC
+                ) AS LOG_CREATED_AT
+            "),
+            ]);
+
+        // =====================================================
+        // FILTER STATUS
+        // =====================================================
         $status = $request->input('status', 'all');
 
         $statusExpr = "
         CASE
-            WHEN SSM.ID IS NOT NULL THEN '200'
-            ELSE d.STATUS_MAPPING
+            WHEN EXISTS (
+                SELECT 1
+                FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION lm
+                WHERE lm.LOCAL_ID = a.ID_TRANS
+                  AND lm.LOG_TYPE = 'MedicationRequest'
+                  AND lm.STATUS = 'success'
+            )
+            THEN '200'
+            WHEN EXISTS (
+                SELECT 1
+                FROM SIRS_PHCM.dbo.IF_TRANS_OL ol
+                LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA kfa
+                    ON ol.KDBRG_CENTRA = kfa.KDBRG_CENTRA
+                WHERE ol.ID_TRANS = a.ID_TRANS
+                  AND kfa.KD_BRG_KFA IS NULL
+            )
+            THEN '000'
+            ELSE '100'
         END
-        ";
+    ";
+
         $baseQuery = clone $query;
+
         if ($status === 'sent') {
             $query->whereRaw("$statusExpr = '200'");
-        }
-        else if ($status === 'unsent') {
+        } elseif ($status === 'unsent') {
             $query->whereRaw("$statusExpr <> '200'");
         }
 
-
-        $recordsTotal = (clone $baseQuery)->count();
+        // =====================================================
+        // SUMMARY
+        // =====================================================
+        $recordsTotal = (clone $baseQuery)->count('a.ID_TRANS');
 
         $sentCount = (clone $baseQuery)
             ->whereRaw("$statusExpr = '200'")
-            ->count();
-
-        $unsentCount = (clone $baseQuery)
-            ->whereRaw("$statusExpr <> '200'")
-            ->count();
-
+            ->count('a.ID_TRANS');
 
         $unsentCount = $recordsTotal - $sentCount;
 
-        // DataTables server-side
+        // =====================================================
+        // DATATABLES
+        // =====================================================
         $dataTable = DataTables::of($query)
-            ->filterColumn('KARCIS', function ($query, $keyword) {
-                $query->where('a.KARCIS', 'like', "%{$keyword}%");
-            })
-            ->filterColumn('ID_TRANS', function ($query, $keyword) {
-                $query->where('a.ID_TRANS', 'like', "%{$keyword}%");
-            })
-            ->filterColumn('DOKTER', function ($query, $keyword) {
-                $query->where('c.DOKTER', 'like', "%{$keyword}%");
-            })
-            ->filterColumn('PASIEN', function ($query, $keyword) {
-                $query->where('c.NAMA_PASIEN', 'like', "%{$keyword}%");
-            })
-            ->filter(function ($query) use ($request) {
-                if ($search = $request->get('search')['value']) {
-                    $query->where(function ($q) use ($search) {
-                        $q->where('a.KARCIS', 'like', "%{$search}%")
-                            ->orWhere('a.ID_TRANS', 'like', "%{$search}%")
-                            ->orWhere('c.DOKTER', 'like', "%{$search}%")
-                            ->orWhere('c.NAMA_PASIEN', 'like', "%{$search}%");
-                    });
-                }
-            })
-            ->order(function ($query) {
-                $query->orderBy('a.ID_TRANS', 'desc');
+            ->order(function ($q) {
+                $q->orderBy('a.ID_TRANS', 'desc');
             })
             ->make(true);
 
-        // Tambahkan summary
         $json = $dataTable->getData(true);
         $json['summary'] = [
-            'all' => $recordsTotal,
-            'sent' => $sentCount,
+            'all'    => $recordsTotal,
+            'sent'   => $sentCount,
             'unsent' => $unsentCount,
         ];
 
         return response()->json($json);
     }
+
+
 
 
     public function getDetailObat(Request $request)

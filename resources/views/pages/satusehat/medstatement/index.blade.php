@@ -251,13 +251,21 @@
                             className: 'text-center',
                             render: (d, t, r, m) => m.row + m.settings._iDisplayStart + 1
                         },
-
                         {
                             data: 'ID_TRANS',
-                            render: id =>
-                                `<input type="checkbox" class="checkbox-item" value="${id}">`
-                        },
+                            orderable: false,
+                            searchable: false,
+                            className: 'text-center',
+                            render: function (id, type, row) {
+                                // kalau sudah integrasi → TIDAK ADA checkbox
+                                if (row.STATUS_KIRIM_STATEMENT === 'Integrasi') {
+                                    return `<i class="text-muted">-</i>`;
+                                }
 
+                                // selain itu → boleh dicentang
+                                return `<input type="checkbox" class="checkbox-item" value="${id}">`;
+                            }
+                        },
                         {
                             data: null,
                             render: r => `

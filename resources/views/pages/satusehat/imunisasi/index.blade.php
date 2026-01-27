@@ -65,7 +65,7 @@
     <!-- Main card -->
     <div class="card">
         <div class="card-body">
-            <h4 class="card-title">Data Pasien — Imunisasi</h4>
+            <h4 class="card-title">Data Riwayat Imunisasi Pasien</h4>
 
             <form action="javascript:void(0)" id="search-data" class="m-t-20">
                 <div class="row">
@@ -113,47 +113,80 @@
                         </div>
                     </div>
 
-                    <!-- Filter periode (UI only - backend saat ini tidak memakainya) -->
-                    {{-- <div class="col-12">
-                        <div class="form-row align-items-end">
-                            <div class="form-group col-md-4">
-                                <label for="start_date">Periode Awal</label>
-                                <input type="text" class="form-control" id="start_date" autocomplete="off">
-                            </div>
-                            <div class="form-group col-md-4">
-                                <label for="end_date">Periode Akhir</label>
-                                <input type="text" class="form-control" id="end_date" autocomplete="off">
-                            </div>
-                            <div class="form-group col-md-4 text-right">
-                                <button type="button" class="btn btn-success btn-rounded mr-2" onclick="resetSearch()">Reset</button>
-                                <button type="submit" class="btn btn-info btn-rounded">Cari</button>
+                    <!-- Filter Periode + Jenis Pelayanan -->
+                    <div class="col-12 mt-4">
+                        <div class="form-group">
+                            <div class="row justify-content-center align-items-end">
+
+                                <!-- Tanggal Mulai -->
+                                <div class="col-md-6">
+                                    <label for="start_date">Periode Awal</label>
+                                    <input type="text" class="form-control" id="start_date">
+                                    <span class="bar"></span>
+                                </div>
+
+                                <!-- Tanggal Akhir -->
+                                <div class="col-md-6">
+                                    <label for="end_date">Periode Akhir</label>
+                                    <input type="text" class="form-control" id="end_date">
+                                    <span class="bar"></span>
+                                </div>
+
+                                <!-- Jenis Pelayanan -->
+                                {{-- <div class="col-md-4">
+                                    <label for="jenis">Jenis Pelayanan</label>
+                                    <select id="jenis" name="jenis" class="form-control">
+                                        <option value="">Rawat Jalan</option>
+                                        <option value="ri">Rawat Inap</option>
+                                    </select>
+                                    <span class="bar"></span>
+                                </div> --}}
+
                             </div>
                         </div>
-                    </div> --}}
+                    </div>
+
+                </div>
+
+                <!-- Tombol Aksi -->
+                <div class="d-flex justify-content-end">
+                    <button type="button" class="btn btn-success btn-rounded mr-3" onclick="resetSearch()">
+                        Reset Pencarian <i class="mdi mdi-refresh"></i>
+                    </button>
+                    <button type="button" id="btnCariData" class="btn btn-rounded btn-info">
+                        Cari Data <i class="mdi mdi-magnify"></i>
+                    </button>
                 </div>
             </form>
+        </div>
+    </div>
 
-            <hr>
-
+    <div class="card">
+        <div class="card-body">
             <div class="mb-3">
-                <button type="button" id="btnKirimDipilih" class="btn btn-success btn-sm">
-                    <i class="fas fa-paper-plane"></i> Kirim Dipilih
-                </button>
-                <button type="button" id="btnRefresh" class="btn btn-secondary btn-sm ml-2">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
+                <div class="row align-items-center justify-content-between m-1">
+                    <div class="card-title">
+                        <h4>Data Imunisasi</h4>
+                    </div>
+
+                    <button type="button" id="btnKirimDipilih" class="btn btn-warning btn-rounded">
+                        <i class="fas fa-paper-plane"></i> Kirim Terpilih ke SatuSehat
+                    </button>
+                </div>
             </div>
 
             <div class="table-responsive">
-                <table id="medicationTable" class="table table-striped table-bordered" style="width:100%">
+                <table id="dataTable" class="table table-striped table-bordered" style="width:100%">
                     <thead>
                         <tr>
                             <th>No</th>
-                            <th class="text-center"><input type="checkbox" id="checkAll"></th>
-                            <th>Pasien</th>
-                            <th>Tanggal Lahir</th>
-                            <th>Jenis Kelamin</th>
-                            <th>Alamat</th>
+                            <th class="text-center">
+                                <input type="checkbox" id="checkAll">
+                            </th>
+                            <th>Karcis</th>
+                            <th>Nama Pasien</th>
+                            <th>Tanggal Vaksin</th>
+                            <th>Jenis Vaksin</th>
                             <th>Status Integrasi</th>
                             <th>Aksi</th>
                         </tr>
@@ -161,6 +194,74 @@
                 </table>
             </div>
 
+        </div>
+    </div>
+
+    <!-- Modal Detail Imunisasi -->
+    <div class="modal fade" id="modalDetailImunisasi" tabindex="-1" role="dialog"
+        aria-labelledby="modalDetailImunisasiLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl" role="document">
+            <div class="modal-content">
+
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="modalDetailImunisasiLabel">
+                        <i class="fas fa-syringe"></i> Detail Imunisasi
+                    </h5>
+                    <button type="button" class="close text-white" data-dismiss="modal">
+                        <span>&times;</span>
+                    </button>
+                </div>
+
+                <div class="modal-body">
+
+                    <!-- info umum -->
+                    <table class="table table-sm table-bordered mb-3">
+                        <tr>
+                            <th width="30%">Karcis</th>
+                            <td id="detail_karcis">-</td>
+                        </tr>
+                        <tr>
+                            <th>Nama Pasien</th>
+                            <td id="detail_nama">-</td>
+                        </tr>
+                        <tr>
+                            <th>Status SATUSEHAT</th>
+                            <td id="detail_status">-</td>
+                        </tr>
+                    </table>
+
+                    <!-- riwayat imunisasi -->
+                    <h6>Riwayat Imunisasi</h6>
+                    <table class="table table-sm table-striped table-bordered">
+                        <thead class="bg-light">
+                            <tr>
+                                <th>Tanggal</th>
+                                <th>Jenis Vaksin</th>
+                                <th>Display Vaksin</th>
+                                <th>Kode Centra</th>
+                                <th>Kode KFA</th>
+                                <th>Dosis</th>
+                                <th>Input Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="detail_imunisasi_body">
+                            <tr>
+                                <td colspan="4" class="text-center text-muted">
+                                    (dummy data)
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                        Tutup
+                    </button>
+                </div>
+
+            </div>
         </div>
     </div>
 @endsection
@@ -196,18 +297,16 @@
             $('#end_date').val(endDate.format('YYYY-MM-DD'));
 
             // 2) Initialize DataTable
-            table = $('#medicationTable').DataTable({
+            table = $('#dataTable').DataTable({
                 processing: true,
-                serverSide: true,
+                serverSide: false,
                 ajax: {
                     url: '{{ route('satusehat.imunisasi.datatabel') }}',
                     type: 'POST',
                     data: function(d) {
                         d._token = '{{ csrf_token() }}';
-                        // NOTE: currently backend datatable uses only tglLahir NOT NULL filter.
-                        // If you later support periode filtering, add:
-                        // d.start_date = $('#start_date').val();
-                        // d.end_date = $('#end_date').val();
+                        d.tgl_awal = $('#start_date').val();
+                        d.tgl_akhir = $('#end_date').val();
                     }
                 },
                 columns: [{
@@ -215,62 +314,79 @@
                         orderable: false,
                         searchable: false,
                         className: 'text-center',
-                        render: function(data, type, row, meta) {
-                            return meta.row + meta.settings._iDisplayStart + 1;
+                        render: function (data, type, row, meta) {
+                            return meta.settings._iDisplayStart + meta.row + 1;
                         }
                     },
                     {
-                        data: 'id',
+                        data: null,
                         orderable: false,
                         searchable: false,
                         className: 'text-center',
-                        render: function(id, type, row) {
-                            return `<input type="checkbox" class="checkbox-item" value="${id}">`;
-                        }
-                    },
-                    {
-                        data: null,
-                        render: function(row) {
-                            return `<strong>${row.nama ?? '-'}</strong><br><small class="text-muted">NIK: ${row.nik ?? '-'}</small>`;
-                        }
-                    },
-                    {
-                        data: 'tglLahir',
-                        name: 'tglLahir',
-                        render: function(v) {
-                            return v ? moment(v).format('YYYY-MM-DD') : '-';
-                        }
-                    },
-                    {
-                        data: 'sex',
-                        name: 'sex',
-                        render: function(v) {
-                            if (!v) return '-';
-                            v = v.toString().toUpperCase();
-                            return (v === 'M' || v === 'L' || v === 'MALE' || v === 'L') ?
-                                'Laki-laki' : 'Perempuan';
-                        }
-                    },
-                    {
-                        data: 'alamat',
-                        name: 'alamat',
-                        render: function(v) {
-                            if (!v) return '-';
-                            if (v.length > 60) return v.substring(0, 60) + '...';
-                            return v;
-                        }
-                    },
-                    {
-                        data: null,
-                        render: function(row) {
-                            if (row.tgl_mapping) {
-                                return `<span class="badge badge-success w-100">Terintegrasi</span><br><small class="text-muted">${row.tgl_mapping}</small>`;
-                            } else if (row.user_mapping) {
-                                // user_mapping exists but no tgl_mapping -> partial
-                                return `<span class="badge badge-warning w-100">Mapping (Belum final)</span><br><small class="text-muted">${row.user_mapping}</small>`;
-                            } else {
-                                return `<span class="badge badge-danger w-100">Belum Terintegrasi</span>`;
+                        render: function (data, type, row) {
+
+                            if (type !== 'display') {
+                                return '-';
                             }
+
+                            if (row.SATUSEHAT_STATUS === 'SUCCESS') {
+                                return '-';
+                            }
+
+                            return `
+                                <input type="checkbox"
+                                    class="checkbox-item"
+                                    value="${row.ID_IMUNISASI_PX}">
+                            `;
+                        }
+                    },
+                    {
+                        data: 'karcis',
+                        render: function(v) {
+                            return `<strong>${v ?? '-'}</strong>`;
+                        }
+                    },
+                    {
+                        data: 'NAMA_PASIEN',
+                        render: function(v) {
+                            return `<strong>${v ?? '-'}</strong>`;
+                        }
+                    },
+                    {
+                        data: 'TANGGAL',
+                        render: function(v) {
+                            return v ? moment(v).format('DD-MM-YYYY') : '-';
+                        }
+                    },
+                    {
+                        data: 'JENIS_VAKSIN',
+                        render: function(v) {
+                            return v ?? '-';
+                        }
+                    },
+                    {
+                        data: 'SATUSEHAT_STATUS',
+                        className: 'text-center',
+                        render: function(v, type, row) {
+
+                            // untuk search / sort -> pakai value asli
+                            if (type !== 'display') {
+                                return v ?? 'DRAFT';
+                            }
+
+                            if (v === 'SUCCESS') {
+                                return `
+                                    <span class="badge badge-pill badge-success p-2 w-100">
+                                        Sudah Integrasi
+                                    </span>
+                                `;
+                            }
+
+                            return `
+                                <span class="badge badge-pill badge-danger p-2 w-100">
+                                    Belum Integrasi
+                                </span>
+                            `;
                         }
                     },
                     {
@@ -278,40 +394,57 @@
                         orderable: false,
                         searchable: false,
                         render: function(row) {
-                            return `
-                                <button class="btn btn-sm btn-primary w-100 mb-1" onclick="kirimSatu('${row.id}', this)">
-                                    <i class="fas fa-paper-plane"></i> Kirim
-                                </button>
-                                <button class="btn btn-sm btn-info w-100"
-                                    onclick='lihatDetail(${JSON.stringify(row)})'>
-                                    <i class="fas fa-eye"></i> Detail
+                            let btnKirim = `
+                                <button class="btn btn-sm btn-primary w-100"
+                                    onclick='confirmkirimSatusehat(${JSON.stringify(row)})'>
+                                    <i class="fas fa-paper-plane mr-2"></i> Kirim SATUSEHAT
                                 </button>
                             `;
+
+                            // jika sudah SUCCESS → kirim ulang
+                            if (row.SATUSEHAT_STATUS === 'SUCCESS') {
+                                btnKirim = `
+                                    <button class="btn btn-sm btn-warning w-100"
+                                        onclick='confirmkirimSatusehat(${JSON.stringify(row)})'>
+                                        <i class="fas fa-sync-alt mr-2"></i> Kirim Ulang SATUSEHAT
+                                    </button>
+                                `;
+                            }
+
+                            const btnLihat = `
+                                <br/>
+                                <button class="btn btn-sm btn-info w-100"
+                                    onclick='cekData(${JSON.stringify(row)})'>
+                                    <i class="fas fa-eye"></i> Data Imunisasi
+                                </button>
+                            `;
+
+                            return btnKirim + btnLihat;
                         }
 
                     }
                 ],
-                order: [
-                    [0, 'asc']
-                ],
+                order: [[4, 'desc']],
                 lengthMenu: [10, 25, 50, 100],
                 language: {
-                    processing: "Memuat..."
+                    processing: "Memuat data..."
                 }
             });
 
-            // 3) Update summary cards when table loads
-            table.on('xhr.dt', function(e, settings, json, xhr) {
-                if (json && json.summary) {
-                    $('span[data-count="all"]').text(json.summary.all ?? 0);
-                    // backend mungkin tidak mengirim sent/unsent — fallback ke 0
-                    $('span[data-count="sent"]').text(json.summary.sent ?? 0);
-                    $('span[data-count="unsent"]').text(json.summary.unsent ?? 0);
-                } else {
-                    $('span[data-count="all"]').text(0);
-                    $('span[data-count="sent"]').text(0);
-                    $('span[data-count="unsent"]').text(0);
-                }
+            $('#btnCariData').on('click', function() {
+                table.ajax.reload();
+            });
+
+            $('#dataTable').on('xhr.dt', function(e, settings, json) {
+                if (!json || !json.summary) return;
+
+                const summary = json.summary;
+
+                $('[data-count="all"]').text(summary.all ?? 0);
+                $('[data-count="sent"]').text(summary.success ?? 0);
+
+                const belum = (summary.all ?? 0) - (summary.success ?? 0);
+                $('[data-count="unsent"]').text(belum);
             });
 
             // 4) Checkbox select all
@@ -339,173 +472,272 @@
                 table.ajax.reload();
             });
 
-            // 7) Bulk send
-            $('#btnKirimDipilih').on('click', async function() {
-                const selected = $('.checkbox-item:checked').map(function() {
-                    return $(this).val();
-                }).get();
+            // bulk sned
+            $('#btnKirimDipilih').on('click', async function () {
 
-                if (selected.length === 0) {
-                    swal({
-                        title: 'Tidak ada data terpilih',
-                        text: 'Silakan pilih pasien yang ingin dikirim ke SATUSEHAT.',
-                        icon: 'warning'
-                    });
-                    return;
+            const selected = $('.checkbox-item:checked')
+                .map(function () { return $(this).val(); })
+                .get();
+
+            if (selected.length === 0) {
+                swal('Tidak ada data terpilih',
+                    'Silakan pilih pasien yang ingin dikirim ke SATUSEHAT.',
+                    'warning');
+                return;
+            }
+
+            const confirm = await swal({
+                title: 'Kirim data terpilih?',
+                text: `Akan mengirim ${selected.length} data ke SATUSEHAT.`,
+                icon: 'info',
+                buttons: {
+                    cancel: 'Batal',
+                    confirm: { text: 'Kirim', closeModal: false }
                 }
-
-                const confirmResult = await swal({
-                    title: 'Kirim data terpilih?',
-                    text: `Akan mengirim ${selected.length} pasien ke SATUSEHAT (satu per satu).`,
-                    icon: 'info',
-                    buttons: {
-                        cancel: "Batal",
-                        confirm: {
-                            text: "Kirim",
-                            closeModal: false
-                        }
-                    }
-                });
-
-                if (!confirmResult) return;
-
-                // show progress swal
-                swal({
-                    title: 'Mengirim...',
-                    text: 'Proses berjalan otomatis. Jangan tutup halaman.',
-                    icon: 'info',
-                    buttons: false
-                });
-
-                // sequential send
-                let success = [],
-                    fail = [];
-                for (let i = 0; i < selected.length; i++) {
-                    const id = selected[i];
-                    try {
-                        const res = await kirimSatusehat(id, false);
-                        if (res && res.success) success.push(id);
-                        else fail.push({
-                            id: id,
-                            message: res.message || 'Gagal'
-                        });
-                    } catch (err) {
-                        fail.push({
-                            id: id,
-                            message: err
-                        });
-                    }
-                }
-
-                // show summary
-                let html = `<div style="text-align:left; max-height:300px; overflow:auto;">`;
-                html += `<strong>Sukses (${success.length}):</strong><br>`;
-                html += success.length ? success.map(i => `✅ ${i}`).join('<br>') : '<i>Tidak ada</i>';
-                html += `<br><br><strong>Gagal (${fail.length}):</strong><br>`;
-                html += fail.length ? fail.map(f => `❌ ${f.id} — ${f.message ? f.message : ''}`).join(
-                    '<br>') : '<i>Tidak ada</i>';
-                html += `</div>`;
-
-                swal({
-                    title: 'Selesai',
-                    content: {
-                        element: "div",
-                        attributes: {
-                            innerHTML: html
-                        }
-                    },
-                    icon: fail.length === 0 ? 'success' : 'warning',
-                    buttons: true
-                }).then(() => {
-                    table.ajax.reload(null, false);
-                });
             });
 
+            if (!confirm) return;
+
+            const total = selected.length;
+            const success = [];
+            const fail = [];
+
+            // === PROGRESS MODAL ===
+            Swal.fire({
+                title: 'Mengirim ke SATUSEHAT',
+                html: `
+                    <div id="progressContent" style="text-align:left">
+                        <p>Proses <b>0</b> / <b>${total}</b></p>
+                        <p>✔ Sukses : <b>0</b></p>
+                        <p>✖ Gagal : <b>0</b></p>
+                    </div>
+                `,
+                icon: 'info',
+                showConfirmButton: false,
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+
+            // === LOOP KIRIM (SATU KALI SAJA) ===
+            for (let i = 0; i < total; i++) {
+                const id = selected[i];
+
+                try {
+                    const res = await kirimSatusehat(id, false);
+
+                    if (res && res.success) {
+                        success.push(id);
+                    } else {
+                        fail.push({
+                            id,
+                            message: res?.message || 'Gagal'
+                        });
+                    }
+
+                } catch (err) {
+                    fail.push({
+                        id,
+                        message: err
+                    });
+                }
+
+                // UPDATE UI
+                $('#progressContent').html(
+                    renderProgress(i + 1, total, success.length, fail.length)
+                );
+            }
+
+            // === SUMMARY ===
+            let html = `<div style="text-align:left; max-height:300px; overflow:auto;">`;
+            html += `<strong>✔ Sukses (${success.length})</strong><br>`;
+            html += success.length
+                ? success.map(id => `✅ ${id}`).join('<br>')
+                : '<i>Tidak ada</i>';
+
+            html += `<br><br><strong>✖ Gagal (${fail.length})</strong><br>`;
+            html += fail.length
+                ? fail.map(f => `❌ ${f.id} — ${f.message}`).join('<br>')
+                : '<i>Tidak ada</i>';
+
+            html += `</div>`;
+
+            Swal.fire({
+                title: 'Selesai',
+                html: html,
+                icon: fail.length === 0 ? 'success' : 'warning',
+                confirmButtonText: 'Tutup'
+            }).then(() => {
+                table.ajax.reload(null, false);
+            });
+
+
+        });
+
+
         }); // end document.ready
+        function renderProgress(done, total, ok, fail) {
+            return `
+                <div style="text-align:left">
+                    <p>Proses <b>${done}</b> / <b>${total}</b></p>
+                    <p>✔ Sukses : <b>${ok}</b></p>
+                    <p>✖ Gagal : <b>${fail}</b></p>
+                </div>
+            `;
+        }
 
-        // ======================
-        // Helper functions
-        // ======================
+        function search(type) {
+            // reset semua filter
+            table.search('').columns().search('');
 
-        // Lihat detail modal (simple)
-function lihatDetail(row) {
-    if (!row) {
-        Swal.fire("Error", "Data pasien tidak ditemukan.", "error");
-        return;
-    }
+            if (type === 'all') {
+                table.draw();
+                return;
+            }
 
-    const vaksinHistory = [
-        { nama: "COVID-19 (Sinovac)", tanggal: "2021-02-14", dosis: "Dosis 1", fasilitas: "RSUD SEHAT SELALU" },
-        { nama: "COVID-19 (Sinovac)", tanggal: "2021-03-14", dosis: "Dosis 2", fasilitas: "RSUD SEHAT SELALU" },
-        { nama: "COVID-19 Booster", tanggal: "2021-09-21", dosis: "Booster 1", fasilitas: "Puskesmas Cempaka" }
-    ];
+            // kolom STATUS = index 5
+            if (type === 'integrated') {
+                table
+                    .column(6)
+                    .search('^SUCCESS$', true, false) // exact match
+                    .draw();
+                return;
+            }
 
-    let historyHtml = `
-        <h4 style="margin-top:15px">Riwayat Vaksin</h4>
-        <table class="table table-sm table-bordered" style="font-size:13px; text-align:left;">
-            <thead>
+            if (type === 'not_integrated') {
+                table
+                    .column(6)
+                    .search('^(?!SUCCESS$).*', true, false) // NOT SUCCESS
+                    .draw();
+                return;
+            }
+        }
+
+        function cekData(row) {
+            if (!row) return;
+
+            $('#detail_karcis').text(row.karcis ?? '-');
+            $('#detail_nama').text(row.NAMA_PASIEN ?? '-');
+
+            if (row.SATUSEHAT_STATUS === 'SUCCESS') {
+                $('#detail_status').html(`
+                    <span class="badge badge-pill badge-success p-2">
+                        Sudah Integrasi
+                    </span>
+                `);
+            } else {
+                $('#detail_status').html(`
+                    <span class="badge badge-pill badge-danger p-2">
+                        Belum Integrasi
+                    </span>
+                `);
+            }
+
+            const rows = `
                 <tr>
-                    <th>Jenis Vaksin</th>
-                    <th>Tanggal</th>
-                    <th>Dosis</th>
-                    <th>Fasilitas</th>
+                    <td>${moment(row.TANGGAL).format('DD-MM-YYYY')}</td>
+                    <td>${row.JENIS_VAKSIN ?? '-'}</td>
+                    <td>${row.DISPLAY_VAKSIN ?? '-'}</td>
+                    <td>${row.KODE_CENTRA ?? '-'}</td>
+                    <td>${row.KODE_VAKSIN ?? '-'}</td>
+                    <td>${row.DOSIS ?? '-'}</td>
+                    <td>${row.CRTDT ?? '-'}</td>
                 </tr>
-            </thead>
-            <tbody>
-    `;
+            `;
 
-    vaksinHistory.forEach(v => {
-        historyHtml += `
-            <tr>
-                <td>${v.nama}</td>
-                <td>${v.tanggal}</td>
-                <td>${v.dosis}</td>
-                <td>${v.fasilitas}</td>
-            </tr>
-        `;
-    });
+            $('#detail_imunisasi_body').html(rows);
 
-    historyHtml += `
-            </tbody>
-        </table>
-    `;
+            $('#modalDetailImunisasi').modal('show');
+        }
 
-    let detailHtml = `
-        <table class="table table-sm table-bordered" style="text-align:left; font-size:13px;">
-            <tr><th>Nama</th><td>${row.nama ?? '-'}</td></tr>
-            <tr><th>NIK</th><td>${row.nik ?? '-'}</td></tr>
-            <tr><th>Tgl Lahir</th><td>${row.tglLahir ?? '-'}</td></tr>
-            <tr><th>Jenis Kelamin</th><td>${row.sex === 'M' ? 'Laki-laki' : 'Perempuan'}</td></tr>
-            <tr><th>Alamat</th><td>${row.alamat ?? '-'}</td></tr>
-            <tr><th>Status Integrasi</th><td>${row.tgl_mapping ? 'Terintegrasi' : 'Belum Terintegrasi'}</td></tr>
-        </table>
+        function confirmkirimSatusehat(row) {
 
-        <hr>
-        ${historyHtml}
-    `;
+            if (!row || !row.ID_IMUNISASI_PX) {
+                Swal.fire('Error', 'Data imunisasi tidak valid', 'error');
+                return;
+            }
 
-    Swal.fire({
-        title: "Informasi Pasien",
-        html: detailHtml,
-        width: 650,
-        confirmButtonText: "Tutup"
-    });
-}
+            Swal.fire({
+                title: 'Kirim ke SATUSEHAT?',
+                html: `
+                    <div style="text-align:left">
+                        <b>Pasien</b> : ${row.NAMA_PASIEN}<br>
+                        <b>Vaksin</b> : ${row.DISPLAY_VAKSIN}<br>
+                        <b>Tanggal</b> : ${moment(row.TANGGAL).format('DD-MM-YYYY')}
+                    </div>
+                `,
+                type: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Kirim',
+                cancelButtonText: 'Batal',
+                allowOutsideClick: false
+            }).then(function (result) {
+                if (result.value === true) {
+                    kirimSatusehat(row.ID_IMUNISASI_PX);
+                }
+            });
+        }
+
+        function kirimSatusehat(idImunisasiPx, showSwal = true) {
+            return new Promise((resolve, reject) => {
+
+                if (showSwal) {
+                    Swal.fire({
+                        title: 'Mengirim ke SATUSEHAT',
+                        text: 'Mohon tunggu...',
+                        type: 'info',
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        onOpen: () => Swal.showLoading()
+                    });
+                }
+
+                $.ajax({
+                    url: "{{ route('satusehat.imunisasi.sendsatusehat') }}",
+                    method: "POST",
+                    dataType: "json",
+                    data: {
+                        _token: "{{ csrf_token() }}",
+                        id_imunisasi_px: idImunisasiPx
+                    },
+                    success: function (res) {
+
+                        if (showSwal) Swal.close();
+
+                        if (res.success === true) {
+                            if (showSwal) {
+                                Swal.fire('Berhasil', 'Data imunisasi berhasil dikirim', 'success');
+                            }
+                            resolve(res);
+                        } else {
+                            let msg = res.message || 'Gagal kirim';
+                            if (showSwal) {
+                                Swal.fire('Gagal', msg, 'error');
+                            }
+                            reject(msg);
+                        }
+                    },
+                    error: function (xhr) {
+
+                        if (showSwal) Swal.close();
+
+                        let msg = xhr.responseJSON?.message || 'Kesalahan jaringan';
+
+                        if (showSwal) {
+                            Swal.fire('Error', msg, 'error');
+                        }
+
+                        reject(msg);
+                    }
+                });
+            });
+        }
 
 
 
-
-
-
-        /**
-         * kirimSatu
-         * @param {String|Number} id - id pasien
-         * @param {HTMLElement|null} btn - tombol yang dipencet (opsional)
-         * @returns Promise resolving { success: boolean, message? }
-         *
-         * NOTE: route used: satusehat.imunisasi.send (POST)
-         * Implement backend route to actually process sending.
-         */
         function kirimSatu(id, btn = null) {
 
         }
@@ -516,9 +748,8 @@ function lihatDetail(row) {
          * Memakai same backend route as kirimSatu.
          * showSwal parameter diabaikan karena we show swal in caller.
          */
-        function kirimSatusehat(id, showSwal = true) {
-            return kirimSatu(id, null);
-        }
+
+
 
         // Reset search helper
         function resetSearch() {
@@ -527,17 +758,6 @@ function lihatDetail(row) {
 
             $('#start_date').val(startDate.format('YYYY-MM-DD'));
             $('#end_date').val(endDate.format('YYYY-MM-DD'));
-            table.ajax.reload();
-        }
-
-        // Card search filter simple: sets a global search keyword (overrides server-side if implemented)
-        function search(type) {
-            // We set a global search param by using table.search(), but server-side must use it.
-            // For now just reload table - you can implement server-side handling of query param if needed.
-            if (type === 'integrated') {
-                // optional: set a custom param via ajax.data if backend supports
-                // not implemented: just reload
-            }
             table.ajax.reload();
         }
     </script>

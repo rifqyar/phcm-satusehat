@@ -235,6 +235,7 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::get('/imunisasi', [App\Http\Controllers\SatuSehat\ImunisasiController::class, 'index'])->name('imunisasi.index');
         Route::post('/imunisasi/detail', [App\Http\Controllers\SatuSehat\ImunisasiController::class, 'getDetailDiagnosis'])->name('imunisasi.detail');
         Route::post('/imunisasi/datatabel', [App\Http\Controllers\SatuSehat\ImunisasiController::class, 'datatabel'])->name('imunisasi.datatabel');
+        Route::post('/imunisasi/sendsatusehat', [App\Http\Controllers\SatuSehat\ImunisasiController::class, 'kirimImunisasiSatusehat'])->name('imunisasi.sendsatusehat');
 
         // Med Statement
         Route::get('/medstatement', [App\Http\Controllers\SatuSehat\MedStatementController::class, 'index'])->name('medstatement.index');
