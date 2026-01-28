@@ -163,16 +163,16 @@ class ObservasiController extends Controller
         $pageNumber = ($start / $length) + 1;
         $pageSize   = $length;
 
-        $data = collect(DB::select('EXEC sp_getObservasi ?, ?, ?, ?, ?, ?', [
+        $data = DB::select('EXEC sp_getObservasi ?, ?, ?, ?, ?, ?', [
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
-            $request->cari,
+            $request->cari == '' || $request->cari == null ? 'unmapped' : $request->cari,
             $pageNumber,
             $pageSize
-        ]));
+        ]);
 
-        if ($data->isEmpty()) {
+        if (count($data) == 0) {
             return response()->json([
                 "draw" => $draw,
                 "recordsTotal" => 0,
@@ -188,7 +188,7 @@ class ObservasiController extends Controller
             ]);
         }
 
-        $summary = $data->first();
+        $summary = $data[0] ?? null;
         $totalData = [
             'total_semua' => $summary->total_semua ?? 0,
             'total_rawat_jalan' => $summary->total_rawat_jalan ?? 0,
