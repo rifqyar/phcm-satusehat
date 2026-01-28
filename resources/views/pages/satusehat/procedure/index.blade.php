@@ -71,6 +71,12 @@
             padding: .375rem .75rem;
             border-radius: .25rem;
         }
+
+        .select2-container--default .select2-selection--single .select2-selection__rendered {
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+        }
     </style>
 @endpush
 
@@ -321,7 +327,7 @@
                     }
                 },
                 processing: true,
-                serverSide: false,
+                serverSide: true,
                 scrollX: false,
                 ajax: {
                     url: `{{ route('satusehat.procedure.datatable') }}`,
@@ -333,12 +339,11 @@
                         data.tgl_akhir = $('input[name="tgl_akhir"]').val();
                     },
                     dataSrc: function(json) {
-                        console.log(json)
-                        $('#total_rawat_jalan').text(json.total_rawat_jalan);
-                        $('#total_rawat_inap').text(json.total_rawat_inap);
-                        $('#total_all').text(json.total_semua);
-                        $('#total_integrasi').text(json.total_sudah_integrasi);
-                        $('#total_belum_integrasi').text(json.total_belum_integrasi);
+                        $('#total_rawat_jalan').text(json.summary.total_rawat_jalan);
+                        $('#total_rawat_inap').text(json.summary.total_rawat_inap);
+                        $('#total_all').text(json.summary.total_semua);
+                        $('#total_integrasi').text(json.summary.total_sudah_integrasi);
+                        $('#total_belum_integrasi').text(json.summary.total_belum_integrasi);
                         return json.data;
                     }
                 },
@@ -615,6 +620,13 @@
                     placeholder: 'Cari kode ICD-9...',
                     minimumInputLength: 2,
                     dropdownParent: $('#tabel_tindakan_lab'),
+                    templateSelection: function(data) {
+                        if (!data.text) return data.text;
+                        return data.text.length > 50 ? data.text.substring(0, 50) + '...' : data.text;
+                    },
+                    templateResult: function(data) {
+                        return data.text;
+                    },
                     ajax: {
                         url: `{{ route('satusehat.procedure.geticd9') }}`,
                         dataType: 'json',
@@ -695,6 +707,13 @@
                     minimumInputLength: 2,
                     allowClear: true,
                     dropdownParent: $('#tabel_tindakan_rad'),
+                    templateSelection: function(data) {
+                        if (!data.text) return data.text;
+                        return data.text.length > 50 ? data.text.substring(0, 50) + '...' : data.text;
+                    },
+                    templateResult: function(data) {
+                        return data.text;
+                    },
                     ajax: {
                         url: `{{ route('satusehat.procedure.geticd9') }}`,
                         dataType: 'json',
@@ -1278,6 +1297,7 @@
                     } else {
                         Swal.close();
                         table.ajax.reload()
+                        $('#modalProcedure').modal('hide')
                     }
                 },
             });

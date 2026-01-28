@@ -66,133 +66,153 @@ class ProcedureController extends Controller
         $tgl_awal_db  = Carbon::parse($tgl_awal)->format('Y-m-d H:i:s');
         $tgl_akhir_db = Carbon::parse($tgl_akhir)->format('Y-m-d H:i:s');
 
+        // ================= DATATABLES PAGINATION =================
+        $start  = (int) $request->input('start', 0);
+        $length = (int) $request->input('length', 10);
+        $draw   = (int) $request->input('draw', 1);
+
+        $pageNumber = ($start / $length) + 1;
+        $pageSize   = $length;
+
         $data = DB::select("
-            EXEC dbo.sp_getTindakanRJRI_All ?, ?, ?, ?
+            EXEC dbo.sp_getTindakanRJRI_All ?, ?, ?, ?, ?, ?
         ", [
             $tgl_awal_db,
             $tgl_akhir_db,
             $id_unit,
-            $request->input('cari') == '' ? null : $request->input('cari')
+            $request->input('cari') == '' ? 'unmapped' : $request->input('cari'),
+            $pageNumber,
+            $pageSize
         ]);
 
+        if (count($data) == 0) {
+            return response()->json([
+                "draw" => $draw,
+                "recordsTotal" => 0,
+                "recordsFiltered" => 0,
+                "data" => [],
+                "summary" => [
+                    'total_semua' => 0,
+                    'total_sudah_integrasi' => 0,
+                    'total_belum_integrasi' => 0,
+                    'total_rawat_jalan' => 0,
+                    'total_rawat_inap' => 0,
+                ]
+            ]);
+        }
+
+        $summary = $data[0] ?? null;
         $totalData = [
-            'total_semua' => $data[0]->total_semua ?? 0,
-            'total_sudah_integrasi' => $data[0]->total_sudah_integrasi ?? 0,
-            'total_belum_integrasi' => $data[0]->total_belum_integrasi ?? 0,
-            'total_rawat_jalan' => $data[0]->total_rawat_jalan ?? 0,
-            'total_rawat_inap' => $data[0]->total_rawat_inap ?? 0,
+            'total_semua' => $summary->total_semua ?? 0,
+            'total_rawat_jalan' => $summary->total_rawat_jalan ?? 0,
+            'total_rawat_inap' => $summary->total_rawat_inap ?? 0,
+            'total_sudah_integrasi' => $summary->total_sudah_integrasi ?? 0,
+            'total_belum_integrasi' => $summary->total_belum_integrasi ?? 0,
         ];
+        $recordsTotal    = $summary->total_semua ?? 0;
+        $recordsFiltered = $summary->recordsFiltered ?? $recordsTotal;
 
-        return DataTables::of($data)
-            ->addIndexColumn()
-            ->editColumn('JENIS_PERAWATAN', function ($row) {
-                return $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
-            })
-            ->editColumn('TANGGAL', function ($row) {
-                return date('Y-m-d', strtotime($row->TANGGAL));
-            })
-            ->addColumn('action', function ($row) {
-                $id_transaksi = LZString::compressToEncodedURIComponent($row->KARCIS);
-                $KbBuku = LZString::compressToEncodedURIComponent($row->KBUKU);
-                $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
-                $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
-                $idEncounter = LZString::compressToEncodedURIComponent($row->id_satusehat_encounter);
-                $jenisPerawatan = LZString::compressToEncodedURIComponent($row->JENIS_PERAWATAN);
-                $paramSatuSehat = "sudah_integrasi=$row->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=$jenisPerawatan";
-                $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+        $dataProcedure = [];
+        $index = $start + 1;
+        foreach ($data as $row) {
+            $jenis = $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
 
-                $param = LZString::compressToEncodedURIComponent("karcis=$id_transaksi&kbuku=$KbBuku&jenis_perawatan=$jenisPerawatan");
-                $btn = '';
-                if ($row->ID_PASIEN_SS == null) {
-                    $btn = '<i class="text-muted">Pasien Belum Mapping</i><br>';
-                } else if ($row->ID_NAKES_SS == null) {
-                    $btn .= '<i class="text-muted">Nakes Belum Mapping</i><br>';
-                } else if ($row->id_satusehat_encounter == null) {
-                    $btn .= '<i class="text-muted">Encounter Belum Kirim</i><br>';
-                }
+            $id_transaksi = LZString::compressToEncodedURIComponent($row->KARCIS);
+            $KbBuku = LZString::compressToEncodedURIComponent($row->KBUKU);
+            $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
+            $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
+            $idEncounter = LZString::compressToEncodedURIComponent($row->id_satusehat_encounter);
+            $jenisPerawatan = LZString::compressToEncodedURIComponent($row->JENIS_PERAWATAN);
+            $paramSatuSehat = "sudah_integrasi=$row->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=$jenisPerawatan";
+            $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
-                $btn .= '<a href="javascript:void(0)" onclick="lihatDetail(`' . $param . '`, `' . $paramSatuSehat . '`)" class="mt-2 btn btn-sm btn-info w-100"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</a>';
-                return $btn;
-            })
-            ->addColumn('status_integrasi', function ($row) {
-                if ($row->sudah_integrasi == '0') {
-                    $html = '<span class="badge badge-pill badge-danger p-2">Belum Integrasi</span>';
-                    // $html .= $this->notif($row);
-                } else {
-                    $html = '<span class="badge badge-pill badge-success p-2">Sudah Integrasi</span>';
-                }
+            $param = LZString::compressToEncodedURIComponent("karcis=$id_transaksi&kbuku=$KbBuku&jenis_perawatan=$jenisPerawatan");
+            $dataProcedure[] = [
+                'DT_RowIndex' => $index++,
+                'KARCIS' => $row->KARCIS,
+                'NO_PESERTA' => $row->NO_PESERTA,
+                'KBUKU' => $row->KBUKU,
+                'JENIS_PERAWATAN' => $jenis,
+                'TANGGAL' => date('Y-m-d', strtotime($row->TANGGAL)),
+                'NAMA_PASIEN' => $row->NAMA_PASIEN,
+                'DOKTER' => $row->DOKTER,
+                'status_integrasi' => $row->sudah_integrasi > 0
+                    ? "<span class='badge badge-pill badge-success'>Sudah Integrasi</span>"
+                    : "<span class='badge badge-pill badge-danger'>Belum Integrasi</span>" . $this->notif($row, $id_unit),
+                'action' => $this->renderAction($row, $paramSatuSehat, $param),
+            ];
+        }
 
-                return $html;
-            })
-            ->rawColumns(['action', 'status_integrasi'])
-            ->with($totalData)
-            ->make(true);
+        return response()->json([
+            "draw" => intval($request->draw),
+            "recordsTotal" => $recordsTotal,
+            "recordsFiltered" => $recordsFiltered,
+            "data" => $dataProcedure,
+            "summary" => $totalData
+        ]);
+
+        // return DataTables::of($data)
+        //     ->addIndexColumn()
+        //     ->editColumn('JENIS_PERAWATAN', function ($row) {
+        //         return $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
+        //     })
+        //     ->editColumn('TANGGAL', function ($row) {
+        //         return date('Y-m-d', strtotime($row->TANGGAL));
+        //     })
+        //     ->addColumn('action', function ($row) {})
+        //     ->addColumn('status_integrasi', function ($row) {
+        //         if ($row->sudah_integrasi == '0') {
+        //             $html = '<span class="badge badge-pill badge-danger p-2">Belum Integrasi</span>';
+        //             // $html .= $this->notif($row);
+        //         } else {
+        //             $html = '<span class="badge badge-pill badge-success p-2">Sudah Integrasi</span>';
+        //         }
+
+        //         return $html;
+        //     })
+        //     ->rawColumns(['action', 'status_integrasi'])
+        //     ->with($totalData)
+        //     ->make(true);
     }
 
-    // private function notif($row)
-    // {
-    //     $html = '';
-    //     $karcis = $row->KARCIS;
-    //     $sql = " SELECT
-    //             (SELECT COUNT(1)
-    //             FROM E_RM_PHCM.dbo.ERM_RM_IRJA
-    //             WHERE karcis = ? AND AKTIF = 1) AS fisik_total,
+    private function renderAction($row, $paramSatuSehat = null, $param = null)
+    {
+        $btn = '';
+        if ($row->ID_PASIEN_SS == null) {
+            $btn = '<i class="text-muted">Pasien Belum Mapping</i><br>';
+        } else if ($row->ID_NAKES_SS == null) {
+            $btn .= '<i class="text-muted">Nakes Belum Mapping</i><br>';
+        } else if ($row->id_satusehat_encounter == null) {
+            $btn .= '<i class="text-muted">Encounter Belum Kirim</i><br>';
+        }
 
-    //             (SELECT COUNT(1)
-    //             FROM E_RM_PHCM.dbo.ERM_RM_IRJA eri
-    //             INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
-    //                 ON eri.KARCIS = rsp.KARCIS
-    //             AND eri.NOMOR = rsp.ID_JENIS_TINDAKAN
-    //             WHERE eri.KARCIS = ? AND eri.AKTIF = 1) AS fisik_integrated,
+        $btn .= '<a href="javascript:void(0)" onclick="lihatDetail(`' . $param . '`, `' . $paramSatuSehat . '`)" class="mt-2 btn btn-sm btn-info w-100"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</a>';
+        return $btn;
+    }
 
-    //             (SELECT COUNT(1)
-    //             FROM SIRS_PHCM.dbo.vw_getData_Elab
-    //             WHERE KARCIS_ASAL = ? AND KLINIK_TUJUAN in ('0017', '0031')) AS lab_total,
+    private function notif($row, $id_unit)
+    {
+        $html = '';
+        $karcis = $row->KARCIS;
+        $sql = "SELECT * FROM dbo.fn_StatusIntegrasiProcedure(?, ?)";
 
-    //             (SELECT COUNT(1)
-    //             FROM SIRS_PHCM.dbo.vw_getData_Elab vgde
-    //             INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
-    //                 ON vgde.KARCIS_ASAL = rsp.KARCIS
-    //             AND vgde.ID_RIWAYAT_ELAB = rsp.ID_JENIS_TINDAKAN
-    //             AND rsp.JENIS_TINDAKAN = 'lab'
-    //             WHERE vgde.KARCIS_ASAL = ? AND KLINIK_TUJUAN in ('0017', '0031')) AS lab_integrated,
+        $result = DB::selectOne($sql, [
+            $karcis,
+            $id_unit
+        ]);
 
-    //             (SELECT COUNT(1)
-    //             FROM SIRS_PHCM.dbo.vw_getData_Elab
-    //             WHERE KARCIS_ASAL = ? AND KLINIK_TUJUAN in (SELECT KODE_KLINIK
-    //                             FROM SIRS_PHCM..RJ_KLINIK_RADIOLOGI)) AS rad_total,
+        $totalAllTindakan = $result->fisik_total + $result->lab_total + $result->rad_total;
+        $totalAllIntegrated = $result->fisik_integrated + $result->lab_integrated + $result->rad_integrated;
 
-    //             (SELECT COUNT(1)
-    //             FROM SIRS_PHCM.dbo.vw_getData_Elab vr
-    //             INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_PROCEDURE rsp
-    //                 ON vr.KARCIS_ASAL = rsp.KARCIS
-    //             AND vr.ID_RIWAYAT_ELAB = rsp.ID_JENIS_TINDAKAN
-    //             AND rsp.JENIS_TINDAKAN = 'rad'
-    //             WHERE vr.KARCIS_ASAL = ? AND KLINIK_TUJUAN IN (SELECT KODE_KLINIK
-    //                             FROM SIRS_PHCM..RJ_KLINIK_RADIOLOGI)) AS rad_integrated
-    //         ";
+        $colorStatus = $totalAllTindakan == $totalAllIntegrated ? 'text-success' : 'text-danger';
+        $colorLab = $result->lab_total == $result->lab_integrated ? 'text-success' : 'text-danger';
+        $colorRad = $result->rad_total == $result->rad_integrated ? 'text-success' : 'text-danger';
+        $html .= "<br> <i class='small $colorStatus'>$totalAllIntegrated / $totalAllTindakan Tindakan Terintegrasi</i>";
+        $html .= "<br> <i class='small $colorLab'>$result->lab_total Tindakan Lab</i>";
+        $html .= "<br> <i class='small $colorRad'>$result->rad_total Tindakan Radiologi</i>";
 
-    //     $result = DB::selectOne($sql, [
-    //         $karcis, // fisik_total
-    //         $karcis, // fisik_integrated
-    //         $karcis, // lab_total
-    //         $karcis, // lab_integrated
-    //         $karcis, // rad_total
-    //         $karcis, // rad_integrated
-    //     ]);
-
-    //     $totalAllTindakan = $result->fisik_total + $result->lab_total + $result->rad_total;
-    //     $totalAllIntegrated = $result->fisik_integrated + $result->lab_integrated + $result->rad_integrated;
-
-    //     $colorStatus = $totalAllTindakan == $totalAllIntegrated ? 'text-success' : 'text-danger';
-    //     $colorLab = $result->lab_total == $result->lab_integrated ? 'text-success' : 'text-danger';
-    //     $colorRad = $result->rad_total == $result->rad_integrated ? 'text-success' : 'text-danger';
-    //     $html .= "<br> <i class='small $colorStatus'>$totalAllIntegrated / $totalAllTindakan Tindakan Terintegrasi</i>";
-    //     $html .= "<br> <i class='small $colorLab'>$result->lab_total Tindakan Lab</i>";
-    //     $html .= "<br> <i class='small $colorRad'>$result->rad_total Tindakan Radiologi</i>";
-
-    //     return $html;
-    // }
+        return $html;
+    }
 
     private function checkDateFormat($date)
     {
@@ -439,9 +459,10 @@ class ProcedureController extends Controller
     public function getICD9(Request $request)
     {
         $param = strtoupper($request->search);
-        $dataICD9 = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_ICD9')
-            ->where(DB::raw('UPPER(CODE)'), 'like', "%$param%")
-            ->orWhere(DB::raw('UPPER(NAME)'), 'like', "%$param%")
+        $dataICD9 = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_ICD9 as rsi')
+            ->join('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as smsc', 'rsi.CODE', '=', 'smsc.ICD9')
+            ->where(DB::raw('UPPER(rsi.CODE)'), 'like', "%$param%")
+            ->orWhere(DB::raw('UPPER(rsi.NAME)'), 'like', "%$param%")
             ->limit(50)
             ->get();
 
@@ -642,7 +663,7 @@ class ProcedureController extends Controller
                     'code' => $th->getCode() != '' ? $th->getCode() : 500,
                 ],
                 'data' => null,
-                'err_detail' => $th,
+                'err_detail' => $th->getTrace(),
                 'message' => $th->getMessage() != '' ? $th->getMessage() : 'Terjadi Kesalahan Saat Kirim Data, Harap Coba lagi!'
             ], $th->getCode() != '' ? $th->getCode() : 500);
         }
@@ -1113,8 +1134,8 @@ class ProcedureController extends Controller
 
             $code = [];
             for ($i = 0; $i < count($dataLab); $i++) {
-                $icd9 = $icd9Data[$i]->icd9 ?? $dataLab[$i]->ICD9;
-                $texticd9 = $icd9Data[$i]->text_icd9 ?? $dataLab[$i]->ICD9_TEXT;
+                $icd9 =  $dataLab[$i]->ICD9 ?? $icd9Data[$i]['icd9'];
+                $texticd9 =  $dataLab[$i]->ICD9_TEXT ?? $icd9Data[$i]['text_icd9'];
 
                 if (count($icd9Data) != count($dataLab) || (empty($icd9) || empty($texticd9))) {
                     $code = [];
@@ -1231,7 +1252,7 @@ class ProcedureController extends Controller
             ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as smsc', 'rmt.NM_TIND', 'smsc.NM_TIND')
             ->leftJoin('RJ_KARCIS as rk', 'rk.KARCIS', 'ere.KARCIS_RUJUKAN')
             ->select([
-                'rk.KDDOK as KDDOK',
+                'ere.KDDOK as KDDOK',
                 'ere.ID_RIWAYAT_ELAB',
                 'ere.KD_TINDAKAN',
                 'ere.TANGGAL_ENTRI',
@@ -1259,7 +1280,7 @@ class ProcedureController extends Controller
             ->get();
 
         // $icd9Data = json_decode($request->icd9_rad);
-        $icd9Data = json_decode($request->icd9_lab, true);
+        $icd9Data = json_decode($request->icd9_rad, true);
         if (empty($icd9Data)) {
             $icd9Data = $dataRad
                 ->filter(function ($row) {
@@ -1274,6 +1295,8 @@ class ProcedureController extends Controller
                 ->values()   // reset index array
                 ->toArray();
         }
+
+        $payload = [];
         if (!empty($dataRad)) {
             $category = [
                 "coding" => [
@@ -1288,10 +1311,10 @@ class ProcedureController extends Controller
 
             $code = [];
             for ($i = 0; $i < count($dataRad); $i++) {
-                $icd9 = $icd9Data[$i]->icd9 ?? $dataRad[$i]->ICD9;
-                $texticd9 = $icd9Data[$i]->text_icd9 ?? $dataRad[$i]->ICD9_TEXT;
+                $icd9 = $dataRad[$i]->ICD9 ?? $icd9Data[$i]['icd9'];
+                $texticd9 = $dataRad[$i]->ICD9_TEXT ?? $icd9Data[$i]['text_icd9'];
 
-                if (count($icd9Data) != count($dataRad) || (empty($icd9) || empty($texticd9))) {
+                if (count($icd9Data) != count($dataRad)) {
                     $code = [];
                     break;
                 }

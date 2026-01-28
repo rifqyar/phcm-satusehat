@@ -91,8 +91,8 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
                                 'ID_SATUSEHAT_ENCOUNTER' => $this->arrParam['encounter_id'],
                                 'ID_JENIS_TINDAKAN' => $this->payload['id_tindakan'][$i],
                                 'ID_TINDAKAN' => $this->payload['kd_tindakan'][$i],
-                                'KD_ICD9' => $dataICD[$i]->icd9,
-                                'DISP_ICD9' => $dataICD[$i]->text_icd9,
+                                'KD_ICD9' => $dataICD[$i]->icd9 ?? $dataICD[$i]['icd9'],
+                                'DISP_ICD9' => $dataICD[$i]->text_icd9 ?? $dataICD[$i]['text_icd9'],
                                 'JENIS_TINDAKAN' => $this->type,
                                 'KDDOK' => $this->payload['kddok'],
                                 'ID_SATUSEHAT_PROCEDURE' => $result['id'],
@@ -181,6 +181,8 @@ class SendProcedureToSATUSEHAT implements ShouldQueue
             $this->logError($logChannel, 'Gagal kirim data Procedure ' . $this->type, [
                 'payload' => $this->payload,
                 'response' => $e->getMessage(),
+                'detail' => $e->getTraceAsString(),
+                'trace' => $e->getTrace(),
                 'user_id' => Session::get('nama', 'system') //Session::get('id')
             ]);
             $this->fail($e);
