@@ -93,7 +93,7 @@ class EncounterController extends Controller
         $pageSize   = $length;
 
 
-        $dataKunjungan = collect(DB::select("
+        $dataKunjungan = DB::select("
             EXEC dbo.sp_getDataEncounter ?, ?, ?, ?, ?, ?
         ", [
             $id_unit,
@@ -103,9 +103,9 @@ class EncounterController extends Controller
             $pageNumber,
             $pageSize
 
-        ]));
+        ]);
 
-        if ($dataKunjungan->isEmpty()) {
+        if (count($dataKunjungan) == 0) {
             return response()->json([
                 "draw" => $draw,
                 "recordsTotal" => 0,
@@ -121,7 +121,7 @@ class EncounterController extends Controller
             ]);
         }
 
-        $summary = $dataKunjungan->first();
+        $summary = $dataKunjungan[0] ?? null;
         $totalData = [
             'total_semua' => $summary->total_semua ?? 0,
             'rjAll' => $summary->rjAll ?? 0,
@@ -132,139 +132,204 @@ class EncounterController extends Controller
         $recordsTotal    = $summary->total_semua ?? 0;
         $recordsFiltered = $summary->recordsFiltered ?? $recordsTotal;
 
-        $dataTable = DataTables::of($dataKunjungan)
-            ->skipPaging()
-            ->setTotalRecords($recordsTotal)
-            ->setFilteredRecords($recordsFiltered)
-            ->addColumn('DT_RowIndex', function ($row) use ($start) {
-                static $i = 0;
-                return $start + (++$i);
-            })
-            ->addColumn('checkbox', function ($row) {
-                $checkBox = '';
-                $jenisPerawatan = $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
-                $id_transaksi = LZString::compressToEncodedURIComponent($row->ID_TRANSAKSI);
-                $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
-                $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
-                $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
-                $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
-                $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+        $data = [];
+        $index = $start + 1;
 
-                $checkBox = "";
+        foreach ($dataKunjungan as $row) {
+            $jenis = $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
+            $id_transaksi = LZString::compressToEncodedURIComponent($row->ID_TRANSAKSI);
+            $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
+            $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
+            $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
+            $paramSatuSehat = "jenis_perawatan=" . $jenis . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
+            $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+            $data[] = [
+                'DT_RowIndex' => $index++,
+                'ID_TRANSAKSI' => $row->ID_TRANSAKSI,
+                'NO_PESERTA' => $row->NO_PESERTA,
+                'KBUKU' => $row->KBUKU,
+                'checkbox' => $this->renderCheckbox($row, $paramSatuSehat),
+                'JENIS_PERAWATAN' => $jenis,
+                'TANGGAL' => date('Y-m-d', strtotime($row->TANGGAL)),
+                'NAMA_PASIEN' => $row->NAMA_PASIEN,
+                'DOKTER' => $row->DOKTER,
+                'STATUS_SELESAI' => $this->renderStatus($row),
+                'status_integrasi' => $row->JUMLAH_NOTA_SATUSEHAT > 0
+                    ? '<span class="badge badge-success">Sudah Integrasi</span>'
+                    : '<span class="badge badge-danger">Belum Integrasi</span>',
+                'action' => $this->renderAction($row, $paramSatuSehat),
+            ];
+        }
 
-                $kondisiDasar = (
-                    $row->ID_PASIEN_SS != null &&
-                    $row->ID_NAKES_SS != null &&
-                    $row->ID_LOKASI_SS != null &&
-                    $row->JUMLAH_NOTA_SATUSEHAT == 0
-                );
+        // $dataTable = DataTables::of($dataKunjungan)
+        //     ->skipPaging()
+        //     ->setTotalRecords($recordsTotal)
+        //     ->setFilteredRecords($recordsFiltered)
+        //     ->addColumn('DT_RowIndex', function ($row) use ($start) {
+        //         static $i = 0;
+        //         return $start + (++$i);
+        //     })
+        //     ->addColumn('checkbox', function ($row) {
+        //         $checkBox = '';
+        //         $jenisPerawatan = $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
+        //         $id_transaksi = LZString::compressToEncodedURIComponent($row->ID_TRANSAKSI);
+        //         $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
+        //         $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
+        //         $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
+        //         $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
+        //         $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
-                $rawatInapInvalid = (
-                    $row->JENIS_PERAWATAN == 'RAWAT_INAP' &&
-                    ($row->DOKTER == null || $row->KODE_DOKTER == null)
-                );
+        //         $checkBox = "";
 
-                if (!$kondisiDasar) {
-                    return;
-                } else if ($rawatInapInvalid) {
-                    return;
-                } else if (
-                    $row->JENIS_PERAWATAN == 'RAWAT_JALAN' &&
-                    ($row->STATUS_SELESAI == "9" || $row->STATUS_SELESAI == "10")
-                ) {
-                    return;
-                } else {
-                    $checkBox = "
-                        <input type='checkbox' class='select-row chk-col-purple' value='$row->ID_TRANSAKSI' data-param='$paramSatuSehat' id='$row->ID_TRANSAKSI' />
-                        <label for='$row->ID_TRANSAKSI' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
-                    ";
-                }
+        //         $kondisiDasar = (
+        //             $row->ID_PASIEN_SS != null &&
+        //             $row->ID_NAKES_SS != null &&
+        //             $row->ID_LOKASI_SS != null &&
+        //             $row->JUMLAH_NOTA_SATUSEHAT == 0
+        //         );
 
-                return $checkBox;
-            })
-            ->editColumn('JENIS_PERAWATAN', function ($row) {
-                return $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
-            })
-            ->editColumn('TANGGAL', function ($row) {
-                return date('Y-m-d', strtotime($row->TANGGAL));
-            })
-            ->editColumn('STATUS_SELESAI', function ($row) {
-                if ($row->JENIS_PERAWATAN == 'RAWAT_JALAN') {
-                    if ($row->STATUS_SELESAI == "9" || $row->STATUS_SELESAI == "10") {
-                        return '<span class="badge badge-pill badge-secondary p-2 w-100">Belum Verif</span>';
-                    } else {
-                        return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Verif</span>';
-                    }
-                } else {
-                    return $row->STATUS_SELESAI == 1 ? '<span class="badge badge-pill badge-success p-2 w-100">Sudah Pulang</span>' : '<span class="badge badge-pill badge-secondary p-2 w-100">Belum Pulang</span>';
-                }
-            })
-            ->addColumn('action', function ($row) {
-                $kdbuku = LZString::compressToEncodedURIComponent($row->KBUKU);
-                $kdDok = LZString::compressToEncodedURIComponent($row->KODE_DOKTER);
-                $kdKlinik = LZString::compressToEncodedURIComponent($row->KODE_KLINIK);
-                $idUnit = LZString::compressToEncodedURIComponent($row->ID_UNIT);
-                $param = LZString::compressToEncodedURIComponent($kdbuku . '+' . $kdDok . '+' . $kdKlinik . '+' . $idUnit);
+        //         $rawatInapInvalid = (
+        //             $row->JENIS_PERAWATAN == 'RAWAT_INAP' &&
+        //             ($row->DOKTER == null || $row->KODE_DOKTER == null)
+        //         );
 
-                $jenisPerawatan = $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
-                $id_transaksi = LZString::compressToEncodedURIComponent($row->ID_TRANSAKSI);
-                $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
-                $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
-                $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
-                $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
-                $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+        //         if (!$kondisiDasar) {
+        //             return;
+        //         } else if ($rawatInapInvalid) {
+        //             return;
+        //         } else if (
+        //             $row->JENIS_PERAWATAN == 'RAWAT_JALAN' &&
+        //             ($row->STATUS_SELESAI == "9" || $row->STATUS_SELESAI == "10")
+        //         ) {
+        //             return;
+        //         } else {
+        //             $checkBox = "
+        //                 <input type='checkbox' class='select-row chk-col-purple' value='$row->ID_TRANSAKSI' data-param='$paramSatuSehat' id='$row->ID_TRANSAKSI' />
+        //                 <label for='$row->ID_TRANSAKSI' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
+        //             ";
+        //         }
 
-                $btn = '';
-                if ($row->ID_PASIEN_SS == null) {
-                    $btn = '<i class="text-muted">Pasien Belum Mapping</i>';
-                } else if (($row->DOKTER == null || $row->KODE_DOKTER == null) && $row->JENIS_PERAWATAN == 'RAWAT_INAP') {
-                    $btn .= '<i class="text-muted">Dokter DPJP Belum Dipilih</i>';
-                } else if ($row->ID_NAKES_SS == null) {
-                    $btn .= '<i class="text-muted">Nakes Belum Mapping</i>';
-                } else if ($row->ID_LOKASI_SS == null) {
-                    $btn .= '<i class="text-muted">Lokasi Belum Mapping</i>';
-                } else {
-                    if ($row->JENIS_PERAWATAN == 'RAWAT_JALAN') {
-                        if ($row->JUMLAH_NOTA_SATUSEHAT == 0) {
-                            if ($row->STATUS_SELESAI != "9" && $row->STATUS_SELESAI != "10") {
-                                $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
-                            } else {
-                                $btn .= '<i class="text-muted">Tunggu Verifikasi Pendaftaran</i>';
-                            }
-                        } else {
-                            $btn = '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
-                        }
-                    } else {
-                        if ($row->JUMLAH_NOTA_SATUSEHAT == 0) {
-                            $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
-                        } else {
-                            $btn = '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
-                        }
-                    }
-                }
-                // $btn .= '<br>';
-                // $btn .= '<a href="' . route('satusehat.encounter.lihat-erm', $param) . '" class="mt-2 btn btn-sm btn-info w-100"><i class="fas fa-info-circle mr-2"></i>Lihat ERM</a>';
-                return $btn;
-            })
-            ->addColumn('status_integrasi', function ($row) {
-                if ($row->JUMLAH_NOTA_SATUSEHAT > 0) {
-                    return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
-                } else {
-                    return '<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>';
-                }
-            })
-            ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi', 'checkbox'])
-            ->make(true);
+        //         return $checkBox;
+        //     })
+        //     ->editColumn('JENIS_PERAWATAN', function ($row) {
+        //         return $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
+        //     })
+        //     ->editColumn('TANGGAL', function ($row) {
+        //         return date('Y-m-d', strtotime($row->TANGGAL));
+        //     })
+        //     ->editColumn('STATUS_SELESAI', function ($row) {
+        //         if ($row->JENIS_PERAWATAN == 'RAWAT_JALAN') {
+        //             if ($row->STATUS_SELESAI == "9" || $row->STATUS_SELESAI == "10") {
+        //                 return '<span class="badge badge-pill badge-secondary p-2 w-100">Belum Verif</span>';
+        //             } else {
+        //                 return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Verif</span>';
+        //             }
+        //         } else {
+        //             return $row->STATUS_SELESAI == 1 ? '<span class="badge badge-pill badge-success p-2 w-100">Sudah Pulang</span>' : '<span class="badge badge-pill badge-secondary p-2 w-100">Belum Pulang</span>';
+        //         }
+        //     })
+        //     ->addColumn('action', function ($row) {
+        //         return $this->renderAction($row);
+        //     })
+        //     ->addColumn('status_integrasi', function ($row) {
+        //         if ($row->JUMLAH_NOTA_SATUSEHAT > 0) {
+        //             return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
+        //         } else {
+        //             return '<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>';
+        //         }
+        //     })
+        //     ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi', 'checkbox'])
+        //     ->make(true);
 
-        $response = $dataTable->getData(true);
+        // $response = $dataTable->getData(true);
 
         return response()->json([
             "draw" => intval($request->draw),
             "recordsTotal" => $recordsTotal,
             "recordsFiltered" => $recordsFiltered,
-            "data" => $response['data'],
+            "data" => $data,
             "summary" => $totalData
         ]);
+    }
+
+    private function renderCheckbox($row, $paramSatuSehat = null)
+    {
+        $checkBox = "";
+        $kondisiDasar = (
+            $row->ID_PASIEN_SS != null &&
+            $row->ID_NAKES_SS != null &&
+            $row->ID_LOKASI_SS != null &&
+            $row->JUMLAH_NOTA_SATUSEHAT == 0
+        );
+
+        $rawatInapInvalid = (
+            $row->JENIS_PERAWATAN == 'RAWAT_INAP' &&
+            ($row->DOKTER == null || $row->KODE_DOKTER == null)
+        );
+
+        if (!$kondisiDasar) {
+            return;
+        } else if ($rawatInapInvalid) {
+            return;
+        } else if (
+            $row->JENIS_PERAWATAN == 'RAWAT_JALAN' &&
+            ($row->STATUS_SELESAI == "9" || $row->STATUS_SELESAI == "10")
+        ) {
+            return;
+        } else {
+            $checkBox = "
+                        <input type='checkbox' class='select-row chk-col-purple' value='$row->ID_TRANSAKSI' data-param='$paramSatuSehat' id='$row->ID_TRANSAKSI' />
+                        <label for='$row->ID_TRANSAKSI' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
+                    ";
+        }
+
+        return $checkBox;
+    }
+
+    private function renderAction($row, $paramSatuSehat = null)
+    {
+        $btn = '';
+        if ($row->ID_PASIEN_SS == null) {
+            $btn = '<i class="text-muted">Pasien Belum Mapping</i>';
+        } else if (($row->DOKTER == null || $row->KODE_DOKTER == null) && $row->JENIS_PERAWATAN == 'RAWAT_INAP') {
+            $btn .= '<i class="text-muted">Dokter DPJP Belum Dipilih</i>';
+        } else if ($row->ID_NAKES_SS == null) {
+            $btn .= '<i class="text-muted">Nakes Belum Mapping</i>';
+        } else if ($row->ID_LOKASI_SS == null) {
+            $btn .= '<i class="text-muted">Lokasi Belum Mapping</i>';
+        } else {
+            if ($row->JENIS_PERAWATAN == 'RAWAT_JALAN') {
+                if ($row->JUMLAH_NOTA_SATUSEHAT == 0) {
+                    if ($row->STATUS_SELESAI != "9" && $row->STATUS_SELESAI != "10") {
+                        $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
+                    } else {
+                        $btn .= '<i class="text-muted">Tunggu Verifikasi Pendaftaran</i>';
+                    }
+                } else {
+                    $btn = '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                }
+            } else {
+                if ($row->JUMLAH_NOTA_SATUSEHAT == 0) {
+                    $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
+                } else {
+                    $btn = '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                }
+            }
+        }
+
+        return $btn;
+    }
+
+    private function renderStatus($row)
+    {
+        if ($row->JENIS_PERAWATAN == 'RAWAT_JALAN') {
+            return in_array($row->STATUS_SELESAI, ['9', '10'])
+                ? '<span class="badge badge-secondary">Belum Verif</span>'
+                : '<span class="badge badge-success">Sudah Verif</span>';
+        }
+        return $row->STATUS_SELESAI == 1
+            ? '<span class="badge badge-success">Sudah Pulang</span>'
+            : '<span class="badge badge-secondary">Belum Pulang</span>';
     }
 
     private function checkDateFormat($date)
