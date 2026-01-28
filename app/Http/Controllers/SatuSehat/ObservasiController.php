@@ -163,14 +163,14 @@ class ObservasiController extends Controller
         $pageNumber = ($start / $length) + 1;
         $pageSize   = $length;
 
-        $data = DB::select('EXEC sp_getObservasi ?, ?, ?, ?, ?, ?', [
+        $data = collect(DB::select('EXEC sp_getObservasi ?, ?, ?, ?, ?, ?', [
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
             $request->cari == '' || $request->cari == null ? 'unmapped' : $request->cari,
             $pageNumber,
             $pageSize
-        ]);
+        ]));
 
         if (count($data) == 0) {
             return response()->json([
@@ -199,97 +199,93 @@ class ObservasiController extends Controller
         $recordsTotal    = $summary->total_semua ?? 0;
         $recordsFiltered = $summary->recordsFiltered ?? $recordsTotal;
 
+        $dataObservasi = [];
+        $index = $start + 1;
+        foreach ($data as $row) {
+            $jenis = $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
 
-        $datatable = DataTables::of($data)
-            ->skipPaging()
-            ->setTotalRecords($recordsTotal)
-            ->setFilteredRecords($recordsFiltered)
-            ->addColumn('DT_RowIndex', function ($row) use ($start) {
-                static $i = 0;
-                return $start + (++$i);
-            })
-            ->editColumn('JENIS_PERAWATAN', function ($row) {
-                return $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
-            })
-            ->addColumn('checkbox', function ($row) {
-                $checkBox = '';
-                $id_transaksi = LZString::compressToEncodedURIComponent($row->KARCIS);
-                $KbBuku = LZString::compressToEncodedURIComponent($row->KBUKU);
-                $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
-                $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
-                $idEncounter = LZString::compressToEncodedURIComponent($row->id_satusehat_encounter);
-                $paramSatuSehat = "sudah_integrasi=$row->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=" . LZString::compressToEncodedURIComponent($row->JENIS_PERAWATAN);
-                $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
-                if ($row->sudah_integrasi == '0' && ($row->ID_PASIEN_SS != null && $row->ID_NAKES_SS != null && $row->id_satusehat_encounter != null)) {
-                    $checkBox = "
-                        <input type='checkbox' class='select-row chk-col-purple' value='$row->KARCIS' data-param='$paramSatuSehat' id='$row->KARCIS' />
-                        <label for='$row->KARCIS' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
-                    ";
-                }
+            $id_transaksi = LZString::compressToEncodedURIComponent($row->KARCIS);
+            $KbBuku = LZString::compressToEncodedURIComponent($row->KBUKU);
+            $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
+            $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
+            $idEncounter = LZString::compressToEncodedURIComponent($row->id_satusehat_encounter);
+            $paramSatuSehat = "sudah_integrasi=$row->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=" . LZString::compressToEncodedURIComponent($row->JENIS_PERAWATAN);
+            $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+            $param = LZString::compressToEncodedURIComponent("karcis=$id_transaksi&kbuku=$KbBuku&jenis_perawatan=" . LZString::compressToEncodedURIComponent($row->JENIS_PERAWATAN));
 
-                return $checkBox;
-            })
-            ->editColumn('TANGGAL', function ($row) {
-                return date('Y-m-d', strtotime($row->TANGGAL));
-            })
-            ->addColumn('action', function ($row) {
-                $id_transaksi = LZString::compressToEncodedURIComponent($row->KARCIS);
-                $KbBuku = LZString::compressToEncodedURIComponent($row->KBUKU);
-                $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
-                $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
-                $idEncounter = LZString::compressToEncodedURIComponent($row->id_satusehat_encounter);
-                $paramSatuSehat = "sudah_integrasi=$row->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=" . LZString::compressToEncodedURIComponent($row->JENIS_PERAWATAN);
-                $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
-
-                $param = LZString::compressToEncodedURIComponent("karcis=$id_transaksi&kbuku=$KbBuku&jenis_perawatan=" . LZString::compressToEncodedURIComponent($row->JENIS_PERAWATAN));
-                $btn = '';
-
-                $dataErm = null;
-                if ($row->JENIS_PERAWATAN == 'RAWAT_INAP') {
-                    $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD')
-                        ->where('noreg', $row->KARCIS)
-                        ->first();
-                }
-
-                if ($row->ID_PASIEN_SS == null) {
-                    $btn = '<i class="text-muted">Pasien Belum Mapping</i>';
-                } else if ($row->ID_NAKES_SS == null) {
-                    $btn .= '<i class="text-muted">Nakes Belum Mapping</i>';
-                } else if ($row->id_satusehat_encounter == null) {
-                    $btn .= '<i class="text-muted">Encounter Belum Kirim</i>';
-                } else if ($dataErm == null && $row->JENIS_PERAWATAN == 'RAWAT_INAP') {
-                    $btn .= '<i class="text-muted">Assesmne Awal Pasien Masuk Belum Diisi</i>';
-                } else {
-                    if ($row->sudah_integrasi == '0') {
-                        $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
-                    } else {
-                        $btn = '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
-                    }
-                    $btn .= '<br>';
-                    $btn .= '<a href="javascript:void(0)" onclick="lihatDetail(`' . $param . '`, `' . $paramSatuSehat . '`)" class="mt-2 btn btn-sm btn-info w-100"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</a>';
-                }
-                return $btn;
-            })
-            ->addColumn('status_integrasi', function ($row) {
-                if ($row->sudah_integrasi == '0') {
-                    return '<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>';
-                } else {
-                    return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
-                }
-            })
-            ->rawColumns(['action', 'status_integrasi', 'checkbox'])
-            ->make(true);
-
-        $response = $datatable->getData(true);
+            $dataObservasi[] = [
+                'DT_RowIndex' => $index++,
+                'KARCIS' => $row->KARCIS,
+                'NO_PESERTA' => $row->NO_PESERTA,
+                'KBUKU' => $row->KBUKU,
+                'checkbox' => $this->renderCheckbox($row, $paramSatuSehat),
+                'JENIS_PERAWATAN' => $jenis,
+                'TANGGAL' => date('Y-m-d', strtotime($row->TANGGAL)),
+                'NAMA_PASIEN' => $row->NAMA_PASIEN,
+                'DOKTER' => $row->DOKTER,
+                'status_integrasi' => $row->sudah_integrasi > 0
+                    ? '<span class="badge badge-pill badge-success">Sudah Integrasi</span>'
+                    : '<span class="badge badge-pill badge-danger">Belum Integrasi</span>',
+                'action' => $this->renderAction($row, $paramSatuSehat, $param),
+            ];
+        }
 
         return response()->json([
             "draw" => intval($request->draw),
             "recordsTotal" => $recordsTotal,
             "recordsFiltered" => $recordsFiltered,
-            "data" => $response['data'],
+            "data" => $dataObservasi,
             "summary" => $totalData
         ]);
+    }
+
+    private function renderCheckbox($row, $paramSatuSehat = null)
+    {
+        $checkBox = '';
+        if ($paramSatuSehat != null) {
+            if ($row->sudah_integrasi == '0' && ($row->ID_PASIEN_SS != null && $row->ID_NAKES_SS != null && $row->id_satusehat_encounter != null)) {
+                $checkBox = "
+                            <input type='checkbox' class='select-row chk-col-purple' value='$row->KARCIS' data-param='$paramSatuSehat' id='$row->KARCIS' />
+                            <label for='$row->KARCIS' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
+                        ";
+            }
+        }
+
+        return $checkBox;
+    }
+
+    private function renderAction($row, $paramSatuSehat = null, $param = null)
+    {
+        $btn = '';
+        if ($paramSatuSehat != null && $param != null) {
+            $dataErm = null;
+            if ($row->JENIS_PERAWATAN == 'RAWAT_INAP') {
+                $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD')
+                    ->where('noreg', $row->KARCIS)
+                    ->first();
+            }
+
+            if ($row->ID_PASIEN_SS == null) {
+                $btn = '<i class="text-muted">Pasien Belum Mapping</i>';
+            } else if ($row->ID_NAKES_SS == null) {
+                $btn .= '<i class="text-muted">Nakes Belum Mapping</i>';
+            } else if ($row->id_satusehat_encounter == null) {
+                $btn .= '<i class="text-muted">Encounter Belum Kirim</i>';
+            } else if ($dataErm == null && $row->JENIS_PERAWATAN == 'RAWAT_INAP') {
+                $btn .= '<i class="text-muted">Assesmne Awal Pasien Masuk Belum Diisi</i>';
+            } else {
+                if ($row->sudah_integrasi == '0') {
+                    $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
+                } else {
+                    $btn = '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                }
+                $btn .= '<br>';
+                $btn .= '<a href="javascript:void(0)" onclick="lihatDetail(`' . $param . '`, `' . $paramSatuSehat . '`)" class="mt-2 btn btn-sm btn-info w-100"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</a>';
+            }
+        }
+
+        return $btn;
     }
 
     private function checkDateFormat($date)
