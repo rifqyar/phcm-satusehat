@@ -273,7 +273,7 @@
 
     <script>
         var table;
-
+        var firstLoad = true;
         $(document).ready(function() {
             // 1) Datepicker (UI only)
             var endDate = moment();
@@ -309,14 +309,12 @@
                         d.tgl_akhir = $('#end_date').val();
                     }
                 },
-                columns: [{
+                columns: [
+                    {
                         data: null,
                         orderable: false,
                         searchable: false,
-                        className: 'text-center',
-                        render: function (data, type, row, meta) {
-                            return meta.settings._iDisplayStart + meta.row + 1;
-                        }
+                        className: 'text-center'
                     },
                     {
                         data: null,
@@ -428,6 +426,14 @@
                 lengthMenu: [10, 25, 50, 100],
                 language: {
                     processing: "Memuat data..."
+                },
+                drawCallback: function (settings) {
+                    var api = this.api();
+                    var start = api.page.info().start;
+
+                    api.column(0, { page: 'current' }).nodes().each(function (cell, i) {
+                        cell.innerHTML = start + i + 1;
+                    });
                 }
             });
 
@@ -445,6 +451,14 @@
 
                 const belum = (summary.all ?? 0) - (summary.success ?? 0);
                 $('[data-count="unsent"]').text(belum);
+
+                if (firstLoad) {
+                    firstLoad = false;
+
+                    setTimeout(() => {
+                        search('not_integrated');
+                    }, 0);
+                }
             });
 
             // 4) Checkbox select all
@@ -676,7 +690,13 @@
                 allowOutsideClick: false
             }).then(function (result) {
                 if (result.value === true) {
-                    kirimSatusehat(row.ID_IMUNISASI_PX);
+                    kirimSatusehat(row.ID_IMUNISASI_PX)
+                    .then(() => {
+                        table.ajax.reload(null, false);
+                    })
+                    .catch(() => {
+                        table.ajax.reload(null, false);
+                    });
                 }
             });
         }
@@ -704,22 +724,52 @@
                         id_imunisasi_px: idImunisasiPx
                     },
                     success: function (res) {
+                    if (showSwal) Swal.close();
 
-                        if (showSwal) Swal.close();
-
-                        if (res.success === true) {
-                            if (showSwal) {
-                                Swal.fire('Berhasil', 'Data imunisasi berhasil dikirim', 'success');
-                            }
-                            resolve(res);
-                        } else {
-                            let msg = res.message || 'Gagal kirim';
-                            if (showSwal) {
-                                Swal.fire('Gagal', msg, 'error');
-                            }
-                            reject(msg);
+                    if (res.success === true) {
+                        if (showSwal) {
+                            Swal.fire('Berhasil', 'Data imunisasi berhasil dikirim', 'success');
                         }
-                    },
+                        resolve(res);
+                    } else {
+
+                    let message = res.message || 'Gagal Kirim Ke SATUSEHAT';
+                    let rawResponse = res.response ? prettyJSON(res.response) : '-';
+
+                    if (showSwal) {
+                        Swal.fire({
+                            title: 'Gagal',
+                            html: `
+                                <div style="text-align:left">
+                                    <p>${message}</p>
+
+                                    <details style="margin-top:10px; cursor:pointer;">
+                                        <summary style="font-weight:bold; color:#d9534f;">
+                                            Detail Error (SATUSEHAT)
+                                        </summary>
+
+                                        <pre style="
+                                            margin-top:10px;
+                                            background:#f8f9fa;
+                                            padding:10px;
+                                            max-height:300px;
+                                            overflow:auto;
+                                            border-radius:5px;
+                                            font-size:12px;
+                                        ">${rawResponse}</pre>
+                                    </details>
+                                </div>
+                            `,
+                            icon: 'error',
+                            width: 700,
+                            confirmButtonText: 'OK'
+                        });
+                    }
+
+                    reject(res);
+                }
+
+                },
                     error: function (xhr) {
 
                         if (showSwal) Swal.close();
@@ -736,18 +786,18 @@
             });
         }
 
-
-
         function kirimSatu(id, btn = null) {
 
         }
 
-        /**
-         * kirimSatusehat - helper yang mengembalikan Promise
-         * Sering dipakai untuk batch send (dipanggil internal).
-         * Memakai same backend route as kirimSatu.
-         * showSwal parameter diabaikan karena we show swal in caller.
-         */
+        function prettyJSON(obj) {
+            try {
+                return JSON.stringify(obj, null, 2);
+            } catch (e) {
+                return String(obj);
+            }
+        }
+
 
 
 
