@@ -302,18 +302,23 @@ class ImunisasiController extends Controller
                 ? json_decode((string) $e->getResponse()->getBody(), true)
                 : [];
 
-            // update FAILED
+            // update FAILED tanpa nimpa success
             DB::table('E_RM_PHCM.dbo.ERM_IMUNISASI_PX')
                 ->where('ID_IMUNISASI_PX', $meta['id_imunisasi_px'])
+                ->where(function ($q) {
+                    $q->whereNull('SATUSEHAT_STATUS')
+                    ->orWhere('SATUSEHAT_STATUS', 'FAILED');
+                })
                 ->update([
-                    'SATUSEHAT_STATUS' => 'FAILED',
+                    'SATUSEHAT_STATUS'   => 'FAILED',
                     'SATUSEHAT_RESPONSE' => json_encode($responseBody),
-                    'SATUSEHAT_SENT_AT' => now(),
+                    'SATUSEHAT_SENT_AT'  => now(),
                 ]);
+
 
             return [
                 'status'   => false,
-                'message'  => 'HTTP request ke SATUSEHAT gagal',
+                'message'  => 'Gagal Kirim Ke SATUSEHAT',
                 'http'     => $httpStatus,
                 'response' => $responseBody
             ];

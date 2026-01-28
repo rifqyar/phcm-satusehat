@@ -195,12 +195,12 @@
     </script>
     <script>
         var table;
-        var statusFilter = 'all';
+        var statusFilter = 'unsent';
 
         $(document).ready(function() {
             // datepicker
             var endDate = moment();
-            var startDate = moment().subtract(7, 'days');
+            var startDate = moment();
 
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
@@ -478,7 +478,7 @@
         //  reset filter
         function resetSearch() {
             var endDate = moment();
-            var startDate = moment().subtract(30, 'days');
+            var startDate = moment();
 
             $('#start_date').val(startDate.format('YYYY-MM-DD'));
             $('#end_date').val(endDate.format('YYYY-MM-DD'));

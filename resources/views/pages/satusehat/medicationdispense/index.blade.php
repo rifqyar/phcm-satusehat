@@ -199,11 +199,11 @@
     </script>
     <script>
         var table;
-        var statusFilter = 'all';
+        var statusFilter = 'unsent';
         $(document).ready(function() {
             // inisialisasi datepicker
             var endDate = moment();
-            var startDate = moment().subtract(7, 'days');
+            var startDate = moment();
 
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
