@@ -216,7 +216,7 @@
         let filterStatus = 'all';
         var firstLoad = true;
 
-        $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+        $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
 
             if (settings.nTable.id !== 'diagnosisTable') {
                 return true;
@@ -400,10 +400,21 @@
                         orderable: false,
                         searchable: false,
                         className: 'text-center',
-                        render: function(data) {
-                            return `<input type="checkbox"
-                                        class="checkbox-item"
-                                        value="${data.KARCIS}">`;
+                        render: function (data) {
+
+                            const isIntegrated = !!data.id_satusehat_condition;
+
+                            // SUDAH INTEGRASI → tidak bisa dipilih
+                            if (isIntegrated) {
+                                return `<span class="text-muted">-</span>`;
+                            }
+
+                            // BELUM INTEGRASI → tampil checkbox
+                            return `
+                                <input type="checkbox"
+                                    class="checkbox-item"
+                                    value="${data.KARCIS}">
+                            `;
                         }
                     },
                     {
@@ -490,11 +501,13 @@
                 order: [
                     [1, 'desc']
                 ],
-                drawCallback: function (settings) {
+                drawCallback: function(settings) {
                     var api = this.api();
                     var start = api.page.info().start;
 
-                    api.column(0, { page: 'current' }).nodes().each(function (cell, i) {
+                    api.column(0, {
+                        page: 'current'
+                    }).nodes().each(function(cell, i) {
                         cell.innerHTML = start + i + 1;
                     });
                 }
@@ -546,7 +559,7 @@
 
 
         function search(type) {
-            filterStatus = type;   // all | sent | unsent
+            filterStatus = type; // all | sent | unsent
             table.draw();
         }
 
@@ -742,11 +755,42 @@
                                 fhir_id: res.fhir_id
                             });
                         } else {
+                            let detailHtml = '';
+
+                            // tangkap OperationOutcome.issue
+                            const issues = res.response?.issue || [];
+
+                            if (issues.length) {
+                                detailHtml = `
+                                    <details style="margin-top:12px; text-align:left">
+                                        <summary style="cursor:pointer; font-weight:bold">
+                                            🔍 Lihat Detail Error
+                                        </summary>
+                                        <div style="margin-top:10px">
+                                            ${issues.map((issue, idx) => `
+                                                    <div style="padding:8px; border-left:4px solid #dc3545; margin-bottom:8px">
+                                                        <strong>#${idx + 1} ${issue.code ?? '-'}</strong><br>
+                                                        <small><b>Severity:</b> ${issue.severity ?? '-'}</small><br>
+                                                        <small><b>Message:</b> ${issue.diagnostics ?? '-'}</small><br>
+                                                        ${
+                                                            issue.expression
+                                                                ? `<small><b>Field:</b> ${issue.expression.join(', ')}</small>`
+                                                                : ''
+                                                        }
+                                                    </div>
+                                                `).join('')}
+                                        </div>
+                                    </details>
+                                `;
+                            }
+
                             swal({
                                 title: 'Gagal',
-                                text: res.message || 'Gagal generate payload diagnosis',
-                                type: 'warning'
+                                html: `<div>${res.message || 'Gagal mengirim data ke SATUSEHAT'}</div>${detailHtml}`,
+                                type: 'warning',
+                                width: 650
                             });
+
                             resolve({
                                 success: false,
                                 id: karcis
