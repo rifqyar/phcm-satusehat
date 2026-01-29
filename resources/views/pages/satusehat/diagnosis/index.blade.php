@@ -214,6 +214,8 @@
     <script>
         var table;
         let filterStatus = 'all';
+        var firstLoad = true;
+
         $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
 
             if (settings.nTable.id !== 'diagnosisTable') {
@@ -278,7 +280,6 @@
 
                 for (let i = 0; i < selected.length; i++) {
                     const idTrans = selected[i];
-                    console.log(`🚀 Mengirim ${i + 1}/${selected.length}: ${idTrans}`);
 
                     // tampilkan status swal progress
                     swal({
@@ -392,10 +393,7 @@
                         data: null,
                         orderable: false,
                         searchable: false,
-                        className: 'text-center',
-                        render: function(data, type, row, meta) {
-                            return meta.row + meta.settings._iDisplayStart + 1;
-                        }
+                        className: 'text-center'
                     },
                     {
                         data: null,
@@ -491,7 +489,15 @@
                 ],
                 order: [
                     [1, 'desc']
-                ]
+                ],
+                drawCallback: function (settings) {
+                    var api = this.api();
+                    var start = api.page.info().start;
+
+                    api.column(0, { page: 'current' }).nodes().each(function (cell, i) {
+                        cell.innerHTML = start + i + 1;
+                    });
+                }
             });
 
 
@@ -501,15 +507,22 @@
                     $('span[data-count="sent"]').text(json.summary.sent ?? 0);
                     $('span[data-count="unsent"]').text(json.summary.unsent ?? 0);
                 }
+                if (firstLoad) {
+                    firstLoad = false;
+
+                    setTimeout(() => {
+                        search('not_integrated');
+                    }, 0);
+                }
             });
 
-            // 🔍 tombol cari
+
             $("#search-data").on("submit", function(e) {
                 e.preventDefault();
                 table.ajax.reload();
             });
 
-            // 🆕 tombol kirim SATUSEHAT
+
             $("#btnSendSatusehat").on("click", function() {
                 if (confirm("Yakin ingin mengirim data ke SATUSEHAT?")) {
                     // nanti ganti dengan ajax atau route yang sesuai
