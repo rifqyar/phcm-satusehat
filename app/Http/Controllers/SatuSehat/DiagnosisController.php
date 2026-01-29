@@ -382,24 +382,33 @@ class DiagnosisController extends Controller
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new \Exception('Invalid JSON response from SATUSEHAT');
             }
-        } catch (\GuzzleHttp\Exception\RequestException $e) {
+            } catch (\GuzzleHttp\Exception\RequestException $e) {
 
-            $httpStatus   = $e->hasResponse() ? $e->getResponse()->getStatusCode() : null;
-            $responseBody = $e->hasResponse()
-                ? json_decode((string) $e->getResponse()->getBody(), true)
-                : [];
+                $httpStatus = $e->hasResponse()
+                    ? $e->getResponse()->getStatusCode()
+                    : null;
 
-            return [
-                'status'  => false,
-                'message' => 'HTTP request ke SATUSEHAT gagal',
-                'meta'    => $meta,
-                'http'    => [
-                    'status' => $httpStatus,
-                    'error'  => $e->getMessage()
-                ],
-                'response' => $responseBody
-            ];
-        }
+                $rawBody = $e->hasResponse()
+                    ? (string) $e->getResponse()->getBody()
+                    : null;
+
+                $responseBody = $rawBody
+                    ? json_decode($rawBody, true)
+                    : null;
+
+                return [
+                    'status'  => false,
+                    'message' => 'Gagal mengirim data ke satu sehat',
+                    'meta'    => $meta,
+                    'http'    => [
+                        'status' => $httpStatus,
+                        'error'  => 'RequestException'
+                    ],
+                    'response_raw' => $rawBody,      // ⬅️ FULL, TANPA TRUNCATE
+                    'response'     => $responseBody  // ⬅️ JSON utuh
+                ];
+            }
+
 
         // =======================
         // RESPONSE PARSING
