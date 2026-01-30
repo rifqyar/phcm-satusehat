@@ -571,7 +571,7 @@ class ResumeMedisController extends Controller
             ->distinct()
             ->limit(100)
             ->get();
-        dd($dataCarePlan);
+        // dd($dataCarePlan);
 
         $dataAllergy = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_ALLERGYINTOLERANCE')
             ->select(
