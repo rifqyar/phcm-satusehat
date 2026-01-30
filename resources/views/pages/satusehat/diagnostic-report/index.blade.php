@@ -179,13 +179,13 @@
                                 Select All </label>
                         </th>
                         <th>Karcis Asal</th>
-                        <th>Karcis Rujukan</th>
+                        {{-- <th>Karcis Rujukan</th> --}}
                         <th>Kategori</th>
                         <th>Pasien</th>
-                        <th>Item Lab</th>
-                        <th>File</th>
+                        {{-- <th>Item Lab</th> --}}
+                        {{-- <th>File</th> --}}
                         <th>Diupload Oleh</th>
-                        <th>Tanggal Upload</th>
+                        {{-- <th>Tanggal Upload</th> --}}
                         <th>Status Integrasi</th>
                         <th></th>
                     </tr>
@@ -282,11 +282,11 @@
                     name: 'l.karcis_asal',
                     responsivePriority: 3
                 },
-                {
-                    data: 'karcis_rujukan',
-                    name: 'l.karcis_rujukan',
-                    responsivePriority: 1
-                },
+                // {
+                //     data: 'karcis_rujukan',
+                //     name: 'l.karcis_rujukan',
+                //     responsivePriority: 1
+                // },
                 {
                     data: 'kategori',
                     name: 'b.nama_kategori',
@@ -297,29 +297,29 @@
                     name: 'c.NAMA',
                     responsivePriority: 1
                 },
-                {
-                    data: 'item_lab',
-                    name: 'm.NM_TIND',
-                    orderable: false,
-                    responsivePriority: 1
-                },
-                {
-                    data: 'file',
-                    name: 'a.file_name',
-                    orderable: false,
-                    responsivePriority: 3
-                },
+                // {
+                //     data: 'item_lab',
+                //     name: 'm.NM_TIND',
+                //     orderable: false,
+                //     responsivePriority: 1
+                // },
+                // {
+                //     data: 'file',
+                //     name: 'a.file_name',
+                //     orderable: false,
+                //     responsivePriority: 3
+                // },
                 {
                     data: 'diupload_oleh',
                     name: 'a.usr_crt',
                     responsivePriority: 5
                 },
-                {
-                    data: 'tanggal_upload',
-                    name: 'a.crt_dt',
-                    type: 'date',
-                    responsivePriority: 5
-                },
+                // {
+                //     data: 'tanggal_upload',
+                //     name: 'a.crt_dt',
+                //     type: 'date',
+                //     responsivePriority: 5
+                // },
                 {
                     data: 'status_integrasi',
                     name: 'status_integrasi',

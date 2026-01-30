@@ -32,110 +32,90 @@ class DiagnosticReportController extends Controller
     {
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
+        $id_unit = Session::get('id_unit', '001');
         $search = $request->input('search');
-
-        // Build the base query
-        $query = DB::connection('sqlsrv')
-            ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
-            ->join(DB::raw('SIRS_PHCM.dbo.vw_getData_Elab as l'), function ($join) {
-                $join->on('a.karcis', '=', 'l.KARCIS_ASAL')
-                    ->on('a.kd_tindakan', '=', 'l.KD_TINDAKAN');
-            })
-            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX_KATEGORI as b'), 'a.id_kategori', '=', 'b.id')
-            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MASTERPX as c'), 'a.kbuku', '=', 'c.kbuku')
-            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as m'), 'a.kd_tindakan', '=', 'm.KD_TIND')
-            ->leftJoin(DB::raw('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as sr'), function ($join) {
-                $join->on('l.karcis_rujukan', '=', 'sr.karcis')
-                    ->on('a.kbuku', '=', 'sr.kbuku');
-            })
-            ->leftJoin(DB::raw('SATUSEHAT.dbo.SATUSEHAT_LOG_DIAGNOSTICREPORT as sdr'), function ($join) {
-                $join->on('l.karcis_rujukan', '=', 'sdr.karcis')
-                    ->on('a.kbuku', '=', 'sdr.kbuku')
-                    ->on('a.id', '=', 'sdr.iddokumen');
-            })
-            ->select([
-                'a.id',
-                'l.karcis_asal',
-                'l.karcis_rujukan',
-                'a.kbuku',
-                'c.NAMA as NM_PASIEN',
-                'm.NM_TIND as NM_TIND',
-                'a.file_name',
-                'a.keterangan',
-                'b.nama_kategori',
-                'a.usr_crt',
-                'a.crt_dt',
-                DB::raw('COUNT(DISTINCT sr.id_satusehat_servicerequest) AS JUMLAH_SERVICE_REQUEST'), // Placeholder for SATUSEHAT status
-                DB::raw('COUNT(DISTINCT sdr.id_satusehat_diagnosticreport) AS SATUSEHAT'), // Placeholder for SATUSEHAT status
-            ])
-            ->where('a.AKTIF', 1)
-            ->where('a.id_kategori', 1)
-            ->groupBy(
-                'a.id',
-                'l.karcis_asal',
-                'l.karcis_rujukan',
-                'a.kbuku',
-                'c.NAMA',
-                'm.NM_TIND',
-                'a.file_name',
-                'a.keterangan',
-                'b.nama_kategori',
-                'a.usr_crt',
-                'a.crt_dt'
-            );
 
         // Apply date filter only if both dates are provided
         if (!empty($tgl_awal) && !empty($tgl_akhir)) {
             $tgl_awal = Carbon::parse($tgl_awal)->format('Y-m-d');
             $tgl_akhir = Carbon::parse($tgl_akhir)->format('Y-m-d');
-
-            $query->whereRaw("CONVERT(date, a.crt_dt) BETWEEN ? AND ?", [
-                $tgl_awal,
-                $tgl_akhir
-            ]);
         }
+        // dd($tgl_awal, $tgl_akhir, $search);
 
-        // Apply search filter if provided
-        if (!empty($search)) {
-            if ($search === 'sent') {
-                // Documents that have been integrated to SatuSehat
-                $query->where(DB::raw('0'), '>', 0); // Using placeholder logic for SATUSEHAT > 0
-            } elseif ($search === 'pending') {
-                // Documents that haven't been integrated to SatuSehat
-                $query->where(DB::raw('0'), '=', 0); // Using placeholder logic for SATUSEHAT = 0
-            }
-            // For 'all', no additional filter needed
-        }
+        // Build the base query
+        $baseQuery = collect(DB::select("
+            EXEC dbo.sp_getDataDiagnosticReport ?, ?, ?, ?
+        ", [
+            $id_unit,
+            $tgl_awal,
+            $tgl_akhir,
+            'all'
+        ]));
 
         // Get summary counts for the cards - using same base query as DataTable
-        $baseQueryForCount = DB::connection('sqlsrv')
-            ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
-            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX_KATEGORI as b'), 'a.id_kategori', '=', 'b.id')
-            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MASTERPX as c'), 'a.kbuku', '=', 'c.kbuku')
-            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as m'), 'a.kd_tindakan', '=', 'm.KD_TIND')
-            ->where('a.AKTIF', 1)
-            ->where('a.id_kategori', 1);
+        // $baseQueryForCount = DB::connection('sqlsrv') // sesuaikan connection jika perlu
+        //     ->table('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a')
+        //     ->selectRaw('
+        //         a.id,
+        //         b.karcis_asal,
+        //         b.karcis_rujukan,
+        //         a.kbuku,
+        //         d.NAMA as NM_PASIEN,
+        //         a.keterangan,
+        //         c.nama_kategori,
+        //         a.usr_crt,
+        //         a.crt_dt,
+        //         COUNT(DISTINCT e.id_satusehat_servicerequest) AS JUMLAH_SERVICE_REQUEST,
+        //         COUNT(DISTINCT f.id_satusehat_diagnosticreport) AS SATUSEHAT
+        //     ')
+        //     ->join('SIRS_PHCM.dbo.vw_getData_Elab as b', 'a.karcis', '=', 'b.karcis_asal')
+        //     ->join('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX_KATEGORI as c', 'a.id_kategori', '=', 'c.id')
+        //     ->join('SIRS_PHCM.dbo.RIRJ_MASTERPX as d', 'a.kbuku', '=', 'd.kbuku')
+        //     ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as e', 'b.karcis_rujukan', '=', 'e.karcis')
+        //     ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_DIAGNOSTICREPORT as f', 'b.karcis_rujukan', '=', 'f.karcis')
+        //     ->where('a.aktif', 1)
+        //     ->where('a.id_kategori', 1)
+        //     ->whereBetween('a.crt_dt', [$tgl_awal, $tgl_akhir])
+        //     ->groupBy(
+        //         'a.id',
+        //         'b.karcis_asal',
+        //         'b.karcis_rujukan',
+        //         'a.kbuku',
+        //         'd.NAMA',
+        //         'a.keterangan',
+        //         'c.nama_kategori',
+        //         'a.usr_crt',
+        //         'a.crt_dt'
+        //     );
 
         // Apply same date filter for counts
-        if (!empty($tgl_awal) && !empty($tgl_akhir)) {
-            $baseQueryForCount->whereRaw("CONVERT(date, a.crt_dt) BETWEEN ? AND ?", [
-                $tgl_awal,
-                $tgl_akhir
-            ]);
-        }
+        // if (!empty($tgl_awal) && !empty($tgl_akhir)) {
+        //     $baseQueryForCount->whereRaw("CONVERT(date, a.crt_dt) BETWEEN ? AND ?", [
+        //         $tgl_awal,
+        //         $tgl_akhir
+        //     ]);
+        // }
+        $summary = $baseQuery->first();
 
-        $allCount = (clone $baseQueryForCount)->count();
-        // Sent: documents that have been integrated (SATUSEHAT > 0)
-        $sentCount = (clone $baseQueryForCount)->where(DB::raw('0'), '>', 0)->count(); // Using placeholder logic
-        // Pending: documents that haven't been integrated (SATUSEHAT = 0)
-        $pendingCount = (clone $baseQueryForCount)->where(DB::raw('0'), '=', 0)->count(); // Using placeholder logic
+        $totalData = [
+            'summary' => [
+                'all' => $summary->total_semua ?? 0,
+                'sent' => $summary->total_mapped ?? 0,
+                'pending' => $summary->total_unmapped ?? 0,
+            ]
+        ];
+        // $allCount = $summary->all_count ?? 0;
+        // // Sent: documents that have been integrated (SATUSEHAT > 0)
+        // $sentCount = $summary->sent_count ?? 0;
+        // // Pending: documents that haven't been integrated (SATUSEHAT = 0)
+        // $pendingCount = $summary->pending_count ?? 0;
 
         // Don't add ORDER BY here - let DataTables handle it
         // $query->orderBy('a.id', 'desc');
         // dd($query->toSql(), $query->getBindings());
         // dd($query->get());
 
-        $dataTable = DataTables::of($query)
+        $dataTable = DataTables::of($baseQuery)
             ->addIndexColumn()
             ->addColumn('pasien', function ($row) {
                 return $row->NM_PASIEN ?? '-';
@@ -153,24 +133,24 @@ class DiagnosticReportController extends Controller
             ->addColumn('karcis_asal', function ($row) {
                 return $row->karcis_asal ?? '-';
             })
-            ->addColumn('karcis_rujukan', function ($row) {
-                return $row->karcis_rujukan ?? '-';
-            })
-            ->addColumn('item_lab', function ($row) {
-                return $row->NM_TIND ?? '-';
-            })
+            // ->addColumn('karcis_rujukan', function ($row) {
+            //     return $row->karcis_rujukan ?? '-';
+            // })
+            // ->addColumn('item_lab', function ($row) {
+            //     return $row->NM_TIND ?? '-';
+            // })
             ->addColumn('diupload_oleh', function ($row) {
                 return $row->usr_crt ?? '-';
             })
-            ->addColumn('tanggal_upload', function ($row) {
-                return $row->crt_dt ? Carbon::parse($row->crt_dt)->format('d-m-Y H:i:s') : '-';
-            })
+            // ->addColumn('tanggal_upload', function ($row) {
+            //     return $row->crt_dt ? Carbon::parse($row->crt_dt)->format('d-m-Y H:i:s') : '-';
+            // })
             ->addColumn('kategori', function ($row) {
                 return $row->nama_kategori ?? '-';
             })
-            ->addColumn('file', function ($row) {
-                return $row->file_name ?? '-';
-            })
+            // ->addColumn('file', function ($row) {
+            //     return $row->file_name ?? '-';
+            // })
             ->addColumn('status_integrasi', function ($row) {
                 if ($row->SATUSEHAT > 0) {
                     return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
@@ -197,14 +177,8 @@ class DiagnosticReportController extends Controller
 
                 return '<div style="min-width: 100px;">' . $btn . '</div>';
             })
-            ->rawColumns(['kategori', 'file', 'aksi', 'checkbox', 'status_integrasi'])
-            ->with([
-                'summary' => [
-                    'all' => $allCount,
-                    'sent' => $sentCount,
-                    'pending' => $pendingCount
-                ]
-            ])
+            ->rawColumns(['kategori', 'aksi', 'checkbox', 'status_integrasi'])
+            ->with($totalData)
             ->make(true);
 
         return $dataTable;
@@ -348,19 +322,29 @@ class DiagnosticReportController extends Controller
         $id_unit = Session::get('id_unit', '001');
         $status = 'final';
 
+        $detail = collect(DB::select("
+            EXEC dbo.sp_getDataDiagnosticReportDetail ?, ?
+        ", [
+            $id_unit,
+            $idDokumenPx
+        ]));
+        dd($detail);
+
         $dokumen_px =  DB::connection('sqlsrv')
             ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
+            ->join(DB::raw('SIRS_PHCM.dbo.vw_getData_Elab as l'), 'a.karcis', '=', 'l.KARCIS_ASAL')
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX_KATEGORI as b'), 'a.id_kategori', '=', 'b.id')
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MASTERPX as c'), 'a.kbuku', '=', 'c.kbuku')
-            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as m'), 'a.kd_tindakan', '=', 'm.KD_TIND')
+            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as m'), 'l.kd_tindakan', '=', 'm.KD_TIND')
             ->select([
                 'a.*',
                 'b.nama_kategori',
-                DB::raw('0 as SATUSEHAT'), // Placeholder for SATUSEHAT status
+                'm.KD_TIND'
             ])
             ->where('a.AKTIF', 1)
             ->where('a.id', $idDokumenPx)
             ->first();
+        dd($dokumen_px);
 
         $riwayat = DB::connection('sqlsrv')
             ->table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB')
@@ -369,10 +353,11 @@ class DiagnosticReportController extends Controller
             ->first();
 
         $dokumen_px_codings = DB::connection('sqlsrv')
-            ->table(DB::raw('SATUSEHAT.dbo.DIAGNOSTIC_REPORT_CODINGS as a'))
+            ->table(DB::raw('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as a'))
             ->select('a.*')
-            ->where('a.id_dokumen_px', $idDokumenPx)
+            ->where('a.ID', $dokumen_px->KD_TIND)
             ->get();
+        dd($dokumen_px_codings);
 
         $patient = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN_MAPPING as a')
