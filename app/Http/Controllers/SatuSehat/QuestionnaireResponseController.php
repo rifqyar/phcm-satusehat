@@ -162,8 +162,13 @@ class QuestionnaireResponseController extends Controller
                 $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" . $kdLokasiSS;
                 $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
                 $paramEncoded = base64_encode($paramSatuSehat);
+
+                if ($row->JUMLAH_NOTA_SATUSEHAT > 0) {
+                    return '<button style="white-space: nowrap" class="btn btn-sm btn-primary" onclick="tambahRespon(\'' . $row->ID_TRANSAKSI . '\', \'' . $paramEncoded . '\')">Isi respon kuesioner</button>';
+                } else {
+                    return '<i class="text-muted">Encounter Belum Dikirim</i>';   
+                }
                 
-                return '<button style="white-space: nowrap" class="btn btn-sm btn-primary" onclick="tambahRespon(\'' . $row->ID_TRANSAKSI . '\', \'' . $paramEncoded . '\')">Isi respon kuesioner</button>';
             })
             ->addColumn('status_integrasi', function ($row) use ($logStatuses) {
                 // Use pre-fetched log status to avoid N+1 query
