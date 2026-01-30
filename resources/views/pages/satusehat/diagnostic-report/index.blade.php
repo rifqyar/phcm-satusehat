@@ -64,7 +64,7 @@
     </div>
 </div>
 
-<div class="card">
+<div class="card" id="data-section">
     <div class="card-body">
         <h4 class="card-title">Data Laporan Pemeriksaan</h4>
         <form action="javascript:void(0)" id="search-data" class="m-t-40">
@@ -78,7 +78,7 @@
                             <div class="row align-items-center ml-1">
                                 <i class="fas fa-file-medical text-white" style="font-size: 48px"></i>
                                 <div class="ml-3">
-                                    <span data-count="all" class="text-white" style="font-size: 24px">
+                                    <span id="total_all" class="text-white" style="font-size: 24px">
                                         0
                                     </span>
                                     <h4 class="text-white">Semua Laporan Pemeriksaan<br></h4>
@@ -89,12 +89,12 @@
                 </div>
 
                 <div class="col-4">
-                    <div class="card card-inverse card-success card-mapping" onclick="search('sent')">
+                    <div class="card card-inverse card-success card-mapping" onclick="search('mapped')">
                         <div class="card-body">
                             <div class="row align-items-center ml-1">
                                 <i class="fas fa-check-circle text-white" style="font-size: 48px"></i>
                                 <div class="ml-3">
-                                    <span data-count="sent" class="text-white" style="font-size: 24px">
+                                    <span id="total_integrasi" class="text-white" style="font-size: 24px">
                                         0
                                     </span>
                                     <h4 class="text-white">Data Terkirim<br></h4>
@@ -105,12 +105,12 @@
                 </div>
 
                 <div class="col-4">
-                    <div class="card card-inverse card-danger card-mapping" onclick="search('pending')">
+                    <div class="card card-inverse card-danger card-mapping" onclick="search('unmapped')">
                         <div class="card-body">
                             <div class="row align-items-center ml-1">
                                 <i class="fas fa-clock text-white" style="font-size: 48px"></i>
                                 <div class="ml-3">
-                                    <span data-count="pending" class="text-white" style="font-size: 24px">
+                                    <span id="total_belum_integrasi" class="text-white" style="font-size: 24px">
                                         0
                                     </span>
                                     <h4 class="text-white">Data Belum Terkirim<br></h4>
@@ -127,7 +127,7 @@
                         <div class="row justify-content-center align-items-end">
                             <div class="col-5">
                                 <label for="start_date">Periode Tanggal Upload</label>
-                                <input type="text" class="form-control" id="start_date">
+                                <input type="text" class="form-control" name="tgl_awal" id="start_date">
                                 <span class="bar"></span>
                             </div>
                             <div class="col-2 text-center">
@@ -136,7 +136,7 @@
                             </div>
                             <div class="col-5">
                                 <label for="end_date">&nbsp;</label>
-                                <input type="text" class="form-control" id="end_date">
+                                <input type="text" class="form-control" name="tgl_akhir" id="end_date">
                                 <span class="bar"></span>
                             </div>
                         </div>
@@ -195,7 +195,7 @@
     </div>
 </div>
 
-
+@include('modals.modal_diagnostic_report')
 @endsection
 
 @push('after-script')
@@ -204,36 +204,77 @@
 <script>
     var table;
     let selectedIds = [];
+    var paramSatuSehat = '';
 
-    $(document).ready(function() {
+    $(function() {
+        // format tanggal sesuai dengan setting datepicker
         const today = moment().format('YYYY-MM-DD');
-        const sevenDaysAgo = moment().subtract(7, 'days').format('YYYY-MM-DD');
-
-        // 🗓️ datepicker
         $("#start_date").bootstrapMaterialDatePicker({
             weekStart: 0,
             time: false,
-            format: 'YYYY-MM-DD'
         });
-
         $("#end_date").bootstrapMaterialDatePicker({
             weekStart: 0,
             time: false,
-            format: 'YYYY-MM-DD'
         });
 
-        // Default dates
-        $('#start_date').val(sevenDaysAgo);
+        // Set default value ke hari ini
+        $('#start_date').val(today);
         $('#end_date').val(today);
 
-        // Initialize bulk send button state
-        $('#bulk-send-btn').prop('disabled', true);
+        getAllData();
 
-        // Initial summary refresh
-        refreshSummary();
+        $("#search-data").on("submit", function(e) {
+            if (this.checkValidity()) {
+                e.preventDefault();
+                $("html, body").animate({
+                        scrollTop: $("#data-section").offset().top,
+                    },
+                    1250
+                );
+                table.ajax.reload();
+            }
 
-        // ⚙️ DataTable
-        table = $('#diagnosticTable').DataTable({
+            $(this).addClass("was-validated");
+        });
+
+        $('.data-table').on('click', 'button, a', function(e) {
+            e.stopPropagation();
+        });
+
+    });
+
+    function resetSearch() {
+        // Reset all form inputs
+        $('input[name="search"]').val('');
+        $('input[name="tgl_awal"]').val('');
+        $('input[name="tgl_akhir"]').val('');
+        $("#search-data").removeClass("was-validated");
+
+        // Clear selections
+        selectedIds = [];
+        $('#selectAll').prop('checked', false);
+        $('.select-row').prop('checked', false);
+
+        if (typeof table !== 'undefined' && table) {
+            table.ajax.reload();
+        }
+
+        // Update button state
+        updateSelectAllCheckbox();
+
+        $.toast?.({
+            heading: "Pencarian direset",
+            text: "Filter pencarian dikosongkan.",
+            position: "top-right",
+            icon: "info",
+            textColor: "white",
+            hideAfter: 2000,
+        });
+    }
+
+    function getAllData() {
+        table = $('.data-table').DataTable({
             responsive: {
                 details: {
                     type: 'column',
@@ -244,13 +285,19 @@
             serverSide: false,
             scrollX: false,
             ajax: {
-                url: "{{ route('satusehat.diagnostic-report.datatable') }}",
-                type: 'POST',
-                data: function(d) {
-                    d._token = '{{ csrf_token() }}';
-                    d.tgl_awal = $('#start_date').val();
-                    d.tgl_akhir = $('#end_date').val();
-                    d.search = $('input[name="search"]').val();
+                url: `{{ route('satusehat.diagnostic-report.datatable') }}`,
+                method: "POST",
+                data: function(data) {
+                    data._token = `${$('meta[name="csrf-token"]').attr("content")}`;
+                    data.cari = $('input[name="search"]').val();
+                    data.tgl_awal = $('input[name="tgl_awal"]').val();
+                    data.tgl_akhir = $('input[name="tgl_akhir"]').val();
+                },
+                dataSrc: function(json) {
+                    $('#total_all').text(json.total_semua)
+                    $('#total_integrasi').text(json.total_sudah_integrasi)
+                    $('#total_belum_integrasi').text(json.total_belum_integrasi)
+                    return json.data
                 }
             },
             columns: [
@@ -280,7 +327,7 @@
                 {
                     data: 'karcis_asal',
                     name: 'l.karcis_asal',
-                    responsivePriority: 3
+                    responsivePriority: 1
                 },
                 // {
                 //     data: 'karcis_rujukan',
@@ -333,6 +380,9 @@
                     responsivePriority: 1
                 }
             ],
+            order: [
+                [1, 'asc']
+            ],
             lengthMenu: [
                 [10, 25, 50, -1],
                 [10, 25, 50, "All"]
@@ -354,89 +404,14 @@
 
                 updateSelectAllCheckbox();
             }
-        });
-
-        // maintain checkbox state after draw
-        table.on('draw', function() {
-            $('.select-row').each(function() {
-                const id = $(this).val();
-                $(this).prop('checked', selectedIds.includes(id));
-            });
-
-            updateSelectAllCheckbox();
-        });
-
-        table.on('xhr.dt', function(e, settings, json, xhr) {
-            if (json && json.summary) {
-                $('span[data-count="all"]').text(json.summary.all ?? 0);
-                $('span[data-count="sent"]').text(json.summary.sent ?? 0);
-                $('span[data-count="pending"]').text(json.summary.pending ?? 0);
-            }
-        });
-
-        // 🔍 tombol cari
-        $("#search-data").on("submit", function(e) {
-            e.preventDefault();
-            refreshSummary();
-            table.ajax.reload();
-        });
-    });
-
-    function refreshSummary() {
-        $.ajax({
-            url: "{{ route('satusehat.diagnostic-report.datatable') }}",
-            type: 'POST',
-            data: {
-                _token: '{{ csrf_token() }}',
-                tgl_awal: $('#start_date').val(),
-                tgl_akhir: $('#end_date').val(),
-                search: '',
-                length: 0 // Just get summary, no data
-            },
-            success: function(response) {
-                if (response.summary) {
-                    $('span[data-count="all"]').text(response.summary.all ?? 0);
-                    $('span[data-count="sent"]').text(response.summary.sent ?? 0);
-                    $('span[data-count="pending"]').text(response.summary.pending ?? 0);
-                }
-            },
-            error: function(err) {
-                console.error("Failed to update summary:", err);
-            }
-        });
+        })
     }
 
-    // 🔄 reset filter
-    function resetSearch() {
-        $('#start_date').val('');
-        $('#end_date').val('');
-        $('input[name="search"]').val('');
-
-        // Reset selection state
-        selectedIds = [];
-        $('#selectAll').prop('checked', false);
-        $('.select-row').prop('checked', false);
-        updateSelectAllCheckbox();
-
-        refreshSummary();
-        table.ajax.reload();
-    }
-
-    // 📦 filter by card
-    function search(type) {
-        $('input[name="search"]').val(type);
-        table.ajax.reload();
-    }
-
-    // 📂 Open file in new window
-    function openFile(url) {
-        window.open(url, '_blank', 'width=800,height=600,scrollbars=yes,resizable=yes');
-    }
-
-    // Selection handling similar to specimen index
+    // Select single row
     $(document).on('change', '.select-row', function(e) {
         e.stopPropagation();
         const id = $(this).val();
+
         if ($(this).is(':checked')) {
             if (!selectedIds.includes(id)) selectedIds.push(id);
         } else {
@@ -445,6 +420,11 @@
         updateSelectAllCheckbox();
     });
 
+    $(document).on('click', '.select-row', function(e) {
+        e.stopPropagation();
+    });
+
+    // Select All (current page)
     $('#selectAll').on('click', function(e) {
         e.stopPropagation();
         const rows = $('.select-row');
@@ -458,8 +438,9 @@
             } else {
                 selectedIds = selectedIds.filter(item => item !== id);
             }
+
+            updateSelectAllCheckbox();
         });
-        updateSelectAllCheckbox();
     });
 
     function updateSelectAllCheckbox() {
@@ -485,7 +466,171 @@
         e.stopPropagation();
     });
 
-    // Bulk send handler
+    function search(type) {
+        $('input[name="search"]').val(type)
+        selectedIds = [];
+        updateSelectAllCheckbox();
+
+        table.ajax.reload()
+    }
+
+    function lihatDetail(param) {
+        paramSatuSehat = param;
+        
+        Swal.fire({
+            title: 'Loading...',
+            text: 'Sedang memuat data',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            willOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        $.ajax({
+            url: `{{ route('satusehat.diagnostic-report.lihat-detail', '') }}/${btoa(param)}`,
+            method: 'POST',
+            data: {
+                _token: $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
+                Swal.close();
+                
+                // Populate patient data
+                $('#nama_pasien').text(response.dataDetail[0].NM_PASIEN || '-');
+                $('#no_rm').text(response.dataDetail[0].kbuku || '-');
+                $('#no_peserta').text(response.dataDetail[0].no_peserta || '-');
+                $('#no_karcis').text(response.dataDetail[0].karcis_asal || '-');
+                $('#dokter').text(response.dataDetail[0].DOKTER || '-');
+                $('#tbodyDiagnosticReport').empty();
+
+                // Populate diagnostic report data
+                let diagnosticReportHtml = '';
+                if (response.dataDetail && response.dataDetail.length > 0) {
+                    // 1. Group by karcis_rujukan
+                    const groupedData = {};
+
+                    $.each(response.dataDetail, function (index, item) {
+                        const key = item.karcis_rujukan || 'TANPA RUJUKAN';
+
+                        if (!groupedData[key]) {
+                            groupedData[key] = [];
+                        }
+                        groupedData[key].push(item);
+                    });
+
+                    // 2. Render table
+                    $.each(groupedData, function (karcisRujukan, items) {
+
+                        // Group header row
+                        $('#tbodyDiagnosticReport').append(`
+                            <tr>
+                                <td colspan="3"><strong><i class="fas fa-chevron-right"></i> Karcis Rujukan ${karcisRujukan}</strong></td>
+                            </tr>
+                        `);
+
+                        // Detail rows
+                        $.each(items, function (i, item) {
+                            $('#tbodyDiagnosticReport').append(`
+                                <tr>
+                                    <td>${item.NM_TIND || '-'}</td>
+                                    <td>${item.code || '-'}</td>
+                                    <td>${item.display || '-'}</td>
+                                </tr>
+                            `);
+                        });
+
+                    });
+                } else {
+                    // Jika tidak ada data
+                    $('#tbodyDiagnosticReport').append(`
+                        <tr>
+                            <td colspan="3" class="text-center text-muted">
+                                Tidak ada data diagnostic report
+                            </td>
+                        </tr>
+                    `);
+                }
+
+                // Show status based on integration status
+                $('#integrasi_service_request, #integrasi_resume, #success_resume, #failed_resume, #btn-send-satusehat').hide();
+                console.log(response.dataDetail[0].JUMLAH_SERVICE_REQUEST);
+                
+                if (response.dataDetail[0].JUMLAH_SERVICE_REQUEST == 0) {
+                    $('#integrasi_service_request').show();
+                } else {
+                    if (response.dataDetail[0].SATUSEHAT == 0) {
+                        $('#integrasi_resume').show();
+                    } else if (response.dataDetail[0].SATUSEHAT == 1) {
+                        $('#success_resume').show();
+                    } else {
+                        $('#failed_resume').show();
+                    }
+                    $('#btn-send-satusehat').show();
+                }
+
+                // Show modal
+                $('#modalDiagnosticReport').modal('show');
+            },
+            error: function(xhr) {
+                Swal.close();
+                Swal.fire({
+                    title: 'Error!',
+                    text: 'Gagal memuat data diagnostic report',
+                    icon: 'error'
+                });
+            }
+        });
+    }
+
+    $('#btn-send-satusehat').on('click', function() {
+        if (paramSatuSehat != '') {
+            sendSatuSehat(paramSatuSehat)
+        }
+    })
+
+    function sendSatuSehat(param) {
+        Swal.fire({
+            title: "Konfirmasi Pengiriman",
+            text: `Kirim data diagnostic report ke SatuSehat?`,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Ya, kirim!",
+            cancelButtonText: "Batal",
+        }).then(async (conf) => {
+            if (conf.value || conf.isConfirmed) {
+                await ajaxPostJson(
+                    `{{ route('satusehat.diagnostic-report.send-satu-sehat', '') }}/${btoa(param)}`,
+                    "input_success",
+                    ""
+                );
+            }
+        });
+    }
+
+    function resendSatuSehat(param) {
+        Swal.fire({
+            title: "Konfirmasi Pengiriman Ulang",
+            text: `Kirim ulang data diagnostic report?`,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Ya, kirim!",
+            cancelButtonText: "Batal",
+        }).then(async (conf) => {
+            if (conf.value || conf.isConfirmed) {
+                await ajaxPostJson(
+                    `{{ route('satusehat.diagnostic-report.resend-satu-sehat', '') }}/${btoa(param)}`,
+                    "input_success",
+                    ""
+                );
+            }
+        });
+    }
+
     function bulkSend() {
         if (selectedIds.length === 0) {
             $.toast({
@@ -558,68 +703,6 @@
                     icon: "error",
                     hideAfter: 5000
                 });
-            }
-        });
-    }
-
-    // 🗑️ Confirm delete document
-    function confirmDelete(docId) {
-        if (!docId) return;
-
-        swal({
-            title: "Hapus Dokumen?",
-            text: "Yakin ingin menghapus dokumen ini? Tindakan ini tidak dapat dibatalkan.",
-            type: "warning",
-            showCancelButton: true,
-            confirmButtonColor: "#dd6b55",
-            confirmButtonText: "Ya, hapus!",
-            cancelButtonText: "Batal",
-            closeOnConfirm: false
-        }, function() {
-            deleteDocument(docId);
-        });
-    }
-
-    function sendSatuSehat(id) {
-        Swal.fire({
-            title: "Konfirmasi Pengiriman",
-            text: `Kirim data laporan pemeriksaan ke SatuSehat?`,
-            icon: "question",
-            showCancelButton: true,
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-            confirmButtonText: "Ya, kirim!",
-            cancelButtonText: "Batal",
-        }).then(async (conf) => {
-            if (conf.value || conf.isConfirmed) {
-                await ajaxPostJson(
-                    `{{ route('satusehat.diagnostic-report.send-satu-sehat', '') }}/${id}`, {
-                        _token: '{{ csrf_token() }}'
-                    },
-                    "input_success"
-                );
-            }
-        });
-    }
-
-    function reSendSatuSehat(param) {
-        Swal.fire({
-            title: "Konfirmasi Pengiriman Ulang",
-            text: `Kirim ulang data resume medis?`,
-            icon: "question",
-            showCancelButton: true,
-            confirmButtonColor: "#3085d6",
-            cancelButtonColor: "#d33",
-            confirmButtonText: "Ya, kirim!",
-            cancelButtonText: "Batal",
-        }).then(async (conf) => {
-            if (conf.value || conf.isConfirmed) {
-                await ajaxPostJson(
-                    `{{ route('satusehat.diagnostic-report.resend-satu-sehat', '') }}/${param}`, {
-                        _token: '{{ csrf_token() }}'
-                    },
-                    "input_success"
-                );
             }
         });
     }

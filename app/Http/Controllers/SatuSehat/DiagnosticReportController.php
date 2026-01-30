@@ -51,106 +51,38 @@ class DiagnosticReportController extends Controller
             $tgl_akhir,
             'all'
         ]));
-
-        // Get summary counts for the cards - using same base query as DataTable
-        // $baseQueryForCount = DB::connection('sqlsrv') // sesuaikan connection jika perlu
-        //     ->table('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a')
-        //     ->selectRaw('
-        //         a.id,
-        //         b.karcis_asal,
-        //         b.karcis_rujukan,
-        //         a.kbuku,
-        //         d.NAMA as NM_PASIEN,
-        //         a.keterangan,
-        //         c.nama_kategori,
-        //         a.usr_crt,
-        //         a.crt_dt,
-        //         COUNT(DISTINCT e.id_satusehat_servicerequest) AS JUMLAH_SERVICE_REQUEST,
-        //         COUNT(DISTINCT f.id_satusehat_diagnosticreport) AS SATUSEHAT
-        //     ')
-        //     ->join('SIRS_PHCM.dbo.vw_getData_Elab as b', 'a.karcis', '=', 'b.karcis_asal')
-        //     ->join('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX_KATEGORI as c', 'a.id_kategori', '=', 'c.id')
-        //     ->join('SIRS_PHCM.dbo.RIRJ_MASTERPX as d', 'a.kbuku', '=', 'd.kbuku')
-        //     ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as e', 'b.karcis_rujukan', '=', 'e.karcis')
-        //     ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_DIAGNOSTICREPORT as f', 'b.karcis_rujukan', '=', 'f.karcis')
-        //     ->where('a.aktif', 1)
-        //     ->where('a.id_kategori', 1)
-        //     ->whereBetween('a.crt_dt', [$tgl_awal, $tgl_akhir])
-        //     ->groupBy(
-        //         'a.id',
-        //         'b.karcis_asal',
-        //         'b.karcis_rujukan',
-        //         'a.kbuku',
-        //         'd.NAMA',
-        //         'a.keterangan',
-        //         'c.nama_kategori',
-        //         'a.usr_crt',
-        //         'a.crt_dt'
-        //     );
-
-        // Apply same date filter for counts
-        // if (!empty($tgl_awal) && !empty($tgl_akhir)) {
-        //     $baseQueryForCount->whereRaw("CONVERT(date, a.crt_dt) BETWEEN ? AND ?", [
-        //         $tgl_awal,
-        //         $tgl_akhir
-        //     ]);
-        // }
         $summary = $baseQuery->first();
 
         $totalData = [
-            'summary' => [
-                'all' => $summary->total_semua ?? 0,
-                'sent' => $summary->total_mapped ?? 0,
-                'pending' => $summary->total_unmapped ?? 0,
-            ]
+            'total_semua' => $summary->total_semua ?? 0,
+            'total_sudah_integrasi' => $summary->total_mapped ?? 0,
+            'total_belum_integrasi' => $summary->total_unmapped ?? 0
         ];
-        // $allCount = $summary->all_count ?? 0;
-        // // Sent: documents that have been integrated (SATUSEHAT > 0)
-        // $sentCount = $summary->sent_count ?? 0;
-        // // Pending: documents that haven't been integrated (SATUSEHAT = 0)
-        // $pendingCount = $summary->pending_count ?? 0;
 
-        // Don't add ORDER BY here - let DataTables handle it
-        // $query->orderBy('a.id', 'desc');
-        // dd($query->toSql(), $query->getBindings());
-        // dd($query->get());
-
-        $dataTable = DataTables::of($baseQuery)
+        return DataTables::of($baseQuery)
             ->addIndexColumn()
-            ->addColumn('pasien', function ($row) {
-                return $row->NM_PASIEN ?? '-';
-            })
             ->addColumn('checkbox', function ($row) {
+                $checkbox = '';
                 if ($row->JUMLAH_SERVICE_REQUEST > 0) {
                     if ($row->SATUSEHAT == 0) {
-                        return '
-                            <input type="checkbox"  class="select-row chk-col-purple" value="' . $row->id . '" id="checkbox_' . $row->id . '" />
-                            <label for="checkbox_' . $row->id . '"></label>
-                        ';
+                        $checkbox = '<input type="checkbox"  class="select-row chk-col-purple" value="' . $row->id . '" id="checkbox_' . $row->id . '" />
+                        <label for="checkbox_' . $row->id . '"></label>';
                     }
                 }
+                return $checkbox;
+            })
+            ->addColumn('pasien', function ($row) {
+                return $row->NM_PASIEN ?? '-';
             })
             ->addColumn('karcis_asal', function ($row) {
                 return $row->karcis_asal ?? '-';
             })
-            // ->addColumn('karcis_rujukan', function ($row) {
-            //     return $row->karcis_rujukan ?? '-';
-            // })
-            // ->addColumn('item_lab', function ($row) {
-            //     return $row->NM_TIND ?? '-';
-            // })
             ->addColumn('diupload_oleh', function ($row) {
                 return $row->usr_crt ?? '-';
             })
-            // ->addColumn('tanggal_upload', function ($row) {
-            //     return $row->crt_dt ? Carbon::parse($row->crt_dt)->format('d-m-Y H:i:s') : '-';
-            // })
             ->addColumn('kategori', function ($row) {
                 return $row->nama_kategori ?? '-';
             })
-            // ->addColumn('file', function ($row) {
-            //     return $row->file_name ?? '-';
-            // })
             ->addColumn('status_integrasi', function ($row) {
                 if ($row->SATUSEHAT > 0) {
                     return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
@@ -165,23 +97,22 @@ class DiagnosticReportController extends Controller
                 // </button>';
 
                 $openFileBtn = '';
+                $btnDetail = '<button type="button" class="btn btn-sm btn-info" onclick="lihatDetail(\'' . $row->id . '\')"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</button>';
                 if ($row->JUMLAH_SERVICE_REQUEST > 0) {
                     if ($row->SATUSEHAT == 0) {
-                        $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $row->id . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
+                        $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $row->id . '`)" class="btn btn-sm btn-primary"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
                     } else {
-                        $btn = '<a href="javascript:void(0)" onclick="reSendSatuSehat(`' . $row->id . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                        $btn = '<a href="javascript:void(0)" onclick="reSendSatuSehat(`' . $row->id . '`)" class="btn btn-sm btn-warning"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                     }
                 } else {
-                    $btn = '<span class="badge badge-pill badge-secondary p-2 w-100">Belum Integrasi Service Request</span>';
+                    $btn = '<span class="badge badge-pill badge-secondary p-2">Belum Integrasi Service Request</span>';
                 }
 
-                return '<div style="min-width: 100px;">' . $btn . '</div>';
+                return $btnDetail . ' ' . $btn;
             })
-            ->rawColumns(['kategori', 'aksi', 'checkbox', 'status_integrasi'])
+            ->rawColumns(['aksi', 'checkbox', 'status_integrasi'])
             ->with($totalData)
             ->make(true);
-
-        return $dataTable;
     }
 
     public function delete(Request $request)
@@ -310,6 +241,24 @@ class DiagnosticReportController extends Controller
                 'message' => 'Gagal mengirim ke antrian: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    public function lihatDetail($param)
+    {
+        // decode param = id dokumen px
+        $decoded = base64_decode($param);
+        $id_unit = Session::get('id_unit', '001');
+
+        $dataDetail = collect(DB::select("
+            EXEC dbo.sp_getDataDiagnosticReportDetail ?, ?
+        ", [
+            $id_unit,
+            $decoded
+        ]));
+
+        return response()->json([
+            'dataDetail' => $dataDetail,
+        ]);
     }
 
     public function reSendSatuSehat($idDokumenPx)

@@ -194,6 +194,8 @@ Route::middleware(['checkLogin'])->group(function () {
             ->name('diagnostic-report.index');
         Route::post('/diagnostic-report/datatable', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'datatable'])
             ->name('diagnostic-report.datatable');
+        Route::post('/diagnostic-report/lihat-detail/{param}', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'lihatDetail'])
+            ->name('diagnostic-report.lihat-detail');
         Route::post('/diagnostic-report/sendsatusehat/{id}', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'sendSatuSehat'])
             ->name('diagnostic-report.send-satu-sehat');
         Route::post('/diagnostic-report/resendsatusehat/{id}', [App\Http\Controllers\SatuSehat\DiagnosticReportController::class, 'reSendSatuSehat'])
