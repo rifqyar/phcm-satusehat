@@ -167,10 +167,12 @@ class ObservasiController extends Controller
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
-            $request->cari == '' || $request->cari == null ? 'unmapped' : $request->cari,
+            $request->cari,
             $pageNumber,
             $pageSize
         ]));
+
+        dd($data);
 
         if (count($data) == 0) {
             return response()->json([
