@@ -214,7 +214,9 @@
     <script>
         var table;
         let filterStatus = 'all';
-        $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+        var firstLoad = true;
+
+        $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
 
             if (settings.nTable.id !== 'diagnosisTable') {
                 return true;
@@ -278,7 +280,6 @@
 
                 for (let i = 0; i < selected.length; i++) {
                     const idTrans = selected[i];
-                    console.log(`🚀 Mengirim ${i + 1}/${selected.length}: ${idTrans}`);
 
                     // tampilkan status swal progress
                     swal({
@@ -392,20 +393,28 @@
                         data: null,
                         orderable: false,
                         searchable: false,
-                        className: 'text-center',
-                        render: function(data, type, row, meta) {
-                            return meta.row + meta.settings._iDisplayStart + 1;
-                        }
+                        className: 'text-center'
                     },
                     {
                         data: null,
                         orderable: false,
                         searchable: false,
                         className: 'text-center',
-                        render: function(data) {
-                            return `<input type="checkbox"
-                                        class="checkbox-item"
-                                        value="${data.KARCIS}">`;
+                        render: function (data) {
+
+                            const isIntegrated = !!data.id_satusehat_condition;
+
+                            // SUDAH INTEGRASI → tidak bisa dipilih
+                            if (isIntegrated) {
+                                return `<span class="text-muted">-</span>`;
+                            }
+
+                            // BELUM INTEGRASI → tampil checkbox
+                            return `
+                                <input type="checkbox"
+                                    class="checkbox-item"
+                                    value="${data.KARCIS}">
+                            `;
                         }
                     },
                     {
@@ -491,7 +500,17 @@
                 ],
                 order: [
                     [1, 'desc']
-                ]
+                ],
+                drawCallback: function(settings) {
+                    var api = this.api();
+                    var start = api.page.info().start;
+
+                    api.column(0, {
+                        page: 'current'
+                    }).nodes().each(function(cell, i) {
+                        cell.innerHTML = start + i + 1;
+                    });
+                }
             });
 
 
@@ -501,15 +520,22 @@
                     $('span[data-count="sent"]').text(json.summary.sent ?? 0);
                     $('span[data-count="unsent"]').text(json.summary.unsent ?? 0);
                 }
+                if (firstLoad) {
+                    firstLoad = false;
+
+                    setTimeout(() => {
+                        search('not_integrated');
+                    }, 0);
+                }
             });
 
-            // 🔍 tombol cari
+
             $("#search-data").on("submit", function(e) {
                 e.preventDefault();
                 table.ajax.reload();
             });
 
-            // 🆕 tombol kirim SATUSEHAT
+
             $("#btnSendSatusehat").on("click", function() {
                 if (confirm("Yakin ingin mengirim data ke SATUSEHAT?")) {
                     // nanti ganti dengan ajax atau route yang sesuai
@@ -533,7 +559,7 @@
 
 
         function search(type) {
-            filterStatus = type;   // all | sent | unsent
+            filterStatus = type; // all | sent | unsent
             table.draw();
         }
 
@@ -729,11 +755,42 @@
                                 fhir_id: res.fhir_id
                             });
                         } else {
+                            let detailHtml = '';
+
+                            // tangkap OperationOutcome.issue
+                            const issues = res.response?.issue || [];
+
+                            if (issues.length) {
+                                detailHtml = `
+                                    <details style="margin-top:12px; text-align:left">
+                                        <summary style="cursor:pointer; font-weight:bold">
+                                            🔍 Lihat Detail Error
+                                        </summary>
+                                        <div style="margin-top:10px">
+                                            ${issues.map((issue, idx) => `
+                                                    <div style="padding:8px; border-left:4px solid #dc3545; margin-bottom:8px">
+                                                        <strong>#${idx + 1} ${issue.code ?? '-'}</strong><br>
+                                                        <small><b>Severity:</b> ${issue.severity ?? '-'}</small><br>
+                                                        <small><b>Message:</b> ${issue.diagnostics ?? '-'}</small><br>
+                                                        ${
+                                                            issue.expression
+                                                                ? `<small><b>Field:</b> ${issue.expression.join(', ')}</small>`
+                                                                : ''
+                                                        }
+                                                    </div>
+                                                `).join('')}
+                                        </div>
+                                    </details>
+                                `;
+                            }
+
                             swal({
                                 title: 'Gagal',
-                                text: res.message || 'Gagal generate payload diagnosis',
-                                type: 'warning'
+                                html: `<div>${res.message || 'Gagal mengirim data ke SATUSEHAT'}</div>${detailHtml}`,
+                                type: 'warning',
+                                width: 650
                             });
+
                             resolve({
                                 success: false,
                                 id: karcis

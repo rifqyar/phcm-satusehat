@@ -30,64 +30,102 @@ class DiagnosisController extends Controller
             $startDate = now()->subDays(30)->toDateString();
         }
 
+        /*
+    |--------------------------------------------------------------------------
+    | BASE RAW SQL (DATA ONLY)
+    |--------------------------------------------------------------------------
+    */
         $baseSql = "
-            SELECT
-                A.ID_IMUNISASI_PX,
-                SE.id_satusehat_encounter,
-                SP.nama AS PASIEN,
-                b.KODE_SUB_CRTUSR AS DOKTER,
-                SD.id_satusehat_condition,
-                b.KARCIS,
-                b.TGL,
-                a.NOTA,
-                d.REKENING AS KLINIK,
-                SE.jam_datang,
-                SE.jam_progress,
-                SE.jam_selesai
-            FROM SIRS_PHCM..RJ_KARCIS_BAYAR a
-            JOIN SIRS_PHCM..RJ_KARCIS b ON a.KARCIS = b.KARCIS
-            JOIN SIRS_PHCM..RJ_MKLINIK d ON d.KDKLINIK = b.KLINIK
-            JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE ON b.KARCIS = SE.karcis
-            JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN SP ON SE.id_satusehat_px = SP.idpx
-            JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES SN ON SE.id_satusehat_dokter = SN.idnakes
-            LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA SD ON b.KARCIS = SD.karcis
-            WHERE b.TGL BETWEEN ? AND ?
-            AND b.IDUNIT = ?
-            AND a.IDUNIT = ?
-            AND ISNULL(a.STBTL, 0) = 0
-        ";
+        SELECT
+            SE.id_satusehat_encounter,
+            SP.nama AS PASIEN,
+            b.KODE_SUB_CRTUSR AS DOKTER,
+            SD.id_satusehat_condition,
+            b.KARCIS,
+            b.TGL,
+            a.NOTA,
+            d.REKENING AS KLINIK,
+            SE.jam_datang,
+            SE.jam_progress,
+            SE.jam_selesai
+        FROM SIRS_PHCM..RJ_KARCIS_BAYAR a
+        JOIN SIRS_PHCM..RJ_KARCIS b
+            ON a.KARCIS = b.KARCIS
+        JOIN SIRS_PHCM..RJ_MKLINIK d
+            ON d.KDKLINIK = b.KLINIK
+        JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
+            ON b.KARCIS = SE.karcis
+        JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN SP
+            ON SE.id_satusehat_px = SP.idpx
+        JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES SN
+            ON SE.id_satusehat_dokter = SN.idnakes
+        LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA SD
+            ON b.KARCIS = SD.karcis
+        WHERE b.TGL BETWEEN ? AND ?
+          AND b.IDUNIT = ?
+          AND a.IDUNIT = ?
+          AND ISNULL(a.STBTL, 0) = 0
+    ";
 
-        // 🔥 ambil SEMUA DATA SEKALI
-        $rows = DB::select($baseSql, [
-            $startDate,
-            $endDate,
-            $id_unit,
-            $id_unit
-        ]);
+        /*
+    |--------------------------------------------------------------------------
+    | QUERY WRAPPER (DATATABLES)
+    |--------------------------------------------------------------------------
+    */
+        $query = DB::table(DB::raw("($baseSql) AS x"))
+            ->setBindings([$startDate, $endDate, $id_unit, $id_unit]);
 
-        // ======================
-        // SUMMARY (TANPA FILTER)
-        // ======================
-        $sent = 0;
-        $unsent = 0;
-
-        foreach ($rows as $row) {
-            if ($row->id_satusehat_condition) {
-                $sent++;
-            } else {
-                $unsent++;
+        // filter status (optional)
+        if ($status = $request->input('status')) {
+            if ($status === 'sent') {
+                $query->whereNotNull('x.id_satusehat_condition');
+            } elseif ($status === 'unsent') {
+                $query->whereNull('x.id_satusehat_condition');
             }
         }
 
-        return response()->json([
-            'data' => $rows,
-            'summary' => [
-                'all'    => count($rows),
-                'sent'   => $sent,
-                'unsent' => $unsent,
-            ]
-        ]);
+        
+
+        $dataTable = DataTables::of($query)
+            ->order(function ($q) {
+                $q->orderBy('x.KARCIS', 'desc');
+            })
+            ->make(true);
+
+
+        $summary = DB::connection('sqlsrv')->selectOne("
+        SELECT
+            COUNT(DISTINCT b.KARCIS) AS total,
+            COUNT(DISTINCT CASE
+                WHEN SD.id_satusehat_condition IS NOT NULL
+                THEN b.KARCIS
+            END) AS sent
+        FROM SIRS_PHCM..RJ_KARCIS b
+        JOIN SIRS_PHCM..RJ_KARCIS_BAYAR a
+            ON a.KARCIS = b.KARCIS
+        JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
+            ON b.KARCIS = SE.karcis
+        LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA SD
+            ON b.KARCIS = SD.karcis
+        WHERE b.TGL BETWEEN ? AND ?
+        AND b.IDUNIT = ?
+        AND a.IDUNIT = ?
+        AND ISNULL(a.STBTL, 0) = 0
+    ", [$startDate, $endDate, $id_unit, $id_unit]);
+
+        $recordsTotal = (int) ($summary->total ?? 0);
+        $sentCount    = (int) ($summary->sent ?? 0);
+
+        $json = $dataTable->getData(true);
+        $json['summary'] = [
+            'all'    => $recordsTotal,
+            'sent'   => $sentCount,
+            'unsent' => $recordsTotal - $sentCount,
+        ];
+
+        return response()->json($json);
     }
+
 
 
 
@@ -344,24 +382,33 @@ class DiagnosisController extends Controller
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new \Exception('Invalid JSON response from SATUSEHAT');
             }
-        } catch (\GuzzleHttp\Exception\RequestException $e) {
+            } catch (\GuzzleHttp\Exception\RequestException $e) {
 
-            $httpStatus   = $e->hasResponse() ? $e->getResponse()->getStatusCode() : null;
-            $responseBody = $e->hasResponse()
-                ? json_decode((string) $e->getResponse()->getBody(), true)
-                : [];
+                $httpStatus = $e->hasResponse()
+                    ? $e->getResponse()->getStatusCode()
+                    : null;
 
-            return [
-                'status'  => false,
-                'message' => 'HTTP request ke SATUSEHAT gagal',
-                'meta'    => $meta,
-                'http'    => [
-                    'status' => $httpStatus,
-                    'error'  => $e->getMessage()
-                ],
-                'response' => $responseBody
-            ];
-        }
+                $rawBody = $e->hasResponse()
+                    ? (string) $e->getResponse()->getBody()
+                    : null;
+
+                $responseBody = $rawBody
+                    ? json_decode($rawBody, true)
+                    : null;
+
+                return [
+                    'status'  => false,
+                    'message' => 'Gagal mengirim data ke satu sehat',
+                    'meta'    => $meta,
+                    'http'    => [
+                        'status' => $httpStatus,
+                        'error'  => 'RequestException'
+                    ],
+                    'response_raw' => $rawBody,      // ⬅️ FULL, TANPA TRUNCATE
+                    'response'     => $responseBody  // ⬅️ JSON utuh
+                ];
+            }
+
 
         // =======================
         // RESPONSE PARSING

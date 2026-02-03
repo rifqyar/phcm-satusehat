@@ -555,6 +555,24 @@ class ResumeMedisController extends Controller
             ->get();
         // dd($dataClinicalImpression);
 
+        $dataCarePlan = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_CAREPLAN')
+            ->select(
+                'KARCIS',
+                'JENIS_PERAWATAN',
+                'NO_PESERTA',
+                'ID_SATUSEHAT_ENCOUNTER',
+                'ID_SATUSEHAT_CAREPLAN',
+                'IDUNIT',
+                'ID_ERM',
+            )
+            ->where('KARCIS', $idTransaksi)
+            ->where('no_peserta', $dataKarcis->NO_PESERTA)
+            ->where('ID_SATUSEHAT_ENCOUNTER', $dataEncounterSatuSehat->id_satusehat_encounter)
+            ->distinct()
+            ->limit(100)
+            ->get();
+        // dd($dataCarePlan);
+
         $dataAllergy = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_ALLERGYINTOLERANCE')
             ->select(
                 'karcis',
@@ -825,6 +843,14 @@ class ResumeMedisController extends Controller
                 ];
             }
 
+            if ($dataCarePlan && count($dataCarePlan) > 0) {
+                foreach ($dataCarePlan as $item) {
+                    $perencanaanPerawatanEntries[] = [
+                        "reference" => "CarePlan/" . $item->ID_SATUSEHAT_CAREPLAN
+                    ];
+                }
+            }
+
             $payloadClinicalImpression = [
                 "title" => "Perencanaan Perawatan",
                 "code" => [
@@ -936,9 +962,15 @@ class ResumeMedisController extends Controller
         $procedureEntries = [];
         if ($dataProcedure && count($dataProcedure) > 0) {
             foreach ($dataProcedure as $item) {
-                if (strtolower(trim($item->JENIS_TINDAKAN)) === 'anamnese') {
+                $procedureEntries[] = [
+                    "reference" => "Procedure/" . $item->ID_SATUSEHAT_PROCEDURE
+                ];
+            }
+
+            if ($dataObservation && count($dataObservation) > 0) {
+                foreach ($dataObservation as $item) {
                     $procedureEntries[] = [
-                        "reference" => "Procedure/" . $item->ID_SATUSEHAT_PROCEDURE
+                        "reference" => "Observation/" . $item->ID_SATUSEHAT_OBSERVASI
                     ];
                 }
             }
