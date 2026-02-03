@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use App\Models\SATUSEHAT\SS_Kode_API;
 use App\Models\GlobalParameter;
 
+
 class DiagnosisController extends Controller
 {
     public function index()
@@ -22,7 +23,7 @@ class DiagnosisController extends Controller
     public function datatable(Request $request)
     {
         $startDate = $request->input('start_date');
-        $endDate   = $request->input('end_date');
+        $endDate   = Carbon::parse($request->input('end_date'))->addDay()->startOfDay();
         $id_unit   = Session::get('id_unit', '001');
 
         if (!$startDate || !$endDate) {
@@ -51,14 +52,14 @@ class DiagnosisController extends Controller
         FROM SIRS_PHCM..RJ_KARCIS_BAYAR a
         JOIN SIRS_PHCM..RJ_KARCIS b
             ON a.KARCIS = b.KARCIS
+		JOIN E_RM_PHCM.dbo.ERM_RM_IRJA ai
+			on a.KARCIS = ai.KARCIS
         JOIN SIRS_PHCM..RJ_MKLINIK d
             ON d.KDKLINIK = b.KLINIK
         JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
             ON b.KARCIS = SE.karcis
         JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN SP
             ON SE.id_satusehat_px = SP.idpx
-        JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES SN
-            ON SE.id_satusehat_dokter = SN.idnakes
         LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA SD
             ON b.KARCIS = SD.karcis
         WHERE b.TGL BETWEEN ? AND ?
@@ -103,6 +104,8 @@ class DiagnosisController extends Controller
         FROM SIRS_PHCM..RJ_KARCIS b
         JOIN SIRS_PHCM..RJ_KARCIS_BAYAR a
             ON a.KARCIS = b.KARCIS
+        JOIN E_RM_PHCM.dbo.ERM_RM_IRJA ai
+			on a.KARCIS = ai.KARCIS
         JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
             ON b.KARCIS = SE.karcis
         LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA SD
@@ -149,7 +152,6 @@ class DiagnosisController extends Controller
             })
             ->join('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN as SP', 'SE.id_satusehat_px', '=', 'SP.idpx')
             ->where('A.KARCIS', $karcis)
-            ->where('A.IDUNIT', $id_unit)
             ->select(
                 'A.KODE_DIAGNOSA_UTAMA',
                 'A.DIAG_UTAMA',
@@ -404,8 +406,8 @@ class DiagnosisController extends Controller
                         'status' => $httpStatus,
                         'error'  => 'RequestException'
                     ],
-                    'response_raw' => $rawBody,      // ⬅️ FULL, TANPA TRUNCATE
-                    'response'     => $responseBody  // ⬅️ JSON utuh
+                    'response_raw' => $rawBody,      
+                    'response'     => $responseBody  
                 ];
             }
 
