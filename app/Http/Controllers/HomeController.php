@@ -107,8 +107,8 @@ class HomeController extends Controller
             ],
             [
                 'title' => 'Episode Perawatan',
-                'url' => '#',
-                'bg_color' => ''
+                'url' => 'satusehat.episode-of-care.index',
+                'bg_color' => 'card-info'
             ]
         ];
         $cek = $this->cek_validitas_token();
