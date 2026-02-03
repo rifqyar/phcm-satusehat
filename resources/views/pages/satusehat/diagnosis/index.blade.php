@@ -386,7 +386,6 @@
                         d.start_date = $('#start_date').val();
                         d.end_date = $('#end_date').val();
                         d.jenis = $('#jenis').val();
-                        d.jenis = $('#jenis').val();
                     }
                 },
                 columns: [{
