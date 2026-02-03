@@ -178,7 +178,7 @@
                                 style="margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500">
                                 Select All </label>
                         </th>
-                        <th>Karcis Asal</th>
+                        <th>Karcis</th>
                         {{-- <th>Karcis Rujukan</th> --}}
                         <th>Kategori</th>
                         <th>Pasien</th>
@@ -325,8 +325,8 @@
                     responsivePriority: 1
                 },
                 {
-                    data: 'karcis_asal',
-                    name: 'l.karcis_asal',
+                    data: 'karcis_rujukan',
+                    name: 'l.karcis_rujukan',
                     responsivePriority: 1
                 },
                 // {
@@ -500,7 +500,7 @@
                 $('#nama_pasien').text(response.dataDetail[0].NM_PASIEN || '-');
                 $('#no_rm').text(response.dataDetail[0].kbuku || '-');
                 $('#no_peserta').text(response.dataDetail[0].no_peserta || '-');
-                $('#no_karcis').text(response.dataDetail[0].karcis_asal || '-');
+                $('#no_karcis').text(response.dataDetail[0].karcis_rujukan || '-');
                 $('#dokter').text(response.dataDetail[0].DOKTER || '-');
                 $('#tbodyDiagnosticReport').empty();
 
@@ -523,11 +523,11 @@
                     $.each(groupedData, function (karcisRujukan, items) {
 
                         // Group header row
-                        $('#tbodyDiagnosticReport').append(`
-                            <tr>
-                                <td colspan="3"><strong><i class="fas fa-chevron-right"></i> Karcis Rujukan ${karcisRujukan}</strong></td>
-                            </tr>
-                        `);
+                        // $('#tbodyDiagnosticReport').append(`
+                        //     <tr>
+                        //         <td colspan="3"><strong><i class="fas fa-chevron-right"></i> Karcis Rujukan ${karcisRujukan}</strong></td>
+                        //     </tr>
+                        // `);
 
                         // Detail rows
                         $.each(items, function (i, item) {
@@ -554,7 +554,7 @@
 
                 // Show status based on integration status
                 $('#integrasi_service_request, #integrasi_resume, #success_resume, #failed_resume, #btn-send-satusehat').hide();
-                console.log(response.dataDetail[0].JUMLAH_SERVICE_REQUEST);
+                // console.log(response.dataDetail[0].JUMLAH_SERVICE_REQUEST);
                 
                 if (response.dataDetail[0].JUMLAH_SERVICE_REQUEST == 0) {
                     $('#integrasi_service_request').show();
@@ -601,7 +601,7 @@
             cancelButtonText: "Batal",
         }).then(async (conf) => {
             if (conf.value || conf.isConfirmed) {
-                await ajaxPostJson(
+                await ajaxGetJson(
                     `{{ route('satusehat.diagnostic-report.send-satu-sehat', '') }}/${btoa(param)}`,
                     "input_success",
                     ""
@@ -610,7 +610,7 @@
         });
     }
 
-    function resendSatuSehat(param) {
+    function reSendSatuSehat(param) {
         Swal.fire({
             title: "Konfirmasi Pengiriman Ulang",
             text: `Kirim ulang data diagnostic report?`,
@@ -622,7 +622,7 @@
             cancelButtonText: "Batal",
         }).then(async (conf) => {
             if (conf.value || conf.isConfirmed) {
-                await ajaxPostJson(
+                await ajaxGetJson(
                     `{{ route('satusehat.diagnostic-report.resend-satu-sehat', '') }}/${btoa(param)}`,
                     "input_success",
                     ""

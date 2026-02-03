@@ -74,8 +74,8 @@ class DiagnosticReportController extends Controller
             ->addColumn('pasien', function ($row) {
                 return $row->NM_PASIEN ?? '-';
             })
-            ->addColumn('karcis_asal', function ($row) {
-                return $row->karcis_asal ?? '-';
+            ->addColumn('karcis_rujukan', function ($row) {
+                return $row->karcis_rujukan ?? '-';
             })
             ->addColumn('diupload_oleh', function ($row) {
                 return $row->usr_crt ?? '-';
@@ -91,18 +91,19 @@ class DiagnosticReportController extends Controller
                 }
             })
             ->addColumn('aksi', function ($row) {
+                $paramDetail = LZString::compressToEncodedURIComponent("id=" . $row->id . "&karcis_asal=" . $row->karcis_asal . "&karcis_rujukan=" . $row->karcis_rujukan);
 
                 // $openFileBtn = '<button type="button" class="btn btn-success btn-sm mr-1" onclick="openFile(\'' . url('assets/dokumen_px/' . $row->kbuku . '/' . $row->file_name) . '\')">
                 //     <i class="fa fa-search"></i> Lihat File
                 // </button>';
 
                 $openFileBtn = '';
-                $btnDetail = '<button type="button" class="btn btn-sm btn-info" onclick="lihatDetail(\'' . $row->id . '\')"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</button>';
+                $btnDetail = '<button type="button" class="btn btn-sm btn-info" onclick="lihatDetail(\'' . $paramDetail . '\')"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</button>';
                 if ($row->JUMLAH_SERVICE_REQUEST > 0) {
                     if ($row->SATUSEHAT == 0) {
-                        $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $row->id . '`)" class="btn btn-sm btn-primary"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
+                        $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramDetail . '`)" class="btn btn-sm btn-primary"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
                     } else {
-                        $btn = '<a href="javascript:void(0)" onclick="reSendSatuSehat(`' . $row->id . '`)" class="btn btn-sm btn-warning"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                        $btn = '<a href="javascript:void(0)" onclick="reSendSatuSehat(`' . $paramDetail . '`)" class="btn btn-sm btn-warning"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                     }
                 } else {
                     $btn = '<span class="badge badge-pill badge-secondary p-2">Belum Integrasi Service Request</span>';
@@ -245,15 +246,28 @@ class DiagnosticReportController extends Controller
 
     public function lihatDetail($param)
     {
-        // decode param = id dokumen px
         $decoded = base64_decode($param);
+        $params = LZString::decompressFromEncodedURIComponent($decoded);
         $id_unit = Session::get('id_unit', '001');
+        // dd($params);
+
+        $arrParam = [];
+        $parts = explode('&', $params);
+        for ($i = 0; $i < count($parts); $i++) {
+            $partsParam = explode('=', $parts[$i]);
+            $key = $partsParam[0];
+            $val = $partsParam[1];
+            $arrParam[$key] = $val;
+        }
+        // dd($arrParam);
 
         $dataDetail = collect(DB::select("
-            EXEC dbo.sp_getDataDiagnosticReportDetail ?, ?
+            EXEC dbo.sp_getDataDiagnosticReportDetail ?, ?, ?, ?
         ", [
             $id_unit,
-            $decoded
+            $arrParam['id'],
+            $arrParam['karcis_asal'],
+            $arrParam['karcis_rujukan']
         ]));
 
         return response()->json([
@@ -261,23 +275,37 @@ class DiagnosticReportController extends Controller
         ]);
     }
 
-    public function reSendSatuSehat($idDokumenPx)
+    public function reSendSatuSehat($param)
     {
-        return $this->sendSatuSehat($idDokumenPx, true);
+        return $this->sendSatuSehat($param, true);
     }
 
-    public function sendSatuSehat($idDokumenPx, $resend = false)
+    public function sendSatuSehat($param, $resend = false)
     {
+        $decoded = base64_decode($param);
+        $params = LZString::decompressFromEncodedURIComponent($decoded);
         $id_unit = Session::get('id_unit', '001');
-        $status = 'final';
+        // dd($params);
 
-        $detail = collect(DB::select("
-            EXEC dbo.sp_getDataDiagnosticReportDetail ?, ?
-        ", [
-            $id_unit,
-            $idDokumenPx
-        ]));
-        dd($detail);
+        $arrParam = [];
+        $parts = explode('&', $params);
+        for ($i = 0; $i < count($parts); $i++) {
+            $partsParam = explode('=', $parts[$i]);
+            $key = $partsParam[0];
+            $val = $partsParam[1];
+            $arrParam[$key] = $val;
+        }
+        // dd($arrParam);
+
+        // $detail = collect(DB::select("
+        //     EXEC dbo.sp_getDataDiagnosticReportDetail ?, ?, ?, ?
+        // ", [
+        //     $id_unit,
+        //     $arrParam['id'],
+        //     $arrParam['karcis_asal'],
+        //     $arrParam['karcis_rujukan']
+        // ]));
+        // dd($detail);
 
         $dokumen_px =  DB::connection('sqlsrv')
             ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
@@ -291,63 +319,69 @@ class DiagnosticReportController extends Controller
                 'm.KD_TIND'
             ])
             ->where('a.AKTIF', 1)
-            ->where('a.id', $idDokumenPx)
-            ->first();
-        dd($dokumen_px);
+            ->where('a.id', $arrParam['id'])
+            ->where('a.karcis', $arrParam['karcis_asal'])
+            ->where('l.karcis_rujukan', $arrParam['karcis_rujukan'])
+            ->get();
+        // dd($dokumen_px);
 
         $riwayat = DB::connection('sqlsrv')
-            ->table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB')
+            ->table('SIRS_PHCM.dbo.vw_getData_Elab')
             ->where('IDUNIT', $id_unit)
-            ->where('KARCIS_ASAL', $dokumen_px->karcis)
+            ->where('KARCIS_ASAL', $arrParam['karcis_asal'])
+            ->where('KARCIS_RUJUKAN', $arrParam['karcis_rujukan'])
             ->first();
 
         $dokumen_px_codings = DB::connection('sqlsrv')
             ->table(DB::raw('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE as a'))
             ->select('a.*')
-            ->where('a.ID', $dokumen_px->KD_TIND)
+            ->whereIn('a.id', $dokumen_px->pluck('KD_TIND')->toArray())
             ->get();
-        dd($dokumen_px_codings);
+        // dd($dokumen_px_codings);
 
         $patient = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN_MAPPING as a')
             ->join('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN as b', 'a.idpx', '=', 'b.idpx')
             ->select('a.idpx', 'b.nama', 'b.no_peserta')
-            ->where('a.no_peserta', $dokumen_px->no_peserta)
+            ->where('a.no_peserta', $dokumen_px->first()->no_peserta)
             ->first();
 
         $dokter = DB::connection('sqlsrv')
-            ->table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as a')
+            ->table('SIRS_PHCM.dbo.vw_getData_Elab as a')
             ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as b', 'a.kddok', '=', 'b.kddok')
             ->where('IDUNIT', $id_unit)
-            ->where('KARCIS_ASAL', $dokumen_px->karcis)
+            ->where('KARCIS_ASAL', $arrParam['karcis_asal'])
+            ->where('KARCIS_RUJUKAN', $arrParam['karcis_rujukan'])
             ->first();
 
         $encounter = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
-            ->where('karcis', $dokumen_px->karcis)
+            ->where('karcis', $dokumen_px->first()->karcis)
             ->where('idunit', $id_unit)
             ->first();
 
         $observation = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI')
-            ->where('KARCIS', $dokumen_px->karcis)
-            ->where('KBUKU', $dokumen_px->kbuku)
+            ->where('KARCIS', $dokumen_px->first()->karcis)
+            ->where('KBUKU', $dokumen_px->first()->kbuku)
             ->first();
 
         $serviceRequest = DB::connection('sqlsrv')
             ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
             ->leftJoin(DB::raw('SIRS_PHCM.dbo.vw_getData_Elab as l'), function ($join) {
-                $join->on('a.karcis', '=', 'l.KARCIS_ASAL')
-                    ->on('a.kd_tindakan', '=', 'l.KD_TINDAKAN');
+                $join->on('a.karcis', '=', 'l.KARCIS_ASAL');
             })
             ->leftJoin(DB::raw('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as s'), function ($join) {
                 $join->on('l.karcis_rujukan', '=', 's.karcis')
                     ->on('l.kbuku', '=', 's.kbuku');
             })
-            ->where('a.id', $idDokumenPx)
+            ->where('a.id', $arrParam['id'])
+            ->where('a.karcis', $arrParam['karcis_asal'])
+            ->where('l.karcis_rujukan', $arrParam['karcis_rujukan'])
             ->orderBy('s.crtdt', 'desc')
             ->first();
-        // dd($dokumen_px, $riwayat, $patient, $dokter, $encounter, $observation, $serviceRequest);
+
+        // dd($dokumen_px, $riwayat, $dokumen_px_codings, $patient, $dokter, $encounter, $observation, $serviceRequest);
 
         $dateTimeNow = Carbon::now()->toIso8601String();
         $categories = [];
@@ -357,9 +391,9 @@ class DiagnosticReportController extends Controller
 
         foreach ($dokumen_px_codings as $coding) {
             $codings['coding'][] = [
-                "system" => "http://loinc.org",
-                "code" => $coding->loinc_num,
-                "display" => $coding->loinc_common_name
+                "system" => $coding->codesystem,
+                "code" => $coding->code,
+                "display" => $coding->display
             ];
         }
 
@@ -373,7 +407,7 @@ class DiagnosticReportController extends Controller
         }
 
         // Category
-        if ($dokumen_px->nama_kategori === 'HASIL LAB') {
+        if ($dokumen_px->first()->nama_kategori === 'HASIL LAB') {
             $categories = [
                 [
                     "coding" => [
@@ -392,7 +426,7 @@ class DiagnosticReportController extends Controller
                     "value" => "$riwayat->ID_RIWAYAT_ELAB"
                 ]
             ];
-        } else if ($dokumen_px->nama_kategori === 'HASIL RADIOLOGI') {
+        } else if ($dokumen_px->first()->nama_kategori === 'HASIL RADIOLOGI') {
             $categories = [
                 [
                     "coding" => [
@@ -428,7 +462,7 @@ class DiagnosticReportController extends Controller
         $data = [
             "resourceType" => "DiagnosticReport",
             "identifier" => $identifier,
-            "status" => "$status",
+            "status" => "final",
             "category" => $categories,
             "code" => $codings,
             "subject" => [
@@ -457,10 +491,11 @@ class DiagnosticReportController extends Controller
                     "reference" => "ServiceRequest/{$serviceRequest->id_satusehat_servicerequest}"
                 ]
             ],
-            'conclusion' => $dokumen_px->keterangan ?? '',
+            'conclusion' => $dokumen_px->first()->keterangan ?? '',
         ];
 
         // dd($data);
+        // dd($dokumen_px, $riwayat, $dokumen_px_codings, $patient, $dokter, $encounter, $observation, $serviceRequest, $data);
 
         try {
             $login = $this->login($id_unit);
@@ -473,7 +508,9 @@ class DiagnosticReportController extends Controller
             if ($resend) {
                 $diagnosticRep = DB::connection('sqlsrv')
                     ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_DIAGNOSTICREPORT')
-                    ->where('iddokumen', $idDokumenPx)
+                    ->where('iddokumen', $arrParam['id'])
+                    ->where('karcis', $arrParam['karcis_asal'])
+                    ->where('karcis_rujukan', $arrParam['karcis_rujukan'])
                     ->where('idunit', $id_unit)
                     ->first();
 
@@ -506,7 +543,7 @@ class DiagnosticReportController extends Controller
                     $dataKarcis = DB::connection('sqlsrv')
                         ->table('SIRS_PHCM.dbo.RJ_KARCIS as rk')
                         ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
-                        ->where('rk.KARCIS', $dokumen_px->karcis)
+                        ->where('rk.KARCIS', $dokumen_px->first()->karcis)
                         ->where('rk.IDUNIT', $id_unit)
                         ->orderBy('rk.TGL', 'DESC')
                         ->first();
@@ -514,7 +551,7 @@ class DiagnosticReportController extends Controller
 
                     $dataServiceRequest = DB::connection('sqlsrv')
                         ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
-                        ->where('karcis', $dokumen_px->karcis)
+                        ->where('karcis', $dokumen_px->first()->karcis)
                         ->first();
 
                     $dataPeserta = DB::connection('sqlsrv')
@@ -525,10 +562,11 @@ class DiagnosticReportController extends Controller
                     DB::connection('sqlsrv')
                         ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_DIAGNOSTICREPORT')
                         ->insert([
-                            'karcis'                        => $serviceRequest->karcis,
+                            'karcis'                        => $arrParam['karcis_asal'],
+                            'karcis_rujukan'                => $arrParam['karcis_rujukan'],
                             'nota'                          => $encounter->nota,
                             'idriwayat'                     => $riwayat->ID_RIWAYAT_ELAB,
-                            'iddokumen'                     => $idDokumenPx,
+                            'iddokumen'                     => $arrParam['id'],
                             'idunit'                        => $id_unit,
                             'tgl'                           => Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d'),
                             'id_satusehat_encounter'        => $encounter->id_satusehat_encounter,
