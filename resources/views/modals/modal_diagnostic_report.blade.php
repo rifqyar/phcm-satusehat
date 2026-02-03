@@ -74,6 +74,10 @@
                                 <tbody id="tbodyDiagnosticReport"></tbody>
                             </table>
                         </div>
+                        {{-- <div class="">
+                            <h6 class="font-weight-bold">Keterangan</h6>
+                            <p id="keterangan" class="border p-2 bg-light">-</p>
+                        </div> --}}
                     </div>
                 </div>
 

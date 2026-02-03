@@ -521,7 +521,6 @@
 
                     // 2. Render table
                     $.each(groupedData, function (karcisRujukan, items) {
-
                         // Group header row
                         // $('#tbodyDiagnosticReport').append(`
                         //     <tr>
@@ -539,8 +538,21 @@
                                 </tr>
                             `);
                         });
-
                     });
+
+                    // $('#keterangan').text(response.dataDetail[0].keterangan || '-');
+                    $('#tbodyDiagnosticReport').append(`
+                        <tr>
+                            <th colspan="3">
+                                Keterangan
+                            </th>
+                        </tr>
+                        <tr>
+                            <td colspan="3" class="border p-2 bg-light">
+                                ${response.dataDetail[0].keterangan || '-'}
+                            </td>
+                        </tr>
+                    `);
                 } else {
                     // Jika tidak ada data
                     $('#tbodyDiagnosticReport').append(`
