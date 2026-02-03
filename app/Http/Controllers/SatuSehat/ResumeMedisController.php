@@ -26,35 +26,7 @@ class ResumeMedisController extends Controller
 
     public function index()
     {
-        $startDate = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
-        $endDate   = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
-        $id_unit = Session::get('id_unit', '001');
-
-        $dataKunjungan = collect(DB::select("
-            EXEC dbo.sp_getDataEncounter ?, ?, ?, ?
-        ", [
-            $id_unit,
-            $startDate,
-            $endDate,
-            'all'
-        ]));
-
-        $summary = $dataKunjungan->first();
-
-        $totalData = [
-            'total_semua' => $summary->total_semua ?? 0,
-            'rjAll' => $summary->rjAll ?? 0,
-            'ri' => $summary->ri ?? 0,
-            'total_sudah_integrasi' => $summary->total_sudah_integrasi ?? 0,
-            'total_belum_integrasi' => $summary->total_belum_integrasi ?? 0,
-        ];
-
-        $mergedAll = $summary->total_semua ?? 0;
-        $mergedIntegrated = $summary->total_sudah_integrasi ?? 0;
-        $rjAll = $summary->rjAll ?? 0;
-        $ri = $summary->ri ?? 0;
-        $unmapped = $summary->total_belum_integrasi ?? 0;
-        return view('pages.satusehat.resume-medis.index', compact('mergedAll', 'mergedIntegrated', 'rjAll', 'ri', 'unmapped'));
+        return view('pages.satusehat.resume-medis.index');
     }
 
     public function datatable(Request $request)
