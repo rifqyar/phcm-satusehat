@@ -35,20 +35,36 @@ class DiagnosticReportController extends Controller
         $id_unit = Session::get('id_unit', '001');
         $search = $request->input('search');
 
-        // Apply date filter only if both dates are provided
-        if (!empty($tgl_awal) && !empty($tgl_akhir)) {
-            $tgl_awal = Carbon::parse($tgl_awal)->format('Y-m-d');
-            $tgl_akhir = Carbon::parse($tgl_akhir)->format('Y-m-d');
+        if (empty($tgl_awal) && empty($tgl_akhir)) {
+            $tgl_awal  = Carbon::now()->startOfDay();
+            $tgl_akhir = Carbon::now()->endOfDay();
+        } else {
+            if (empty($tgl_awal)) {
+                $tgl_awal = Carbon::parse($tgl_akhir)->startOfDay();
+            }
+            if (empty($tgl_akhir)) {
+                $tgl_akhir = Carbon::now()->endOfDay();
+            } else {
+                // Force the end date to be at 23:59:59 (end of that day)
+                $tgl_akhir = Carbon::parse($tgl_akhir)->endOfDay();
+            }
         }
-        // dd($tgl_awal, $tgl_akhir, $search);
+
+        if (!$this->checkDateFormat($tgl_awal) || !$this->checkDateFormat($tgl_akhir)) {
+            return DataTables::of([])->make(true);
+        }
+
+        $tgl_awal_db  = Carbon::parse($tgl_awal)->format('Y-m-d H:i:s');
+        $tgl_akhir_db = Carbon::parse($tgl_akhir)->format('Y-m-d H:i:s');
+        // dd($tgl_awal, $tgl_akhir, $tgl_awal_db, $tgl_akhir_db, $search);
 
         // Build the base query
         $baseQuery = collect(DB::select("
             EXEC dbo.sp_getDataDiagnosticReport ?, ?, ?, ?
         ", [
             $id_unit,
-            $tgl_awal,
-            $tgl_akhir,
+            $tgl_awal_db,
+            $tgl_akhir_db,
             'all'
         ]));
         $summary = $baseQuery->first();
@@ -273,6 +289,20 @@ class DiagnosticReportController extends Controller
         return response()->json([
             'dataDetail' => $dataDetail,
         ]);
+    }
+
+    private function checkDateFormat($date)
+    {
+        try {
+            if ($date instanceof \Carbon\Carbon) {
+                return true;
+            }
+
+            \Carbon\Carbon::parse($date);
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 
     public function reSendSatuSehat($param)
