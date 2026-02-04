@@ -542,7 +542,7 @@
 
             Swal.fire({
                 title: "Konfirmasi Pengiriman",
-                text: `Kirim data Rencana Perawatan (Care Plan) ke SatuSehat?`,
+                text: `Kirim data Episode Of Care ke SatuSehat?`,
                 icon: "question",
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
@@ -552,7 +552,7 @@
             }).then(async (conf) => {
                 if (conf.value || conf.isConfirmed) {
                     await ajaxPostFile(
-                        `{{ route('satusehat.care-plan.send') }}`,
+                        `{{ route('satusehat.episode-of-care.send') }}`,
                         formData,
                         "input_success",
                     );
@@ -567,7 +567,7 @@
 
             Swal.fire({
                 title: "Konfirmasi Pengiriman Ulang",
-                text: `Kirim ulang Rencana Perawatan (Care Plan)?`,
+                text: `Kirim ulang Episode Of Care?`,
                 icon: "question",
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
@@ -577,7 +577,7 @@
             }).then(async (conf) => {
                 if (conf.value || conf.isConfirmed) {
                     await ajaxPostFile(
-                        `{{ route('satusehat.care-plan.resend', '') }}`,
+                        `{{ route('satusehat.episode-of-care.resend', '') }}`,
                         formData,
                         "input_success",
                     );
@@ -599,7 +599,7 @@
 
             Swal.fire({
                 title: "Konfirmasi Bulk Send",
-                text: `Kirim ${selectedIds.length} data Rencana Perawatan (Care Plan) ke SatuSehat?`,
+                text: `Kirim ${selectedIds.length} data Episode Of Care ke SatuSehat?`,
                 icon: "question",
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
@@ -608,7 +608,7 @@
                 cancelButtonText: "Batal",
             }).then(async (result) => {
                 if (result.value) {
-                    await ajaxPostJson(`{{ route('satusehat.care-plan.bulk-send') }}`, {
+                    await ajaxPostJson(`{{ route('satusehat.episode-of-care.bulk-send') }}`, {
                         _token: $('meta[name="csrf-token"]').attr("content"),
                         selected_ids: selectedIds
                     }, "input_success", "");

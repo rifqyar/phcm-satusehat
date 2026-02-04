@@ -162,6 +162,13 @@ return [
             'level' => 'info',
             'days' => 7
         ],
+
+        'ClinicalImpression' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/ClinicalImpression.log'),
+            'level' => 'info',
+            'days' => 7
+        ],
     ],
 
 ];
