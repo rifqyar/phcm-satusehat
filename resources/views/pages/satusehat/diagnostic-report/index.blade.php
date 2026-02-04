@@ -326,7 +326,7 @@
                 },
                 {
                     data: 'karcis_rujukan',
-                    name: 'l.karcis_rujukan',
+                    name: 'karcis_rujukan',
                     responsivePriority: 1
                 },
                 // {
@@ -336,12 +336,12 @@
                 // },
                 {
                     data: 'kategori',
-                    name: 'b.nama_kategori',
+                    name: 'nama_kategori',
                     responsivePriority: 1
                 },
                 {
                     data: 'pasien',
-                    name: 'c.NAMA',
+                    name: 'NAMA',
                     responsivePriority: 1
                 },
                 // {
@@ -358,7 +358,7 @@
                 // },
                 {
                     data: 'diupload_oleh',
-                    name: 'a.usr_crt',
+                    name: 'usr_crt',
                     responsivePriority: 5
                 },
                 // {
