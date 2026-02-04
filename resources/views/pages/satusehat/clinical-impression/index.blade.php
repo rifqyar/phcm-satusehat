@@ -58,7 +58,7 @@
                         <input type="hidden" name="search" value="{{ request('search') }}">
                         <div class="row justify-content-center">
                             <div class="col-6">
-                                <div class="card card-inverse card-info card-mapping" onclick="search('rawat_jalan')">
+                                <div class="card card-inverse card-info card-mapping" onclick="search('rj')">
                                     <div class="card-body">
                                         <div class="card-title">
                                             <div class="row align-items-center ml-1">
@@ -74,7 +74,7 @@
                                 </div>
                             </div>
                             <div class="col-6">
-                                <div class="card card-inverse card-warning card-mapping" onclick="search('rawat_inap')">
+                                <div class="card card-inverse card-warning card-mapping" onclick="search('ri')">
                                     <div class="card-body">
                                         <div class="card-title">
                                             <div class="row align-items-center ml-1">

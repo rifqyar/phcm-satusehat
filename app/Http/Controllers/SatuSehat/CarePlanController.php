@@ -63,12 +63,14 @@ class CarePlanController extends Controller
         $tgl_akhir_db = Carbon::parse($tgl_akhir)->format('Y-m-d H:i:s');
 
         $data = DB::select("
-            EXEC dbo.sp_getCarePlan ?, ?, ?, ?
+            EXEC dbo.sp_getCarePlan ?, ?, ?, ?, ?, ?
         ", [
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
-            $request->input('cari') ?? 'unmapped'
+            $request->input('cari') ?? 'unmapped',
+            null,
+            $request->search['value'],
         ]);
 
         $totalData = [

@@ -87,12 +87,13 @@ class ProcedureController extends Controller
         $pageSize   = $length;
 
         $data = DB::select("
-            EXEC dbo.sp_getTindakanRJRI_All ?, ?, ?, ?, ?, ?
+            EXEC dbo.sp_getTindakanRJRI_All ?, ?, ?, ?, ?, ?, ?
         ", [
             $tgl_awal_db,
             $tgl_akhir_db,
             $id_unit,
             $request->input('cari') == '' ? 'unmapped' : $request->input('cari'),
+            $request->search['value'],
             $pageNumber,
             $pageSize
         ]);

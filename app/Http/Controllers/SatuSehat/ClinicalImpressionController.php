@@ -63,12 +63,14 @@ class ClinicalImpressionController extends Controller
         $tgl_akhir_db = Carbon::parse($tgl_akhir)->format('Y-m-d H:i:s');
 
         $data = collect(DB::select("
-            EXEC dbo.sp_getClinicalImpression ?, ?, ?, ?
+            EXEC dbo.sp_getClinicalImpression ?, ?, ?, ?, ?, ?
         ", [
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
             $request->cari != '' || $request->cari != null ? $request->cari : 'unmapped',
+            null,
+            $request->search['value']
         ]));
 
         $totalData = [

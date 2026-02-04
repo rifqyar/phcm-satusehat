@@ -228,7 +228,7 @@ class EpisodeOfCareController extends Controller
         }
 
         $data = collect(DB::select("
-            EXEC dbo.sp_getDataEpisodeOfCare ?, ?, ?, ?, ?, ?
+            EXEC dbo.sp_getDataEpisodeOfCare ?, ?, ?, ?, ?, ?, ?
         ", [
             $id_unit,
             null,
@@ -252,7 +252,7 @@ class EpisodeOfCareController extends Controller
             $satusehatPayload = $this->buildSatusehatParam($arrParam, $data, $organisasi);
 
             if ($resend) {
-                $currData = SATUSEHAT_EPISODEOFCARE::where('KARCIS', $arrParam['karcis'])
+                $currData = SATUSEHAT_EPISODEOFCARE::where('KARCIS', $arrParam['id_transaksi'])
                     ->where('NO_PESERTA', $data->NO_PESERTA)
                     ->where('ID_UNIT', $id_unit)
                     ->select('ID_SATUSEHAT_EPISODE_OF_CARE')
@@ -270,7 +270,6 @@ class EpisodeOfCareController extends Controller
             $dataEpisodeOfCare = $this->consumeSATUSEHATAPI($resend ? 'PUT' : 'POST', $baseurl, $url, $satusehatPayload, true, $token);
             $result = json_decode($dataEpisodeOfCare->getBody()->getContents(), true);
 
-            dd($result);
             if ($dataEpisodeOfCare->getStatusCode() >= 400) {
                 $response = json_decode($dataEpisodeOfCare->getBody(), true);
 
@@ -294,8 +293,9 @@ class EpisodeOfCareController extends Controller
                             'ID_UNIT' => $id_unit,
                         ],
                         [
+                            'KBUKU' => $data->KBUKU,
                             'ID_SATUSEHAT_EPISODE_OF_CARE' => $result['id'],
-                            'ID_SATUSEHAT_ENCOUNTER' => $data->id_satusehat_encounter,
+                            'ID_SATUSEHAT_ENCOUNTER' => $data->ID_SATUSEHAT_ENCOUNTER,
                             'JENIS_PERAWATAN' => $data->JENIS_PERAWATAN,
                             'CRTUSR' => Session::get('nama', 'system'),
                             'CRTDT' => now('Asia/Jakarta')->format('Y-m-d H:i:s'),
@@ -487,13 +487,21 @@ class EpisodeOfCareController extends Controller
         }
 
 
+        $period = [
+            "start" => Carbon::parse($data->TANGGAL)->toIso8601String(),
+        ];
+
+        if ($status == 'finished') {
+            $period['end'] = Carbon::parse(
+                $dataKarcis->inap
+                    ? $historyTimeInap['jam_finish']
+                    : $historyTime['jam_finish']
+            )->toIso8601String();
+        }
+
         $identifier = now()->timestamp;
         $payload = [
             "resourceType" => "EpisodeOfCare",
-            "identifier" => [[
-                "system" => "http://sys-ids.kemkes.go.id/clinicalimpression/{$organisasi}",
-                "value" => "$identifier"
-            ]],
             "status" => $status,
             "statusHistory" => $statusHistory,
             "type" => $type,
@@ -505,12 +513,7 @@ class EpisodeOfCareController extends Controller
             'managingOrganization' => [
                 "reference" => "Organization/$organisasi",
             ],
-            "period" => [
-                "start" => Carbon::parse($data->TANGGAL)->toIso8601String(),
-                "end"   => $status === 'finished'
-                    ? Carbon::parse($dataKarcis->inap ? $historyTimeInap['jam_finish'] : $historyTime['jam_finish'])->toIso8601String()
-                    : null
-            ],
+            "period" => $period,
         ];
         return $payload;
     }
@@ -690,5 +693,210 @@ class EpisodeOfCareController extends Controller
             'jam_progress' => $jam_progress,
             'jam_finish'   => $jam_finish,
         ];
+    }
+
+    public function resend(Request $request)
+    {
+        $id_unit = Session::get('id_unit', '001');
+        $param = $request->param;
+        $params = LZString::decompressFromEncodedURIComponent($param);
+        $parts = explode('&', $params);
+
+        $arrParam = [];
+        for ($i = 0; $i < count($parts); $i++) {
+            $partsParam = explode('=', $parts[$i]);
+            $key = $partsParam[0];
+            $val = $partsParam[1];
+            $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
+        }
+
+        $data = collect(DB::select("
+            EXEC dbo.sp_getDataEpisodeOfCare ?, ?, ?, ?, ?, ?, ?
+        ", [
+            $id_unit,
+            null,
+            null,
+            'all',
+            1,
+            1,
+            $arrParam['id_transaksi']
+        ]))->first();
+
+        $baseurl = '';
+        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
+            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
+            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
+        } else {
+            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
+            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+        }
+
+        $currData = SATUSEHAT_EPISODEOFCARE::where('KARCIS', $arrParam['id_transaksi'])
+            ->where('NO_PESERTA', $data->NO_PESERTA)
+            ->where('ID_UNIT', $id_unit)
+            ->select('ID_SATUSEHAT_EPISODE_OF_CARE')
+            ->first();
+
+        $dataKarcis = Karcis::leftJoin('RJ_KARCIS_BAYAR AS KarcisBayar', function ($query) use ($arrParam, $id_unit) {
+            $query->on('RJ_KARCIS.KARCIS', '=', 'KarcisBayar.KARCIS')
+                ->on('RJ_KARCIS.IDUNIT', '=', 'KarcisBayar.IDUNIT')
+                ->whereRaw('ISNULL(KarcisBayar.STBTL,0) = 0')
+                ->where('KarcisBayar.IDUNIT', $id_unit); // pindahkan ke sini
+        })
+            ->with([
+                'ermkunjung' => function ($query) use ($arrParam, $id_unit) {
+                    $query->select('KARCIS', 'NO_KUNJUNG', 'CRTDT AS WAKTU_ERM')
+                        ->where('IDUNIT', $id_unit);
+                }
+            ])
+            ->with('inap')
+            ->select('RJ_KARCIS.NOREG', 'RJ_KARCIS.KARCIS', 'RJ_KARCIS.KBUKU', 'RJ_KARCIS.NO_PESERTA', 'RJ_KARCIS.KLINIK', 'RJ_KARCIS.KDDOK', 'RJ_KARCIS.TGL_VERIF_KARCIS', 'RJ_KARCIS.CRTDT AS WAKTU_BUAT_KARCIS', 'KarcisBayar.TGL_CETAK AS WAKTU_NOTA', 'KarcisBayar.NOTA', 'RJ_KARCIS.TGL')
+            ->where(function ($query) use ($arrParam) {
+                if ($arrParam['jenis_perawatan'] == 'RI') {
+                    $query->where('RJ_KARCIS.NOREG', $arrParam['id_transaksi']);
+                } else {
+                    $query->where('RJ_KARCIS.KARCIS', $arrParam['id_transaksi']);
+                }
+            })
+            ->where('RJ_KARCIS.IDUNIT', $id_unit)
+            ->first();
+
+        try {
+            if ($dataKarcis->inap) {
+                $historyTime = $this->getHistoryTime($dataKarcis);
+                $historyTimeInap = $this->getHistoryTimeInap($dataKarcis);
+                if ($dataKarcis->inap->TGL_KELUAR !== null) {
+
+                    $finishedTime = Carbon::createFromFormat(
+                        'Y-m-d H:i:s',
+                        $historyTimeInap['jam_finish']
+                    )->toIso8601String();
+
+                    $patchPayload[] = [
+                        'op'    => 'replace',
+                        'path'  => '/status',
+                        'value' => 'finished',
+                    ];
+
+                    $patchPayload[] = [
+                        'op'   => 'add',
+                        'path' => '/statusHistory/-',
+                        'value' => [
+                            'status' => 'finished',
+                            'period' => [
+                                'start' => $finishedTime,
+                            ],
+                        ],
+                    ];
+
+                    $patchPayload[] = [
+                        'op'    => 'add',
+                        'path'  => '/period/end',
+                        'value' => $finishedTime,
+                    ];
+                }
+            } else {
+                $historyTime = $this->getHistoryTime($dataKarcis);
+                if ($dataKarcis->NOTA !== null && $dataKarcis->WAKTU_NOTA !== null) {
+                    $finishedTime = Carbon::parse(
+                        $historyTime['jam_finish']
+                    )->toIso8601String();
+
+                    $patchPayload[] = [
+                        'op'    => 'replace',
+                        'path'  => '/status',
+                        'value' => 'finished',
+                    ];
+
+                    $patchPayload[] = [
+                        'op'   => 'add',
+                        'path' => '/statusHistory/-',
+                        'value' => [
+                            'status' => 'finished',
+                            'period' => [
+                                'start' => $finishedTime,
+                            ],
+                        ],
+                    ];
+
+                    $patchPayload[] = [
+                        'op'    => 'add',
+                        'path'  => '/period/end',
+                        'value' => $finishedTime,
+                    ];
+                }
+            }
+
+            if (empty($patchPayload)) {
+                return response()->json([
+                    'status' => JsonResponse::HTTP_OK,
+                    'message' => 'EpisodeOfCare belum selesai, tidak perlu kirim ulang',
+                    'data' => null,
+                    'redirect' => [
+                        'need' => false,
+                        'to' => null,
+                    ]
+                ], 200);
+            }
+
+            $login = $this->login($id_unit);
+            if ($login['metadata']['code'] != 200) {
+                $hasil = $login;
+            }
+            $token = $login['response']['token'];
+
+            $url = 'EpisodeOfCare/' . $currData->ID_SATUSEHAT_EPISODE_OF_CARE;
+            $dataEpisodeOfCare = $this->consumeSATUSEHATAPI('PATCH', $baseurl, $url, $patchPayload, true, $token);
+            $result = json_decode($dataEpisodeOfCare->getBody()->getContents(), true);
+
+            if ($dataEpisodeOfCare->getStatusCode() >= 400) {
+                $response = json_decode($dataEpisodeOfCare->getBody(), true);
+
+                $this->logError('EpisodeOfCare', 'Gagal kirim data EpisodeOfCare', [
+                    'payload' => $patchPayload,
+                    'response' => $response,
+                    'user_id' => Session::get('nama', 'system') //Session::get('id')
+                ]);
+
+                $this->logDb(json_encode($response), 'EpisodeOfCare', json_encode($patchPayload), 'system');
+
+                $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Update Data EpisodeOfCare';
+                throw new Exception($msg, $dataEpisodeOfCare->getStatusCode());
+            } else {
+                DB::beginTransaction();
+                try {
+                    $this->logInfo('EpisodeOfCare', 'Sukses Update data EpisodeOfCare', [
+                        'payload' => $patchPayload,
+                        'response' => $result,
+                        'user_id' => Session::get('nama', 'system')
+                    ]);
+                    $this->logDb(json_encode($result), 'EpisodeOfCare', json_encode($patchPayload), 'system');
+
+                    DB::commit();
+                    return response()->json([
+                        'status' => JsonResponse::HTTP_OK,
+                        'message' => 'Berhasil Update Data EpisodeOfCare',
+                        'redirect' => [
+                            'need' => false,
+                            'to' => null,
+                        ]
+                    ], 200);
+                } catch (Exception $th) {
+                    DB::rollBack();
+                    throw new Exception($th->getMessage(), 500);
+                }
+            }
+        } catch (Exception $th) {
+            return response()->json([
+                'status' => [
+                    'msg' => $th->getMessage() != '' ? $th->getMessage() : 'Err',
+                    'code' => $th->getCode() != '' ? $th->getCode() : 500,
+                ],
+                'data' => null,
+                'err_detail' => $th->getTrace(),
+                'message' => $th->getMessage() != '' ? $th->getMessage() : 'Terjadi Kesalahan Saat Kirim Data, Harap Coba lagi!'
+            ], 500);
+        }
+        return $this->send(new Request($request->all()), true);
     }
 }
