@@ -399,16 +399,11 @@
                         orderable: false,
                         searchable: false,
                         className: 'text-center',
-                        render: function (data) {
-
-                            const isIntegrated = !!data.id_satusehat_condition;
-
-                            // SUDAH INTEGRASI → tidak bisa dipilih
-                            if (isIntegrated) {
+                        render: function(data) {
+                            if (!data.KODE_DIAGNOSA_UTAMA || data.id_satusehat_condition) {
                                 return `<span class="text-muted">-</span>`;
                             }
 
-                            // BELUM INTEGRASI → tampil checkbox
                             return `
                                 <input type="checkbox"
                                     class="checkbox-item"
@@ -473,23 +468,28 @@
 
                             let btnAction = '';
 
-                            // BELUM TERKIRIM → tombol kirim
-                            if (!data.id_satusehat_condition) {
+                            if (!data.KODE_DIAGNOSA_UTAMA) {
                                 btnAction = `
-                                    <button class="btn btn-sm btn-primary w-100"
-                                            onclick="confirmkirimSatusehat('${data.KARCIS}')">
-                                        <i class="fas fa-paper-plane mr-2"></i> Kirim SATUSEHAT
-                                    </button>
-                                `;
-                            }
-                            // SUDAH TERKIRIM → tombol kirim ulang
-                            else {
+                                        <span class="text-danger font-weight">
+                                            Kode Diagnosa Tidak Ada
+                                        </span>
+                                    `;
+                            } else if (!data.id_satusehat_condition) {
+                                // BELUM TERKIRIM → tombol kirim
                                 btnAction = `
-                                    <button class="btn btn-sm btn-warning w-100"
-                                            onclick="confirmkirimSatusehat('${data.KARCIS}')">
-                                        <i class="fas fa-sync-alt mr-2"></i> Kirim Ulang SATUSEHAT
-                                    </button>
-                                `;
+                                        <button class="btn btn-sm btn-primary w-100"
+                                                onclick="confirmkirimSatusehat('${data.KARCIS}')">
+                                            <i class="fas fa-paper-plane mr-2"></i> Kirim SATUSEHAT
+                                        </button>
+                                    `;
+                            } else {
+                                // SUDAH TERKIRIM → tombol kirim ulang
+                                btnAction = `
+                                        <button class="btn btn-sm btn-warning w-100"
+                                                onclick="confirmkirimSatusehat('${data.KARCIS}')">
+                                            <i class="fas fa-sync-alt mr-2"></i> Kirim Ulang SATUSEHAT
+                                        </button>
+                                    `;
                             }
 
                             return `${btnAction}${btnLihat}`;
@@ -523,7 +523,7 @@
                     firstLoad = false;
 
                     setTimeout(() => {
-                        search('not_integrated');
+                        search('unsent');
                     }, 0);
                 }
             });
@@ -532,6 +532,10 @@
             $("#search-data").on("submit", function(e) {
                 e.preventDefault();
                 table.ajax.reload();
+
+                setTimeout(() => {
+                    search('unsent');
+                }, 0);
             });
 
 
@@ -767,17 +771,17 @@
                                         </summary>
                                         <div style="margin-top:10px">
                                             ${issues.map((issue, idx) => `
-                                                    <div style="padding:8px; border-left:4px solid #dc3545; margin-bottom:8px">
-                                                        <strong>#${idx + 1} ${issue.code ?? '-'}</strong><br>
-                                                        <small><b>Severity:</b> ${issue.severity ?? '-'}</small><br>
-                                                        <small><b>Message:</b> ${issue.diagnostics ?? '-'}</small><br>
-                                                        ${
-                                                            issue.expression
-                                                                ? `<small><b>Field:</b> ${issue.expression.join(', ')}</small>`
-                                                                : ''
-                                                        }
-                                                    </div>
-                                                `).join('')}
+                                                            <div style="padding:8px; border-left:4px solid #dc3545; margin-bottom:8px">
+                                                                <strong>#${idx + 1} ${issue.code ?? '-'}</strong><br>
+                                                                <small><b>Severity:</b> ${issue.severity ?? '-'}</small><br>
+                                                                <small><b>Message:</b> ${issue.diagnostics ?? '-'}</small><br>
+                                                                ${
+                                                                    issue.expression
+                                                                        ? `<small><b>Field:</b> ${issue.expression.join(', ')}</small>`
+                                                                        : ''
+                                                                }
+                                                            </div>
+                                                        `).join('')}
                                         </div>
                                     </details>
                                 `;
