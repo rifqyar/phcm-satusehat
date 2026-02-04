@@ -65,7 +65,7 @@ class DiagnosticReportController extends Controller
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
-            $search ?? 'all'
+            $search ?? 'unmapped'
         ]));
         $summary = $baseQuery->first();
         // dd($summary);

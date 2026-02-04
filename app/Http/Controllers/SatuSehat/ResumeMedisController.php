@@ -64,7 +64,7 @@ class ResumeMedisController extends Controller
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
-            $search ?? 'all'
+            $search ?? 'unmapped'
         ]));
 
         $summary = $dataResumeMedis->first();
