@@ -163,9 +163,9 @@ return [
             'days' => 7
         ],
 
-        'ClinicalImpression' => [
+        'EpisodeOfCare' => [
             'driver' => 'daily',
-            'path' => storage_path('logs/ClinicalImpression.log'),
+            'path' => storage_path('logs/EpisodeOfCare.log'),
             'level' => 'info',
             'days' => 7
         ],

@@ -313,7 +313,7 @@ class ClinicalImpressionController extends Controller
                             'ID_SATUSEHAT_ENCOUNTER' => $data->id_satusehat_encounter,
                             'PROGNOSIS_CODE' => $data->PROGNOSIS_CODE,
                             'PROGNOSIS_TEXT' => $data->PROGNOSIS_TEXT,
-                            'CRTUSR' => 'system',
+                            'CRTUSR' => Session::get('nama', 'system'),
                             'CRTDT' => now('Asia/Jakarta')->format('Y-m-d H:i:s'),
                         ]
                     );

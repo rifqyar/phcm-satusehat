@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\SatuSehat;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\LogTraits;
+use App\Http\Traits\SATUSEHATTraits;
 use App\Lib\LZCompressor\LZString;
 use App\Models\GlobalParameter;
 use App\Models\Karcis;
@@ -18,6 +20,8 @@ use Yajra\DataTables\DataTables;
 
 class EpisodeOfCareController extends Controller
 {
+    use SATUSEHATTraits, LogTraits;
+
     /**
      * Display a listing of the resource.
      *
@@ -120,7 +124,7 @@ class EpisodeOfCareController extends Controller
                 'NO_PESERTA' => $row->NO_PESERTA,
                 'KBUKU' => $row->KBUKU,
                 'checkbox' => $this->renderCheckbox($row, $paramSatuSehat),
-                'JENIS_PERAWATAN' => $jenis,
+                'JENIS_PERAWATAN' => $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI',
                 'TANGGAL' => date('Y-m-d', strtotime($row->TANGGAL)),
                 'NAMA_PASIEN' => $row->NAMA_PASIEN,
                 'DOKTER' => $row->DOKTER,
@@ -202,12 +206,12 @@ class EpisodeOfCareController extends Controller
     {
         /**
          * TO DO: Implementasi Send Episode Of Care to SatuSehat FHIR Server
-         * 1. pengiriman episode of care di awal pemeriksaan (setelah ada encounter & condition)
-         * 2. status awal = active
+         * 1. pengiriman episode of care di awal pemeriksaan (setelah ada encounter & condition) ✅
+         * 2. status awal = active ✅
          * 3. update episode of care (resend)
-         * 4. saat resend jika pengobatan sudah selesai (pasien pulang / discharge) maka status = finished
-         * 5. jika masih dalam perawatan maka status = active
-         * 6. catatan: episode of care harus terintegrasi setelah encounter & condition
+         * 4. saat resend jika pengobatan sudah selesai (pasien pulang / discharge) maka status = finished ✅
+         * 5. jika masih dalam perawatan maka status = active ✅
+         * 6. catatan: episode of care harus terintegrasi setelah encounter & condition ✅
          */
 
         $id_unit = Session::get('id_unit', '001');
@@ -247,7 +251,6 @@ class EpisodeOfCareController extends Controller
         try {
             $satusehatPayload = $this->buildSatusehatParam($arrParam, $data, $organisasi);
 
-            dd($satusehatPayload);
             if ($resend) {
                 $currData = SATUSEHAT_EPISODEOFCARE::where('KARCIS', $arrParam['karcis'])
                     ->where('NO_PESERTA', $data->NO_PESERTA)
@@ -267,6 +270,7 @@ class EpisodeOfCareController extends Controller
             $dataEpisodeOfCare = $this->consumeSATUSEHATAPI($resend ? 'PUT' : 'POST', $baseurl, $url, $satusehatPayload, true, $token);
             $result = json_decode($dataEpisodeOfCare->getBody()->getContents(), true);
 
+            dd($result);
             if ($dataEpisodeOfCare->getStatusCode() >= 400) {
                 $response = json_decode($dataEpisodeOfCare->getBody(), true);
 
@@ -291,11 +295,9 @@ class EpisodeOfCareController extends Controller
                         ],
                         [
                             'ID_SATUSEHAT_EPISODE_OF_CARE' => $result['id'],
-                            'ID_ERM' => $data->ID_ERM,
                             'ID_SATUSEHAT_ENCOUNTER' => $data->id_satusehat_encounter,
-                            'PROGNOSIS_CODE' => $data->PROGNOSIS_CODE,
-                            'PROGNOSIS_TEXT' => $data->PROGNOSIS_TEXT,
-                            'CRTUSR' => 'system',
+                            'JENIS_PERAWATAN' => $data->JENIS_PERAWATAN,
+                            'CRTUSR' => Session::get('nama', 'system'),
                             'CRTDT' => now('Asia/Jakarta')->format('Y-m-d H:i:s'),
                         ]
                     );
@@ -368,126 +370,122 @@ class EpisodeOfCareController extends Controller
             ->first();
 
         $status = 'waitlist';
+        $statusHistory = [];
+
         if ($dataKarcis->inap) {
             $historyTime = $this->getHistoryTime($dataKarcis);
             $historyTimeInap = $this->getHistoryTimeInap($dataKarcis);
             if ($dataKarcis->inap->TGL_KELUAR != null) {
                 $status = 'finished';
                 $statusHistory = [
-                    "statusHistory" => [
-                        [
-                            "status" => 'active',
-                            "period" => [
-                                "start" => Carbon::createFromFormat('Y-m-d H:i:s', $historyTime['jam_start'])->toIso8601String(),
-                                "end" => Carbon::createFromFormat('Y-m-d H:i:s', $historyTimeInap['jam_finish'])->toIso8601String()
-                            ]
-                        ],
-                        [
-                            "status" => $status,
-                            "period" => [
-                                "start" => Carbon::createFromFormat('Y-m-d H:i:s', $historyTimeInap['jam_finish'])->toIso8601String(),
-                                "end" => Carbon::createFromFormat('Y-m-d H:i:s', $historyTimeInap['jam_finish'])->toIso8601String()
-                            ]
+                    [
+                        "status" => 'active',
+                        "period" => [
+                            "start" => Carbon::createFromFormat('Y-m-d H:i:s', $historyTime['jam_start'])->toIso8601String(),
+                            "end" => Carbon::createFromFormat('Y-m-d H:i:s', $historyTimeInap['jam_finish'])->toIso8601String()
+                        ]
+                    ],
+                    [
+                        "status" => $status,
+                        "period" => [
+                            "start" => Carbon::createFromFormat('Y-m-d H:i:s', $historyTimeInap['jam_finish'])->toIso8601String(),
+                            "end" => Carbon::createFromFormat('Y-m-d H:i:s', $historyTimeInap['jam_finish'])->toIso8601String()
                         ]
                     ]
                 ];
             } else {
                 $status = 'active';
                 $statusHistory = [
-                    "statusHistory" => [
-                        [
-                            "status" => $status,
-                            "period" => [
-                                "start" => Carbon::createFromFormat('Y-m-d H:i:s', $historyTimeInap['jam_start'])->toIso8601String(),
-                            ]
+                    [
+                        "status" => $status,
+                        "period" => [
+                            "start" => Carbon::createFromFormat('Y-m-d H:i:s', $historyTimeInap['jam_start'])->toIso8601String(),
                         ]
                     ]
                 ];
             }
         } else {
             $historyTime = $this->getHistoryTime($dataKarcis);
-            if ($dataKarcis->NOTA != null) {
+            if ($dataKarcis->NOTA != null && $dataKarcis->WAKTU_NOTA != null) {
                 $status = 'finished';
+
                 $statusHistory = [
-                    "statusHistory" => [
-                        [
-                            "status" => 'active',
-                            "period" => [
-                                "start" => Carbon::createFromFormat('Y-m-d H:i:s', $historyTime['jam_start'])->toIso8601String(),
-                                "end" => Carbon::createFromFormat('Y-m-d H:i:s', $historyTime['jam_finish'])->toIso8601String(),
-                            ]
-                        ],
-                        [
-                            "status" => $status,
-                            "period" => [
-                                "start" => Carbon::createFromFormat('Y-m-d H:i:s', $historyTime['jam_finish'])->toIso8601String(),
-                                "end" => Carbon::createFromFormat('Y-m-d H:i:s', $historyTime['jam_finish'])->toIso8601String()
-                            ]
+                    [
+                        "status" => "active",
+                        "period" => [
+                            "start" => Carbon::parse($historyTime['jam_start'])->toIso8601String(),
+                            "end"   => Carbon::parse($historyTime['jam_finish'])->toIso8601String(),
+                        ]
+                    ],
+                    [
+                        "status" => "finished",
+                        "period" => [
+                            "start" => Carbon::parse($historyTime['jam_finish'])->toIso8601String(),
+                            "end"   => Carbon::parse($historyTime['jam_finish'])->toIso8601String(),
                         ]
                     ]
                 ];
             } else {
                 $status = 'active';
                 $statusHistory = [
-                    "statusHistory" => [
-                        [
-                            "status" => $status,
-                            "period" => [
-                                "start" => Carbon::createFromFormat('Y-m-d H:i:s', $historyTime['jam_start'])->toIso8601String(),
-                            ]
+                    [
+                        "status" => "active",
+                        "period" => [
+                            "start" => Carbon::parse($historyTime['jam_start'])->toIso8601String(),
                         ]
                     ]
                 ];
             }
         }
 
-        if ($status == 'finished') {
-            $codeDiagnosisRole = 'DD';
-            $textDiagnosisRole = 'Discharged Diagnosis';
-        } else {
-            $codeDiagnosisRole = 'AD';
-            $textDiagnosisRole = 'Admission Diagnosis';
-        }
-        $finding = [
-            "diagnosis" => [
-                [
-                    "condition" => [
-                        "reference" => "Condition/$condition->id_satusehat_condition",
-                    ],
-                    "role" => [
-                        "coding" => [
-                            [
-                                "system" => "http://terminology.hl7.org/CodeSystem/diagnosis-role",
-                                "code" => "$codeDiagnosisRole",
-                                "display" => "$textDiagnosisRole",
-                            ]
+        $diagnosisRole = ($status === 'finished')
+            ? ['DD', 'Discharged Diagnosis']
+            : ['AD', 'Admission Diagnosis'];
+
+        $diagnosis = [
+            [
+                "condition" => [
+                    "reference" => "Condition/{$condition->id_satusehat_condition}",
+                    "display"   => $condition->nama_diagnosa ?? null,
+                ],
+                "role" => [
+                    "coding" => [
+                        [
+                            "system"  => "http://terminology.hl7.org/CodeSystem/diagnosis-role",
+                            "code"    => $diagnosisRole[0],
+                            "display" => $diagnosisRole[1],
                         ]
-                    ],
-                    "rank" => 1
-                ]
-            ],
+                    ]
+                ],
+                "rank" => 1
+            ]
         ];
+
+        $type = [];
 
         $dxKhusus = DB::table('E_RM_PHCM.dbo.ERM_DX_KHUSUSPX')
             ->where('KARCIS', $arrParam['id_transaksi'])
             ->orWhere('NOREG', $arrParam['id_transaksi'])
-            ->join('E_RM_PHCM.dbo.ERM_MASTER_DX_KHUSUS', 'ERM_DX_KHUSUSPX.ID_DX_KHUSUS', '=', 'ERM_MASTER_DX_KHUSUS.ID_DX_KHUSUS')
-            ->select('ERM_MASTER_DX_KHUSUS.EPISODEOFCARE_TYPE')
+            ->join(
+                'E_RM_PHCM.dbo.ERM_MASTER_DX_KHUSUS',
+                'ERM_DX_KHUSUSPX.ID_DX_KHUSUS',
+                '=',
+                'ERM_MASTER_DX_KHUSUS.ID_DX_KHUSUS'
+            )
+            ->select('EPISODEOFCARE_TYPE')
             ->first();
 
-        $type;
         if ($dxKhusus) {
-            $type["type"] = [
-                [
-                    "coding" => [
-                        [
-                            "system" => "http://terminology.kemkes.go.id/CodeSystem/episodeofcare-type",
-                            "code" => $dxKhusus->EPISODEOFCARE_TYPE,
-                        ]
+            $type[] = [
+                "coding" => [
+                    [
+                        "system"  => "http://terminology.kemkes.go.id/CodeSystem/episodeofcare-type",
+                        "code"    => $dxKhusus->EPISODEOFCARE_TYPE,
                     ]
                 ]
             ];
         }
+
 
         $identifier = now()->timestamp;
         $payload = [
@@ -497,29 +495,23 @@ class EpisodeOfCareController extends Controller
                 "value" => "$identifier"
             ]],
             "status" => $status,
-            $statusHistory,
+            "statusHistory" => $statusHistory,
+            "type" => $type,
+            "diagnosis" => $diagnosis,
             "patient" => [
                 "reference" => "Patient/$data->ID_PASIEN_SS",
                 "display" => $data->NAMA_PASIEN,
-            ],
-            "encounter" => [
-                "reference" => "Encounter/{$data->ID_SATUSEHAT_ENCOUNTER}",
-                "display" => "Kunjungan $data->NAMA_PASIEN pada " . date('Y-m-d', strtotime($data->TANGGAL)),
             ],
             'managingOrganization' => [
                 "reference" => "Organization/$organisasi",
             ],
             "period" => [
-                "start" => Carbon::parse($data->TANGGAL)->toIso8601String()
+                "start" => Carbon::parse($data->TANGGAL)->toIso8601String(),
+                "end"   => $status === 'finished'
+                    ? Carbon::parse($dataKarcis->inap ? $historyTimeInap['jam_finish'] : $historyTime['jam_finish'])->toIso8601String()
+                    : null
             ],
-            "condition" => $finding,
-            $type
         ];
-
-        if ($type != []) {
-            // array_push($payload, $type);
-        }
-
         return $payload;
     }
 

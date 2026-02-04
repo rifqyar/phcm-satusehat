@@ -299,7 +299,7 @@ class CarePlanController extends Controller
                             'ID_ERM' => $data->ID_ERM,
                             'JENIS_PERAWATAN' => $data->JENIS_PERAWATAN,
                             'ID_SATUSEHAT_ENCOUNTER' => $data->ID_SATUSEHAT_ENCOUNTER,
-                            'CRTUSR' => 'system',
+                            'CRTUSR' => Session::get('nama', 'system'),
                             'CRTDT' => now('Asia/Jakarta')->format('Y-m-d H:i:s'),
                         ]
                     );

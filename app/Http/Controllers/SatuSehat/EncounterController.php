@@ -580,7 +580,7 @@ class EncounterController extends Controller
                         ],
                         [
                             'id_satusehat_encounter' => $result['id'],
-                            'crtusr' => 'system',
+                            'crtusr' => Session::get('nama', 'system'),
                             'crtdt' => now('Asia/Jakarta')->format('Y-m-d H:i:s'),
                         ]
                     );
