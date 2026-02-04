@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use App\Models\SATUSEHAT\SS_Kode_API;
 use App\Models\GlobalParameter;
 
+
 class DiagnosisController extends Controller
 {
     public function index()
@@ -22,7 +23,7 @@ class DiagnosisController extends Controller
     public function datatable(Request $request)
     {
         $startDate = $request->input('start_date');
-        $endDate   = $request->input('end_date');
+        $endDate   = Carbon::parse($request->input('end_date'))->addDay()->startOfDay();
         $id_unit   = Session::get('id_unit', '001');
 
         if (!$startDate || !$endDate) {
@@ -30,48 +31,57 @@ class DiagnosisController extends Controller
             $startDate = now()->subDays(30)->toDateString();
         }
 
-        /*
-    |--------------------------------------------------------------------------
-    | BASE RAW SQL (DATA ONLY)
-    |--------------------------------------------------------------------------
-    */
-        $baseSql = "
-        SELECT
-            SE.id_satusehat_encounter,
-            SP.nama AS PASIEN,
-            b.KODE_SUB_CRTUSR AS DOKTER,
-            SD.id_satusehat_condition,
-            b.KARCIS,
-            b.TGL,
-            a.NOTA,
-            d.REKENING AS KLINIK,
-            SE.jam_datang,
-            SE.jam_progress,
-            SE.jam_selesai
-        FROM SIRS_PHCM..RJ_KARCIS_BAYAR a
-        JOIN SIRS_PHCM..RJ_KARCIS b
-            ON a.KARCIS = b.KARCIS
-        JOIN SIRS_PHCM..RJ_MKLINIK d
-            ON d.KDKLINIK = b.KLINIK
-        JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
-            ON b.KARCIS = SE.karcis
-        JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN SP
-            ON SE.id_satusehat_px = SP.idpx
-        JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES SN
-            ON SE.id_satusehat_dokter = SN.idnakes
-        LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA SD
-            ON b.KARCIS = SD.karcis
-        WHERE b.TGL BETWEEN ? AND ?
-          AND b.IDUNIT = ?
-          AND a.IDUNIT = ?
-          AND ISNULL(a.STBTL, 0) = 0
-    ";
 
-        /*
-    |--------------------------------------------------------------------------
-    | QUERY WRAPPER (DATATABLES)
-    |--------------------------------------------------------------------------
-    */
+        $baseSql = "
+            SELECT
+                SE.id_satusehat_encounter,
+                SP.nama AS PASIEN,
+                b.KODE_SUB_CRTUSR AS DOKTER,
+                irja.KODE_DIAGNOSA_UTAMA,
+                SD.id_satusehat_condition,
+                b.KARCIS,
+                b.TGL,
+                a.NOTA,
+                d.REKENING AS KLINIK,
+                SE.jam_datang,
+                SE.jam_progress,
+                SE.jam_selesai
+            FROM SIRS_PHCM..RJ_KARCIS b
+            JOIN SIRS_PHCM..RJ_KARCIS_BAYAR a
+                ON a.KARCIS = b.KARCIS
+
+            LEFT JOIN (
+                SELECT KARCIS, KODE_DIAGNOSA_UTAMA
+                FROM (
+                    SELECT
+                        KARCIS,
+                        KODE_DIAGNOSA_UTAMA,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY KARCIS
+                            ORDER BY CRTDT DESC
+                        ) AS rn
+                    FROM E_RM_PHCM.dbo.ERM_RM_IRJA
+                    WHERE KODE_DIAGNOSA_UTAMA IS NOT NULL
+                ) x
+                WHERE rn = 1
+            ) irja
+                ON irja.KARCIS = b.KARCIS
+
+            LEFT JOIN SIRS_PHCM..RJ_MKLINIK d
+                ON d.KDKLINIK = b.KLINIK
+            LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
+                ON b.KARCIS = SE.karcis
+            JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN SP
+                ON SE.id_satusehat_px = SP.idpx
+            LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA SD
+                ON b.KARCIS = SD.karcis
+            WHERE b.TGL BETWEEN ? AND ?
+            AND b.IDUNIT = ?
+            AND a.IDUNIT = ?
+            AND ISNULL(a.STBTL, 0) = 0
+            ";
+
+
         $query = DB::table(DB::raw("($baseSql) AS x"))
             ->setBindings([$startDate, $endDate, $id_unit, $id_unit]);
 
@@ -84,7 +94,7 @@ class DiagnosisController extends Controller
             }
         }
 
-        
+
 
         $dataTable = DataTables::of($query)
             ->order(function ($q) {
@@ -94,24 +104,43 @@ class DiagnosisController extends Controller
 
 
         $summary = DB::connection('sqlsrv')->selectOne("
-        SELECT
-            COUNT(DISTINCT b.KARCIS) AS total,
-            COUNT(DISTINCT CASE
-                WHEN SD.id_satusehat_condition IS NOT NULL
-                THEN b.KARCIS
-            END) AS sent
-        FROM SIRS_PHCM..RJ_KARCIS b
-        JOIN SIRS_PHCM..RJ_KARCIS_BAYAR a
-            ON a.KARCIS = b.KARCIS
-        JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
-            ON b.KARCIS = SE.karcis
-        LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA SD
-            ON b.KARCIS = SD.karcis
-        WHERE b.TGL BETWEEN ? AND ?
-        AND b.IDUNIT = ?
-        AND a.IDUNIT = ?
-        AND ISNULL(a.STBTL, 0) = 0
-    ", [$startDate, $endDate, $id_unit, $id_unit]);
+            SELECT
+                COUNT(DISTINCT b.KARCIS) AS total,
+                COUNT(DISTINCT CASE
+                    WHEN SD.id_satusehat_condition IS NOT NULL
+                    THEN b.KARCIS
+                END) AS sent
+            FROM SIRS_PHCM..RJ_KARCIS b
+            JOIN SIRS_PHCM..RJ_KARCIS_BAYAR a
+                ON a.KARCIS = b.KARCIS
+
+            LEFT JOIN (
+                SELECT KARCIS
+                FROM (
+                    SELECT
+                        KARCIS,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY KARCIS
+                            ORDER BY CRTDT DESC
+                        ) AS rn
+                    FROM E_RM_PHCM.dbo.ERM_RM_IRJA
+                    WHERE KODE_DIAGNOSA_UTAMA IS NOT NULL
+                ) x
+                WHERE rn = 1
+            ) irja
+                ON irja.KARCIS = b.KARCIS
+
+            JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
+                ON b.KARCIS = SE.karcis
+            LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA SD
+                ON b.KARCIS = SD.karcis
+
+            WHERE b.TGL BETWEEN ? AND ?
+            AND b.IDUNIT = ?
+            AND a.IDUNIT = ?
+            AND ISNULL(a.STBTL, 0) = 0
+            ", [$startDate, $endDate, $id_unit, $id_unit]);
+
 
         $recordsTotal = (int) ($summary->total ?? 0);
         $sentCount    = (int) ($summary->sent ?? 0);
@@ -125,11 +154,6 @@ class DiagnosisController extends Controller
 
         return response()->json($json);
     }
-
-
-
-
-
     public function getDetailDiagnosis(Request $request)
     {
         $karcis  = $request->id;
@@ -142,44 +166,63 @@ class DiagnosisController extends Controller
             ], 400);
         }
 
-        $row = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as A')
-            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as SE', function ($join) use ($id_unit) {
-                $join->on('A.KARCIS', '=', 'SE.karcis')
-                    ->where('SE.idunit', $id_unit);
-            })
-            ->join('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN as SP', 'SE.id_satusehat_px', '=', 'SP.idpx')
-            ->where('A.KARCIS', $karcis)
-            ->where('A.IDUNIT', $id_unit)
-            ->select(
-                'A.KODE_DIAGNOSA_UTAMA',
-                'A.DIAG_UTAMA',
-                'A.ANAMNESE',
-                'A.CRTDT as recorded_date',
+        $sql = "
+        SELECT
+            karcis,
+            KODE_DIAGNOSA_UTAMA,
+            DIAG_UTAMA,
+            ANAMNESE,
+            recorded_date,
+            id_satusehat_encounter,
+            id_satusehat_px,
+            nama_pasien,
+            tglLahir
+        FROM (
+            SELECT
+                SE.karcis,
+                A.KODE_DIAGNOSA_UTAMA,
+                A.DIAG_UTAMA,
+                A.ANAMNESE,
+                A.CRTDT AS recorded_date,
+                SE.id_satusehat_encounter,
+                SE.id_satusehat_px,
+                SP.nama AS nama_pasien,
+                SP.tglLahir,
+                ROW_NUMBER() OVER (
+                    PARTITION BY A.KARCIS
+                    ORDER BY
+                        CASE 
+                            WHEN A.KODE_DIAGNOSA_UTAMA IS NOT NULL THEN 0
+                            ELSE 1
+                        END,
+                        A.CRTDT DESC
+                ) AS rn
+            FROM E_RM_PHCM.dbo.ERM_RM_IRJA A
+            LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
+                ON A.KARCIS = SE.karcis
+            AND SE.idunit = ?
+            LEFT JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN SP
+                ON SE.id_satusehat_px = SP.idpx
+            WHERE A.KARCIS = ?
+        ) x
+        WHERE rn = 1";
 
-                'SE.id_satusehat_encounter',
-                'SE.id_satusehat_px',
-
-                'SP.nama as nama_pasien',
-                'SP.tglLahir'
-            )
-            ->first();
+        $row = DB::connection('sqlsrv')->selectOne($sql, [$id_unit, $karcis]);
 
         if (!$row) {
             return response()->json([
-                'status' => 'error',
+                'status'  => 'error',
                 'message' => 'Data diagnosis tidak ditemukan.'
             ], 404);
         }
 
         $data = [
-            // Identitas pasien
             'patient_id'   => $row->id_satusehat_px,
             'patient_name' => $row->nama_pasien,
             'birth_date'   => $row->tglLahir
                 ? Carbon::parse($row->tglLahir)->format('d-m-Y')
                 : null,
 
-            // Encounter & diagnosis
             'encounter_id' => $row->id_satusehat_encounter,
             'diagnosis_id' => $row->KODE_DIAGNOSA_UTAMA,
 
@@ -188,11 +231,8 @@ class DiagnosisController extends Controller
                 'description' => $row->DIAG_UTAMA,
             ],
 
-            // Meta klinis
             'clinical_status'     => 'active',
             'verification_status' => 'confirmed',
-            'severity'            => null,
-            'onset_date'          => null,
 
             'recorded_date' => Carbon::parse($row->recorded_date)
                 ->setTimezone('Asia/Jakarta')
@@ -220,43 +260,65 @@ class DiagnosisController extends Controller
             ], 400);
         }
 
-        $row = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as A')
-            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as SE', function ($join) use ($id_unit) {
-                $join->on('A.KARCIS', '=', 'SE.karcis')
-                    ->where('SE.idunit', $id_unit);
-            })
-            ->join('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN as SP', 'SE.id_satusehat_px', '=', 'SP.idpx')
-            ->leftJoin('SIRS_PHCM.dbo.RIRJ_ICD as ICD', 'A.KODE_DIAGNOSA_UTAMA', '=', 'ICD.DIAGNOSA')
-            ->where('A.KARCIS', $karcis)
-            ->where('A.IDUNIT', $id_unit)
-            ->select(
-                'A.KODE_DIAGNOSA_UTAMA',
-                'A.DIAG_UTAMA',
-                'SE.id_satusehat_encounter',
-                'SE.nota',
-                'SE.karcis',
-                'SE.jam_datang',
-                'SP.idpx',
-                'SP.nama as nama_pasien',
-                'ICD.KATA1'
-            )
-            ->first();
+        $sql = "
+        SELECT
+            UPPER(LTRIM(RTRIM(A.KODE_DIAGNOSA_UTAMA))) AS KODE_DIAGNOSA_UTAMA,
+            A.DIAG_UTAMA,
+            SE.id_satusehat_encounter,
+            SE.nota,
+            SE.karcis,
+            SE.jam_datang,
+            SP.idpx,
+            SP.nama AS nama_pasien,
+            ICD.KATA1
+        FROM (
+            SELECT *
+            FROM (
+                SELECT
+                    A.*,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY A.KARCIS
+                        ORDER BY
+                            CASE 
+                                WHEN A.KODE_DIAGNOSA_UTAMA IS NOT NULL THEN 0
+                                ELSE 1
+                            END,
+                            A.CRTDT DESC
+                    ) AS rn
+                FROM E_RM_PHCM.dbo.ERM_RM_IRJA A
+                WHERE A.KARCIS = ?
+                AND A.IDUNIT = ?
+            ) x
+            WHERE rn = 1
+        ) A
+        JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
+            ON A.KARCIS = SE.karcis
+        AND SE.idunit = ?
+        JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN SP
+            ON SE.id_satusehat_px = SP.idpx
+        LEFT JOIN SIRS_PHCM.dbo.RIRJ_ICD ICD
+            ON A.KODE_DIAGNOSA_UTAMA = ICD.DIAGNOSA";
 
-        if (!$row) {
+        $row = DB::connection('sqlsrv')->selectOne(
+            $sql,
+            [$karcis, $id_unit, $id_unit]
+        );
+
+        if (!$row || !$row->KODE_DIAGNOSA_UTAMA) {
             return response()->json([
                 'status'  => 'error',
-                'message' => 'Data diagnosis tidak ditemukan'
-            ], 404);
+                'message' => 'Diagnosa utama belum tersedia'
+            ], 422);
         }
 
-        // =======================
-        // BUILD PAYLOAD
-        // =======================
         $payload = $this->buildConditionPayload($row);
 
-        // =======================
-        // META (untuk logging)
-        // =======================
+        // cek payload sebelum kirim
+        // return response()->json([
+        //     'status'  => 'debug',
+        //     'payload' => $payload
+        // ]);
+
         $meta = [
             'karcis' => $karcis,
             'nota'   => $row->nota,
@@ -264,18 +326,12 @@ class DiagnosisController extends Controller
             'tgl'    => now()->toDateString(),
             'rank'   => 1,
             'user'   => $user,
-
         ];
 
-        // =======================
-        // KIRIM KE SATUSEHAT
-        // =======================
         $result = $this->kirimConditionToSatuSehat($payload, $meta);
 
         return response()->json($result);
     }
-
-
     private function buildConditionPayload($row)
     {
         return [
@@ -337,9 +393,7 @@ class DiagnosisController extends Controller
 
     public function kirimConditionToSatuSehat(array $payload, array $meta)
     {
-        // =======================
-        // ACCESS TOKEN
-        // =======================
+
         $accessToken = $this->getAccessToken();
 
         if (!$accessToken) {
@@ -350,9 +404,6 @@ class DiagnosisController extends Controller
             ];
         }
 
-        // =======================
-        // BASE URL
-        // =======================
         $baseurl = strtoupper(env('SATUSEHAT', 'PRODUCTION')) === 'DEVELOPMENT'
             ? GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->value('valStr')
             : GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->value('valStr');
@@ -360,9 +411,6 @@ class DiagnosisController extends Controller
         $endpoint = 'Condition';
         $url      = rtrim($baseurl, '/') . '/' . $endpoint;
 
-        // =======================
-        // HTTP REQUEST
-        // =======================
         try {
             $client = new \GuzzleHttp\Client();
 
@@ -382,43 +430,37 @@ class DiagnosisController extends Controller
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new \Exception('Invalid JSON response from SATUSEHAT');
             }
-            } catch (\GuzzleHttp\Exception\RequestException $e) {
+        } catch (\GuzzleHttp\Exception\RequestException $e) {
 
-                $httpStatus = $e->hasResponse()
-                    ? $e->getResponse()->getStatusCode()
-                    : null;
+            $httpStatus = $e->hasResponse()
+                ? $e->getResponse()->getStatusCode()
+                : null;
 
-                $rawBody = $e->hasResponse()
-                    ? (string) $e->getResponse()->getBody()
-                    : null;
+            $rawBody = $e->hasResponse()
+                ? (string) $e->getResponse()->getBody()
+                : null;
 
-                $responseBody = $rawBody
-                    ? json_decode($rawBody, true)
-                    : null;
+            $responseBody = $rawBody
+                ? json_decode($rawBody, true)
+                : null;
 
-                return [
-                    'status'  => false,
-                    'message' => 'Gagal mengirim data ke satu sehat',
-                    'meta'    => $meta,
-                    'http'    => [
-                        'status' => $httpStatus,
-                        'error'  => 'RequestException'
-                    ],
-                    'response_raw' => $rawBody,      // ⬅️ FULL, TANPA TRUNCATE
-                    'response'     => $responseBody  // ⬅️ JSON utuh
-                ];
-            }
+            return [
+                'status'  => false,
+                'message' => 'Gagal mengirim data ke satu sehat',
+                'meta'    => $meta,
+                'http'    => [
+                    'status' => $httpStatus,
+                    'error'  => 'RequestException'
+                ],
+                'response_raw' => $rawBody,
+                'response'     => $responseBody
+            ];
+        }
 
-
-        // =======================
-        // RESPONSE PARSING
-        // =======================
         $conditionId = $responseBody['id'] ?? null;
         $status      = $conditionId ? 'success' : 'failed';
 
-        // =======================
-        // LOG TRANSACTION (GLOBAL)
-        // =======================
+
         try {
             DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_TRANSACTION')->insert([
                 'service'    => 'Condition',
@@ -441,10 +483,6 @@ class DiagnosisController extends Controller
             ]);
         }
 
-
-        // =======================
-        // LOGGING (RJ_SATUSEHAT_DIAGNOSA)
-        // =======================
         $logData = [
             'karcis'  => $meta['karcis'],
             'nota'    => $meta['nota'],
@@ -462,9 +500,7 @@ class DiagnosisController extends Controller
             'sinkron_date'           => $status === 'success' ? now() : null,
         ];
 
-        // =======================
-        // UPSERT (idempotent)
-        // =======================
+
         $existing = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA')
             ->where('karcis', $logData['karcis'])
             ->where('rank', $logData['rank'])
@@ -480,9 +516,6 @@ class DiagnosisController extends Controller
                 ->insert($logData);
         }
 
-        // =======================
-        // FINAL RETURN
-        // =======================
         return [
             'status'  => $status === 'success',
             'message' => $status === 'success'

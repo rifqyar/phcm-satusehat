@@ -246,5 +246,13 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::post('/medstatement/datatabel', [App\Http\Controllers\SatuSehat\MedStatementController::class, 'datatabel'])->name('medstatement.datatabel');
         Route::post('/medstatement/detail', [App\Http\Controllers\SatuSehat\MedStatementController::class, 'detail'])->name('medstatement.detail');
         Route::post('/medstatement/sendpayload', [App\Http\Controllers\SatuSehat\MedStatementController::class, 'fetchMedStatementRequest'])->name('medstatement.sendpayload');
+
+        // Episode Of Care
+        Route::get('/episode-of-care', [App\Http\Controllers\SatuSehat\EpisodeOfCareController::class, 'index'])->name('episode-of-care.index');
+        Route::post('/episode-of-care/datatable', [App\Http\Controllers\SatuSehat\EpisodeOfCareController::class, 'datatable'])->name('episode-of-care.datatable');
+        Route::get('/episode-of-care/lihat-detail/{param}', [App\Http\Controllers\SatuSehat\EpisodeOfCareController::class, 'lihatDetail'])->name('episode-of-care.lihat-detail');
+        Route::post('/episode-of-care/send', [App\Http\Controllers\SatuSehat\EpisodeOfCareController::class, 'send'])->name('episode-of-care.send');
+        Route::post('/episode-of-care/resend', [App\Http\Controllers\SatuSehat\EpisodeOfCareController::class, 'resend'])->name('episode-of-care.resend');
+        Route::post('/episode-of-care/bulk-send', [App\Http\Controllers\SatuSehat\EpisodeOfCareController::class, 'bulkSend'])->name('episode-of-care.bulk-send');
     });
 });

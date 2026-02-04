@@ -30,6 +30,7 @@ class EncounterController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+    protected $totalData = [];
     public function index()
     {
         $startDate = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
@@ -37,17 +38,18 @@ class EncounterController extends Controller
         $id_unit = Session::get('id_unit', '001');
 
         $dataKunjungan = collect(DB::select("
-            EXEC dbo.sp_getDataEncounter ?, ?, ?, ?
+            EXEC dbo.sp_getDataEncounter ?, ?, ?, ?, ?, ?
         ", [
             $id_unit,
             $startDate,
             $endDate,
-            'all'
+            'all',
+            1,
+            1
         ]));
 
         $summary = $dataKunjungan->first();
-
-        $totalData = [
+        $this->totalData = [
             'total_semua' => $summary->total_semua ?? 0,
             'rjAll' => $summary->rjAll ?? 0,
             'ri' => $summary->ri ?? 0,
@@ -111,13 +113,13 @@ class EncounterController extends Controller
                 "recordsTotal" => 0,
                 "recordsFiltered" => 0,
                 "data" => [],
-                "summary" => [
-                    'total_semua' => 0,
-                    'rjAll' => 0,
-                    'ri' => 0,
-                    'total_sudah_integrasi' => 0,
-                    'total_belum_integrasi' => 0,
-                ]
+                // "summary" => [
+                //     'total_semua' => 0,
+                //     'rjAll' => 0,
+                //     'ri' => 0,
+                //     'total_sudah_integrasi' => 0,
+                //     'total_belum_integrasi' => 0,
+                // ]
             ]);
         }
 

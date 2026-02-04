@@ -35,12 +35,24 @@ class ProcedureController extends Controller
         $endDate   = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
         $id_unit = Session::get('id_unit', '001');
 
+        $data = DB::select("
+            EXEC dbo.sp_getTindakanRJRI_All ?, ?, ?, ?, ?, ?
+        ", [
+            $startDate,
+            $endDate,
+            $id_unit,
+            'all',
+            1,
+            1
+        ]);
+
+        $summary = $data[0] ?? null;
         $result = [
-            'total_semua' => 0,
-            'total_sudah_integrasi' => 0,
-            'total_belum_integrasi' => 0,
-            'total_rawat_jalan' => 0,
-            'total_rawat_inap' => 0,
+            'total_semua' => $summary->total_semua ?? 0,
+            'total_rawat_jalan' => $summary->total_rawat_jalan ?? 0,
+            'total_rawat_inap' => $summary->total_rawat_inap ?? 0,
+            'total_sudah_integrasi' => $summary->total_sudah_integrasi ?? 0,
+            'total_belum_integrasi' => $summary->total_belum_integrasi ?? 0,
         ];
         return view('pages.satusehat.procedure.index', compact('result'));
     }
@@ -91,13 +103,6 @@ class ProcedureController extends Controller
                 "recordsTotal" => 0,
                 "recordsFiltered" => 0,
                 "data" => [],
-                "summary" => [
-                    'total_semua' => 0,
-                    'total_sudah_integrasi' => 0,
-                    'total_belum_integrasi' => 0,
-                    'total_rawat_jalan' => 0,
-                    'total_rawat_inap' => 0,
-                ]
             ]);
         }
 

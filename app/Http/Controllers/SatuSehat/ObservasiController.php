@@ -28,107 +28,25 @@ class ObservasiController extends Controller
      */
     public function index()
     {
+        $id_unit = Session::get('id_unit', '001');
         $startDate = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
         $endDate   = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
 
-        $rj = DB::table('v_kunjungan_rj as vkr')
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.KARCIS')
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
-                $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
-                    ->on('vkr.KBUKU', '=', 'rsn.kbuku');
-            })
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI as rso', function ($join) {
-                $join->on('vkr.ID_TRANSAKSI', '=', 'rso.KARCIS')
-                    ->on('vkr.KBUKU', '=', 'rso.KBUKU');
-            })
-            ->where('eri.AKTIF', 1)
-            ->whereBetween('vkr.TANGGAL', [$startDate, $endDate])
-            ->selectRaw("
-                vkr.ID_TRANSAKSI as KARCIS,
-                MAX(vkr.TANGGAL) as TANGGAL,
-                MAX(vkr.NO_PESERTA) as NO_PESERTA,
-                MAX(vkr.KBUKU) as KBUKU,
-                MAX(vkr.NAMA_PASIEN) as NAMA_PASIEN,
-                MAX(vkr.DOKTER) as DOKTER,
-                MAX(vkr.ID_PASIEN_SS) as ID_PASIEN_SS,
-                MAX(vkr.ID_NAKES_SS) as ID_NAKES_SS,
-                MAX(rsn.id_satusehat_encounter) as id_satusehat_encounter,
-                MAX(rso.ID_SATUSEHAT_OBSERVASI) as ID_SATUSEHAT_OBSERVASI,
-                CASE
-                    WHEN (
-                        (SELECT COUNT(DISTINCT rso2.JENIS)
-                        FROM SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI rso2
-                        WHERE rso2.KARCIS = vkr.ID_TRANSAKSI
-                        AND rso2.ID_ERM = eri.NOMOR
-                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) > 0
-                    ) THEN 1
-                    ELSE 0
-                END as sudah_integrasi,
-                CASE WHEN MAX(eri.KARCIS) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
-            ")
-            ->groupBy(['vkr.ID_TRANSAKSI', 'eri.NOMOR'])
-            ->orderByDesc(DB::raw('MAX(vkr.TANGGAL)'));
-
-        $rjAll = $rj->get();
-        $rjIntegrasi = $rj->whereNotNull('rsn.ID_SATUSEHAT_ENCOUNTER')->get();
-
-        $ri = DB::table('v_kunjungan_ri as vkr')
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as eri', 'vkr.ID_TRANSAKSI', '=', 'eri.noreg')
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as rsn', function ($join) {
-                $join->on('vkr.ID_TRANSAKSI', '=', 'rsn.karcis')
-                    ->on('vkr.KBUKU', '=', 'rsn.kbuku');
-            })
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI as rso', function ($join) {
-                $join->on('vkr.ID_TRANSAKSI', '=', 'rso.KARCIS')
-                    ->on('vkr.KBUKU', '=', 'rso.KBUKU');
-            })
-            ->where('eri.AKTIF', 1)
-            ->whereBetween('vkr.TANGGAL', [$startDate, $endDate])
-            ->selectRaw("
-                vkr.ID_TRANSAKSI as KARCIS,
-                MAX(vkr.TANGGAL) as TANGGAL,
-                MAX(vkr.NO_PESERTA) as NO_PESERTA,
-                MAX(vkr.KBUKU) as KBUKU,
-                MAX(vkr.NAMA_PASIEN) as NAMA_PASIEN,
-                MAX(vkr.DOKTER) as DOKTER,
-                MAX(vkr.ID_PASIEN_SS) as ID_PASIEN_SS,
-                MAX(vkr.ID_NAKES_SS) as ID_NAKES_SS,
-                MAX(rsn.id_satusehat_encounter) as id_satusehat_encounter,
-                MAX(rso.ID_SATUSEHAT_OBSERVASI) as ID_SATUSEHAT_OBSERVASI,
-                CASE
-                    WHEN (
-                        (SELECT COUNT(DISTINCT rso2.JENIS)
-                        FROM SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI rso2
-                        WHERE rso2.KARCIS = vkr.ID_TRANSAKSI
-                        AND rso2.ID_ERM = eri.id_asuhan_header
-                        AND rso2.ID_SATUSEHAT_OBSERVASI IS NOT NULL) = 19
-                    ) THEN 1
-                    ELSE 0
-                END as sudah_integrasi,
-                CASE WHEN MAX(eri.NOREG) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
-            ")
-            ->groupBy(['vkr.ID_TRANSAKSI', 'eri.id_asuhan_header'])
-            ->orderByDesc(DB::raw('MAX(vkr.TANGGAL)'))
-            ->get();
-
-        $mergedAll = $rjAll->merge($ri)
-            ->sortByDesc('TANGGAL')
-            ->values();
-
-        $mergedIntegrated = $rjIntegrasi->merge($ri)
-            ->sortByDesc('TANGGAL')
-            ->values();
-
-        $totalAll = $rj->count();
-        $totalSudahIntegrasi = $rj->count();
-        $totalBelumIntegrasi = $totalAll - $totalSudahIntegrasi;
+        $data = DB::select('EXEC dbo.sp_getObservasi ?, ?, ?, ?, ?, ?', [
+            $id_unit,
+            $startDate,
+            $endDate,
+            'all',
+            1,
+            1
+        ]);
 
         $result = [
-            'total_semua' => 0,
-            'total_sudah_integrasi' => 0,
-            'total_belum_integrasi' => 0,
-            'total_rawat_jalan' => $rjAll->count(),
-            'total_rawat_inap' => $ri->count(),
+            'total_semua' => $data[0]->total_semua ?? 0,
+            'total_sudah_integrasi' =>$data[0]->total_sudah_integrasi ?? 0,
+            'total_belum_integrasi' =>$data[0]->total_belum_integrasi ?? 0,
+            'total_rawat_jalan' =>$data[0]->total_rawat_jalan ?? 0,
+            'total_rawat_inap' =>$data[0]->total_rawat_inap ?? 0,
         ];
 
         return view('pages.satusehat.observation.index', compact('result'));
@@ -163,14 +81,14 @@ class ObservasiController extends Controller
         $pageNumber = ($start / $length) + 1;
         $pageSize   = $length;
 
-        $data = collect(DB::select('EXEC sp_getObservasi ?, ?, ?, ?, ?, ?', [
+        $data = DB::select('EXEC dbo.sp_getObservasi ?, ?, ?, ?, ?, ?', [
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
-            $request->cari == '' || $request->cari == null ? 'unmapped' : $request->cari,
+            $request->cari ?? 'unmapped',
             $pageNumber,
             $pageSize
-        ]));
+        ]);
 
         if (count($data) == 0) {
             return response()->json([
@@ -178,13 +96,6 @@ class ObservasiController extends Controller
                 "recordsTotal" => 0,
                 "recordsFiltered" => 0,
                 "data" => [],
-                "summary" => [
-                    'total_semua' => 0,
-                    'total_rawat_jalan' => 0,
-                    'total_rawat_inap' => 0,
-                    'total_sudah_integrasi' => 0,
-                    'total_belum_integrasi' => 0,
-                ]
             ]);
         }
 
