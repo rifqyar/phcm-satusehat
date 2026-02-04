@@ -589,7 +589,10 @@
                     } else {
                         $('#failed_resume').show();
                     }
-                    $('#btn-send-satusehat').show();
+                    if (response.dataDetail[0].JUMLAH_OBSERVASI > 0 
+                        && response.dataDetail[0].SATUSEHAT_PASIEN > 0) {
+                        $('#btn-send-satusehat').show();
+                    }
                 }
 
                 // Show modal
