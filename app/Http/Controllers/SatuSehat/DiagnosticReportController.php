@@ -33,7 +33,7 @@ class DiagnosticReportController extends Controller
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
         $id_unit = Session::get('id_unit', '001');
-        $search = $request->input('search');
+        $search = $request->input('cari');
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
             $tgl_awal  = Carbon::now()->startOfDay();
@@ -56,7 +56,7 @@ class DiagnosticReportController extends Controller
 
         $tgl_awal_db  = Carbon::parse($tgl_awal)->format('Y-m-d H:i:s');
         $tgl_akhir_db = Carbon::parse($tgl_akhir)->format('Y-m-d H:i:s');
-        // dd($tgl_awal, $tgl_akhir, $tgl_awal_db, $tgl_akhir_db, $search);
+        // dd($id_unit, $tgl_awal_db, $tgl_akhir_db, $search ?? 'all');
 
         // Build the base query
         $baseQuery = collect(DB::select("
@@ -65,9 +65,10 @@ class DiagnosticReportController extends Controller
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
-            'all'
+            $search ?? 'unmapped'
         ]));
         $summary = $baseQuery->first();
+        // dd($summary);
 
         $totalData = [
             'total_semua' => $summary->total_semua ?? 0,
