@@ -81,11 +81,12 @@ class ObservasiController extends Controller
         $pageNumber = ($start / $length) + 1;
         $pageSize   = $length;
 
-        $data = DB::select('EXEC dbo.sp_getObservasi ?, ?, ?, ?, ?, ?', [
+        $data = DB::select('EXEC dbo.sp_getObservasi ?, ?, ?, ?, ?, ?, ?', [
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
             $request->cari ?? 'unmapped',
+            $request->search['value'],
             $pageNumber,
             $pageSize
         ]);
