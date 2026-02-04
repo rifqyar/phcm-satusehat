@@ -544,12 +544,23 @@
                     $('#tbodyDiagnosticReport').append(`
                         <tr>
                             <th colspan="3">
-                                Keterangan
+                                &nbsp;
                             </th>
                         </tr>
                         <tr>
-                            <td colspan="3" class="border p-2 bg-light">
+                            <th colspan="2">
+                                Keterangan
+                            </th>
+                            <th>
+                                File Name
+                            </th>
+                        </tr>
+                        <tr>
+                            <td colspan="2" class="border p-2 bg-light text-wrap text-muted">
                                 ${response.dataDetail[0].keterangan || '-'}
+                            </td>
+                            <td>
+                                ${response.dataDetail[0].file_name || '-'}
                             </td>
                         </tr>
                     `);

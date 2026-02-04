@@ -33,7 +33,7 @@ class ResumeMedisController extends Controller
     {
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
-        $cari = $request->input('cari'); // Filter type: all, lab, rad, mapped, unmapped
+        $search = $request->input('cari');
         $id_unit = Session::get('id_unit', '001');
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
@@ -64,7 +64,7 @@ class ResumeMedisController extends Controller
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
-            $request->input('cari') ?? 'all'
+            $search ?? 'all'
         ]));
 
         $summary = $dataResumeMedis->first();
