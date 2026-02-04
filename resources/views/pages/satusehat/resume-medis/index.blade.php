@@ -64,8 +64,7 @@
                                         <div class="row align-items-center ml-1">
                                             <i class="fas fa-hospital" style="font-size: 48px"></i>
                                             <div class="ml-3">
-                                                <span style="font-size: 24px"
-                                                    id="total_rj">{{ $rjAll }}</span>
+                                                <span style="font-size: 24px" id="total_rj">0</span>
                                                 <h4 class="text-white">Total Rawat Jalan</h4>
                                             </div>
                                         </div>
@@ -80,8 +79,7 @@
                                         <div class="row align-items-center ml-1">
                                             <i class="fas fa-bed" style="font-size: 48px"></i>
                                             <div class="ml-3">
-                                                <span style="font-size: 24px"
-                                                    id="total_ri">{{ $ri }}</span>
+                                                <span style="font-size: 24px" id="total_ri">0</span>
                                                 <h4 class="text-white">Total Rawat Inap</h4>
                                             </div>
                                         </div>
@@ -96,8 +94,7 @@
                                         <div class="row align-items-center ml-1">
                                             <i class="fas fa-info-circle" style="font-size: 48px"></i>
                                             <div class="ml-3">
-                                                <span style="font-size: 24px"
-                                                    id="total_all">{{ $mergedAll }}</span>
+                                                <span style="font-size: 24px" id="total_all">0</span>
                                                 <h4 class="text-white">Total Data</h4>
                                             </div>
                                         </div>
@@ -112,8 +109,7 @@
                                         <div class="row align-items-center ml-1">
                                             <i class="fas fa-link" style="font-size: 48px"></i>
                                             <div class="ml-3">
-                                                <span style="font-size: 24px"
-                                                    id="total_integrasi">{{ $mergedIntegrated }}</span>
+                                                <span style="font-size: 24px" id="total_integrasi">0</span>
                                                 <h4 class="text-white">Data Terintegrasi</h4>
                                             </div>
                                         </div>
@@ -128,8 +124,7 @@
                                         <div class="row align-items-center ml-1">
                                             <i class="fas fa-unlink" style="font-size: 48px"></i>
                                             <div class="ml-3">
-                                                <span style="font-size: 24px"
-                                                    id="total_belum_integrasi">{{ $unmapped }}</span>
+                                                <span style="font-size: 24px" id="total_belum_integrasi">0</span>
                                                 <h4 class="text-white">Data belum terintegrasi</h4>
                                             </div>
                                         </div>
