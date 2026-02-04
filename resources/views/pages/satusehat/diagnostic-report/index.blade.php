@@ -666,65 +666,88 @@
             return;
         }
 
-        $.ajax({
-            url: `{{ route('satusehat.diagnostic-report.bulk-send') }}`,
-            type: "POST",
-            data: {
-                _token: $('meta[name="csrf-token"]').attr("content"),
-                selected_ids: selectedIds
-            },
-            success: function(response) {
-                Swal.close();
-                
-                if (response.status === 200) {
-                    $.toast({
-                        heading: "Berhasil!",
-                        text: response.message,
-                        position: "top-right",
-                        icon: "success",
-                        hideAfter: 7000
-                    });
-                    
-                    // Show additional info about background processing
-                    setTimeout(() => {
+        Swal.fire({
+            title: "Konfirmasi Bulk Send",
+            text: `Kirim ${selectedIds.length} data diagnostic report ke SatuSehat?`,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonColor: "#3085d6",
+            cancelButtonColor: "#d33",
+            confirmButtonText: "Ya, kirim semua!",
+            cancelButtonText: "Batal",
+        }).then((result) => {
+            if (result.value) {
+                // Show loading state
+                Swal.fire({
+                    title: 'Mengirim Data...',
+                    text: 'Mohon tunggu, sedang mengirim data ke SatuSehat',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                $.ajax({
+                    url: `{{ route('satusehat.diagnostic-report.bulk-send') }}`,
+                    type: "POST",
+                    data: {
+                        _token: $('meta[name="csrf-token"]').attr("content"),
+                        selected_ids: selectedIds
+                    },
+                    success: function(response) {
+                        Swal.close();
+                        
+                        if (response.status === 200) {
+                            $.toast({
+                                heading: "Berhasil!",
+                                text: response.message,
+                                position: "top-right",
+                                icon: "success",
+                                hideAfter: 7000
+                            });
+                            
+                            // Show additional info about background processing
+                            setTimeout(() => {
+                                $.toast({
+                                    heading: "Info",
+                                    text: "Data sedang diproses di background. Refresh halaman dalam beberapa menit untuk melihat hasil.",
+                                    position: "top-right",
+                                    icon: "info",
+                                    hideAfter: 5000
+                                });
+                            }, 2000);
+                            
+                            // Clear selections and reload table
+                            selectedIds = [];
+                            $('#selectAll').prop('checked', false);
+                            $('.select-row').prop('checked', false);
+                            table.ajax.reload();
+                        } else {
+                            $.toast({
+                                heading: "Error!",
+                                text: response.message,
+                                position: "top-right",
+                                icon: "error",
+                                hideAfter: 5000
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.close();
+                        let errorMessage = "Terjadi kesalahan saat mengirim data";
+                        
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMessage = xhr.responseJSON.message;
+                        }
+                        
                         $.toast({
-                            heading: "Info",
-                            text: "Data sedang diproses di background. Refresh halaman dalam beberapa menit untuk melihat hasil.",
+                            heading: "Error!",
+                            text: errorMessage,
                             position: "top-right",
-                            icon: "info",
+                            icon: "error",
                             hideAfter: 5000
                         });
-                    }, 2000);
-                    
-                    // Clear selections and reload table
-                    selectedIds = [];
-                    $('#selectAll').prop('checked', false);
-                    $('.select-row').prop('checked', false);
-                    table.ajax.reload();
-                } else {
-                    $.toast({
-                        heading: "Error!",
-                        text: response.message,
-                        position: "top-right",
-                        icon: "error",
-                        hideAfter: 5000
-                    });
-                }
-            },
-            error: function(xhr) {
-                Swal.close();
-                let errorMessage = "Terjadi kesalahan saat mengirim data";
-                
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMessage = xhr.responseJSON.message;
-                }
-                
-                $.toast({
-                    heading: "Error!",
-                    text: errorMessage,
-                    position: "top-right",
-                    icon: "error",
-                    hideAfter: 5000
+                    }
                 });
             }
         });
