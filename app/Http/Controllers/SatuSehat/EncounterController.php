@@ -94,16 +94,17 @@ class EncounterController extends Controller
         $pageNumber = ($start / $length) + 1;
         $pageSize   = $length;
 
-
+        $searchValue = $request->search['value'];
         $dataKunjungan = DB::select("
-            EXEC dbo.sp_getDataEncounter ?, ?, ?, ?, ?, ?
+            EXEC dbo.sp_getDataEncounter ?, ?, ?, ?, ?, ?, ?
         ", [
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
             $request->input('cari') ?? 'unmapped',
             $pageNumber,
-            $pageSize
+            $pageSize,
+            $searchValue,
 
         ]);
 
@@ -579,7 +580,7 @@ class EncounterController extends Controller
                         ],
                         [
                             'id_satusehat_encounter' => $result['id'],
-                            'crtusr' => 'system',
+                            'crtusr' => Session::get('nama', 'system'),
                             'crtdt' => now('Asia/Jakarta')->format('Y-m-d H:i:s'),
                         ]
                     );

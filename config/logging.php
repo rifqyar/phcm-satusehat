@@ -162,6 +162,13 @@ return [
             'level' => 'info',
             'days' => 7
         ],
+
+        'EpisodeOfCare' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/EpisodeOfCare.log'),
+            'level' => 'info',
+            'days' => 7
+        ],
     ],
 
 ];
