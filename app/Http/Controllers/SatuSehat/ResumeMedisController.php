@@ -68,6 +68,7 @@ class ResumeMedisController extends Controller
         ]));
 
         $summary = $dataResumeMedis->first();
+        // dd($summary);
 
         $totalData = [
             'total_semua' => $summary->total_semua ?? 0,
@@ -86,8 +87,8 @@ class ResumeMedisController extends Controller
                 $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
                 $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
                 $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
-                $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
-                $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+                // $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($jenisPerawatan . '+' . $id_transaksi . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' .  $kdLokasiSS);
 
                 $checkBox = "";
 
@@ -115,8 +116,8 @@ class ResumeMedisController extends Controller
                     return;
                 } else {
                     $checkBox = "
-                        <input type='checkbox' class='select-row chk-col-purple' value='$row->ID_TRANSAKSI' data-param='$paramSatuSehat' id='$row->ID_TRANSAKSI' />
-                        <label for='$row->ID_TRANSAKSI' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
+                        <input type='checkbox' class='select-row chk-col-purple' value='$paramSatuSehat' id='$paramSatuSehat' />
+                        <label for='$paramSatuSehat' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
                     ";
                 }
 
@@ -151,8 +152,8 @@ class ResumeMedisController extends Controller
                 $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
                 $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
                 $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
-                $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
-                $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+                // $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($jenisPerawatan . '+' . $id_transaksi . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' .  $kdLokasiSS);
 
                 $btn = '';
                 $btnDetail = '<button type="button" class="btn btn-sm btn-info" onclick="lihatDetail(\'' . $row->ID_TRANSAKSI . '\')"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</button>';
@@ -432,51 +433,77 @@ class ResumeMedisController extends Controller
 
     public function sendSatuSehat($param, $resend = false)
     {
-        $params = base64_decode($param);
-        $params = LZString::decompressFromEncodedURIComponent($params);
-        $parts = explode('&', $params);
+        try {
+            $params = base64_decode($param);
+            // dd($params);
 
-        $arrParam = [];
-        $partsParam = explode('=', $parts[0]);
-        $arrParam[$partsParam[0]] = $partsParam[1];
-        for ($i = 1; $i < count($parts); $i++) {
-            $partsParam = explode('=', $parts[$i]);
-            $key = $partsParam[0];
-            $val = $partsParam[1];
-            $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
+            if ($params === false) {
+                throw new Exception('Invalid base64 parameter');
+            }
+
+            $params = LZString::decompressFromEncodedURIComponent($params);
+            $parts = explode('+', $params);
+            // dd($param, $params, $parts);
+
+            if (count($parts) !== 5) {
+                throw new Exception('Parameter does not contain expected 5 parts, got: ' . count($parts));
+            }
+
+            // $arrParam = [];
+            // $partsParam = explode('=', $parts[0]);
+            // $arrParam[$partsParam[0]] = $partsParam[1];
+            // for ($i = 1; $i < count($parts); $i++) {
+            //     $partsParam = explode('=', $parts[$i]);
+            //     $key = $partsParam[0];
+            //     $val = $partsParam[1];
+            //     $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
+            // }
+
+            $jenisPerawatan = LZString::decompressFromEncodedURIComponent($parts[0]);
+            $idTransaksi = LZString::decompressFromEncodedURIComponent($parts[1]);
+            $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[2]);
+            $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[3]);
+            $kdLokasiSS = LZString::decompressFromEncodedURIComponent($parts[4]);
+            $id_unit = Session::get('id_unit', '001');
+        } catch (Exception $e) {
+            Log::error('Parameter parsing failed in sendSatuSehat', [
+                'param' => $param,
+                'error' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => 400,
+                'message' => 'Invalid parameter format: ' . $e->getMessage(),
+                'redirect' => [
+                    'need' => false,
+                    'to' => null,
+                ]
+            ], 400);
         }
 
-        $jenisPerawatan = $arrParam['jenis_perawatan'];
-        $idTransaksi = $arrParam['id_transaksi'];
-        $kdPasienSS = $arrParam['kd_pasien_ss'];
-        $kdNakesSS = $arrParam['kd_nakes_ss'];
-        $kdLokasiSS = $arrParam['kd_lokasi_ss'];
-        $id_unit = Session::get('id_unit', '001');
-
-        $dataKarcis = Karcis::leftJoin('RJ_KARCIS_BAYAR AS KarcisBayar', function ($query) use ($arrParam, $id_unit) {
+        $dataKarcis = Karcis::leftJoin('RJ_KARCIS_BAYAR AS KarcisBayar', function ($query) use ($idTransaksi, $id_unit) {
             $query->on('RJ_KARCIS.KARCIS', '=', 'KarcisBayar.KARCIS')
                 ->on('RJ_KARCIS.IDUNIT', '=', 'KarcisBayar.IDUNIT')
                 ->whereRaw('ISNULL(KarcisBayar.STBTL,0) = 0')
                 ->where('KarcisBayar.IDUNIT', $id_unit); // pindahkan ke sini
         })
             ->with([
-                'ermkunjung' => function ($query) use ($arrParam, $id_unit) {
+                'ermkunjung' => function ($query) use ($id_unit) {
                     $query->select('KARCIS', 'NO_KUNJUNG', 'CRTDT AS WAKTU_ERM')
                         ->where('IDUNIT', $id_unit);
                 }
             ])
             ->with('inap')
             ->select('RJ_KARCIS.NOREG', 'RJ_KARCIS.KARCIS', 'RJ_KARCIS.KBUKU', 'RJ_KARCIS.NO_PESERTA', 'RJ_KARCIS.KLINIK', 'RJ_KARCIS.KDDOK', 'RJ_KARCIS.TGL_VERIF_KARCIS', 'RJ_KARCIS.CRTDT AS WAKTU_BUAT_KARCIS', 'KarcisBayar.TGL_CETAK AS WAKTU_NOTA', 'KarcisBayar.NOTA', 'RJ_KARCIS.TGL')
-            ->where(function ($query) use ($arrParam) {
-                if ($arrParam['jenis_perawatan'] == 'RI') {
-                    $query->where('RJ_KARCIS.NOREG', $arrParam['id_transaksi']);
+            ->where(function ($query) use ($jenisPerawatan, $idTransaksi) {
+                if ($jenisPerawatan == 'RI') {
+                    $query->where('RJ_KARCIS.NOREG', $idTransaksi);
                 } else {
-                    $query->where('RJ_KARCIS.KARCIS', $arrParam['id_transaksi']);
+                    $query->where('RJ_KARCIS.KARCIS', $idTransaksi);
                 }
             })
             ->where('RJ_KARCIS.IDUNIT', $id_unit)
             ->first();
-        // dd($dataKarcis);
 
         $dataEncounterSatuSehat = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
             ->where('karcis', $idTransaksi)
@@ -534,7 +561,7 @@ class ResumeMedisController extends Controller
                 'NO_PESERTA',
                 'ID_SATUSEHAT_ENCOUNTER',
                 'ID_SATUSEHAT_CAREPLAN',
-                'IDUNIT',
+                'ID_UNIT',
                 'ID_ERM',
             )
             ->where('KARCIS', $idTransaksi)
@@ -1067,45 +1094,12 @@ class ResumeMedisController extends Controller
             $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
 
-        $payload = [
-            "resourceType" => "Composition",
-            "identifier" => [
-                "system" => "http://sys-ids.kemkes.go.id/composition/{$organisasi}",
-                "value" => $arrParam['id_transaksi']
-            ],
-            "status" => $status,
-            "category" => [[
-                "coding" => [[
-                    "system" => "http://loinc.org",
-                    "code" => "LP173421-1",
-                    "display" => "Report"
-                ]]
-            ]],
-            "subject" => [
-                "reference" => "Patient/{$kdPasienSS}",
-                "display" => $patient->nama,
-            ],
-            "date" => Carbon::now()->toIso8601String(),
-            "author" => [[
-                "reference" => "Practitioner/10009880728",
-                "display" => "dr. Alexander",
-            ]],
-            "custodian" => [
-                "reference" => "Organization/{$organisasi}"
-            ],
-            "encounter" => [
-                "reference" => "Encounter/{$dataEncounterSatuSehat->id_satusehat_encounter}"
-            ],
-            "section" => $sections,
-        ];
-        // dd($payload);
-
         try {
             $payload = [
                 "resourceType" => "Composition",
                 "identifier" => [
                     "system" => "http://sys-ids.kemkes.go.id/composition/{$organisasi}",
-                    "value" => $arrParam['id_transaksi']
+                    "value" => $idTransaksi
                 ],
                 "status" => $status,
                 "category" => [[
@@ -1179,25 +1173,25 @@ class ResumeMedisController extends Controller
             } else {
                 DB::beginTransaction();
                 try {
-                    $dataKarcis = Karcis::leftJoin('RJ_KARCIS_BAYAR AS KarcisBayar', function ($query) use ($arrParam, $id_unit) {
+                    $dataKarcis = Karcis::leftJoin('RJ_KARCIS_BAYAR AS KarcisBayar', function ($query) use ($idTransaksi, $id_unit) {
                         $query->on('RJ_KARCIS.KARCIS', '=', 'KarcisBayar.KARCIS')
                             ->on('RJ_KARCIS.IDUNIT', '=', 'KarcisBayar.IDUNIT')
                             ->whereRaw('ISNULL(KarcisBayar.STBTL,0) = 0')
                             ->where('KarcisBayar.IDUNIT', $id_unit); // pindahkan ke sini
                     })
                         ->with([
-                            'ermkunjung' => function ($query) use ($arrParam, $id_unit) {
+                            'ermkunjung' => function ($query) use ($id_unit) {
                                 $query->select('KARCIS', 'NO_KUNJUNG', 'CRTDT AS WAKTU_ERM')
                                     ->where('IDUNIT', $id_unit);
                             }
                         ])
                         ->with('inap')
                         ->select('RJ_KARCIS.NOREG', 'RJ_KARCIS.KARCIS', 'RJ_KARCIS.KBUKU', 'RJ_KARCIS.NO_PESERTA', 'RJ_KARCIS.KLINIK', 'RJ_KARCIS.KDDOK', 'RJ_KARCIS.TGL_VERIF_KARCIS', 'RJ_KARCIS.CRTDT AS WAKTU_BUAT_KARCIS', 'KarcisBayar.TGL_CETAK AS WAKTU_NOTA', 'KarcisBayar.NOTA', 'RJ_KARCIS.TGL')
-                        ->where(function ($query) use ($arrParam) {
-                            if ($arrParam['jenis_perawatan'] == 'RI') {
-                                $query->where('RJ_KARCIS.NOREG', $arrParam['id_transaksi']);
+                        ->where(function ($query) use ($jenisPerawatan, $idTransaksi) {
+                            if ($jenisPerawatan == 'RI') {
+                                $query->where('RJ_KARCIS.NOREG', $idTransaksi);
                             } else {
-                                $query->where('RJ_KARCIS.KARCIS', $arrParam['id_transaksi']);
+                                $query->where('RJ_KARCIS.KARCIS', $idTransaksi);
                             }
                         })
                         ->where('RJ_KARCIS.IDUNIT', $id_unit)
@@ -1208,14 +1202,14 @@ class ResumeMedisController extends Controller
                         ->first();
 
                     $dataEncounter = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
-                        ->where('karcis', $arrParam['id_transaksi'])
+                        ->where('karcis', $idTransaksi)
                         ->where('no_peserta', $dataKarcis->NO_PESERTA)
                         ->where('idunit', $id_unit)
                         ->first();
 
                     $log_composition = [
-                        'karcis'                    => $arrParam['jenis_perawatan'] == 'RJ' ? (int)$dataKarcis->KARCIS : (int)$dataKarcis->NOREG,
-                        'nota'                      => (int)$dataKarcis->NOTA,
+                        'karcis'                    => $idTransaksi,
+                        'nota'                      => $dataKarcis->NOTA,
                         'idunit'                    => $id_unit,
                         'tgl'                       => Carbon::now('Asia/Jakarta')->format('Y-m-d'),
                         'id_satusehat_composition'  => $result['id'],
@@ -1233,14 +1227,14 @@ class ResumeMedisController extends Controller
                     ];
 
                     $existingComposition = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_COMPOSITION')
-                        ->where('karcis', $arrParam['id_transaksi'])
+                        ->where('karcis', $idTransaksi)
                         ->where('no_peserta', $dataKarcis->NO_PESERTA)
                         ->where('idunit', $id_unit)
                         ->first();
 
                     if ($existingComposition) {
                         DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_COMPOSITION')
-                            ->where('karcis', $arrParam['id_transaksi'])
+                            ->where('karcis', $idTransaksi)
                             ->where('no_peserta', $dataKarcis->NO_PESERTA)
                             ->where('idunit', $id_unit)
                             ->update($log_composition);
