@@ -43,10 +43,10 @@ class ObservasiController extends Controller
 
         $result = [
             'total_semua' => $data[0]->total_semua ?? 0,
-            'total_sudah_integrasi' =>$data[0]->total_sudah_integrasi ?? 0,
-            'total_belum_integrasi' =>$data[0]->total_belum_integrasi ?? 0,
-            'total_rawat_jalan' =>$data[0]->total_rawat_jalan ?? 0,
-            'total_rawat_inap' =>$data[0]->total_rawat_inap ?? 0,
+            'total_sudah_integrasi' => $data[0]->total_sudah_integrasi ?? 0,
+            'total_belum_integrasi' => $data[0]->total_belum_integrasi ?? 0,
+            'total_rawat_jalan' => $data[0]->total_rawat_jalan ?? 0,
+            'total_rawat_inap' => $data[0]->total_rawat_inap ?? 0,
         ];
 
         return view('pages.satusehat.observation.index', compact('result'));
@@ -383,7 +383,7 @@ class ObservasiController extends Controller
             $val = $partsParam[1];
             $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
         }
-        $id_unit = Session::get('id_unit', '001');
+        $id_unit = Session::get('id_unit', $arrParam['id_unit']);
 
         if ($arrParam['jenis_perawatan'] == 'RAWAT_INAP') {
             return $this->sendObservationRIToSATUSEHAT($arrParam, $id_unit, $resend);

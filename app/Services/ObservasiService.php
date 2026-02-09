@@ -30,7 +30,7 @@ class ObservasiService
 
         if ($data->id_satusehat_encounter == null || $data->id_satusehat_encounter == '') return;
 
-        $param = $this->buildEncryptedParam($data);
+        $param = $this->buildEncryptedParam($data, $payload);
         $resp = app(ObservasiController::class)->sendSatuSehat(base64_encode($param), (bool) $data->sudah_integrasi);
     }
 
@@ -121,14 +121,15 @@ class ObservasiService
         return $data;
     }
 
-    protected function buildEncryptedParam($data): string
+    protected function buildEncryptedParam($data, $payload): string
     {
         $id_transaksi = LZString::compressToEncodedURIComponent($data->KARCIS);
         $KbBuku = LZString::compressToEncodedURIComponent($data->KBUKU);
         $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
         $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
+        $id_unit = LZString::compressToEncodedURIComponent($payload['id_unit']);
         $idEncounter = LZString::compressToEncodedURIComponent($data->id_satusehat_encounter);
-        $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=" . LZString::compressToEncodedURIComponent($data->JENIS_PERAWATAN);
+        $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=" . LZString::compressToEncodedURIComponent($data->JENIS_PERAWATAN) . "&id_unit=" .  $id_unit;
         $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
         return $paramSatuSehat;
