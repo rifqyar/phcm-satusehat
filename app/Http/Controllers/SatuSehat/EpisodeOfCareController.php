@@ -731,8 +731,7 @@ class EpisodeOfCareController extends Controller
             $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
 
-        $currData = SATUSEHAT_EPISODEOFCARE::where('KARCIS', $arrParam['id_transaksi'])
-            ->where('NO_PESERTA', $data->NO_PESERTA)
+        $currData = SATUSEHAT_EPISODEOFCARE::where('NO_PESERTA', $data->NO_PESERTA)
             ->where('ID_UNIT', $id_unit)
             ->select('ID_SATUSEHAT_EPISODE_OF_CARE')
             ->first();
@@ -742,7 +741,7 @@ class EpisodeOfCareController extends Controller
                 ->on('RJ_KARCIS.IDUNIT', '=', 'KarcisBayar.IDUNIT')
                 ->whereRaw('ISNULL(KarcisBayar.STBTL,0) = 0')
                 ->where('KarcisBayar.IDUNIT', $id_unit); // pindahkan ke sini
-        })
+            })
             ->with([
                 'ermkunjung' => function ($query) use ($arrParam, $id_unit) {
                     $query->select('KARCIS', 'NO_KUNJUNG', 'CRTDT AS WAKTU_ERM')

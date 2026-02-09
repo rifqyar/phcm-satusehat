@@ -382,7 +382,7 @@ class EncounterController extends Controller
         $kdPasienSS = $arrParam['kd_pasien_ss'];
         $kdNakesSS = $arrParam['kd_nakes_ss'];
         $kdLokasiSS = $arrParam['kd_lokasi_ss'];
-        $id_unit = Session::get('id_unit', '001');
+        $id_unit = Session::get('id_unit', $arrParam['id_unit']);
 
         $dataKarcis = Karcis::leftJoin('RJ_KARCIS_BAYAR AS KarcisBayar', function ($query) use ($arrParam, $id_unit) {
             $query->on('RJ_KARCIS.KARCIS', '=', 'KarcisBayar.KARCIS')

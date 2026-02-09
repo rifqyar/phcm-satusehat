@@ -16,7 +16,6 @@ class EncounterService
     {
         DB::disableQueryLog();
         $id_unit = $payload['id_unit'] ?? null;
-
         $this->logInfo('encounter', 'Process Encounter dari SIMRS', [
             'payload' => $payload,
             'user_id' => 'system',
@@ -26,8 +25,8 @@ class EncounterService
             'karcis',
             (int) $payload['karcis']
         )
-        ->where('idunit', $id_unit)
-        ->first();
+            ->where('idunit', $id_unit)
+            ->first();
 
         $data = $this->getKunjunganData($payload, $id_unit);
         if (! $data) {
@@ -106,7 +105,8 @@ class EncounterService
         $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
         $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
         $kdLokasiSS = LZString::compressToEncodedURIComponent($data->ID_LOKASI_SS);
-        $paramSatuSehat = "jenis_perawatan=" . $data->jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
+        $id_unit = LZString::compressToEncodedURIComponent($payload['id_unit']);
+        $paramSatuSehat = "jenis_perawatan=" . $data->jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS . "&id_unit=" .  $id_unit;
         $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
         return $paramSatuSehat;
