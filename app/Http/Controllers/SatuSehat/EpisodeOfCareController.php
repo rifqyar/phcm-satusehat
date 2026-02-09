@@ -899,4 +899,21 @@ class EpisodeOfCareController extends Controller
         }
         return $this->send(new Request($request->all()), true);
     }
+
+    public function bulkSend(Request $request)
+    {
+        $selectedIds = $request->input('selected_ids', []);
+        $responses = [];
+
+        foreach ($selectedIds as $data) {
+            $response = $this->send(new Request(['param' => $data['param']]), $data['resend']);
+            $responses[] = json_decode($response->getContent(), true);
+        }
+
+        return response()->json([
+            'status' => JsonResponse::HTTP_OK,
+            'message' => 'Proses Bulk Send Selesai',
+            'responses' => $responses,
+        ], 200);
+    }
 }
