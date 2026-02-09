@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Services\AllergyIntoleranceService;
+use App\Services\ClinicalImpressionService;
 use App\Services\EncounterService;
 use App\Services\ObservasiService;
 use App\Services\ProcedureService;
@@ -74,11 +75,23 @@ class DispatchToEndpoint implements ShouldQueue
 
             case 'medication-request':
                 app(MedicationRequestService::class)->process($this->payload);
-                break;    
+                break;
 
             case 'medication-dispense':
                 app(MedicationRequestService::class)->process($this->payload);
-                break;    
+                break;
+
+            case 'clinical-impression':
+                app(ClinicalImpressionService::class)->process($this->payload);
+                break;
+
+            case 'care-plan':
+                app(MedicationRequestService::class)->process($this->payload);
+                break;
+
+            case 'episode-of-care':
+                app(MedicationRequestService::class)->process($this->payload);
+                break;
 
             default:
                 throw new \Exception("Unknown endpoint: {$this->endpoint}");

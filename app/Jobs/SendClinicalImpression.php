@@ -8,6 +8,7 @@ use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Http\Request;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
@@ -44,9 +45,13 @@ class SendClinicalImpression implements ShouldQueue
         DB::reconnect('sqlsrv');
 
         try {
+            $param = [
+                '_token' => csrf_token(),
+                'param' => $this->param,
+            ];
+
             $controller = app(ClinicalImpressionController::class);
-            $encodedParam = base64_encode($this->param);
-            $result = $controller->sendSatuSehat($encodedParam, $this->resend);
+            $result = $controller->send(new Request($param), $this->resend);
             $this->logInfo('ClinicalImpression', 'Sending ClinicalImpression Using Jobs', [
                 'payload' => $this->param,
                 'response' => $result,

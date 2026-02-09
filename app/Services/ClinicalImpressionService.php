@@ -2,10 +2,14 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\SatuSehat\ClinicalImpressionController;
 use App\Http\Traits\LogTraits;
+use App\Jobs\SendClinicalImpression;
 use App\Jobs\SendEncounter;
 use App\Lib\LZCompressor\LZString;
 use App\Models\SATUSEHAT\SATUSEHAT_CLINICALIMPRESSION;
+use Exception;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ClinicalImpressionService
@@ -14,45 +18,47 @@ class ClinicalImpressionService
 
     public function process(array $payload): void
     {
-        DB::disableQueryLog();
         $id_unit = $payload['id_unit'] ?? null;
 
-        $this->logInfo('clinical_impression', 'Process Clinical Impression dari SIMRS', [
+        $this->logInfo('ClinicalImpression', 'Process Clinical Impression dari SIMRS', [
             'payload' => $payload,
             'user_id' => 'system',
         ]);
 
-        $clinicalImpressionId = SATUSEHAT_CLINICALIMPRESSION::where(
-            'karcis',
-            (int) $payload['karcis']
-        )
-            ->where('idunit', $id_unit)
-            ->first();
+        try {
+            $clinicalImpressionId = SATUSEHAT_CLINICALIMPRESSION::where(
+                'KARCIS',
+                (int) $payload['karcis']
+            )
+                ->where('ID_UNIT', $id_unit)
+                ->first();
 
-        $data = $this->getKunjunganData($payload, $id_unit);
-        if (! $data) {
-            throw new \Exception('Data kunjungan tidak ditemukan');
+            $data = $this->getKunjunganData($payload, $id_unit);
+            if (! $data) {
+                throw new Exception('Data kunjungan tidak ditemukan');
+            }
+
+            if (
+                $data->id_satusehat_encounter == null
+            ) {
+                return;
+            }
+
+            $param = $this->buildEncryptedParam($payload, $data);
+            SendClinicalImpression::dispatch($param, (bool) $clinicalImpressionId)->onQueue('ClinicalImpression');
+        } catch (Exception $th) {
+            $this->logError('ClinicalImpression', 'Gagal Process Clinical Impression dari SIMRS', [
+                'payload' => $payload,
+                'user_id' => 'system',
+                'error' => $th->getMessage(),
+                'trace' => $th->getTrace(),
+            ]);
         }
-
-        if (
-            empty($data->ID_LOKASI_SS) ||
-            empty($data->ID_NAKES_SS) ||
-            empty($data->ID_PASIEN_SS)
-        ) {
-            return;
-        }
-
-        $param = $this->buildEncryptedParam($payload, $data);
-        dd($param);
-        // SendEncounter::dispatch(
-        //     $param,
-        //     (bool) $clinicalImpressionId
-        // )->onQueue('clinical_impression');
     }
 
     protected function getKunjunganData(array $payload, $id_unit)
     {
-        $data = collect(DB::select("
+        $data = DB::selectOne("
             EXEC dbo.sp_getClinicalImpression ?, ?, ?, ?, ?
         ", [
             $id_unit,
@@ -60,13 +66,13 @@ class ClinicalImpressionService
             null,
             'all',
             $payload['karcis'] ?? '',
-        ]))->first();
+        ]);
 
         if (! $data) {
             throw new \Exception('Data Kunjungan tidak ditemukan');
         }
 
-        if($data->id_satusehat_encounter == null || $data->id_satusehat_encounter == '') return;
+        if ($data->id_satusehat_encounter == null || $data->id_satusehat_encounter == '') return;
 
         return $data;
     }
@@ -74,10 +80,11 @@ class ClinicalImpressionService
     protected function buildEncryptedParam(array $payload, $data): string
     {
         $id_transaksi = LZString::compressToEncodedURIComponent($payload['karcis']);
+        $KbBuku = LZString::compressToEncodedURIComponent($data->KBUKU);
         $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
         $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
-        $kdLokasiSS = LZString::compressToEncodedURIComponent($data->ID_LOKASI_SS);
-        $paramSatuSehat = "jenis_perawatan=" . $data->jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
+        $idEncounter = LZString::compressToEncodedURIComponent($data->id_satusehat_encounter);
+        $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=" . LZString::compressToEncodedURIComponent($data->JENIS_PERAWATAN);
         $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
         return $paramSatuSehat;
