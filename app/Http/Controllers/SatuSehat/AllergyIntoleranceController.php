@@ -134,6 +134,10 @@ class AllergyIntoleranceController extends Controller
                     ->on('rsi.kbuku', '=', 'vkr.KBUKU');
             })
             ->where('ea.STATUS_AKTIF', '1')
+            ->where(function ($query) use ($id_unit) {
+                $query->where('vkr.IDUNIT', $id_unit)
+                    ->where('rsn.IDUNIT', $id_unit);
+            })
             ->whereBetween('vkr.TANGGAL', [$tgl_awal_db, $tgl_akhir_db])
             ->groupBy([
                 'vkr.ID_TRANSAKSI',

@@ -84,7 +84,8 @@ class ClinicalImpressionService
         $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
         $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
         $idEncounter = LZString::compressToEncodedURIComponent($data->id_satusehat_encounter);
-        $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=" . LZString::compressToEncodedURIComponent($data->JENIS_PERAWATAN);
+        $id_unit = LZString::compressToEncodedURIComponent($payload['id_unit']);
+        $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&id_unit=$id_unit&jenis_perawatan=" . LZString::compressToEncodedURIComponent($data->JENIS_PERAWATAN);
         $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
         return $paramSatuSehat;

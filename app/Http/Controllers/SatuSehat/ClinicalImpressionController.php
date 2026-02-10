@@ -245,7 +245,8 @@ class ClinicalImpressionController extends Controller
             $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
         }
 
-        $id_unit = Session::get('id_unit', '001');
+        $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
+
         $data = collect(DB::select("
             EXEC dbo.sp_getClinicalImpression ?, ?, ?, ?, ?
         ", [
