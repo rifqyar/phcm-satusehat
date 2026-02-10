@@ -383,7 +383,7 @@ class ObservasiController extends Controller
             $val = $partsParam[1];
             $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
         }
-        $id_unit = Session::get('id_unit', $arrParam['id_unit']);
+        $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
 
         if ($arrParam['jenis_perawatan'] == 'RAWAT_INAP') {
             return $this->sendObservationRIToSATUSEHAT($arrParam, $id_unit, $resend);
