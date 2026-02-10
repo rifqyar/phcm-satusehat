@@ -36,7 +36,7 @@ class DiagnosisController extends Controller
             SELECT
                 SE.id_satusehat_encounter,
                 SP.nama AS PASIEN,
-                b.KODE_SUB_CRTUSR AS DOKTER,
+                SN.nama AS DOKTER,
                 irja.KODE_DIAGNOSA_UTAMA,
                 SD.id_satusehat_condition,
                 b.KARCIS,
@@ -73,6 +73,8 @@ class DiagnosisController extends Controller
                 ON b.KARCIS = SE.karcis
             JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN SP
                 ON SE.id_satusehat_px = SP.idpx
+            JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES SN
+            	ON SE.id_satusehat_dokter = SN.idnakes
             LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA SD
                 ON b.KARCIS = SD.karcis
             WHERE b.TGL BETWEEN ? AND ?
