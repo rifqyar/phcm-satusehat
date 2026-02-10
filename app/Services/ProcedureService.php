@@ -23,7 +23,7 @@ class ProcedureService
         $this->logInfo('Procedure', 'Process Procedure dari SIMRS', [
             'payload' => $payload,
             'karcis' => $payload['karcis'],
-            'jenis' => $payload['jenis'],
+            'jenis' => $payload['type'],
             'user_id' => 'system',
         ]);
 
@@ -32,7 +32,7 @@ class ProcedureService
             throw new \Exception('Data Procedure tidak ditemukan');
         }
 
-        if ($data && ($data->id_satusehat_encounter == '' || $data->id_satusehat_encounter == null)) return;
+        if ($data && ($data->ID_SATUSEHAT_ENCOUNTER == '' || $data->ID_SATUSEHAT_ENCOUNTER == null)) return;
 
         $param = $this->buildEncryptedParam($payload, $data);
 
@@ -50,13 +50,15 @@ class ProcedureService
             $data = collect(DB::select("
                 EXEC dbo.sp_getTindakanRawatJalan ?, ?
             ", [
-                $payload['karcis'], $id_unit
+                $payload['karcis'],
+                $id_unit
             ]))->first();
         } else {
             $data = collect(DB::select("
                 EXEC dbo.sp_getTindakanRawatInap ?, ?
             ", [
-                $payload['karcis'], $id_unit
+                $payload['karcis'],
+                $id_unit
             ]))->first();
         }
 
@@ -73,19 +75,20 @@ class ProcedureService
         $KbBuku = LZString::compressToEncodedURIComponent($data->KBUKU);
         $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
         $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
-        $idEncounter = LZString::compressToEncodedURIComponent($data->id_satusehat_encounter);
+        $idEncounter = LZString::compressToEncodedURIComponent($data->ID_SATUSEHAT_ENCOUNTER);
         $jenisPerawatan = LZString::compressToEncodedURIComponent($data->JENIS_PERAWATAN);
-        $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=$jenisPerawatan";
+        $id_unit = LZString::compressToEncodedURIComponent($payload['id_unit'] ?? '');
+        $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=$jenisPerawatan&id_unit=$id_unit";
         $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
-
-        // get ICD 9 Anamnese
-        $icd9 = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_ICD9 as icd9')
-            ->where('icd9.ID', $payload['diagnosa9cm'])
-            ->select('icd9.CODE as icd9_pm', 'icd9.NAME as text_icd9_pm')
-            ->first();
 
         $resend = false;
         if ($payload['type'] == 'anamnese') {
+            // get ICD 9 Anamnese
+            $icd9 = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_ICD9 as icd9')
+                ->where('icd9.ID', $payload['diagnosa9cm'])
+                ->select('icd9.CODE as icd9_pm', 'icd9.NAME as text_icd9_pm')
+                ->first();
+
             $procedureData = SATUSEHAT_PROCEDURE::where('karcis', (int)$payload['karcis'])
                 ->where('JENIS_TINDAKAN', 'anamnese')
                 ->count();
@@ -133,7 +136,7 @@ class ProcedureService
             }
         }
 
-        if (($icd9->icd9_pm == '' || $icd9->text_icd9_pm == null) && $payload['type'] == 'anamnese') {
+        if(isset($icd9) && ($icd9->icd9_pm == '' || $icd9->text_icd9_pm == null) && $payload['type'] == 'anamnese') {
             $this->logInfo('Procedure', 'Data Procedure Anamnese tidak diproses karena tidak ada ICd 9', [
                 'request' => $payload,
                 'user_id' => 'system'
@@ -141,7 +144,9 @@ class ProcedureService
 
             return [
                 'resend' => false,
-                'param' => null
+                'param' => null,
+                'icd9_pm' => null,
+                'text_icd9_pm' => null
             ];
         }
 

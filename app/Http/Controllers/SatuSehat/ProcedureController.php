@@ -489,21 +489,7 @@ class ProcedureController extends Controller
             $val = $partsParam[1];
             $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
         }
-        $id_unit = Session::get('id_unit', '001');
-
-        /**
-         * TO DO
-         * Get Data ERM IRJA
-         * Get Data Lab
-         * Get Data Rad
-         * Get Data Service Request
-         * Get Data Operasi
-         * 1. Buat Payload Procedure Pemeriksaan fisik
-         * 2. Buat Payload Procedure Lab jika ada
-         * 3. Buat Payload Procedure Rad jika ada
-         * 4. Buat Payload Procedure OP jika ada
-         * 5. Buat Queue Pengiriman ke satu sehat
-         */
+        $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
 
         if ($arrParam['jenis_perawatan'] == 'RAWAT_JALAN') {
             $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as eri')
@@ -520,6 +506,7 @@ class ProcedureController extends Controller
                     'eri.CRTDT'
                 ])
                 ->where('karcis', $arrParam['karcis'])
+                ->where('eri.IDUNIT',$id_unit)
                 ->where('eri.aktif', 1)
                 ->first();
         } else {
@@ -540,6 +527,7 @@ class ProcedureController extends Controller
                     'eri.CRT_DT as CRTDT'
                 ])
                 ->where('eri.noreg', $arrParam['karcis'])
+                ->where('eri2.IDUNIT',$id_unit)
                 ->where('eri.aktif', 1)
                 ->first();
         }
