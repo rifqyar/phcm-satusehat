@@ -402,13 +402,10 @@
                         render: function(data) {
                             if (!data.KODE_DIAGNOSA_UTAMA || data.id_satusehat_condition) {
                                 return `<span class="text-muted">-</span>`;
+                                // return `<input type="checkbox"class="checkbox-item"value="${data.KARCIS}">`;
                             }
 
-                            return `
-                                <input type="checkbox"
-                                    class="checkbox-item"
-                                    value="${data.KARCIS}">
-                            `;
+                            return `<input type="checkbox"class="checkbox-item"value="${data.KARCIS}">`;
                         }
                     },
                     {
