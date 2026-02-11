@@ -353,11 +353,13 @@
                         data.tgl_akhir = $('input[name="tgl_akhir"]').val();
                     },
                     dataSrc: function(json) {
-                        $('#total_all').text(json.total_semua);
-                        $('#total_rawat_jalan').text(json.total_rawat_jalan);
-                        $('#total_rawat_inap').text(json.total_rawat_inap);
-                        $('#total_integrasi').text(json.total_sudah_integrasi);
-                        $('#total_belum_integrasi').text(json.total_belum_integrasi);
+                        if(json.summary != undefined){
+                            $('#total_all').text(json.summary.total_semua);
+                            $('#total_rawat_jalan').text(json.summary.total_rawat_jalan);
+                            $('#total_rawat_inap').text(json.summary.total_rawat_inap);
+                            $('#total_integrasi').text(json.summary.total_sudah_integrasi);
+                            $('#total_belum_integrasi').text(json.summary.total_belum_integrasi);
+                        }
                         return json.data;
                     }
                 },

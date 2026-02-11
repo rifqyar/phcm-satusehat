@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Services\AllergyIntoleranceService;
+use App\Services\CarePlanService;
 use App\Services\ClinicalImpressionService;
 use App\Services\EncounterService;
 use App\Services\ObservasiService;
@@ -87,7 +88,7 @@ class DispatchToEndpoint implements ShouldQueue
                 break;
 
             case 'care-plan':
-                app(MedicationRequestService::class)->process($this->payload);
+                app(CarePlanService::class)->process($this->payload);
                 break;
 
             case 'episode-of-care':
