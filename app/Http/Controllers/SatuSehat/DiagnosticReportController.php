@@ -341,8 +341,6 @@ class DiagnosticReportController extends Controller
     {
         $decoded = base64_decode($param);
         $params = LZString::decompressFromEncodedURIComponent($decoded);
-        $id_unit = Session::get('id_unit', '001');
-        // dd($params);
 
         $arrParam = [];
         $parts = explode('&', $params);
@@ -352,17 +350,8 @@ class DiagnosticReportController extends Controller
             $val = $partsParam[1];
             $arrParam[$key] = $val;
         }
-        // dd($arrParam);
-
-        // $detail = collect(DB::select("
-        //     EXEC dbo.sp_getDataDiagnosticReportDetail ?, ?, ?, ?
-        // ", [
-        //     $id_unit,
-        //     $arrParam['id'],
-        //     $arrParam['karcis_asal'],
-        //     $arrParam['karcis_rujukan']
-        // ]));
-        // dd($detail);
+        $id_unit = $arrParam['id_unit'] ?? Session::get('id_unit', '001');
+        // dd($arrParam, $id_unit);
 
         $dokumen_px =  DB::connection('sqlsrv')
             ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
@@ -441,7 +430,7 @@ class DiagnosticReportController extends Controller
             ->orderBy('s.crtdt', 'desc')
             ->first();
 
-        // dd($dokumen_px, $riwayat, $dokumen_px_codings, $patient, $dokter, $encounter, $observation, $serviceRequest);
+        // dd($id_unit, $dokumen_px, $riwayat, $dokumen_px_codings, $patient, $dokter, $encounter, $observation, $serviceRequest);
 
         $dateTimeNow = Carbon::now()->toIso8601String();
         $categories = [];

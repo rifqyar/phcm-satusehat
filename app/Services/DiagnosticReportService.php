@@ -28,7 +28,7 @@ class DiagnosticReportService
         ]);
 
         try {
-            $compositionId = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_DIAGNOSTICREPORT')
+            $diagnosticReportId = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_DIAGNOSTICREPORT')
                 ->where('iddokumen', $payload['iddokumen'])
                 ->where('KARCIS', $payload['karcis'])
                 ->where('KARCIS_RUJUKAN', $payload['karcis_rujukan'])
@@ -46,7 +46,7 @@ class DiagnosticReportService
             }
 
             $param = $this->buildEncryptedParam($payload, $data);
-            SendDiagnosticReport::dispatch($param, (bool) $compositionId)->onQueue('DiagnosticReport');
+            SendDiagnosticReport::dispatch($param, (bool) $diagnosticReportId)->onQueue('DiagnosticReport');
         } catch (Exception $th) {
             $this->logError('DiagnosticReport', 'Gagal Process Diagnostic Report dari SIMRS', [
                 'payload' => $payload,
@@ -79,7 +79,7 @@ class DiagnosticReportService
 
     protected function buildEncryptedParam(array $payload, $data): string
     {
-        $paramSatuSehat = LZString::compressToEncodedURIComponent("id=" . $data->id . "&karcis_asal=" . $data->karcis_asal . "&karcis_rujukan=" . $data->karcis_rujukan);
+        $paramSatuSehat = LZString::compressToEncodedURIComponent("id=" . $data->id . "&karcis_asal=" . $data->karcis_asal . "&karcis_rujukan=" . $data->karcis_rujukan . "&id_unit=" . $payload['id_unit']);
 
         return $paramSatuSehat;
     }
