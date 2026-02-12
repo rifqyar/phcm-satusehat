@@ -82,7 +82,13 @@ class DiagnosticReportController extends Controller
                 $paramDetail = LZString::compressToEncodedURIComponent("id=" . $row->id . "&karcis_asal=" . $row->karcis_asal . "&karcis_rujukan=" . $row->karcis_rujukan);
 
                 $checkbox = '';
-                if ($row->JUMLAH_SERVICE_REQUEST > 0 && $row->JUMLAH_OBSERVASI > 0 && $row->SATUSEHAT_PASIEN > 0) {
+                if (
+                    $row->JUMLAH_SERVICE_REQUEST > 0
+                    && $row->JUMLAH_OBSERVASI > 0
+                    && $row->SATUSEHAT_PASIEN > 0
+                    && $row->SATUSEHAT_DOKTER > 0
+                    && $row->SR_CODE_MAPPED > 0
+                ) {
                     if ($row->SATUSEHAT == 0) {
                         $checkbox = "
                             <input type='checkbox' class='select-row chk-col-purple' value='$paramDetail' id='$paramDetail' />
@@ -120,7 +126,13 @@ class DiagnosticReportController extends Controller
 
                 $openFileBtn = '';
                 $btnDetail = '<button type="button" class="btn btn-sm btn-info" onclick="lihatDetail(\'' . $paramDetail . '\')"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</button>';
-                if ($row->JUMLAH_SERVICE_REQUEST > 0 && $row->JUMLAH_OBSERVASI > 0 && $row->SATUSEHAT_PASIEN > 0) {
+                if (
+                    $row->JUMLAH_SERVICE_REQUEST > 0
+                    && $row->JUMLAH_OBSERVASI > 0
+                    && $row->SATUSEHAT_PASIEN > 0
+                    && $row->SATUSEHAT_DOKTER > 0
+                    && $row->SR_CODE_MAPPED > 0
+                ) {
                     if ($row->SATUSEHAT == 0) {
                         $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramDetail . '`)" class="btn btn-sm btn-primary"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
                     } else {
@@ -128,10 +140,14 @@ class DiagnosticReportController extends Controller
                     }
                 } else if ($row->JUMLAH_SERVICE_REQUEST == 0) {
                     $btn = '<span class="badge badge-pill badge-secondary p-2">Belum Integrasi Service Request</span>';
+                } else if ($row->SR_CODE_MAPPED == 0) {
+                    $btn = '<span class="badge badge-pill badge-secondary p-2">Belum Mapping Tindakan Lab/Rad</span>';
                 } else if ($row->JUMLAH_OBSERVASI == 0) {
                     $btn = '<span class="badge badge-pill badge-secondary p-2">Belum Integrasi Observasi</span>';
                 } else if ($row->SATUSEHAT_PASIEN == 0) {
                     $btn = '<span class="badge badge-pill badge-secondary p-2">Belum Integrasi Pasien</span>';
+                } else if ($row->SATUSEHAT_DOKTER == 0) {
+                    $btn = '<span class="badge badge-pill badge-secondary p-2">Belum Integrasi Dokter</span>';
                 } else {
                     $btn = '';
                 }
