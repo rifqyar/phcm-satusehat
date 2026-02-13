@@ -57,16 +57,16 @@ class SendResumeMedis implements ShouldQueue
       $encodedParam = base64_encode($this->param);
 
       // Call controller method. We ignore the return payload here since it's async.
-      $result = $controller->sendSatuSehat($encodedParam);
+      $result = $controller->sendSatuSehat($encodedParam, $this->resend);
 
       // Log successful processing
-      Log::info('Send Resume Medis job completed successfully', [
+      Log::info('Send Composition job completed successfully', [
         'param' => $this->param,
-        'status_code' => $result->getStatusCode()
+        'status_code' => $result->getStatusCode(),
       ]);
     } catch (Exception $e) {
       // Log error, job will be retried according to queue config
-      Log::error('Send Resume Medis job failed: ' . $e->getMessage(), [
+      Log::error('Send Composition job failed: ' . $e->getMessage(), [
         'param' => $this->param,
         'attempt' => $this->attempts(),
         'error' => $e->getMessage(),

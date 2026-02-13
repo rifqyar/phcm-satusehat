@@ -87,7 +87,6 @@ class ResumeMedisController extends Controller
                 $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
                 $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
                 $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
-                // $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
                 $paramSatuSehat = LZString::compressToEncodedURIComponent($jenisPerawatan . '+' . $id_transaksi . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' .  $kdLokasiSS);
 
                 $checkBox = "";
@@ -141,18 +140,11 @@ class ResumeMedisController extends Controller
             //     }
             // })
             ->addColumn('action', function ($row) {
-                $kdbuku = LZString::compressToEncodedURIComponent($row->KBUKU);
-                $kdDok = LZString::compressToEncodedURIComponent($row->KODE_DOKTER);
-                $kdKlinik = LZString::compressToEncodedURIComponent($row->KODE_KLINIK);
-                $idUnit = LZString::compressToEncodedURIComponent($row->ID_UNIT);
-                $param = LZString::compressToEncodedURIComponent($kdbuku . '+' . $kdDok . '+' . $kdKlinik . '+' . $idUnit);
-
                 $jenisPerawatan = $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
                 $id_transaksi = LZString::compressToEncodedURIComponent($row->ID_TRANSAKSI);
                 $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
                 $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
                 $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
-                // $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
                 $paramSatuSehat = LZString::compressToEncodedURIComponent($jenisPerawatan . '+' . $id_transaksi . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' .  $kdLokasiSS);
 
                 $btn = '';
@@ -445,26 +437,21 @@ class ResumeMedisController extends Controller
             $parts = explode('+', $params);
             // dd($param, $params, $parts);
 
-            if (count($parts) !== 5) {
-                throw new Exception('Parameter does not contain expected 5 parts, got: ' . count($parts));
+            if (count($parts) < 5) {
+                throw new Exception('Parameter does not contain minimum 5 parts, got: ' . count($parts));
             }
 
-            // $arrParam = [];
-            // $partsParam = explode('=', $parts[0]);
-            // $arrParam[$partsParam[0]] = $partsParam[1];
-            // for ($i = 1; $i < count($parts); $i++) {
-            //     $partsParam = explode('=', $parts[$i]);
-            //     $key = $partsParam[0];
-            //     $val = $partsParam[1];
-            //     $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
-            // }
-
-            $jenisPerawatan = LZString::decompressFromEncodedURIComponent($parts[0]);
+            $jenisPerawatan = $parts[0];
             $idTransaksi = LZString::decompressFromEncodedURIComponent($parts[1]);
             $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[2]);
             $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[3]);
             $kdLokasiSS = LZString::decompressFromEncodedURIComponent($parts[4]);
-            $id_unit = Session::get('id_unit', '001');
+
+            $id_unit = isset($parts[5])
+                ? LZString::decompressFromEncodedURIComponent($parts[5])
+                : Session::get('id_unit', '001');
+
+            // dd($jenisPerawatan, $idTransaksi, $kdPasienSS, $kdNakesSS, $kdLokasiSS, $id_unit);
         } catch (Exception $e) {
             Log::error('Parameter parsing failed in sendSatuSehat', [
                 'param' => $param,

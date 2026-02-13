@@ -82,7 +82,13 @@ class DiagnosticReportController extends Controller
                 $paramDetail = LZString::compressToEncodedURIComponent("id=" . $row->id . "&karcis_asal=" . $row->karcis_asal . "&karcis_rujukan=" . $row->karcis_rujukan);
 
                 $checkbox = '';
-                if ($row->JUMLAH_SERVICE_REQUEST > 0 && $row->JUMLAH_OBSERVASI > 0 && $row->SATUSEHAT_PASIEN > 0) {
+                if (
+                    $row->JUMLAH_SERVICE_REQUEST > 0
+                    && $row->JUMLAH_OBSERVASI > 0
+                    && $row->SATUSEHAT_PASIEN > 0
+                    && $row->SATUSEHAT_DOKTER > 0
+                    && $row->SR_CODE_MAPPED > 0
+                ) {
                     if ($row->SATUSEHAT == 0) {
                         $checkbox = "
                             <input type='checkbox' class='select-row chk-col-purple' value='$paramDetail' id='$paramDetail' />
@@ -120,7 +126,13 @@ class DiagnosticReportController extends Controller
 
                 $openFileBtn = '';
                 $btnDetail = '<button type="button" class="btn btn-sm btn-info" onclick="lihatDetail(\'' . $paramDetail . '\')"><i class="fas fa-info-circle mr-2"></i>Lihat Detail</button>';
-                if ($row->JUMLAH_SERVICE_REQUEST > 0 && $row->JUMLAH_OBSERVASI > 0 && $row->SATUSEHAT_PASIEN > 0) {
+                if (
+                    $row->JUMLAH_SERVICE_REQUEST > 0
+                    && $row->JUMLAH_OBSERVASI > 0
+                    && $row->SATUSEHAT_PASIEN > 0
+                    && $row->SATUSEHAT_DOKTER > 0
+                    && $row->SR_CODE_MAPPED > 0
+                ) {
                     if ($row->SATUSEHAT == 0) {
                         $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramDetail . '`)" class="btn btn-sm btn-primary"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
                     } else {
@@ -128,10 +140,14 @@ class DiagnosticReportController extends Controller
                     }
                 } else if ($row->JUMLAH_SERVICE_REQUEST == 0) {
                     $btn = '<span class="badge badge-pill badge-secondary p-2">Belum Integrasi Service Request</span>';
+                } else if ($row->SR_CODE_MAPPED == 0) {
+                    $btn = '<span class="badge badge-pill badge-secondary p-2">Belum Mapping Tindakan Lab/Rad</span>';
                 } else if ($row->JUMLAH_OBSERVASI == 0) {
                     $btn = '<span class="badge badge-pill badge-secondary p-2">Belum Integrasi Observasi</span>';
                 } else if ($row->SATUSEHAT_PASIEN == 0) {
                     $btn = '<span class="badge badge-pill badge-secondary p-2">Belum Integrasi Pasien</span>';
+                } else if ($row->SATUSEHAT_DOKTER == 0) {
+                    $btn = '<span class="badge badge-pill badge-secondary p-2">Belum Integrasi Dokter</span>';
                 } else {
                     $btn = '';
                 }
@@ -325,8 +341,6 @@ class DiagnosticReportController extends Controller
     {
         $decoded = base64_decode($param);
         $params = LZString::decompressFromEncodedURIComponent($decoded);
-        $id_unit = Session::get('id_unit', '001');
-        // dd($params);
 
         $arrParam = [];
         $parts = explode('&', $params);
@@ -336,17 +350,8 @@ class DiagnosticReportController extends Controller
             $val = $partsParam[1];
             $arrParam[$key] = $val;
         }
-        // dd($arrParam);
-
-        // $detail = collect(DB::select("
-        //     EXEC dbo.sp_getDataDiagnosticReportDetail ?, ?, ?, ?
-        // ", [
-        //     $id_unit,
-        //     $arrParam['id'],
-        //     $arrParam['karcis_asal'],
-        //     $arrParam['karcis_rujukan']
-        // ]));
-        // dd($detail);
+        $id_unit = $arrParam['id_unit'] ?? Session::get('id_unit', '001');
+        // dd($arrParam, $id_unit);
 
         $dokumen_px =  DB::connection('sqlsrv')
             ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
@@ -425,7 +430,7 @@ class DiagnosticReportController extends Controller
             ->orderBy('s.crtdt', 'desc')
             ->first();
 
-        // dd($dokumen_px, $riwayat, $dokumen_px_codings, $patient, $dokter, $encounter, $observation, $serviceRequest);
+        // dd($id_unit, $dokumen_px, $riwayat, $dokumen_px_codings, $patient, $dokter, $encounter, $observation, $serviceRequest);
 
         $dateTimeNow = Carbon::now()->toIso8601String();
         $categories = [];

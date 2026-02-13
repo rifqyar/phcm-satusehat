@@ -5,6 +5,8 @@ namespace App\Jobs;
 use App\Services\AllergyIntoleranceService;
 use App\Services\CarePlanService;
 use App\Services\ClinicalImpressionService;
+use App\Services\CompositionService;
+use App\Services\DiagnosticReportService;
 use App\Services\EncounterService;
 use App\Services\ObservasiService;
 use App\Services\ProcedureService;
@@ -93,6 +95,14 @@ class DispatchToEndpoint implements ShouldQueue
 
             case 'episode-of-care':
                 app(MedicationRequestService::class)->process($this->payload);
+                break;
+
+            case 'composition':
+                app(CompositionService::class)->process($this->payload);
+                break;
+
+            case 'diagnostic-report':
+                app(DiagnosticReportService::class)->process($this->payload);
                 break;
 
             default:
