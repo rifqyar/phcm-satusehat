@@ -451,6 +451,40 @@ class EncounterController extends Controller
                 $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Encounter';
                 throw new Exception($msg, $dataencounter->getStatusCode());
             } else {
+                // Resend Encounter Rawatjalan update discharge type jadi AD
+                if ($jenisPerawatan != 'RJ') {
+                    $karcisRajal = DB::selectOne('SELECT KARCIS FROM RJ_KARCIS WHERE NOREG = ?', [$dataKarcis->NOREG]);
+                    $post = [
+                        'karcis' => $karcisRajal->KARCIS,
+                        'jenis_layanan' => 'RJ'
+                    ];
+                    $urls = array(
+                        'api/encounter',
+                    );
+
+                    $post['aktivitas'] = 'ENCOUNTER RAWAT JALAN';
+                    $post['post_from'] = 'Trigger Otomatis Update Rajal From Ranap';
+                    $post['url'] = $urls;
+                    $post['id_unit'] = $id_unit;
+
+                    $payload = json_encode($post);
+
+                    $chSatusehat = curl_init();
+                    curl_setopt($chSatusehat, CURLOPT_HTTPHEADER, array(
+                        'Content-Type: application/json',
+                    ));
+                    curl_setopt($chSatusehat, CURLOPT_URL, env('APP_URL', 'http://10.1.19.22:8001') . 'api/dispatch');
+                    curl_setopt($chSatusehat, CURLOPT_SSL_VERIFYPEER, false);
+                    curl_setopt($chSatusehat, CURLOPT_POST, 1);
+                    curl_setopt($chSatusehat, CURLOPT_POSTFIELDS, $payload);
+                    curl_setopt($chSatusehat, CURLOPT_RETURNTRANSFER, true);
+                    curl_setopt($chSatusehat, CURLOPT_TIMEOUT, 2);
+
+                    $contentSatusehat = curl_exec($chSatusehat);
+
+                    curl_close($chSatusehat);
+                }
+
                 DB::beginTransaction();
                 try {
                     $historyTime = $arrParam['jenis_perawatan'] == 'RJ' ? $this->getHistoryTime($dataKarcis) : $this->getHistoryTimeInap($dataKarcis);
@@ -701,7 +735,9 @@ class EncounterController extends Controller
         ];
 
         $dischargeType = [];
+        $diagnosis = [];
         if ($diagnosisSatuSehat != null) {
+            // Status History
             array_push(
                 $statusHistory['statusHistory'],
                 [
@@ -720,6 +756,7 @@ class EncounterController extends Controller
                 ]
             );
 
+            // Discharge Type
             $textDischage = $dataKarcis->NOREG == null ? "Anjuran dokter untuk pulang" : "Pasien dirujuk ke rawat inap untuk perawatan lebih lanjut";
             $dischargeType = [
                 "hospitalization" => [
@@ -735,6 +772,28 @@ class EncounterController extends Controller
                     ]
                 ],
             ];
+
+            // Diagnosis
+            $diagnosis = [
+                "diagnosis" => [
+                    [
+                        "condition" => [
+                            "reference" => "Condition/" . $diagnosisSatuSehat->id_satusehat_condition,
+                            "display" => $diagnosisSatuSehat->display
+                        ],
+                        "use" => [
+                            "coding" => [
+                                [
+                                    "system" => "http://terminology.hl7.org/CodeSystem/diagnosis-role",
+                                    "code" => $dataKarcis->NOREG == null ? "DD" : "AD",
+                                    "display" => $dataKarcis->NOREG == null ? "Discharge diagnosis" : "Admission diagnosis"
+                                ]
+                            ]
+                        ],
+                        "rank" => (int) $diagnosisSatuSehat->rank
+                    ]
+                ]
+            ];
         }
 
         $period = [
@@ -744,7 +803,7 @@ class EncounterController extends Controller
             ],
         ];
 
-        $payload = array_merge($jenisEncounter, $statusHistory, $period, $dischargeType);
+        $payload = array_merge($jenisEncounter, $statusHistory, $period, $dischargeType, $diagnosis);
         return $payload;
     }
 
@@ -924,91 +983,94 @@ class EncounterController extends Controller
 
     private function getHistoryTime($dataKarcis)
     {
+        $tz = 'Asia/Jakarta';
+
+        // ===============================
+        // PARSE SEMUA WAKTU (IMMUTABLE)
+        // ===============================
         $waktu_buat_karcis = $dataKarcis->WAKTU_BUAT_KARCIS
-            ? Carbon::parse($dataKarcis->WAKTU_BUAT_KARCIS, 'Asia/Jakarta')
+            ? Carbon::parse($dataKarcis->WAKTU_BUAT_KARCIS, $tz)
             : null;
 
         $waktu_verif_karcis = $dataKarcis->TGL_VERIF_KARCIS
-            ? Carbon::parse($dataKarcis->TGL_VERIF_KARCIS, 'Asia/Jakarta')
+            ? Carbon::parse($dataKarcis->TGL_VERIF_KARCIS, $tz)
             : null;
 
         $waktu_nota = $dataKarcis->WAKTU_NOTA
-            ? Carbon::parse($dataKarcis->WAKTU_NOTA, 'Asia/Jakarta')
+            ? Carbon::parse($dataKarcis->WAKTU_NOTA, $tz)
             : null;
 
-        $waktu_erm = ($dataKarcis->ermkunjung && $dataKarcis->ermkunjung->WAKTU_ERM)
-            ? Carbon::parse($dataKarcis->ermkunjung->WAKTU_ERM, 'Asia/Jakarta')
+        $waktu_erm = (
+            $dataKarcis->ermkunjung &&
+            $dataKarcis->ermkunjung->WAKTU_ERM
+        )
+            ? Carbon::parse($dataKarcis->ermkunjung->WAKTU_ERM, $tz)
             : null;
 
         // ===============================
-        // HANDLE DEFAULT VALUE
-        // Jika waktu nota null (belum bayar),
-        // set ke max dari waktu lain supaya tidak error
+        // FALLBACK NOTA
         // ===============================
         if (!$waktu_nota) {
-            // fallback: gunakan waktu ERM atau verif atau buat karcis
-            $waktu_nota = $waktu_erm
-                ?? $waktu_verif_karcis
-                ?? $waktu_buat_karcis;
+            $waktu_nota = collect([
+                $waktu_erm,
+                $waktu_verif_karcis,
+                $waktu_buat_karcis,
+            ])->filter()->max();
 
-            // Jika semua null, set ke sekarang
             if (!$waktu_nota) {
-                $waktu_nota = Carbon::now('Asia/Jakarta');
+                $waktu_nota = Carbon::now($tz);
             }
         }
 
         // ===============================
-        // JAM START
+        // JAM START (PALING AKHIR DARI BUAT / VERIF)
         // ===============================
-        if ($waktu_verif_karcis && $waktu_buat_karcis) {
-            $jam_start = $waktu_verif_karcis >= $waktu_buat_karcis
-                ? $waktu_verif_karcis
-                : $waktu_buat_karcis;
-        } else {
-            // fallback jika salah satu null
-            $jam_start = $waktu_verif_karcis ?? $waktu_buat_karcis ?? Carbon::now('Asia/Jakarta');
-        }
+        $jam_start = collect([
+            $waktu_buat_karcis,
+            $waktu_verif_karcis,
+        ])->filter()->max() ?? Carbon::now($tz);
 
         // ===============================
-        // JAM PROGRESS
+        // JAM PROGRESS (PALING AWAL ERM / NOTA)
         // ===============================
-        if ($waktu_erm && $waktu_nota) {
-            $jam_progress = $waktu_erm <= $waktu_nota
-                ? $waktu_erm
-                : $waktu_nota;
-        } else {
-            // fallback
-            $jam_progress = $waktu_erm ?? $waktu_nota;
+        $jam_progress = collect([
+            $waktu_erm,
+            $waktu_nota,
+        ])->filter()->min() ?? $jam_start->copy()->addMinutes(5);
+
+        // ===============================
+        // NORMALISASI START ≤ PROGRESS
+        // ===============================
+        if ($jam_progress->lt($jam_start)) {
+            $jam_start = $jam_progress
+                ->copy()
+                ->subMinutes(rand(3, 6));
         }
 
         // ===============================
         // JAM FINISH
         // ===============================
-        if ($jam_progress && $waktu_erm && $jam_progress == $waktu_erm) {
-            $jam_finish = $waktu_nota;
+        if ($waktu_erm && $jam_progress->equalTo($waktu_erm)) {
+            $jam_finish = $waktu_nota->copy();
         } else {
             $jam_finish = $jam_progress
-                ? Carbon::parse($jam_progress->toDateTimeString(), 'Asia/Jakarta')->addMinutes(rand(3, 6))
-                : $waktu_nota;
+                ->copy()
+                ->addMinutes(rand(3, 6));
         }
 
         // ===============================
-        // PENYESUAIAN WAKTU
+        // NORMALISASI PROGRESS ≤ FINISH
         // ===============================
-        if ($jam_progress && $jam_start && $jam_progress < $jam_start) {
-            $minutes = $jam_start->diff($jam_progress)->format('%i') + rand(3, 6);
-            $jam_start->subMinutes($minutes);
-        }
-
-        if ($jam_finish && $jam_progress && $jam_finish <= $jam_progress) {
-            $minutes = $jam_finish->diff($jam_progress)->format('%i') + rand(6, 10);
-            $jam_finish->addMinutes($minutes);
+        if ($jam_finish->lte($jam_progress)) {
+            $jam_finish = $jam_progress
+                ->copy()
+                ->addMinutes(rand(6, 10));
         }
 
         return [
-            'jam_start' => $jam_start,
+            'jam_start'    => $jam_start,
             'jam_progress' => $jam_progress,
-            'jam_finish' => $jam_finish
+            'jam_finish'   => $jam_finish,
         ];
     }
 

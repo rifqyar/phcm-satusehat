@@ -65,22 +65,36 @@ class EpisodeOfCareController extends Controller
         $start  = (int) $request->input('start', 0);
         $length = (int) $request->input('length', 10);
         $draw   = (int) $request->input('draw', 1);
+        $search = $request->search['value'] ?? null;
 
         $pageNumber = ($start / $length) + 1;
         $pageSize   = $length;
 
         $data = DB::select("
-            EXEC dbo.sp_getDataEpisodeOfCare ?, ?, ?, ?, ?, ?
+            EXEC dbo.sp_getDataEpisodeOfCare ?, ?, ?, ?, ?, ?, ?, ?
         ", [
             $id_unit,
             $tgl_awal_db,
             $tgl_akhir_db,
             $request->input('cari') == '' ? 'unmapped' : $request->input('cari'),
             $pageNumber,
-            $pageSize
+            $pageSize,
+            null,
+            $search
         ]);
 
-        if (count($data) == 0) {
+        $dataAll = DB::selectOne("
+            EXEC dbo.sp_getDataEpisodeOfCare ?, ?, ?, ?, ?, ?
+        ", [
+            $id_unit,
+            $tgl_awal_db,
+            $tgl_akhir_db,
+            'all',
+            1,
+            1
+        ]);
+
+        if ($dataAll == null) {
             return response()->json([
                 "draw" => $draw,
                 "recordsTotal" => 0,
@@ -96,16 +110,15 @@ class EpisodeOfCareController extends Controller
             ]);
         }
 
-        $summary = $data[0] ?? null;
+        $recordsTotal    = $dataAll->total_semua ?? 0;
+        $recordsFiltered = $data[0]->recordsFiltered ?? $recordsTotal;
         $totalData = [
-            'total_semua' => $summary->total_semua ?? 0,
-            'total_rawat_jalan' => $summary->total_rawat_jalan ?? 0,
-            'total_rawat_inap' => $summary->total_rawat_inap ?? 0,
-            'total_sudah_integrasi' => $summary->total_sudah_integrasi ?? 0,
-            'total_belum_integrasi' => $summary->total_belum_integrasi ?? 0,
+            'total_semua' => $dataAll->total_semua ?? 0,
+            'total_sudah_integrasi' => $dataAll->total_sudah_integrasi ?? 0,
+            'total_belum_integrasi' => $dataAll->total_belum_integrasi ?? 0,
+            'total_rawat_jalan' => $dataAll->total_rawat_jalan ?? 0,
+            'total_rawat_inap' => $dataAll->total_rawat_inap ?? 0,
         ];
-        $recordsTotal    = $summary->total_semua ?? 0;
-        $recordsFiltered = $summary->recordsFiltered ?? $recordsTotal;
 
         $dataEpisode = [];
         $index = $start + 1;
@@ -204,16 +217,6 @@ class EpisodeOfCareController extends Controller
 
     public function send(Request $request, $resend = false)
     {
-        /**
-         * TO DO: Implementasi Send Episode Of Care to SatuSehat FHIR Server
-         * 1. pengiriman episode of care di awal pemeriksaan (setelah ada encounter & condition) ✅
-         * 2. status awal = active ✅
-         * 3. update episode of care (resend)
-         * 4. saat resend jika pengobatan sudah selesai (pasien pulang / discharge) maka status = finished ✅
-         * 5. jika masih dalam perawatan maka status = active ✅
-         * 6. catatan: episode of care harus terintegrasi setelah encounter & condition ✅
-         */
-
         $id_unit = Session::get('id_unit', '001');
         $param = $request->param;
         $params = LZString::decompressFromEncodedURIComponent($param);
@@ -741,7 +744,7 @@ class EpisodeOfCareController extends Controller
                 ->on('RJ_KARCIS.IDUNIT', '=', 'KarcisBayar.IDUNIT')
                 ->whereRaw('ISNULL(KarcisBayar.STBTL,0) = 0')
                 ->where('KarcisBayar.IDUNIT', $id_unit); // pindahkan ke sini
-            })
+        })
             ->with([
                 'ermkunjung' => function ($query) use ($arrParam, $id_unit) {
                     $query->select('KARCIS', 'NO_KUNJUNG', 'CRTDT AS WAKTU_ERM')

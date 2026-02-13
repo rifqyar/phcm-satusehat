@@ -408,7 +408,7 @@
                     }
                 },
                 processing: true,
-                serverSide: false,
+                serverSide: true,
                 scrollX: false,
                 ajax: {
                     url: `{{ route('satusehat.episode-of-care.datatable') }}`,
