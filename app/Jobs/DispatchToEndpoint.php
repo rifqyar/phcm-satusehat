@@ -105,6 +105,8 @@ class DispatchToEndpoint implements ShouldQueue
 
             case 'medstatement':
                 app(MedStatementService::class)->process($this->payload);
+                break;
+                
             case 'composition':
                 app(CompositionService::class)->process($this->payload);
                 break;
