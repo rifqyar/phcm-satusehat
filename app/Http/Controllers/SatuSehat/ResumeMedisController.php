@@ -87,7 +87,6 @@ class ResumeMedisController extends Controller
                 $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
                 $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
                 $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
-                // $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
                 $paramSatuSehat = LZString::compressToEncodedURIComponent($jenisPerawatan . '+' . $id_transaksi . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' .  $kdLokasiSS);
 
                 $checkBox = "";
@@ -141,18 +140,11 @@ class ResumeMedisController extends Controller
             //     }
             // })
             ->addColumn('action', function ($row) {
-                $kdbuku = LZString::compressToEncodedURIComponent($row->KBUKU);
-                $kdDok = LZString::compressToEncodedURIComponent($row->KODE_DOKTER);
-                $kdKlinik = LZString::compressToEncodedURIComponent($row->KODE_KLINIK);
-                $idUnit = LZString::compressToEncodedURIComponent($row->ID_UNIT);
-                $param = LZString::compressToEncodedURIComponent($kdbuku . '+' . $kdDok . '+' . $kdKlinik . '+' . $idUnit);
-
                 $jenisPerawatan = $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
                 $id_transaksi = LZString::compressToEncodedURIComponent($row->ID_TRANSAKSI);
                 $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
                 $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
                 $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
-                // $paramSatuSehat = "jenis_perawatan=" . $jenisPerawatan . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS;
                 $paramSatuSehat = LZString::compressToEncodedURIComponent($jenisPerawatan . '+' . $id_transaksi . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' .  $kdLokasiSS);
 
                 $btn = '';
@@ -314,23 +306,6 @@ class ResumeMedisController extends Controller
             ->where('a.karcis', $decoded)
             ->first();
 
-        // $dataErm = [
-        //     'ID_TRANSAKSI' => 'TRX00001',
-        //     'CRTUSR' => 'Dr. Dokter Dummy',
-        //     'KELUHAN' => 'Pasien mengeluh demam dan batuk sejak 3 hari yang lalu',
-        //     'TD' => '120/80 mmHg',
-        //     'DJ' => '80 x/menit',
-        //     'P' => '20 x/menit',
-        //     'SUHU' => '37.5 °C',
-        //     'TB' => '170 cm',
-        //     'BB' => '65 kg',
-        //     'IMT' => '22.5 kg/m² (Normal)',
-        //     'DIAGNOSA' => 'ISPA (Infeksi Saluran Pernapasan Akut)',
-        //     'TERAPI' => 'Paracetamol 3x500mg, Amoxicillin 3x500mg',
-        //     'TINDAKAN' => 'Observasi, istirahat cukup, banyak minum air putih',
-        //     'ANJURAN' => 'Kontrol kembali jika keluhan tidak membaik dalam 3 hari',
-        // ];
-
         return response()->json([
             'dataPasien' => $dataPasien,
             'dataErm' => $dataErm,
@@ -445,26 +420,21 @@ class ResumeMedisController extends Controller
             $parts = explode('+', $params);
             // dd($param, $params, $parts);
 
-            if (count($parts) !== 5) {
-                throw new Exception('Parameter does not contain expected 5 parts, got: ' . count($parts));
+            if (count($parts) < 5) {
+                throw new Exception('Parameter does not contain minimum 5 parts, got: ' . count($parts));
             }
 
-            // $arrParam = [];
-            // $partsParam = explode('=', $parts[0]);
-            // $arrParam[$partsParam[0]] = $partsParam[1];
-            // for ($i = 1; $i < count($parts); $i++) {
-            //     $partsParam = explode('=', $parts[$i]);
-            //     $key = $partsParam[0];
-            //     $val = $partsParam[1];
-            //     $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
-            // }
-
-            $jenisPerawatan = LZString::decompressFromEncodedURIComponent($parts[0]);
+            $jenisPerawatan = $parts[0];
             $idTransaksi = LZString::decompressFromEncodedURIComponent($parts[1]);
             $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[2]);
             $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[3]);
             $kdLokasiSS = LZString::decompressFromEncodedURIComponent($parts[4]);
-            $id_unit = Session::get('id_unit', '001');
+
+            $id_unit = isset($parts[5])
+                ? LZString::decompressFromEncodedURIComponent($parts[5])
+                : Session::get('id_unit', '001');
+
+            // dd($jenisPerawatan, $idTransaksi, $kdPasienSS, $kdNakesSS, $kdLokasiSS, $id_unit);
         } catch (Exception $e) {
             Log::error('Parameter parsing failed in sendSatuSehat', [
                 'param' => $param,
@@ -518,7 +488,7 @@ class ResumeMedisController extends Controller
         //     ->where('idunit', $id_unit)
         //     ->first();
 
-        $status = 'final';
+        $status = $resend ? 'final' : 'preliminary';
 
         $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
             ->where('idpx', $kdPasienSS)
@@ -530,9 +500,6 @@ class ResumeMedisController extends Controller
         } else {
             $payloadRI = $this->definePayloadRawatInap($dataKarcis, $patient);
         }
-
-        // sementara ambil langsung dari log satusehat
-        // nanti validasi ambil dari table masing2
 
         $dataClinicalImpression = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_CLINICALIMPRESSION')
             ->select(
@@ -668,24 +635,6 @@ class ResumeMedisController extends Controller
             ->limit(100)
             ->get();
         // dd($dataMedication);
-
-        // $dataKuesioner = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_RESPON_KUESIONER')
-        //     ->select(
-        //         'karcis',
-        //         'nota',
-        //         'idunit',
-        //         'id_satusehat_encounter',
-        //         'id_satusehat_respon_kuesioner',
-        //         'kbuku',
-        //         'no_peserta',
-        //         'id_satusehat_px'
-        //     )
-        //     ->where('karcis', $idTransaksi)
-        //     ->where('no_peserta', $dataKarcis->NO_PESERTA)
-        //     ->where('id_satusehat_encounter', $dataEncounterSatuSehat->id_satusehat_encounter)
-        //     ->distinct()
-        //     ->limit(100)
-        //     ->get();
 
         $dataServiceRequest = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as a')
             ->select(

@@ -132,7 +132,8 @@ class ProcedureController extends Controller
             $paramSatuSehat = "sudah_integrasi=$row->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=$jenisPerawatan";
             $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
-            $param = LZString::compressToEncodedURIComponent("karcis=$id_transaksi&kbuku=$KbBuku&jenis_perawatan=$jenisPerawatan");
+            $idunit = LZString::compressToEncodedURIComponent($id_unit);
+            $param = LZString::compressToEncodedURIComponent("karcis=$id_transaksi&kbuku=$KbBuku&jenis_perawatan=$jenisPerawatan&id_unit=$idunit");
             $dataProcedure[] = [
                 'DT_RowIndex' => $index++,
                 'KARCIS' => $row->KARCIS,
@@ -278,6 +279,7 @@ class ProcedureController extends Controller
                 ->where('vkr.KBUKU', $arrParam['kbuku'])
                 ->where('vkr.ID_TRANSAKSI', $arrParam['karcis'])
                 ->where('eri.AKTIF', 1)
+                ->where('eri.IDUNIT', $arrParam['id_unit'])
                 ->orderByDesc('vkr.TANGGAL')
                 ->first();
 
@@ -324,6 +326,7 @@ class ProcedureController extends Controller
                 ->leftjoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri2', 'eri2.KARCIS', 'rk.KARCIS')
                 ->where('vkr.KBUKU', $arrParam['kbuku'])
                 ->where('vkr.ID_TRANSAKSI', $arrParam['karcis'])
+                ->where('eri2.IDUNIT', $arrParam['id_unit'])
                 ->where('h.aktif', 1)
                 ->first();
             $dataErm->jenis_perawatan = 'RJ';
@@ -489,21 +492,7 @@ class ProcedureController extends Controller
             $val = $partsParam[1];
             $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
         }
-        $id_unit = Session::get('id_unit', '001');
-
-        /**
-         * TO DO
-         * Get Data ERM IRJA
-         * Get Data Lab
-         * Get Data Rad
-         * Get Data Service Request
-         * Get Data Operasi
-         * 1. Buat Payload Procedure Pemeriksaan fisik
-         * 2. Buat Payload Procedure Lab jika ada
-         * 3. Buat Payload Procedure Rad jika ada
-         * 4. Buat Payload Procedure OP jika ada
-         * 5. Buat Queue Pengiriman ke satu sehat
-         */
+        $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
 
         if ($arrParam['jenis_perawatan'] == 'RAWAT_JALAN') {
             $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RM_IRJA as eri')
@@ -520,6 +509,7 @@ class ProcedureController extends Controller
                     'eri.CRTDT'
                 ])
                 ->where('karcis', $arrParam['karcis'])
+                ->where('eri.IDUNIT', $id_unit)
                 ->where('eri.aktif', 1)
                 ->first();
         } else {
@@ -540,6 +530,7 @@ class ProcedureController extends Controller
                     'eri.CRT_DT as CRTDT'
                 ])
                 ->where('eri.noreg', $arrParam['karcis'])
+                ->where('eri2.IDUNIT', $id_unit)
                 ->where('eri.aktif', 1)
                 ->first();
         }

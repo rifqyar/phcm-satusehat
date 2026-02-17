@@ -2,35 +2,31 @@
 
 namespace App\Services;
 
-use App\Http\Controllers\SatuSehat\ClinicalImpressionController;
 use App\Http\Traits\LogTraits;
-use App\Jobs\SendClinicalImpression;
-use App\Jobs\SendEncounter;
+use App\Jobs\SendResumeMedis;
 use App\Lib\LZCompressor\LZString;
-use App\Models\SATUSEHAT\SATUSEHAT_CLINICALIMPRESSION;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class ClinicalImpressionService
+class CompositionService
 {
     use LogTraits;
 
     public function process(array $payload): void
     {
+        DB::disableQueryLog();
         $id_unit = $payload['id_unit'] ?? null;
 
-        $this->logInfo('ClinicalImpression', 'Process Clinical Impression dari SIMRS', [
+        $this->logInfo('Composition', 'Process Composition dari SIMRS', [
             'payload' => $payload,
+            'karcis' => $payload['karcis'],
             'user_id' => 'system',
         ]);
 
         try {
-            $clinicalImpressionId = SATUSEHAT_CLINICALIMPRESSION::where(
-                'KARCIS',
-                (int) $payload['karcis']
-            )
-                ->where('ID_UNIT', $id_unit)
+            $compositionId = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_COMPOSITION')
+                ->where('KARCIS', $payload['karcis'])
                 ->first();
 
             $data = $this->getKunjunganData($payload, $id_unit);
@@ -45,9 +41,9 @@ class ClinicalImpressionService
             }
 
             $param = $this->buildEncryptedParam($payload, $data);
-            SendClinicalImpression::dispatch($param, (bool) $clinicalImpressionId)->onQueue('ClinicalImpression');
+            SendResumeMedis::dispatch($param, (bool) $compositionId)->onQueue('Composition');
         } catch (Exception $th) {
-            $this->logError('ClinicalImpression', 'Gagal Process Clinical Impression dari SIMRS', [
+            $this->logError('Composition', 'Gagal Process Composition dari SIMRS', [
                 'payload' => $payload,
                 'user_id' => 'system',
                 'error' => $th->getMessage(),
@@ -59,7 +55,7 @@ class ClinicalImpressionService
     protected function getKunjunganData(array $payload, $id_unit)
     {
         $data = DB::selectOne("
-            EXEC dbo.sp_getClinicalImpression ?, ?, ?, ?, ?
+            EXEC dbo.sp_getDataComposition ?, ?, ?, ?, ?
         ", [
             $id_unit,
             null,
@@ -79,14 +75,13 @@ class ClinicalImpressionService
 
     protected function buildEncryptedParam(array $payload, $data): string
     {
+        $jenisPerawatan = $data->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
         $id_transaksi = LZString::compressToEncodedURIComponent($payload['karcis']);
-        $KbBuku = LZString::compressToEncodedURIComponent($data->KBUKU);
         $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
         $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
-        $idEncounter = LZString::compressToEncodedURIComponent($data->id_satusehat_encounter);
+        $kdLokasiSS = LZString::compressToEncodedURIComponent($data->ID_LOKASI_SS);
         $id_unit = LZString::compressToEncodedURIComponent($payload['id_unit']);
-        $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&id_unit=$id_unit&jenis_perawatan=" . LZString::compressToEncodedURIComponent($data->JENIS_PERAWATAN);
-        $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
+        $paramSatuSehat = LZString::compressToEncodedURIComponent($jenisPerawatan . '+' . $id_transaksi . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' .  $kdLokasiSS . '+' .  $id_unit);
 
         return $paramSatuSehat;
     }

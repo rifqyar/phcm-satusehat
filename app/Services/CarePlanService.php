@@ -2,17 +2,14 @@
 
 namespace App\Services;
 
-use App\Http\Controllers\SatuSehat\ClinicalImpressionController;
 use App\Http\Traits\LogTraits;
-use App\Jobs\SendClinicalImpression;
-use App\Jobs\SendEncounter;
+use App\Jobs\SendCarePlan;
 use App\Lib\LZCompressor\LZString;
-use App\Models\SATUSEHAT\SATUSEHAT_CLINICALIMPRESSION;
+use App\Models\SATUSEHAT\SATUSEHAT_CARE_PLAN;
 use Exception;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
-class ClinicalImpressionService
+class CarePlanService
 {
     use LogTraits;
 
@@ -20,13 +17,13 @@ class ClinicalImpressionService
     {
         $id_unit = $payload['id_unit'] ?? null;
 
-        $this->logInfo('ClinicalImpression', 'Process Clinical Impression dari SIMRS', [
+        $this->logInfo('CarePlan', 'Process CarePlan dari SIMRS', [
             'payload' => $payload,
             'user_id' => 'system',
         ]);
 
         try {
-            $clinicalImpressionId = SATUSEHAT_CLINICALIMPRESSION::where(
+            $CarePlanId = SATUSEHAT_CARE_PLAN::where(
                 'KARCIS',
                 (int) $payload['karcis']
             )
@@ -39,15 +36,15 @@ class ClinicalImpressionService
             }
 
             if (
-                $data->id_satusehat_encounter == null
+                $data->ID_SATUSEHAT_ENCOUNTER == null
             ) {
                 return;
             }
 
             $param = $this->buildEncryptedParam($payload, $data);
-            SendClinicalImpression::dispatch($param, (bool) $clinicalImpressionId)->onQueue('ClinicalImpression');
+            SendCarePlan::dispatch($param, (bool) $CarePlanId)->onQueue('CarePlan');
         } catch (Exception $th) {
-            $this->logError('ClinicalImpression', 'Gagal Process Clinical Impression dari SIMRS', [
+            $this->logError('CarePlan', 'Gagal Process Clinical Impression dari SIMRS', [
                 'payload' => $payload,
                 'user_id' => 'system',
                 'error' => $th->getMessage(),
@@ -59,31 +56,32 @@ class ClinicalImpressionService
     protected function getKunjunganData(array $payload, $id_unit)
     {
         $data = DB::selectOne("
-            EXEC dbo.sp_getClinicalImpression ?, ?, ?, ?, ?
+            EXEC dbo.sp_getCarePlan ?, ?, ?, ?, ?
         ", [
             $id_unit,
             null,
             null,
             'all',
             $payload['karcis'] ?? '',
+            null,
         ]);
 
         if (! $data) {
             throw new \Exception('Data Kunjungan tidak ditemukan');
         }
 
-        if ($data->id_satusehat_encounter == null || $data->id_satusehat_encounter == '') return;
+        if ($data->ID_SATUSEHAT_ENCOUNTER == null || $data->ID_SATUSEHAT_ENCOUNTER == '') return;
 
         return $data;
     }
 
     protected function buildEncryptedParam(array $payload, $data): string
     {
-        $id_transaksi = LZString::compressToEncodedURIComponent($payload['karcis']);
+        $id_transaksi = LZString::compressToEncodedURIComponent($data->ID_TRANSAKSI);
         $KbBuku = LZString::compressToEncodedURIComponent($data->KBUKU);
         $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
         $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
-        $idEncounter = LZString::compressToEncodedURIComponent($data->id_satusehat_encounter);
+        $idEncounter = LZString::compressToEncodedURIComponent($data->ID_SATUSEHAT_ENCOUNTER);
         $id_unit = LZString::compressToEncodedURIComponent($payload['id_unit']);
         $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&id_unit=$id_unit&jenis_perawatan=" . LZString::compressToEncodedURIComponent($data->JENIS_PERAWATAN);
         $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);

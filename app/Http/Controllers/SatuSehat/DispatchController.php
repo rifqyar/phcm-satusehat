@@ -23,10 +23,10 @@ class DispatchController extends Controller
         /** Check encounter dulu */
         $encounterId = DB::selectOne("
             SELECT ID_SATUSEHAT_ENCOUNTER FROM fn_getDataKunjungan(?, 'RAWAT_JALAN')
-            WHERE ID_TRANSAKSI = ?
+            WHERE ID_TRANSAKSI = ? AND TANGGAL >= DATEADD(YEAR, -1, GETDATE())
             UNION ALL
             SELECT ID_SATUSEHAT_ENCOUNTER FROM fn_getDataKunjungan(?, 'RAWAT_INAP')
-            WHERE ID_TRANSAKSI = ?
+            WHERE ID_TRANSAKSI = ? AND TANGGAL >= DATEADD(YEAR, -1, GETDATE())
         ", [
             $request->id_unit,
             $payload['karcis'],

@@ -57,7 +57,7 @@ class SendDiagnosticReport implements ShouldQueue
       $encodedParam = base64_encode($this->param);
 
       // Call controller method. We ignore the return payload here since it's async.
-      $result = $controller->sendSatuSehat($encodedParam);
+      $result = $controller->sendSatuSehat($encodedParam, $this->resend);
 
       // Log successful processing
       Log::info('Send Diagnostic Report job completed successfully', [

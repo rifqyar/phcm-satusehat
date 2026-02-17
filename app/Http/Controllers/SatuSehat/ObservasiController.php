@@ -91,7 +91,17 @@ class ObservasiController extends Controller
             $pageSize
         ]);
 
-        if (count($data) == 0) {
+        $dataAll = DB::select('EXEC dbo.sp_getObservasi ?, ?, ?, ?, ?, ?, ?', [
+            $id_unit,
+            $tgl_awal_db,
+            $tgl_akhir_db,
+            'all',
+            null,
+            1,
+            1
+        ]);
+
+        if (count($dataAll) == 0) {
             return response()->json([
                 "draw" => $draw,
                 "recordsTotal" => 0,
@@ -100,7 +110,7 @@ class ObservasiController extends Controller
             ]);
         }
 
-        $summary = $data[0] ?? null;
+        $summary = $dataAll[0] ?? null;
         $totalData = [
             'total_semua' => $summary->total_semua ?? 0,
             'total_rawat_jalan' => $summary->total_rawat_jalan ?? 0,
