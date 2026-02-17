@@ -90,49 +90,47 @@ class MedStatementController extends Controller
             ) x
             WHERE rn = 1
         ) B ON A.ID_TRANS = B.LOCAL_ID
-        WHERE B.CREATED_AT BETWEEN ? AND ?
-    ";
+        WHERE B.CREATED_AT BETWEEN ? AND ?";
 
         $query = DB::select($sql, [$startDate, $endDate]);
 
-// ========================
-// QUERY DATA TABLE (PAKAI FILTER STATUS)
-// ========================
-$dataQuery = DB::select($sql, [$startDate, $endDate]);
+        // ========================
+        // QUERY DATA TABLE (PAKAI FILTER STATUS)
+        // ========================
+        $dataQuery = DB::select($sql, [$startDate, $endDate]);
 
-if ($status !== 'all') {
-    $dataQuery = array_values(array_filter($dataQuery, function ($row) use ($status) {
-        return $status === 'integrated'
-            ? $row->STATUS_KIRIM_STATEMENT === 'Integrasi'
-            : $row->STATUS_KIRIM_STATEMENT === 'Belum Integrasi';
-    }));
-}
+        if ($status !== 'all') {
+            $dataQuery = array_values(array_filter($dataQuery, function ($row) use ($status) {
+                return $status === 'integrated'
+                    ? $row->STATUS_KIRIM_STATEMENT === 'Integrasi'
+                    : $row->STATUS_KIRIM_STATEMENT === 'Belum Integrasi';
+            }));
+        }
 
-// ========================
-// QUERY SUMMARY (TANPA FILTER STATUS)
-// ========================
-$summaryQuery = DB::select($sql, [$startDate, $endDate]);
+        // ========================
+        // QUERY SUMMARY (TANPA FILTER STATUS)
+        // ========================
+        $summaryQuery = DB::select($sql, [$startDate, $endDate]);
 
-$sudahKirim = 0;
-$belumKirim = 0;
+        $sudahKirim = 0;
+        $belumKirim = 0;
 
-foreach ($summaryQuery as $row) {
-    if ($row->STATUS_KIRIM_STATEMENT === 'Integrasi') {
-        $sudahKirim++;
-    } else {
-        $belumKirim++;
-    }
-}
+        foreach ($summaryQuery as $row) {
+            if ($row->STATUS_KIRIM_STATEMENT === 'Integrasi') {
+                $sudahKirim++;
+            } else {
+                $belumKirim++;
+            }
+        }
 
-return response()->json([
-    'data' => $dataQuery,
-    'summary' => [
-        'all'         => count($summaryQuery),
-        'sudah_kirim' => $sudahKirim,
-        'belum_kirim' => $belumKirim,
-    ]
-]);
-
+        return response()->json([
+            'data' => $dataQuery,
+            'summary' => [
+                'all'         => count($summaryQuery),
+                'sudah_kirim' => $sudahKirim,
+                'belum_kirim' => $belumKirim,
+            ]
+        ]);
     }
 
 
@@ -282,6 +280,44 @@ return response()->json([
             'data' => $results
         ]);
     }
+
+    public function processSendMedStatement($karcis)
+    {
+        $sql = "SELECT TOP 1
+                A.ID_TRANS
+            FROM IF_HTRANS A
+            JOIN IF_HTRANS_OL AA 
+                ON A.ID_TRANS_OL = AA.ID_TRANS
+            JOIN (
+                SELECT *
+                FROM (
+                    SELECT *,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY LOCAL_ID
+                            ORDER BY CREATED_AT DESC
+                        ) AS rn
+                    FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION
+                    WHERE LOG_TYPE = 'MedicationDispense'
+                      AND STATUS = 'success'
+                ) x
+                WHERE rn = 1
+            ) B ON A.ID_TRANS = B.LOCAL_ID
+            WHERE AA.KARCIS = ?
+            ORDER BY B.CREATED_AT DESC";
+
+        $row = DB::selectOne($sql, [$karcis]);
+
+        if (!$row) {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Data Transaksi Belum Tersedia untuk karcis: ' . $karcis
+            ], 422);
+        }
+
+        $idTrans = $row->ID_TRANS;
+        $this->sendStatement($idTrans);
+    }
+
 
     /**
      * Reusable
