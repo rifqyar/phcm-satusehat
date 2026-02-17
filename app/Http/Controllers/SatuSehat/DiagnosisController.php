@@ -262,44 +262,51 @@ class DiagnosisController extends Controller
             ], 400);
         }
 
+        return $this->processSendDiagnosis($karcis, $id_unit, $user);
+
+
+    }
+
+    public function processSendDiagnosis($karcis, $id_unit, $user)
+    {
         $sql = "
-        SELECT
-            UPPER(LTRIM(RTRIM(A.KODE_DIAGNOSA_UTAMA))) AS KODE_DIAGNOSA_UTAMA,
-            A.DIAG_UTAMA,
-            SE.id_satusehat_encounter,
-            SE.nota,
-            SE.karcis,
-            SE.jam_datang,
-            SP.idpx,
-            SP.nama AS nama_pasien,
-            ICD.KATA1
-        FROM (
-            SELECT *
+            SELECT
+                UPPER(LTRIM(RTRIM(A.KODE_DIAGNOSA_UTAMA))) AS KODE_DIAGNOSA_UTAMA,
+                A.DIAG_UTAMA,
+                SE.id_satusehat_encounter,
+                SE.nota,
+                SE.karcis,
+                SE.jam_datang,
+                SP.idpx,
+                SP.nama AS nama_pasien,
+                ICD.KATA1
             FROM (
-                SELECT
-                    A.*,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY A.KARCIS
-                        ORDER BY
-                            CASE 
-                                WHEN A.KODE_DIAGNOSA_UTAMA IS NOT NULL THEN 0
-                                ELSE 1
-                            END,
-                            A.CRTDT DESC
-                    ) AS rn
-                FROM E_RM_PHCM.dbo.ERM_RM_IRJA A
-                WHERE A.KARCIS = ?
-                AND A.IDUNIT = ?
-            ) x
-            WHERE rn = 1
-        ) A
-        JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
-            ON A.KARCIS = SE.karcis
-        AND SE.idunit = ?
-        JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN SP
-            ON SE.id_satusehat_px = SP.idpx
-        LEFT JOIN SIRS_PHCM.dbo.RIRJ_ICD ICD
-            ON A.KODE_DIAGNOSA_UTAMA = ICD.DIAGNOSA";
+                SELECT *
+                FROM (
+                    SELECT
+                        A.*,
+                        ROW_NUMBER() OVER (
+                            PARTITION BY A.KARCIS
+                            ORDER BY
+                                CASE 
+                                    WHEN A.KODE_DIAGNOSA_UTAMA IS NOT NULL THEN 0
+                                    ELSE 1
+                                END,
+                                A.CRTDT DESC
+                        ) AS rn
+                    FROM E_RM_PHCM.dbo.ERM_RM_IRJA A
+                    WHERE A.KARCIS = ?
+                    AND A.IDUNIT = ?
+                ) x
+                WHERE rn = 1
+            ) A
+            JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
+                ON A.KARCIS = SE.karcis
+            AND SE.idunit = ?
+            JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN SP
+                ON SE.id_satusehat_px = SP.idpx
+            LEFT JOIN SIRS_PHCM.dbo.RIRJ_ICD ICD
+                ON A.KODE_DIAGNOSA_UTAMA = ICD.DIAGNOSA";
 
         $row = DB::connection('sqlsrv')->selectOne(
             $sql,
