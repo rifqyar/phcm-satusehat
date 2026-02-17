@@ -21,6 +21,6 @@ class DiagnosaService
 
 
         app(DiagnosisController::class)
-            ->processSendDiagnosis($karcis);
+            ->processSendDiagnosis($karcis,$idunit, $user);
     }
 }

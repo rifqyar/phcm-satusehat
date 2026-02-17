@@ -281,7 +281,7 @@ class MedStatementController extends Controller
         ]);
     }
 
-    public function processSendMedStatement($karcis)
+    public function processSendMedStatement($karcis, $id_unit)
     {
         $sql = "SELECT TOP 1
                 A.ID_TRANS
@@ -302,10 +302,10 @@ class MedStatementController extends Controller
                 ) x
                 WHERE rn = 1
             ) B ON A.ID_TRANS = B.LOCAL_ID
-            WHERE AA.KARCIS = ?
+            WHERE AA.KARCIS = ? and AA.IDUNIT = ?
             ORDER BY B.CREATED_AT DESC";
 
-        $row = DB::selectOne($sql, [$karcis]);
+        $row = DB::selectOne($sql, [$karcis, $id_unit]);
 
         if (!$row) {
             return response()->json([
