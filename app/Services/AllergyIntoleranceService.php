@@ -66,7 +66,7 @@ class AllergyIntoleranceService
         $KbBuku = LZString::compressToEncodedURIComponent($data->KBUKU);
         $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
         $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
-        $idEncounter = LZString::compressToEncodedURIComponent($data->id_satusehat_encounter);
+        $idEncounter = LZString::compressToEncodedURIComponent($data->ID_SATUSEHAT_ENCOUNTER);
         $paramSatuSehat = "sudah_integrasi=$data->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter";
         $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
