@@ -145,7 +145,7 @@ class ObservasiService
                         END as sudah_integrasi,
                         CASE WHEN MAX(eri.NOREG) IS NOT NULL THEN 1 ELSE 0 END as sudah_proses_dokter
                     ")
-                    ->groupBy(['vkr.ID_TRANSAKSI', 'eri.id_asuhan_header'])
+                    ->groupBy(['vkr.ID_TRANSAKSI', 'eri.id'])
                     ->first();
             }
         }
