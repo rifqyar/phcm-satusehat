@@ -80,7 +80,7 @@ class ServiceRequestService
         $karcis = LZString::compressToEncodedURIComponent($data->KARCIS_RUJUKAN);
         $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
         $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
-        $kdDokterSS = LZString::compressToEncodedURIComponent($data->idnakes);
+        $kdDokterSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
         $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcis . '+' . $payload['klinik'] . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
 
         return $paramSatuSehat;
