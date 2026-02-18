@@ -41,15 +41,11 @@ class DiagnosisController extends Controller
                 SD.id_satusehat_condition,
                 b.KARCIS,
                 b.TGL,
-                a.NOTA,
                 d.REKENING AS KLINIK,
                 SE.jam_datang,
                 SE.jam_progress,
                 SE.jam_selesai
             FROM SIRS_PHCM..RJ_KARCIS b
-            JOIN SIRS_PHCM..RJ_KARCIS_BAYAR a
-                ON a.KARCIS = b.KARCIS
-
             LEFT JOIN (
                 SELECT KARCIS, KODE_DIAGNOSA_UTAMA
                 FROM (
@@ -66,7 +62,6 @@ class DiagnosisController extends Controller
                 WHERE rn = 1
             ) irja
                 ON irja.KARCIS = b.KARCIS
-
             LEFT JOIN SIRS_PHCM..RJ_MKLINIK d
                 ON d.KDKLINIK = b.KLINIK
             LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
@@ -79,8 +74,6 @@ class DiagnosisController extends Controller
                 ON b.KARCIS = SD.karcis
             WHERE b.TGL BETWEEN ? AND ?
             AND b.IDUNIT = ?
-            AND a.IDUNIT = ?
-            AND ISNULL(a.STBTL, 0) = 0
             ";
 
 
@@ -113,9 +106,6 @@ class DiagnosisController extends Controller
                     THEN b.KARCIS
                 END) AS sent
             FROM SIRS_PHCM..RJ_KARCIS b
-            JOIN SIRS_PHCM..RJ_KARCIS_BAYAR a
-                ON a.KARCIS = b.KARCIS
-
             LEFT JOIN (
                 SELECT KARCIS
                 FROM (
@@ -131,17 +121,13 @@ class DiagnosisController extends Controller
                 WHERE rn = 1
             ) irja
                 ON irja.KARCIS = b.KARCIS
-
             JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
                 ON b.KARCIS = SE.karcis
             LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA SD
                 ON b.KARCIS = SD.karcis
-
             WHERE b.TGL BETWEEN ? AND ?
             AND b.IDUNIT = ?
-            AND a.IDUNIT = ?
-            AND ISNULL(a.STBTL, 0) = 0
-            ", [$startDate, $endDate, $id_unit, $id_unit]);
+            ", [$startDate, $endDate, $id_unit]);
 
 
         $recordsTotal = (int) ($summary->total ?? 0);
@@ -263,8 +249,6 @@ class DiagnosisController extends Controller
         }
 
         return $this->processSendDiagnosis($karcis, $id_unit, $user);
-
-
     }
 
     public function processSendDiagnosis($karcis, $id_unit, $user)
@@ -483,6 +467,12 @@ class DiagnosisController extends Controller
                 ),
                 'created_by' => $meta['user'] ?? 'system',
                 'created_at' => now(),
+            ]);
+
+            $this->logInfo('diagnosis', 'Sukses kirim data diagnosis', [
+                'payload' => $payload,
+                'response' => $responseBody,
+                'user_id' => Session::get('nama', 'system') //Session::get('id')
             ]);
         } catch (\Throwable $e) {
             // logging gagal TIDAK boleh menggagalkan proses utama
