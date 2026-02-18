@@ -135,7 +135,7 @@ class AllergyIntoleranceController extends Controller
             })
             ->where('ea.STATUS_AKTIF', '1')
             ->where(function ($query) use ($id_unit) {
-                $query->where('vkr.IDUNIT', $id_unit)
+                $query->where('vkr.ID_UNIT', $id_unit)
                     ->where('rsn.IDUNIT', $id_unit);
             })
             ->whereBetween('vkr.TANGGAL', [$tgl_awal_db, $tgl_akhir_db])
