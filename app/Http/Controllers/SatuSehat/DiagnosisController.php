@@ -249,8 +249,6 @@ class DiagnosisController extends Controller
         }
 
         return $this->processSendDiagnosis($karcis, $id_unit, $user);
-
-
     }
 
     public function processSendDiagnosis($karcis, $id_unit, $user)
@@ -469,6 +467,12 @@ class DiagnosisController extends Controller
                 ),
                 'created_by' => $meta['user'] ?? 'system',
                 'created_at' => now(),
+            ]);
+
+            $this->logInfo('diagnosis', 'Sukses kirim data diagnosis', [
+                'payload' => $payload,
+                'response' => $responseBody,
+                'user_id' => Session::get('nama', 'system') //Session::get('id')
             ]);
         } catch (\Throwable $e) {
             // logging gagal TIDAK boleh menggagalkan proses utama
