@@ -34,11 +34,19 @@ class DispatchController extends Controller
             $payload['karcis'],
         ]);
 
+        $arrKlinikRadLab = [
+            '0016',
+            '0015',
+            '0021',
+            '0014',
+        ];
         foreach ($urls as $val) {
             $endpoint = explode('/', $val)[1];
 
-            if ($endpoint !== 'encounter' && !$encounterId->ID_SATUSEHAT_ENCOUNTER) {
-                continue;
+            if (isset($payload['klinik']) && !in_array($payload['klinik'], $arrKlinikRadLab)) {
+                if ($endpoint !== 'encounter' && !$encounterId->ID_SATUSEHAT_ENCOUNTER) {
+                    continue;
+                }
             }
 
             DispatchToEndpoint::dispatch(
