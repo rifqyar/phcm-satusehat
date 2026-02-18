@@ -33,7 +33,7 @@ class DiagnosisController extends Controller
 
 
         $baseSql = "
-            SELECT
+            SELECT distinct 
                 SE.id_satusehat_encounter,
                 SP.nama AS PASIEN,
                 SN.nama AS DOKTER,
