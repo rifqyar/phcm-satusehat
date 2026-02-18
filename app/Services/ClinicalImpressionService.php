@@ -26,13 +26,6 @@ class ClinicalImpressionService
         ]);
 
         try {
-            $clinicalImpressionId = SATUSEHAT_CLINICALIMPRESSION::where(
-                'KARCIS',
-                (int) $payload['karcis']
-            )
-                ->where('ID_UNIT', $id_unit)
-                ->first();
-
             $data = $this->getKunjunganData($payload, $id_unit);
             if (! $data) {
                 throw new Exception('Data kunjungan tidak ditemukan');
@@ -44,6 +37,13 @@ class ClinicalImpressionService
                 return;
             }
 
+            $clinicalImpressionId = SATUSEHAT_CLINICALIMPRESSION::where(
+                'KARCIS',
+                (int) $payload['karcis'],
+            )
+                ->where('ID_UNIT', $id_unit)
+                ->where('ID_ERM', $data->NOMOR)
+                ->first();
             $param = $this->buildEncryptedParam($payload, $data);
             SendClinicalImpression::dispatch($param, (bool) $clinicalImpressionId)->onQueue('ClinicalImpression');
         } catch (Exception $th) {
