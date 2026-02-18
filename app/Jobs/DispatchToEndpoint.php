@@ -13,6 +13,8 @@ use App\Services\ProcedureService;
 use App\Services\ServiceRequestService;
 use App\Services\SpecimenService;
 use App\Services\MedicationRequestService;
+use App\Services\DiagnosaService;
+use App\Services\MedStatementService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -97,6 +99,14 @@ class DispatchToEndpoint implements ShouldQueue
                 app(MedicationRequestService::class)->process($this->payload);
                 break;
 
+            case 'diagnosis':
+                app(DiagnosaService::class)->process($this->payload);
+                break;
+
+            case 'medstatement':
+                app(MedStatementService::class)->process($this->payload);
+                break;
+                
             case 'composition':
                 app(CompositionService::class)->process($this->payload);
                 break;

@@ -455,6 +455,8 @@ class DiagnosticReportController extends Controller
             $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
 
+        $status = $resend ? 'final' : 'preliminary';
+
         // Category
         if ($dokumen_px->first()->nama_kategori === 'HASIL LAB') {
             $categories = [
@@ -519,7 +521,7 @@ class DiagnosticReportController extends Controller
         $data = [
             "resourceType" => "DiagnosticReport",
             "identifier" => $identifier,
-            "status" => "final",
+            "status" => $status,
             "category" => $categories,
             "code" => $codings,
             "subject" => [
