@@ -456,7 +456,7 @@ class EncounterController extends Controller
                     $karcisRajal = DB::selectOne('SELECT KARCIS FROM RJ_KARCIS WHERE NOREG = ?', [$dataKarcis->NOREG]);
                     $post = [
                         'karcis' => $karcisRajal->KARCIS,
-                        'jenis_layanan' => 'RJ'
+                        'jenis_layanan' => 'RAWAT JALAN'
                     ];
                     $urls = array(
                         'api/encounter',
@@ -473,7 +473,7 @@ class EncounterController extends Controller
                     curl_setopt($chSatusehat, CURLOPT_HTTPHEADER, array(
                         'Content-Type: application/json',
                     ));
-                    curl_setopt($chSatusehat, CURLOPT_URL, env('APP_URL', 'http://10.1.19.22:8001') . 'api/dispatch');
+                    curl_setopt($chSatusehat, CURLOPT_URL, 'http://localhost:8888/api/dispatch');
                     curl_setopt($chSatusehat, CURLOPT_SSL_VERIFYPEER, false);
                     curl_setopt($chSatusehat, CURLOPT_POST, 1);
                     curl_setopt($chSatusehat, CURLOPT_POSTFIELDS, $payload);
