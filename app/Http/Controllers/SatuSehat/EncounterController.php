@@ -473,7 +473,7 @@ class EncounterController extends Controller
                     curl_setopt($chSatusehat, CURLOPT_HTTPHEADER, array(
                         'Content-Type: application/json',
                     ));
-                    curl_setopt($chSatusehat, CURLOPT_URL, 'http://localhost:8888/api/dispatch');
+                    curl_setopt($chSatusehat, CURLOPT_URL, env('APP_URL') . '/api/dispatch');
                     curl_setopt($chSatusehat, CURLOPT_SSL_VERIFYPEER, false);
                     curl_setopt($chSatusehat, CURLOPT_POST, 1);
                     curl_setopt($chSatusehat, CURLOPT_POSTFIELDS, $payload);
