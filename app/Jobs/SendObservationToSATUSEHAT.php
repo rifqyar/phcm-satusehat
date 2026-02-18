@@ -30,6 +30,7 @@ class SendObservationToSATUSEHAT implements ShouldQueue
     protected $url;
     protected $token;
     protected $type; // TD (Sistolik, Diastolik), DJ, Tinggi, Berat
+    protected $ermFrom; // CPPT atau SOAP
     protected $resend;
 
     /**
@@ -37,7 +38,7 @@ class SendObservationToSATUSEHAT implements ShouldQueue
      *
      * @return void
      */
-    public function __construct($payload, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $type, $resend = false)
+    public function __construct($payload, $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $type, $ermFrom, $resend = false)
     {
         $this->payload = $payload;
         $this->arrParam = $arrParam;
@@ -47,6 +48,7 @@ class SendObservationToSATUSEHAT implements ShouldQueue
         $this->url = $url;
         $this->token = $token;
         $this->type = $type;
+        $this->ermFrom = $ermFrom;
         $this->resend = $resend ?? false;
         $this->onQueue('observasi');
     }
@@ -62,6 +64,7 @@ class SendObservationToSATUSEHAT implements ShouldQueue
         DB::reconnect('sqlsrv');
 
         $logChannel = explode('/', $this->url)[0];
+        $ermFrom = str_contains($this->ermFrom, 'CPPT') ? 'cppt' : 'soap';
         try {
             if (count($this->payload) > 0) {
                 $observasiSatuSehat = SATUSEHAT_OBSERVATION::where('JENIS', $this->type);
@@ -90,14 +93,24 @@ class SendObservationToSATUSEHAT implements ShouldQueue
                             ->where('AKTIF', 1)
                             ->first();
                     } else {
-                        $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as h')
-                            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_PENGKAJIAN_FISIK as d', 'h.id_asuhan_header', '=', 'd.id_asuhan_header')
-                            ->where('h.aktif', '1')
-                            ->where('h.noreg', $this->arrParam['karcis'])
-                            ->selectRaw("
-                                h.id_asuhan_header AS NOMOR
-                            ")
-                            ->first();
+                        if ($ermFrom == 'cppt') {
+                            $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RI_F_CPPT as h')
+                                ->where('h.aktif', '1')
+                                ->where('h.noreg', $this->arrParam['karcis'])
+                                ->selectRaw("
+                                    h.id AS NOMOR
+                                ")
+                                ->first();
+                        } else {
+                            $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as h')
+                                ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_PENGKAJIAN_FISIK as d', 'h.id_asuhan_header', '=', 'd.id_asuhan_header')
+                                ->where('h.aktif', '1')
+                                ->where('h.noreg', $this->arrParam['karcis'])
+                                ->selectRaw("
+                                    h.id_asuhan_header AS NOMOR
+                                ")
+                                ->first();
+                        }
                     }
 
                     $observasiData = [
@@ -109,17 +122,22 @@ class SendObservationToSATUSEHAT implements ShouldQueue
                         'ID_ERM' => $dataErm->NOMOR,
                         'ID_SATUSEHAT_OBSERVASI' => $result['id'],
                         'STATUS_SINCRON' => 1,
+                        'ERM_FORM' => $ermFrom,
                         'SINCRON_DATE' => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s')
                     ];
 
                     $existingObservasi = $observasiSatuSehat->where('KARCIS', (int)$this->dataKarcis->KARCIS)
                         ->where('ID_ERM', $dataErm->NOMOR)
+                        ->where('JENIS', $this->type)
+                        ->where('ERM_FORM', $ermFrom)
                         ->first();
 
                     if ($existingObservasi) {
                         DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI')
                             ->where('KARCIS', $this->dataKarcis->KARCIS)
+                            ->where('ID_ERM', $dataErm->NOMOR)
                             ->where('JENIS', $this->type)
+                            ->where('ERM_FORM', $ermFrom)
                             ->update($observasiData);
                     } else {
                         $observasiData['KARCIS'] = (int)$this->dataKarcis->KARCIS;

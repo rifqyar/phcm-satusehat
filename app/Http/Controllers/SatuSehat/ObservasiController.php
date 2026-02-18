@@ -585,37 +585,56 @@ class ObservasiController extends Controller
 
     private function sendObservationRIToSATUSEHAT($arrParam, $id_unit, $resend = false)
     {
-        $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as h')
-            ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_PENGKAJIAN_FISIK as d', 'h.id_asuhan_header', '=', 'd.id_asuhan_header')
-            ->where('h.aktif', '1')
-            ->where('h.noreg', $arrParam['karcis'])
-            ->selectRaw("
-                d.mata_kanan AS MATA_KANAN,
-                d.mata_kiri AS MATA_KIRI,
-                d.td AS TD,
-                d.suhu AS SUHU,
-                d.p AS P,
-                d.nadi AS DJ,
-                d.bb AS BB,
-                d.tb AS TB,
-                d.kesadaran AS KESADARAN,
-                d.kepala AS KEPALA,
-                d.rambut AS RAMBUT,
-                d.muka AS MUKA,
-                d.mata AS MATA,
-                d.telinga AS TELINGA,
-                d.hidung AS HIDUNG,
-                d.mulut AS MULUT,
-                d.gigi AS GIGI,
-                d.lidah AS LIDAH,
-                d.tenggorokan AS TENGGOROKAN,
-                d.leher AS LEHER,
-                d.dada AS DADA,
-                h.nmDok AS CRTUSR,
-                h.crt_dt AS CRTDT,
-                h.id_asuhan_header AS NOMOR
-            ")
-            ->first();
+        $ermFrom = $arrParam['aktivitas'] ?? 'soap';
+        if (!str_contains($ermFrom, 'CPPT')) {
+            $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_HEAD as h')
+                ->leftJoin('E_RM_PHCM.dbo.ERM_RI_F_ASUHAN_KEP_AWAL_PENGKAJIAN_FISIK as d', 'h.id_asuhan_header', '=', 'd.id_asuhan_header')
+                ->where('h.aktif', '1')
+                ->where('h.noreg', $arrParam['karcis'])
+                ->selectRaw("
+                    d.mata_kanan AS MATA_KANAN,
+                    d.mata_kiri AS MATA_KIRI,
+                    d.td AS TD,
+                    d.suhu AS SUHU,
+                    d.p AS P,
+                    d.nadi AS DJ,
+                    d.bb AS BB,
+                    d.tb AS TB,
+                    d.kesadaran AS KESADARAN,
+                    d.kepala AS KEPALA,
+                    d.rambut AS RAMBUT,
+                    d.muka AS MUKA,
+                    d.mata AS MATA,
+                    d.telinga AS TELINGA,
+                    d.hidung AS HIDUNG,
+                    d.mulut AS MULUT,
+                    d.gigi AS GIGI,
+                    d.lidah AS LIDAH,
+                    d.tenggorokan AS TENGGOROKAN,
+                    d.leher AS LEHER,
+                    d.dada AS DADA,
+                    h.nmDok AS CRTUSR,
+                    h.crt_dt AS CRTDT,
+                    h.id_asuhan_header AS NOMOR
+                ")
+                ->first();
+        } else if (str_contains($ermFrom, 'CPPT')) {
+            $dataErm = DB::table('E_RM_PHCM.dbo.ERM_RI_F_CPPT as h')
+                ->where('h.aktif', '1')
+                ->where('h.noreg', $arrParam['karcis'])
+                ->selectRaw("
+                    CONCAT(d.sistole, '/', d.diastole) AS TD,
+                    h.suhu AS SUHU,
+                    h.rr AS P,
+                    h.nadi AS DJ,
+                    h.bb AS BB,
+                    h.tb AS TB,
+                    h.nm_crt AS CRTUSR,
+                    h.dt_crt AS CRTDT,
+                    h.id AS NOMOR
+                ")
+                ->first();
+        }
 
         if (!$dataErm) {
             return response()->json([
@@ -691,21 +710,23 @@ class ObservasiController extends Controller
                 'P' => 'definePayloadP',
             ];
 
-            $examMap = [
-                'MATA' => 'definePayloadExam',
-                'KEPALA' => 'definePayloadExam',
-                'RAMBUT' => 'definePayloadExam',
-                'MUKA' => 'definePayloadExam',
-                'MATA' => 'definePayloadExam',
-                'TELINGA' => 'definePayloadExam',
-                'HIDUNG' => 'definePayloadExam',
-                'MULUT' => 'definePayloadExam',
-                'GIGI' => 'definePayloadExam',
-                'LIDAH' => 'definePayloadExam',
-                'TENGGOROKAN' => 'definePayloadExam',
-                'LEHER' => 'definePayloadExam',
-                'DADA' => 'definePayloadExam',
-            ];
+            if (!str_contains($ermFrom, 'CPPT')) {
+                $examMap = [
+                    'MATA' => 'definePayloadExam',
+                    'KEPALA' => 'definePayloadExam',
+                    'RAMBUT' => 'definePayloadExam',
+                    'MUKA' => 'definePayloadExam',
+                    'MATA' => 'definePayloadExam',
+                    'TELINGA' => 'definePayloadExam',
+                    'HIDUNG' => 'definePayloadExam',
+                    'MULUT' => 'definePayloadExam',
+                    'GIGI' => 'definePayloadExam',
+                    'LIDAH' => 'definePayloadExam',
+                    'TENGGOROKAN' => 'definePayloadExam',
+                    'LEHER' => 'definePayloadExam',
+                    'DADA' => 'definePayloadExam',
+                ];
+            }
 
             // Process vital signs
             foreach ($vitalSignsMap as $key => $method) {
@@ -756,30 +777,32 @@ class ObservasiController extends Controller
             }
 
             // Process exam observations
-            foreach ($examMap as $key => $method) {
-                if (!empty($dataErm->$key)) {
-                    $payload = $this->$method($dataErm, $organisasi, $key);
-                    if ($payload) {
-                        if ($resend) {
-                            $dataObs = SATUSEHAT_OBSERVATION::where('karcis', $arrParam['karcis'])
-                                ->where('kbuku', $arrParam['kbuku'])
-                                ->where('id_erm', $dataErm->NOMOR)
-                                ->where('jenis', strtolower($key))
-                                ->first();
+            if (isset($examMap)) {
+                foreach ($examMap as $key => $method) {
+                    if (!empty($dataErm->$key)) {
+                        $payload = $this->$method($dataErm, $organisasi, $key);
+                        if ($payload) {
+                            if ($resend) {
+                                $dataObs = SATUSEHAT_OBSERVATION::where('karcis', $arrParam['karcis'])
+                                    ->where('kbuku', $arrParam['kbuku'])
+                                    ->where('id_erm', $dataErm->NOMOR)
+                                    ->where('jenis', strtolower($key))
+                                    ->first();
 
-                            $basePayload['id'] = $dataObs ? $dataObs->ID_SATUSEHAT_OBSERVASI : null;
+                                $basePayload['id'] = $dataObs ? $dataObs->ID_SATUSEHAT_OBSERVASI : null;
+                            }
+
+                            $basePayloadExam = $basePayload;
+                            $basePayloadExam['category'] = [[
+                                'coding' => [[
+                                    'system' => 'http://terminology.hl7.org/CodeSystem/observation-category',
+                                    'code' => 'exam',
+                                    'display' => 'Exam',
+                                ]],
+                            ]];
+                            $payloadWithBase = array_merge($basePayloadExam, $payload);
+                            $payloadObservations[] = ['payload' => $payloadWithBase, 'type' => strtolower($key)];
                         }
-
-                        $basePayloadExam = $basePayload;
-                        $basePayloadExam['category'] = [[
-                            'coding' => [[
-                                'system' => 'http://terminology.hl7.org/CodeSystem/observation-category',
-                                'code' => 'exam',
-                                'display' => 'Exam',
-                            ]],
-                        ]];
-                        $payloadWithBase = array_merge($basePayloadExam, $payload);
-                        $payloadObservations[] = ['payload' => $payloadWithBase, 'type' => strtolower($key)];
                     }
                 }
             }
@@ -810,12 +833,13 @@ class ObservasiController extends Controller
                         ->where('kbuku', $arrParam['kbuku'])
                         ->where('id_erm', $dataErm->NOMOR)
                         ->where('jenis', $obs['type'])
+                        ->where('ERM_FORM', !str_contains($ermFrom, 'CPPT') ? 'soap' : 'cppt')
                         ->first();
 
                     $url .= '/' . ($dataObs ? $dataObs->ID_SATUSEHAT_OBSERVASI : '');
                 }
 
-                SendObservationToSATUSEHAT::dispatch($obs['payload'], $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $obs['type'], $resend)->onQueue('observasi');
+                SendObservationToSATUSEHAT::dispatch($obs['payload'], $arrParam, $dataKarcis, $dataPeserta, $baseurl, $url, $token, $obs['type'], $ermFrom, $resend)->onQueue('observasi');
                 $url = 'Observation';
             }
 
