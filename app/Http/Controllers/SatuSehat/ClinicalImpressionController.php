@@ -295,7 +295,7 @@ class ClinicalImpressionController extends Controller
         $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
 
         $data = collect(DB::select("
-            EXEC dbo.sp_getClinicalImpression ?, ?, ?, ?, ?
+            EXEC dbo.sp_getClinicalImpression ?, ?, ?, ?, ?, ?, ?, ?
         ", [
             $id_unit,
             null,
@@ -307,7 +307,6 @@ class ClinicalImpressionController extends Controller
             1
         ]))->first();
 
-        dd($data);
         $baseurl = '';
         if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
