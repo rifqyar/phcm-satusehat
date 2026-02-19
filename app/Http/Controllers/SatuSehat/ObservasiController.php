@@ -623,7 +623,7 @@ class ObservasiController extends Controller
                 ->where('h.aktif', '1')
                 ->where('h.noreg', $arrParam['karcis'])
                 ->selectRaw("
-                    CONCAT(d.sistole, '/', d.diastole) AS TD,
+                    CONCAT(h.sistole, '/', h.diastole) AS TD,
                     h.suhu AS SUHU,
                     h.rr AS P,
                     h.nadi AS DJ,
