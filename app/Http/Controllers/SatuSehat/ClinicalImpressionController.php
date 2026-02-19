@@ -124,7 +124,7 @@ class ClinicalImpressionController extends Controller
             $jenis = $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
             $id_transaksi = LZString::compressToEncodedURIComponent($row->ID_TRANSAKSI);
             $KbBuku = LZString::compressToEncodedURIComponent($row->KBUKU);
-            $id_erm = LZString::compressToEncodedURIComponent($data->ID_ERM);
+            $id_erm = LZString::compressToEncodedURIComponent($row->ID_ERM);
             $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
             $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
             $idEncounter = LZString::compressToEncodedURIComponent($row->id_satusehat_encounter);
