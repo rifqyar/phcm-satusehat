@@ -356,6 +356,8 @@ class EncounterController extends Controller
             $payloadRJ = $this->definePayloadRawatJalan($dataKarcis, $arrParam, $id_unit, $diagnosisSatuSehat);
         } else {
             $payloadRI = $this->definePayloadRawatInap($dataKarcis, $arrParam, $id_unit, $diagnosisSatuSehat);
+
+            dd($payloadRI);
         }
 
         $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
@@ -452,7 +454,7 @@ class EncounterController extends Controller
                 throw new Exception($msg, $dataencounter->getStatusCode());
             } else {
                 // Resend Encounter Rawatjalan update discharge type jadi AD
-                if ($jenisPerawatan != 'RJ') {
+                if ($jenisPerawatan != 'RJ' && !$resend) {
                     $karcisRajal = DB::selectOne('SELECT KARCIS FROM RJ_KARCIS WHERE NOREG = ?', [$dataKarcis->NOREG]);
                     $post = [
                         'karcis' => $karcisRajal->KARCIS,
