@@ -124,13 +124,14 @@ class ClinicalImpressionController extends Controller
             $jenis = $row->JENIS_PERAWATAN == 'RAWAT_JALAN' ? 'RJ' : 'RI';
             $id_transaksi = LZString::compressToEncodedURIComponent($row->ID_TRANSAKSI);
             $KbBuku = LZString::compressToEncodedURIComponent($row->KBUKU);
+            $id_erm = LZString::compressToEncodedURIComponent($data->ID_ERM);
             $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
             $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
             $idEncounter = LZString::compressToEncodedURIComponent($row->id_satusehat_encounter);
-            $paramSatuSehat = "sudah_integrasi=$row->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&jenis_perawatan=" . LZString::compressToEncodedURIComponent($row->JENIS_PERAWATAN);
+            $paramSatuSehat = "sudah_integrasi=$row->sudah_integrasi&karcis=$id_transaksi&kbuku=$KbBuku&id_pasien_ss=$kdPasienSS&id_nakes_ss=$kdNakesSS&encounter_id=$idEncounter&id_erm=$id_erm&jenis_perawatan=" . LZString::compressToEncodedURIComponent($row->JENIS_PERAWATAN);
             $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
 
-            $param = LZString::compressToEncodedURIComponent("karcis=$id_transaksi&kbuku=$KbBuku&jenis_perawatan=" . LZString::compressToEncodedURIComponent($row->JENIS_PERAWATAN));
+            $param = LZString::compressToEncodedURIComponent("karcis=$id_transaksi&kbuku=$KbBuku&id_erm=$id_erm&jenis_perawatan=" . LZString::compressToEncodedURIComponent($row->JENIS_PERAWATAN));
 
             $dataKunjungan[] = [
                 'DT_RowIndex' => $index++,
@@ -252,6 +253,7 @@ class ClinicalImpressionController extends Controller
             null,
             'all',
             $arrParam['karcis'] ?? '',
+            $arrParam['id_erm'] ?? null,
         ]))->first();
 
         // Dummy detail data
@@ -300,8 +302,12 @@ class ClinicalImpressionController extends Controller
             null,
             'all',
             $arrParam['karcis'] ?? '',
+            $arrParam['id_erm'] ?? null,
+            1,
+            1
         ]))->first();
 
+        dd($data);
         $baseurl = '';
         if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
@@ -318,6 +324,7 @@ class ClinicalImpressionController extends Controller
                 $currData = SATUSEHAT_CLINICALIMPRESSION::where('KARCIS', $arrParam['karcis'])
                     ->where('NO_PESERTA', $data->NO_PESERTA)
                     ->where('ID_UNIT', $id_unit)
+                    ->where('ID_ERM', $data->ID_ERM)
                     ->select('ID_CLINICALIMPRESSION')
                     ->first();
                 $satusehatPayload['id'] = $currData->ID_CLINICALIMPRESSION;
@@ -354,10 +361,10 @@ class ClinicalImpressionController extends Controller
                             'KARCIS' => $data->ID_TRANSAKSI,
                             'NO_PESERTA' => $data->NO_PESERTA,
                             'ID_UNIT' => $id_unit,
+                            'ID_ERM' => $data->ID_ERM,
                         ],
                         [
                             'ID_CLINICALIMPRESSION' => $result['id'],
-                            'ID_ERM' => $data->ID_ERM,
                             'ID_SATUSEHAT_ENCOUNTER' => $data->id_satusehat_encounter,
                             'PROGNOSIS_CODE' => $data->PROGNOSIS_CODE,
                             'PROGNOSIS_TEXT' => $data->PROGNOSIS_TEXT,
