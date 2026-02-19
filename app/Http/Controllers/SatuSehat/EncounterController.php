@@ -356,8 +356,6 @@ class EncounterController extends Controller
             $payloadRJ = $this->definePayloadRawatJalan($dataKarcis, $arrParam, $id_unit, $diagnosisSatuSehat);
         } else {
             $payloadRI = $this->definePayloadRawatInap($dataKarcis, $arrParam, $id_unit, $diagnosisSatuSehat);
-
-            dd($payloadRI);
         }
 
         $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
@@ -838,26 +836,25 @@ class EncounterController extends Controller
         ];
 
         $dischargeType = [];
-        if ($diagnosisSatuSehat != null) {
-            if ($jam_finish != null) {
-                array_push(
-                    $statusHistory['statusHistory'],
-                    [
-                        'status' => 'in-progress',
-                        'period' => [
-                            'start' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_progress)->toIso8601String(),
-                            'end' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_finish)->toIso8601String(),
-                        ],
+        if ($jam_finish != null) {
+            array_push(
+                $statusHistory['statusHistory'],
+                [
+                    'status' => 'in-progress',
+                    'period' => [
+                        'start' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_progress)->toIso8601String(),
+                        'end' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_finish)->toIso8601String(),
                     ],
-                    [
-                        'status' => 'finished',
-                        'period' => [
-                            'start' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_finish)->toIso8601String(),
-                            'end' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_finish)->toIso8601String(),
-                        ],
-                    ]
-                );
-
+                ],
+                [
+                    'status' => 'finished',
+                    'period' => [
+                        'start' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_finish)->toIso8601String(),
+                        'end' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_finish)->toIso8601String(),
+                    ],
+                ]
+            );
+            if ($diagnosisSatuSehat != null) {
                 $textDischage = "Anjuran dokter untuk pulang";
                 $dischargeType = [
                     "hospitalization" => [
@@ -873,18 +870,18 @@ class EncounterController extends Controller
                         ]
                     ],
                 ];
-            } else {
-                array_push(
-                    $statusHistory['statusHistory'],
-                    [
-                        'status' => 'in-progress',
-                        'period' => [
-                            'start' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_progress)->toIso8601String(),
-                            'end' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_progress)->toIso8601String(),
-                        ],
-                    ]
-                );
             }
+        } else {
+            array_push(
+                $statusHistory['statusHistory'],
+                [
+                    'status' => 'in-progress',
+                    'period' => [
+                        'start' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_progress)->toIso8601String(),
+                        'end' => Carbon::createFromFormat('Y-m-d H:i:s', $jam_progress)->toIso8601String(),
+                    ],
+                ]
+            );
         }
 
         $period = [
