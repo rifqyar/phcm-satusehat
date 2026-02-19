@@ -42,7 +42,7 @@ class ClinicalImpressionService
                 (int) $payload['karcis'],
             )
                 ->where('ID_UNIT', $id_unit)
-                ->where('ID_ERM', $data->NOMOR)
+                ->where('ID_ERM', $data->ID_ERM)
                 ->first();
             $param = $this->buildEncryptedParam($payload, $data);
             SendClinicalImpression::dispatch($param, (bool) $clinicalImpressionId)->onQueue('ClinicalImpression');
@@ -59,13 +59,16 @@ class ClinicalImpressionService
     protected function getKunjunganData(array $payload, $id_unit)
     {
         $data = DB::selectOne("
-            EXEC dbo.sp_getClinicalImpression ?, ?, ?, ?, ?
+            EXEC dbo.sp_getClinicalImpression ?, ?, ?, ?, ?, ?, ?, ?
         ", [
             $id_unit,
             null,
             null,
             'all',
             $payload['karcis'] ?? '',
+            $payload['id_erm'] ?? null,
+            1,
+            1
         ]);
 
         if (! $data) {
