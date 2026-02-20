@@ -253,6 +253,7 @@ class DiagnosisController extends Controller
 
     public function processSendDiagnosis($karcis, $id_unit, $user)
     {
+        
         $sql = "
             SELECT
                 UPPER(LTRIM(RTRIM(A.KODE_DIAGNOSA_UTAMA))) AS KODE_DIAGNOSA_UTAMA,
@@ -311,7 +312,8 @@ class DiagnosisController extends Controller
         //     'status'  => 'debug',
         //     'payload' => $payload
         // ]);
-
+        // echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); die;
+        
         $meta = [
             'karcis' => $karcis,
             'nota'   => $row->nota,
@@ -320,6 +322,7 @@ class DiagnosisController extends Controller
             'rank'   => 1,
             'user'   => $user,
         ];
+
 
         $result = $this->kirimConditionToSatuSehat($payload, $meta);
 
