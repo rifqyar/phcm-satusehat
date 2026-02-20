@@ -217,7 +217,6 @@ class EpisodeOfCareController extends Controller
 
     public function send(Request $request, $resend = false)
     {
-        $id_unit = Session::get('id_unit', '001');
         $param = $request->param;
         $params = LZString::decompressFromEncodedURIComponent($param);
         $parts = explode('&', $params);
@@ -230,6 +229,7 @@ class EpisodeOfCareController extends Controller
             $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
         }
 
+        $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
         $data = collect(DB::select("
             EXEC dbo.sp_getDataEpisodeOfCare ?, ?, ?, ?, ?, ?, ?
         ", [
@@ -378,7 +378,7 @@ class EpisodeOfCareController extends Controller
         if ($dataKarcis->inap) {
             $historyTime = $this->getHistoryTime($dataKarcis);
             $historyTimeInap = $this->getHistoryTimeInap($dataKarcis);
-            if ($dataKarcis->inap->TGL_KELUAR != null) {
+            if ($dataKarcis->inap->tgl_plng != null) {
                 $status = 'finished';
                 $statusHistory = [
                     [
@@ -700,7 +700,6 @@ class EpisodeOfCareController extends Controller
 
     public function resend(Request $request)
     {
-        $id_unit = Session::get('id_unit', '001');
         $param = $request->param;
         $params = LZString::decompressFromEncodedURIComponent($param);
         $parts = explode('&', $params);
@@ -712,6 +711,7 @@ class EpisodeOfCareController extends Controller
             $val = $partsParam[1];
             $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
         }
+        $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
 
         $data = collect(DB::select("
             EXEC dbo.sp_getDataEpisodeOfCare ?, ?, ?, ?, ?, ?, ?
@@ -767,7 +767,7 @@ class EpisodeOfCareController extends Controller
             if ($dataKarcis->inap) {
                 $historyTime = $this->getHistoryTime($dataKarcis);
                 $historyTimeInap = $this->getHistoryTimeInap($dataKarcis);
-                if ($dataKarcis->inap->TGL_KELUAR !== null) {
+                if ($dataKarcis->inap->tgl_plng !== null) {
 
                     $finishedTime = Carbon::createFromFormat(
                         'Y-m-d H:i:s',
