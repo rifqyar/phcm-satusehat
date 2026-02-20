@@ -44,7 +44,7 @@ class CarePlanService
             $param = $this->buildEncryptedParam($payload, $data);
             SendCarePlan::dispatch($param, (bool) $CarePlanId)->onQueue('CarePlan');
         } catch (Exception $th) {
-            $this->logError('CarePlan', 'Gagal Process Clinical Impression dari SIMRS', [
+            $this->logError('CarePlan', 'Gagal Process Care Plan dari SIMRS', [
                 'payload' => $payload,
                 'user_id' => 'system',
                 'error' => $th->getMessage(),

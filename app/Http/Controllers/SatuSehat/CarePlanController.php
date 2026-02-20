@@ -339,10 +339,10 @@ class CarePlanController extends Controller
                             'KARCIS' => $data->ID_TRANSAKSI,
                             'NO_PESERTA' => $data->NO_PESERTA,
                             'ID_UNIT' => $id_unit,
+                            'ID_ERM' => $data->ID_ERM,
                         ],
                         [
                             'ID_SATUSEHAT_CAREPLAN' => $result['id'],
-                            'ID_ERM' => $data->ID_ERM,
                             'JENIS_PERAWATAN' => $data->JENIS_PERAWATAN,
                             'ID_SATUSEHAT_ENCOUNTER' => $data->ID_SATUSEHAT_ENCOUNTER,
                             'CRTUSR' => Session::get('nama', 'system'),
