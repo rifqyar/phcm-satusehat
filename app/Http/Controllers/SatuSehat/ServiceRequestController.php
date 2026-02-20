@@ -71,7 +71,7 @@ class ServiceRequestController extends Controller
 
         $total_all_lab = $labData->count();
         $total_mapped_lab = $labData->where('SATUSEHAT', 1)->count();
-        
+
         $total_all_rad = $radData->count();
         $total_mapped_rad = $radData->where('SATUSEHAT', 1)->count();
 
@@ -243,21 +243,21 @@ class ServiceRequestController extends Controller
                 if (empty($row->ARRAY_TINDAKAN)) {
                     return '<span class="text-muted">-</span>';
                 }
-                
+
                 // Split the comma-separated IDs
                 $tindakanIds = array_filter(explode(',', $row->ARRAY_TINDAKAN));
-                
+
                 if (empty($tindakanIds)) {
                     return '<span class="text-muted">-</span>';
                 }
-                
+
                 // Get tindakan names from RIRJ_MTINDAKAN
                 $tindakanNames = DB::connection('sqlsrv')
                     ->table('SIRS_PHCM.dbo.RIRJ_MTINDAKAN')
                     ->whereIn('ID', $tindakanIds)
                     ->pluck('NM_TINDAKAN')
                     ->toArray();
-                
+
                 return !empty($tindakanNames) ? implode(', ', $tindakanNames) : '<span class="text-muted">-</span>';
             })
             ->addColumn('action', function ($row) {
@@ -590,6 +590,42 @@ class ServiceRequestController extends Controller
                         'user_id' => Session::get('nama', 'system') //Session::get('id')
                     ]);
                     $this->logDb(json_encode($result), 'ServiceRequest', json_encode($data), 'system'); //Session::get('id')
+
+                    if ($dataKarcis->KLINIK == '0017' || $dataKarcis->KLINIK == '0031') {
+                        $post = [
+                            'karcis' => $karcis,
+                            'idElab' => $idRiwayatElab,
+                            'klinik' => $dataKarcis->KLINIK,
+                            'type'   => 'lab',
+                            'id_unit' => $id_unit
+                        ];
+                        $urls = array(
+                            'api/specimen'
+                        );
+
+                        $post['aktivitas'] = 'SERVICE REQUEST & PROCEDURE RADIOLOGI & LAB';
+                        $post['jenis_layanan'] = 'JALAN';
+                        $post['post_from'] = 'Trigger Otomatis Kirim Specimen dari service request';
+                        $post['url'] = $urls;
+                        $post['id_unit'] = $id_unit;
+
+                        $payload = json_encode($post);
+
+                        $chSatusehat = curl_init();
+                        curl_setopt($chSatusehat, CURLOPT_HTTPHEADER, array(
+                            'Content-Type: application/json',
+                        ));
+                        curl_setopt($chSatusehat, CURLOPT_URL, env('APP_URL') . '/api/dispatch');
+                        curl_setopt($chSatusehat, CURLOPT_SSL_VERIFYPEER, false);
+                        curl_setopt($chSatusehat, CURLOPT_POST, 1);
+                        curl_setopt($chSatusehat, CURLOPT_POSTFIELDS, $payload);
+                        curl_setopt($chSatusehat, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($chSatusehat, CURLOPT_TIMEOUT, 2);
+
+                        $contentSatusehat = curl_exec($chSatusehat);
+
+                        curl_close($chSatusehat);
+                    }
 
                     return response()->json([
                         'status' => JsonResponse::HTTP_OK,
