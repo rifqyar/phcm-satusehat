@@ -656,7 +656,7 @@ class SpecimenController extends Controller
                             'jam_datang'                  => Carbon::parse($riwayat[0]->TANGGAL_ENTRI, 'Asia/Jakarta')->format('Y-m-d H:i:s'),
                         ]);
 
-                    $this->logInfo('specimen', 'Sukses kirim data specimen', [
+                    $this->logInfo('Specimen', 'Sukses kirim data specimen', [
                         'payload' => $data,
                         'response' => $result,
                         'user_id' => Session::get('nama', 'system') //Session::get('id')
@@ -677,6 +677,15 @@ class SpecimenController extends Controller
                 }
             }
         } catch (Exception $th) {
+            $this->logError('Specimen', 'Gagal kirim data specimen', [
+                'status' => $th->getCode() != '' ? $th->getCode() : 500,
+                'message' => $th->getMessage() != '' ? $th->getMessage() : 'Gagal Kirim Data Specimen',
+                'redirect' => [
+                    'need' => false,
+                    'to' => null,
+                ]
+            ]);
+
             return response()->json([
                 'status' => $th->getCode() != '' ? $th->getCode() : 500,
                 'message' => $th->getMessage() != '' ? $th->getMessage() : 'Gagal Kirim Data Specimen',

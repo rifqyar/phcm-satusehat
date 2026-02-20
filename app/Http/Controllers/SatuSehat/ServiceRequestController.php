@@ -591,11 +591,11 @@ class ServiceRequestController extends Controller
                     ]);
                     $this->logDb(json_encode($result), 'ServiceRequest', json_encode($data), 'system'); //Session::get('id')
 
-                    if ($dataKarcis->KLINIK == '0017' || $dataKarcis->KLINIK == '0031') {
+                    if (trim($dataKarcis->KLINIK) == '0017' || trim($dataKarcis->KLINIK) == '0031') {
                         $post = [
                             'karcis' => $karcis,
                             'idElab' => $idRiwayatElab,
-                            'klinik' => $dataKarcis->KLINIK,
+                            'klinik' => trim($dataKarcis->KLINIK),
                             'type'   => 'lab',
                             'id_unit' => $id_unit
                         ];
