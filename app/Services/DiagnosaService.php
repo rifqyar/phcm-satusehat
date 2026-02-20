@@ -12,7 +12,7 @@ class DiagnosaService
     {
         $karcis = isset($payload['karcis']) && $payload['karcis'] !== '' ? $payload['karcis']: null;
 
-        $idunit = $payload['idunit'] ?? null;
+        $idunit = $payload['id_unit'] ?? null;
         $user = 'system';
 
         if (!$karcis) {
