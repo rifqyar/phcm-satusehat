@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Http\Controllers\SatuSehat\ServiceRequestController;
+use App\Http\Traits\LogTraits;
 use Exception;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -14,7 +15,7 @@ use Illuminate\Support\Facades\Log;
 
 class SendServiceRequestJob implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, LogTraits;
 
     public $param;
     // public $tries = 3; // Number of attempts
@@ -56,17 +57,17 @@ class SendServiceRequestJob implements ShouldQueue
             // Call controller method. We ignore the return payload here since it's async.
             $result = $controller->sendSatuSehat($request, $encodedParam);
 
-            // Log successful processing
-            Log::info('SendServiceRequestJob completed successfully', [
+            $this->logInfo('servicerequest', 'SendServiceRequestJob completed successfully', [
                 'param' => $this->param,
-                'status_code' => $result->getStatusCode()
+                'response_status' => $result->getStatusCode(),
+                'user_id' => 'system'
             ]);
         } catch (Exception $e) {
-            // Log error, job will be retried according to queue config
-            Log::error('SendServiceRequestJob failed: ' . $e->getMessage(), [
+            $this->logError('servicerequest', 'SendServiceRequestJob failed', [
                 'param' => $this->param,
                 'attempt' => $this->attempts(),
                 'error' => $e->getMessage(),
+                'user_id' => 'system',
                 'trace' => $e->getTraceAsString()
             ]);
 
