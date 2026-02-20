@@ -355,7 +355,10 @@ class DiagnosticReportController extends Controller
 
         $dokumen_px =  DB::connection('sqlsrv')
             ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
-            ->join(DB::raw('SIRS_PHCM.dbo.vw_getData_Elab as l'), 'a.karcis', '=', 'l.KARCIS_RUJUKAN')
+            ->join(DB::raw('SIRS_PHCM.dbo.vw_getData_Elab as l'), function ($join) {
+                $join->on('a.karcis', '=', 'l.KARCIS_RUJUKAN')
+                    ->orOn('a.karcis', '=', 'l.KARCIS_ASAL');
+            })
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX_KATEGORI as b'), 'a.id_kategori', '=', 'b.id')
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MASTERPX as c'), 'a.kbuku', '=', 'c.kbuku')
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as m'), 'l.kd_tindakan', '=', 'm.KD_TIND')
@@ -366,10 +369,12 @@ class DiagnosticReportController extends Controller
             ])
             ->where('a.AKTIF', 1)
             ->where('a.id', $arrParam['id'])
-            ->where('a.karcis', $arrParam['karcis_rujukan'])
-            ->where('l.karcis_rujukan', $arrParam['karcis_rujukan'])
+            ->where(function ($query) use ($arrParam) {
+                $query->where('a.karcis', $arrParam['karcis_rujukan'])
+                    ->orWhere('a.karcis', $arrParam['karcis_asal']);
+            })
             ->get();
-        // dd($dokumen_px, $dokumen_px->first());
+        // dd($arrParam, $dokumen_px, $dokumen_px->first());
 
         $riwayat = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.vw_getData_Elab')
@@ -418,15 +423,19 @@ class DiagnosticReportController extends Controller
         $serviceRequest = DB::connection('sqlsrv')
             ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
             ->leftJoin(DB::raw('SIRS_PHCM.dbo.vw_getData_Elab as l'), function ($join) {
-                $join->on('a.karcis', '=', 'l.KARCIS_RUJUKAN');
+                $join->on('a.karcis', '=', 'l.KARCIS_RUJUKAN')
+                    ->orOn('a.karcis', '=', 'l.KARCIS_ASAL');
             })
             ->leftJoin(DB::raw('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as s'), function ($join) {
                 $join->on('l.karcis_rujukan', '=', 's.karcis')
                     ->on('l.kbuku', '=', 's.kbuku');
             })
             ->where('a.id', $arrParam['id'])
-            ->where('a.karcis', $arrParam['karcis_rujukan'])
-            ->where('l.karcis_rujukan', $arrParam['karcis_rujukan'])
+            ->where(function ($query) use ($arrParam) {
+                $query->where('a.karcis', $arrParam['karcis_rujukan'])
+                    ->orWhere('a.karcis', $arrParam['karcis_asal']);
+            })
+            // ->where('l.karcis_rujukan', $arrParam['karcis_rujukan'])
             ->orderBy('s.crtdt', 'desc')
             ->first();
 
