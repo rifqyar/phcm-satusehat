@@ -28,7 +28,7 @@ class HomeController extends Controller
             [
                 'title' => 'Diagnosis',
                 'url' => 'satusehat.diagnosis.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Observasi',
@@ -43,12 +43,12 @@ class HomeController extends Controller
             [
                 'title' => 'Resume Medis',
                 'url' => 'satusehat.resume-medis.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Imunisasi',
                 'url' => 'satusehat.imunisasi.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Resep Obat',
@@ -78,7 +78,7 @@ class HomeController extends Controller
             [
                 'title' => 'Impresi Klinis (ClinicalImpression)',
                 'url' => 'satusehat.clinical-impression.index',
-                'bg_color' => 'card-info'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Spesimen',
@@ -88,7 +88,7 @@ class HomeController extends Controller
             [
                 'title' => 'Laporan Pemeriksaan',
                 'url' => 'satusehat.diagnostic-report.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Rencana Perawatan',
@@ -98,17 +98,17 @@ class HomeController extends Controller
             [
                 'title' => 'Catatan Pengobatan',
                 'url' => 'satusehat.medstatement.index',
-                'bg_color' => 'card-info'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Respon Kuesioner',
                 'url' => 'satusehat.questionnaire-response.index',
-                'bg_color' => 'card-success'
+                'bg_color' => 'card-megna'
             ],
             [
                 'title' => 'Episode Perawatan',
                 'url' => 'satusehat.episode-of-care.index',
-                'bg_color' => 'card-info'
+                'bg_color' => 'card-megna'
             ]
         ];
         $cek = $this->cek_validitas_token();
