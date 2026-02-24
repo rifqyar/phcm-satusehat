@@ -535,6 +535,7 @@
                                     <td>${item.NM_TIND || '-'}</td>
                                     <td>${item.code || '-'}</td>
                                     <td>${item.display || '-'}</td>
+                                    <td>${item.SATUSEHAT > 0 ? '<span class="badge badge-success">Terkirim</span>' : '<span class="badge badge-secondary">Belum Terkirim</span>'}</td>
                                 </tr>
                             `);
                         });
