@@ -135,7 +135,7 @@ class SpecimenController extends Controller
     {
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
-        $id_unit = Session::get('id_unit', '001');
+        $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
         // dd($request->all());
 
         if (empty($tgl_awal) && empty($tgl_akhir)) {
@@ -189,8 +189,8 @@ class SpecimenController extends Controller
             ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT'), DB::raw("'RAWAT JALAN' as JENIS_PERAWATAN")])
             ->distinct()
             ->whereBetween('rd.TANGGAL_ENTRI', [$tgl_awal, $tgl_akhir])
-            ->where('rd.IDUNIT', '001')
-            ->where('rd.KLINIK_TUJUAN', '0017')
+            ->where('rd.IDUNIT', $id_unit)
+            ->wherein('rd.KLINIK_TUJUAN', ['0017', '0031'])
             ->whereNull('kc.TGL_BATAL')
             ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
 
@@ -227,8 +227,8 @@ class SpecimenController extends Controller
             ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT'), DB::raw("'RAWAT INAP' as JENIS_PERAWATAN")])
             ->distinct()
             ->whereBetween('rd.TANGGAL_ENTRI', [$tgl_awal, $tgl_akhir])
-            ->where('rd.IDUNIT', '001')
-            ->where('rd.KLINIK_TUJUAN', '0017')
+            ->where('rd.IDUNIT', $id_unit)
+            ->wherein('rd.KLINIK_TUJUAN', ['0017', '0031'])
             ->whereNull('kc.TGL_BATAL')
             ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN');
 
@@ -461,7 +461,8 @@ class SpecimenController extends Controller
         $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[4]);
         $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[5]);
         $kdDokterSS = LZString::decompressFromEncodedURIComponent($parts[6]);
-        $id_unit = Session::get('id_unit', '001');
+
+        $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
 
         $encounter = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')

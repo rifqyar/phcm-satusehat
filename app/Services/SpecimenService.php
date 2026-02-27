@@ -45,48 +45,77 @@ class SpecimenService
     protected function getKunjunganData(array $payload, $id_unit)
     {
         $jenisLayanan = isset($payload['jenis_layanan']) ? (str_contains(strtoupper($payload['jenis_layanan']), 'INAP') ? 'INAP' : 'JALAN') : 'JALAN';
-
-        $dataRef = 'v_kunjungan_rj';
         if ($jenisLayanan == 'INAP') {
-            $dataRef = 'v_kunjungan_ri';
+            $data = DB::connection('sqlsrv')
+                ->table('SIRS_PHCM.dbo.v_kunjungan_ri as rj')
+                ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
+                    $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
+                        ->on('nt.idunit', '=', 'rj.ID_UNIT')
+                        ->on('nt.kbuku', '=', 'rj.KBUKU')
+                        ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
+                })
+                ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                    $join->on('kc.noreg', '=', 'nt.karcis')
+                        ->on('kc.IDUNIT', '=', 'nt.idunit')
+                        ->on('kc.KBUKU', '=', 'nt.kbuku')
+                        ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+                })
+                ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
+                    $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
+                        ->on('rd.IDUNIT', '=', 'nt.idunit')
+                        ->on('rd.KBUKU', '=', 'nt.kbuku')
+                        ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                        ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
+                })
+                ->join('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as sr', 'rd.KARCIS_RUJUKAN', '=', 'sr.karcis')
+                ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
+                ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SPECIMEN as ss', 'rd.KARCIS_RUJUKAN', '=', 'ss.karcis')
+                ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'rd.KDDOK', '=', 'nk.kddok')
+                ->join('SIRS_PHCM.dbo.DR_MDOKTER as dkd', 'rd.KDDOK', '=', 'dkd.kdDok')
+                ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT'), DB::raw("'RAWAT INAP' as JENIS_PERAWATAN")])
+                ->distinct()
+                ->where('rd.KARCIS_RUJUKAN', $payload['karcis'])
+                ->where('rd.IDUNIT', $id_unit)
+                ->where('rd.KLINIK_TUJUAN', $payload['klinik'])
+                ->whereNull('kc.TGL_BATAL')
+                ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN')
+                ->first();
         } else {
-            $dataRef = 'v_kunjungan_rj';
+            $data = DB::connection('sqlsrv')
+                ->table('SIRS_PHCM.dbo.v_kunjungan_rj as rj')
+                ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
+                    $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
+                        ->on('nt.idunit', '=', 'rj.ID_UNIT')
+                        ->on('nt.kbuku', '=', 'rj.KBUKU')
+                        ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
+                })
+                ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
+                    $join->on('kc.KARCIS_RUJUKAN', '=', 'nt.karcis')
+                        ->on('kc.IDUNIT', '=', 'nt.idunit')
+                        ->on('kc.KBUKU', '=', 'nt.kbuku')
+                        ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
+                })
+                ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
+                    $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
+                        ->on('rd.IDUNIT', '=', 'nt.idunit')
+                        ->on('rd.KBUKU', '=', 'nt.kbuku')
+                        ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
+                        ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
+                })
+                ->join('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as sr', 'rd.KARCIS_RUJUKAN', '=', 'sr.karcis')
+                ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
+                ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SPECIMEN as ss', 'rd.KARCIS_RUJUKAN', '=', 'ss.karcis')
+                ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'rd.KDDOK', '=', 'nk.kddok')
+                ->join('SIRS_PHCM.dbo.DR_MDOKTER as dkd', 'rd.KDDOK', '=', 'dkd.kdDok')
+                ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT'), DB::raw("'RAWAT JALAN' as JENIS_PERAWATAN")])
+                ->distinct()
+                ->where('rd.KARCIS_RUJUKAN', $payload['karcis'])
+                ->where('rd.IDUNIT', $id_unit)
+                ->where('rd.KLINIK_TUJUAN', $payload['klinik'])
+                ->whereNull('kc.TGL_BATAL')
+                ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN')
+                ->first();
         }
-
-        $data = DB::connection('sqlsrv')
-            ->table('SIRS_PHCM.dbo.' . $dataRef . ' as rj')
-            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
-                $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
-                    ->on('nt.idunit', '=', 'rj.ID_UNIT')
-                    ->on('nt.kbuku', '=', 'rj.KBUKU')
-                    ->on('nt.no_peserta', '=', 'rj.NO_PESERTA');
-            })
-            ->leftJoin('SIRS_PHCM.dbo.RJ_KARCIS as kc', function ($join) {
-                $join->on('kc.KARCIS_RUJUKAN', '=', 'nt.karcis')
-                    ->on('kc.IDUNIT', '=', 'nt.idunit')
-                    ->on('kc.KBUKU', '=', 'nt.kbuku')
-                    ->on('kc.NO_PESERTA', '=', 'nt.no_peserta');
-            })
-            ->join('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB as rd', function ($join) {
-                $join->on('rd.KARCIS_ASAL', '=', 'nt.karcis')
-                    ->on('rd.IDUNIT', '=', 'nt.idunit')
-                    ->on('rd.KBUKU', '=', 'nt.kbuku')
-                    ->on('rd.NO_PESERTA', '=', 'nt.no_peserta')
-                    ->on('rd.KLINIK_TUJUAN', '=', 'kc.KLINIK');
-            })
-            ->join('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as sr', 'rd.KARCIS_RUJUKAN', '=', 'sr.karcis')
-            ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'rd.KDDOK', '=', 'dk.kdDok')
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SPECIMEN as ss', 'rd.KARCIS_RUJUKAN', '=', 'ss.karcis')
-            ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'rd.KDDOK', '=', 'nk.kddok')
-            ->join('SIRS_PHCM.dbo.DR_MDOKTER as dkd', 'rd.KDDOK', '=', 'dkd.kdDok')
-            ->select(['rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN', DB::raw('COUNT(DISTINCT ss.id_satusehat_servicerequest) as SATUSEHAT'), DB::raw("'RAWAT JALAN' as JENIS_PERAWATAN")])
-            ->distinct()
-            ->where('rd.KARCIS_RUJUKAN', $payload['karcis'])
-            ->where('rd.IDUNIT', $id_unit)
-            ->where('rd.KLINIK_TUJUAN', $payload['klinik'])
-            ->whereNull('kc.TGL_BATAL')
-            ->groupBy('rd.KLINIK_TUJUAN', 'rj.STATUS_SELESAI', 'rd.TANGGAL_ENTRI', 'rd.ID_RIWAYAT_ELAB', 'rj.ID_NAKES_SS', 'rj.NAMA_PASIEN', 'rj.ID_PASIEN_SS', 'dk.kdDok', 'nk.idnakes', 'dkd.nmDok', 'rj.NO_PESERTA', 'rj.KBUKU', 'rd.KARCIS_ASAL', 'rd.KARCIS_RUJUKAN', 'rd.ARRAY_TINDAKAN')
-            ->first();
 
         if (! $data) {
             throw new \Exception('Tidak ada data Specimen untuk karcis ' . $payload['karcis']);
