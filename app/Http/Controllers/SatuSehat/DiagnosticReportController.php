@@ -384,7 +384,13 @@ class DiagnosticReportController extends Controller
 
         $dokumen_px =  DB::connection('sqlsrv')
             ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
-            ->join(DB::raw('SIRS_PHCM.dbo.vw_getData_Elab as l'), 'a.kd_tindakan', '=', 'l.KD_TINDAKAN')
+            ->join(DB::raw('SIRS_PHCM.dbo.vw_getData_Elab as l'), function ($join) {
+                $join->on('a.kd_tindakan', '=', 'l.KD_TINDAKAN')
+                    ->where(function ($q) {
+                        $q->whereColumn('a.karcis', 'l.KARCIS_ASAL')
+                            ->orWhereColumn('a.karcis', 'l.KARCIS_RUJUKAN');
+                    });
+            })
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX_KATEGORI as b'), 'a.id_kategori', '=', 'b.id')
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MASTERPX as c'), 'a.kbuku', '=', 'c.kbuku')
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as m'), 'l.kd_tindakan', '=', 'm.KD_TIND')
@@ -510,8 +516,6 @@ class DiagnosticReportController extends Controller
                     ? 'final' : 'preliminary';
             }
         }
-
-        // dd($id_unit, $dokumen_px, $riwayat, $dokumen_px_codings, $patient, $dokter, $encounter, $observation, $serviceRequest, $baseurl, $status, $karcisNota);
 
         // Category
         if ($dokumen_px->nama_kategori === 'HASIL LAB') {
