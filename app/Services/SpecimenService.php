@@ -133,7 +133,8 @@ class SpecimenService
         $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
         $kdDokterSS = LZString::compressToEncodedURIComponent($data->idnakes);
         $id_unit = LZString::compressToEncodedURIComponent($payload['id_unit']);
-        $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcisAsal . '+' . $karcisRujukan . '+' . $payload['klinik'] . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS . '+' . $id_unit);
+        $kdKlinik = LZString::compressToEncodedURIComponent($payload['klinik']);
+        $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcisAsal . '+' . $karcisRujukan . '+' . $kdKlinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS . '+' . $id_unit);
 
         $paramSatuSehat = base64_encode($paramSatuSehat);
         return $paramSatuSehat;
