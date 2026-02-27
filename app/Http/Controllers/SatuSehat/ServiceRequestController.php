@@ -359,7 +359,8 @@ class ServiceRequestController extends Controller
             $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[3]);
             $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[4]);
             $kdDokterSS = LZString::decompressFromEncodedURIComponent($parts[5]);
-            $id_unit = Session::get('id_unit', '001');
+            $idUnit = LZString::decompressFromEncodedURIComponent($parts[6]);
+            $id_unit = Session::get('id_unit', $idUnit ?? null);
 
             // Validate that all required parameters were decompressed successfully
             if (
