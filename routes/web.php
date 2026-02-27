@@ -255,4 +255,16 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::post('/episode-of-care/resend', [App\Http\Controllers\SatuSehat\EpisodeOfCareController::class, 'resend'])->name('episode-of-care.resend');
         Route::post('/episode-of-care/bulk-send', [App\Http\Controllers\SatuSehat\EpisodeOfCareController::class, 'bulkSend'])->name('episode-of-care.bulk-send');
     });
+
+    // Transaksi Perpasien
+    Route::group(['prefix' => 'transaction', 'as' => 'transaction'], function () {
+        Route::group(['prefix' => 'rawat-jalan', 'as' => '.rawat-jalan'], function () {
+            Route::get('/', [App\Http\Controllers\Transaction\RawatJalanController::class, 'index'])->name('.index');
+            Route::post('/datatable', [App\Http\Controllers\Transaction\RawatJalanController::class, 'datatable'])->name('.datatable');
+        });
+        Route::group(['prefix' => 'rawat-inap', 'as' => '.rawat-inap'], function () {
+            Route::get('/', [App\Http\Controllers\Transaction\RawatInapController::class, 'index'])->name('.index');
+            Route::post('/datatable', [App\Http\Controllers\Transaction\RawatInapController::class, 'datatable'])->name('.datatable');
+        });
+    });
 });

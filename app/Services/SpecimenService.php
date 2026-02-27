@@ -44,8 +44,17 @@ class SpecimenService
 
     protected function getKunjunganData(array $payload, $id_unit)
     {
+        $jenisLayanan = isset($payload['jenis_layanan']) ? (str_contains(strtoupper($payload['jenis_layanan']), 'INAP') ? 'INAP' : 'JALAN') : 'JALAN';
+
+        $dataRef = 'v_kunjungan_rj';
+        if ($jenisLayanan == 'INAP') {
+            $dataRef = 'v_kunjungan_ri';
+        } else {
+            $dataRef = 'v_kunjungan_rj';
+        }
+
         $data = DB::connection('sqlsrv')
-            ->table('SIRS_PHCM.dbo.v_kunjungan_rj as rj')
+            ->table('SIRS_PHCM.dbo.' . $dataRef . ' as rj')
             ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
                 $join->on('nt.karcis', '=', 'rj.ID_TRANSAKSI')
                     ->on('nt.idunit', '=', 'rj.ID_UNIT')

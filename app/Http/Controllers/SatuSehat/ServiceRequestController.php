@@ -549,7 +549,7 @@ class ServiceRequestController extends Controller
                 try {
                     $dataKarcis = DB::connection('sqlsrv')
                         ->table('SIRS_PHCM.dbo.RJ_KARCIS as rk')
-                        ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
+                        ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU', 'rk.NOREG')
                         ->where('rk.KARCIS', $karcis)
                         ->where('rk.IDUNIT', $id_unit)
                         ->orderBy('rk.TGL', 'DESC')
@@ -604,7 +604,7 @@ class ServiceRequestController extends Controller
                         );
 
                         $post['aktivitas'] = 'SERVICE REQUEST & PROCEDURE RADIOLOGI & LAB';
-                        $post['jenis_layanan'] = 'JALAN';
+                        $post['jenis_layanan'] = $dataKarcis->NOREG != NULL ? 'INAP' : 'JALAN';
                         $post['post_from'] = 'Trigger Otomatis Kirim Specimen dari service request';
                         $post['url'] = $urls;
                         $post['id_unit'] = $id_unit;

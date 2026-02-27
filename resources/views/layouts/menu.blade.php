@@ -8,6 +8,14 @@
                     <a href="{{ route('home') }}" aria-expanded="false"><span class="hide-menu">Dashboard </span></a>
                 </li>
                 <li>
+                    <a class="has-arrow" href="#" aria-expanded="false"><span class="hide-menu">Transaksi Satusehat
+                        </span></a>
+                    <ul aria-expanded="false" class="collapse">
+                        <li><a href="{{ route('transaction.rawat-jalan.index') }}">Rawat Jalan</a></li>
+                        <li><a href="{{ route('transaction.rawat-inap.index') }}">Rawat Inap</a></li>
+                    </ul>
+                </li>
+                <li>
                     <a class="has-arrow" href="#" aria-expanded="false"><span class="hide-menu">Master
                             Data</span></a>
                     <ul aria-expanded="false" class="collapse">

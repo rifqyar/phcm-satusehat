@@ -39,6 +39,7 @@ class DispatchController extends Controller
             '0015',
             '0021',
             '0017',
+            '0031',
         ];
         foreach ($urls as $val) {
             $endpoint = explode('/', $val)[1];
