@@ -532,7 +532,7 @@ class ProcedureController extends Controller
                 ->where('eri.noreg', $arrParam['karcis'])
                 ->where('eri2.IDUNIT', $id_unit)
                 ->where('eri.aktif', 1)
-                ->toSql();
+                ->first();
         }
 
         $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
