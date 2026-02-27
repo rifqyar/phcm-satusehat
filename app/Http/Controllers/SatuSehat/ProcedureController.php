@@ -518,21 +518,21 @@ class ProcedureController extends Controller
                 ->leftjoin('E_RM_PHCM.dbo.ERM_RM_IRJA as eri2', 'eri2.KARCIS', 'rk.KARCIS')
                 ->select([
                     'eri.ID_ASUHAN_HEADER as NOMOR',
-                    'eri.KODE_DIAGNOSA_UTAMA',
-                    'eri.DIAG_UTAMA',
-                    'eri.KODE_DIAGNOSA_SEKUNDER',
-                    'eri.DIAG_SEKUNDER',
-                    'eri.KODE_DIAGNOSA_KOMPLIKASI',
-                    'eri.DIAG_KOMPLIKASI',
-                    'eri.KODE_DIAGNOSA_PENYEBAB',
-                    'eri.PENYEBAB',
+                    'eri2.KODE_DIAGNOSA_UTAMA',
+                    'eri2.DIAG_UTAMA',
+                    'eri2.KODE_DIAGNOSA_SEKUNDER',
+                    'eri2.DIAG_SEKUNDER',
+                    'eri2.KODE_DIAGNOSA_KOMPLIKASI',
+                    'eri2.DIAG_KOMPLIKASI',
+                    'eri2.KODE_DIAGNOSA_PENYEBAB',
+                    'eri2.PENYEBAB',
                     'eri2.DIAG_UTAMA',
                     'eri.CRT_DT as CRTDT'
                 ])
                 ->where('eri.noreg', $arrParam['karcis'])
                 ->where('eri2.IDUNIT', $id_unit)
                 ->where('eri.aktif', 1)
-                ->first();
+                ->toSql();
         }
 
         $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
