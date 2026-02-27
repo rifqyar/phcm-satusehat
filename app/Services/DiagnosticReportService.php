@@ -60,7 +60,7 @@ class DiagnosticReportService
     protected function getKunjunganData(array $payload, $id_unit)
     {
         $data = DB::selectOne("
-            EXEC dbo.sp_getDataDiagnosticReportDetail ?, ?, ?, ?, ?
+            EXEC dbo.sp_getDataDiagnosticReportDetail ?, ?, ?, ?
         ", [
             $id_unit,
             $payload['iddokumen'],
