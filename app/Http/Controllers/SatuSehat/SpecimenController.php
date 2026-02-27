@@ -461,8 +461,9 @@ class SpecimenController extends Controller
         $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[4]);
         $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[5]);
         $kdDokterSS = LZString::decompressFromEncodedURIComponent($parts[6]);
+        $idUnit = LZString::decompressFromEncodedURIComponent($parts[7]);
 
-        $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
+        $id_unit = Session::get('id_unit', $idUnit ?? null);
 
         $encounter = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
