@@ -81,8 +81,9 @@ class ServiceRequestService
         $kdPasienSS = LZString::compressToEncodedURIComponent($data->ID_PASIEN_SS);
         $kdNakesSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
         $kdDokterSS = LZString::compressToEncodedURIComponent($data->ID_NAKES_SS);
+        $kdKlinik = LZString::compressToEncodedURIComponent($payload['klinik']);
         $id_unit = LZString::compressToEncodedURIComponent($payload['id_unit']);
-        $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcis . '+' . $payload['klinik'] . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS . '+' . $id_unit);
+        $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcis . '+' . $kdKlinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS . '+' . $id_unit);
 
         return $paramSatuSehat;
     }

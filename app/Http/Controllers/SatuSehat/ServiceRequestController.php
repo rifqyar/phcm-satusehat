@@ -348,7 +348,7 @@ class ServiceRequestController extends Controller
 
             $parts = explode('+', $param);
 
-            if (count($parts) !== 6) {
+            if (count($parts) !== 7) {
                 throw new Exception('Parameter does not contain expected 6 parts, got: ' . count($parts));
             }
 
