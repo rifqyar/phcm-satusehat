@@ -169,6 +169,13 @@ return [
             'level' => 'info',
             'days' => 7
         ],
+
+        'Diagnosis' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/Diagnosis.log'),
+            'level' => 'info',
+            'days' => 7
+        ],
     ],
 
 ];
