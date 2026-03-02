@@ -364,7 +364,7 @@ class DiagnosticReportController extends Controller
             $resend = true;
         }
 
-        $exisiting_dokumen_px = DB::connection('sqlsrv')
+        $existing_dokumen_px = DB::connection('sqlsrv')
             ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX_KATEGORI as b'), 'a.id_kategori', '=', 'b.id')
             ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MASTERPX as c'), 'a.kbuku', '=', 'c.kbuku')
@@ -382,7 +382,7 @@ class DiagnosticReportController extends Controller
             })
             ->get();
 
-        $dokumen_px =  DB::connection('sqlsrv')
+        $dokumen_px = DB::connection('sqlsrv')
             ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
             ->join(DB::raw('SIRS_PHCM.dbo.vw_getData_Elab as l'), function ($join) {
                 $join->on('a.kd_tindakan', '=', 'l.KD_TINDAKAN')
@@ -397,7 +397,7 @@ class DiagnosticReportController extends Controller
             ->select([
                 'a.*',
                 'b.nama_kategori',
-                'm.KD_TIND'
+                'm.KD_TIND',
             ])
             ->where('a.AKTIF', 1)
             ->where('a.id', $arrParam['id'])
@@ -408,7 +408,23 @@ class DiagnosticReportController extends Controller
             ->first();
         // dd($arrParam, $dokumen_px, $dokumen_px->first());
 
-        $list_dokumen_px = array_merge($exisiting_dokumen_px->pluck('KD_TIND')->toArray(), [$dokumen_px->KD_TIND]);
+        $list_dokumen_px = collect()
+            ->merge($existing_dokumen_px->pluck('KD_TIND'))
+            ->push($dokumen_px->KD_TIND)
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $list_kesimpulan = collect()
+            ->merge($existing_dokumen_px->pluck('kesimpulan'))
+            ->push($dokumen_px->kesimpulan)
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $kesimpulanString = implode(', ', $list_kesimpulan);
 
         $riwayat = DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.vw_getData_Elab')
@@ -450,15 +466,32 @@ class DiagnosticReportController extends Controller
 
         $observation = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_OBSERVASI')
+            ->where('ID_SATUSEHAT_ENCOUNTER', $encounter->id_satusehat_encounter)
             ->where('KARCIS', $riwayat->KARCIS_ASAL)
             ->where('KBUKU', $dokumen_px->kbuku)
-            ->first();
+            ->where('JENIS', 'lab')
+            ->get();
+
+        $existing_specimen = DB::connection('sqlsrv')
+            ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SPECIMEN')
+            ->where('id_satusehat_encounter', $encounter->id_satusehat_encounter)
+            ->where('karcis', '!=', $arrParam['karcis_rujukan'])
+            ->get();
 
         $specimen = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SPECIMEN')
             ->where('karcis', $arrParam['karcis_rujukan'])
             ->where('id_satusehat_encounter', $encounter->id_satusehat_encounter)
             ->get();
+
+        $list_specimen = $specimen
+            ->pluck('id_satusehat_specimen')
+            ->merge($existing_specimen->pluck('id_satusehat_specimen'))
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+        // dd($list_specimen);
 
         $serviceRequest = DB::connection('sqlsrv')
             ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
@@ -475,8 +508,6 @@ class DiagnosticReportController extends Controller
                 $query->where('a.karcis', $arrParam['karcis_rujukan'])
                     ->orWhere('a.karcis', $arrParam['karcis_asal']);
             })
-            // ->where('l.karcis_rujukan', $arrParam['karcis_rujukan'])
-            ->orderBy('s.crtdt', 'desc')
             ->first();
 
         $dateTimeNow = Carbon::now()->toIso8601String();
@@ -511,8 +542,8 @@ class DiagnosticReportController extends Controller
                 ->first();
             if ($karcisNota) {
                 $status = (($karcisNota->nota != null && $karcisNota->nota != '' && $karcisNota->nota != '0')
-                    && ($karcisNota->jam_selesai != null && $karcisNota->jam_selesai != '')
-                    && ($karcisNota->encounter_pulang != null && $karcisNota->encounter_pulang != ''))
+                    || ($karcisNota->jam_selesai != null && $karcisNota->jam_selesai != '')
+                    || ($karcisNota->encounter_pulang != null && $karcisNota->encounter_pulang != ''))
                     ? 'final' : 'preliminary';
             }
         }
@@ -538,9 +569,9 @@ class DiagnosticReportController extends Controller
                 ]
             ];
             $specimenJson = [];
-            foreach ($specimen as $spc) {
+            foreach ($list_specimen as $spc) {
                 $specimenJson[] = [
-                    "reference" => "Specimen/{$spc->id_satusehat_specimen}",
+                    "reference" => "Specimen/{$spc}",
                 ];
             }
         } else if ($dokumen_px->nama_kategori === 'HASIL RADIOLOGI') {
@@ -577,11 +608,12 @@ class DiagnosticReportController extends Controller
         }
 
         if ($observation != null) {
-            $payloadObservation = [
-                [
-                    "reference" => "Observation/$observation->ID_SATUSEHAT_OBSERVASI",
-                ]
-            ];
+            $payloadObservation = [];
+            foreach ($observation as $obs) {
+                $payloadObservation[] = [
+                    "reference" => "Observation/{$obs->id_satusehat_observasi}"
+                ];
+            }
         }
 
         $data = [
@@ -612,13 +644,13 @@ class DiagnosticReportController extends Controller
                     "reference" => "ServiceRequest/{$serviceRequest->id_satusehat_servicerequest}"
                 ]
             ],
-            'conclusion' => $dokumen_px->keterangan ?? '',
+            "conclusion" => $kesimpulanString ?? '',
         ];
         if (!empty($specimenJson)) {
             $data['specimen'] = $specimenJson;
         }
 
-        // dd($resend, $data, $id_unit, $exisiting_dokumen_px, $dokumen_px, $list_dokumen_px, $riwayat, $dokumen_px_codings, $patient, $dokter, $encounter, $observation, $specimen, $serviceRequest, $baseurl, $status);
+        // dd($resend, $data, $id_unit, $existing_dokumen_px, $dokumen_px, $list_dokumen_px, $riwayat, $dokumen_px_codings, $patient, $dokter, $encounter, $observation, $specimen, $serviceRequest, $baseurl, $status);
 
         try {
             $login = $this->login($id_unit);
