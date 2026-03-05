@@ -91,8 +91,15 @@ class EncounterController extends Controller
         $length = (int) $request->input('length', 10);
         $draw   = (int) $request->input('draw', 1);
 
-        $pageNumber = ($start / $length) + 1;
-        $pageSize   = $length;
+        // Handle jika user memilih "All" (DataTables mengirimkan value -1)
+        if ($length == -1) {
+            $pageNumber = 1;
+            $pageSize   = 9999999;
+        } else {
+            $safeLength = $length > 0 ? $length : 10;
+            $pageNumber = ($start / $safeLength) + 1;
+            $pageSize   = $safeLength;
+        }
 
         $searchValue = $request->search['value'];
         $dataKunjungan = DB::select("
@@ -294,6 +301,7 @@ class EncounterController extends Controller
 
     public function sendSatuSehat($param, $resend = false)
     {
+        $param = base64_encode('FYUwdglgzg+gDiATgQwO7IC7LAXgEoBSAZBACYwYphTIDWUEOAkqgHIAWAQgJoCiALAGUAgkVrk4yBuBhQoOYQHtOAc2CcAwlAAiAWWFQADCoIAvEWPJg6IWHOapOwbdwCKAFRXaVANRUbUDW4VSxgAG0VaKQhZeRZvAA8TFQAZYQAjYW1hV1QU1wBxbkQIHxTdWjCTMNQ8Ao1-XU4AJgAzXgBaXUVhIA');
         $params = base64_decode($param);
         $params = LZString::decompressFromEncodedURIComponent($params);
         $parts = explode('&', $params);
@@ -313,7 +321,7 @@ class EncounterController extends Controller
         $kdPasienSS = $arrParam['kd_pasien_ss'];
         $kdNakesSS = $arrParam['kd_nakes_ss'];
         $kdLokasiSS = $arrParam['kd_lokasi_ss'];
-        $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
+        $id_unit = Session::get('id_unit', $arrParam['id_unit']);
 
         $dataKarcis = Karcis::leftJoin('RJ_KARCIS_BAYAR AS KarcisBayar', function ($query) use ($arrParam, $id_unit) {
             $query->on('RJ_KARCIS.KARCIS', '=', 'KarcisBayar.KARCIS')
