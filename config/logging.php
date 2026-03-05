@@ -170,6 +170,13 @@ return [
             'days' => 7
         ],
 
+        'Diagnosis' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/Diagnosis.log'),
+            'level' => 'info',
+            'days' => 7
+        ],
+      
         'DiagnosticReport' => [
             'driver' => 'daily',
             'path' => storage_path('logs/DiagnosticReport.log'),

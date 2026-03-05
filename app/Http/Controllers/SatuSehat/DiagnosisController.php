@@ -11,10 +11,13 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use App\Models\SATUSEHAT\SS_Kode_API;
 use App\Models\GlobalParameter;
-
+use App\Http\Traits\LogTraits;
+use App\Jobs\SendCondition;
 
 class DiagnosisController extends Controller
+
 {
+    use LogTraits;
     public function index()
     {
         return response()->view('pages.satusehat.diagnosis.index');
@@ -297,43 +300,43 @@ class DiagnosisController extends Controller
     {
 
         $sql = "
-            SELECT
-                UPPER(LTRIM(RTRIM(A.KODE_DIAGNOSA_UTAMA))) AS KODE_DIAGNOSA_UTAMA,
-                A.DIAG_UTAMA,
-                SE.id_satusehat_encounter,
-                SE.nota,
-                SE.karcis,
-                SE.jam_datang,
-                SP.idpx,
-                SP.nama AS nama_pasien,
-                ICD.KATA1
+        SELECT
+            UPPER(LTRIM(RTRIM(A.KODE_DIAGNOSA_UTAMA))) AS KODE_DIAGNOSA_UTAMA,
+            A.DIAG_UTAMA,
+            SE.id_satusehat_encounter,
+            SE.nota,
+            SE.karcis,
+            SE.jam_datang,
+            SP.idpx,
+            SP.nama AS nama_pasien,
+            ICD.KATA1
+        FROM (
+            SELECT *
             FROM (
-                SELECT *
-                FROM (
-                    SELECT
-                        A.*,
-                        ROW_NUMBER() OVER (
-                            PARTITION BY A.KARCIS
-                            ORDER BY
-                                CASE
-                                    WHEN A.KODE_DIAGNOSA_UTAMA IS NOT NULL THEN 0
-                                    ELSE 1
-                                END,
-                                A.CRTDT DESC
-                        ) AS rn
-                    FROM E_RM_PHCM.dbo.ERM_RM_IRJA A
-                    WHERE A.KARCIS = ?
-                    AND A.IDUNIT = ?
-                ) x
-                WHERE rn = 1
-            ) A
-            JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
-                ON A.KARCIS = SE.karcis
-            AND SE.idunit = ?
-            JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN SP
-                ON SE.id_satusehat_px = SP.idpx
-            LEFT JOIN SIRS_PHCM.dbo.RIRJ_ICD ICD
-                ON A.KODE_DIAGNOSA_UTAMA = ICD.DIAGNOSA";
+                SELECT
+                    A.*,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY A.KARCIS
+                        ORDER BY
+                            CASE
+                                WHEN A.KODE_DIAGNOSA_UTAMA IS NOT NULL THEN 0
+                                ELSE 1
+                            END,
+                            A.CRTDT DESC
+                    ) AS rn
+                FROM E_RM_PHCM.dbo.ERM_RM_IRJA A
+                WHERE A.KARCIS = ?
+                AND A.IDUNIT = ?
+            ) x
+            WHERE rn = 1
+        ) A
+        JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
+            ON A.KARCIS = SE.karcis
+        AND SE.idunit = ?
+        JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN SP
+            ON SE.id_satusehat_px = SP.idpx
+        LEFT JOIN SIRS_PHCM.dbo.RIRJ_ICD ICD
+            ON A.KODE_DIAGNOSA_UTAMA = ICD.DIAGNOSA";
 
         $row = DB::connection('sqlsrv')->selectOne(
             $sql,
@@ -349,13 +352,6 @@ class DiagnosisController extends Controller
 
         $payload = $this->buildConditionPayload($row);
 
-        // cek payload sebelum kirim
-        // return response()->json([
-        //     'status'  => 'debug',
-        //     'payload' => $payload
-        // ]);
-        // echo json_encode($payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); die;
-
         $meta = [
             'karcis' => $karcis,
             'nota'   => $row->nota,
@@ -365,11 +361,15 @@ class DiagnosisController extends Controller
             'user'   => $user,
         ];
 
+        // dispatch ke queue
+        SendCondition::dispatch($payload, $meta);
 
-        $result = $this->kirimConditionToSatuSehat($payload, $meta);
-
-        return response()->json($result);
+        return response()->json([
+            'status'  => true,
+            'message' => 'Diagnosis dikirim ke queue'
+        ]);
     }
+
     private function buildConditionPayload($row)
     {
         return [
@@ -514,7 +514,7 @@ class DiagnosisController extends Controller
                 'created_at' => now(),
             ]);
 
-            $this->logInfo('diagnosis', 'Sukses kirim data diagnosis', [
+            $this->logInfo('Diagnosis', 'Sukses kirim data diagnosis', [
                 'payload' => $payload,
                 'response' => $responseBody,
                 'user_id' => Session::get('nama', 'system') //Session::get('id')
