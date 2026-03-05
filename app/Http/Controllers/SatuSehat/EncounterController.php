@@ -301,7 +301,6 @@ class EncounterController extends Controller
 
     public function sendSatuSehat($param, $resend = false)
     {
-        $param = base64_encode('FYUwdglgzg+gDiATgQwO7IC7LAXgEoBSAZBACYwYphTIDWUEOAkqgHIAWAQgJoCiALAGUAgkVrk4yBuBhQoOYQHtOAc2CcAwlAAiAWWFQADCoIAvEWPJg6IWHOapOwbdwCKAFRXaVANRUbUDW4VSxgAG0VaKQhZeRZvAA8TFQAZYQAjYW1hV1QU1wBxbkQIHxTdWjCTMNQ8Ao1-XU4AJgAzXgBaXUVhIA');
         $params = base64_decode($param);
         $params = LZString::decompressFromEncodedURIComponent($params);
         $parts = explode('&', $params);
