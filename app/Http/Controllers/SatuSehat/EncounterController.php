@@ -164,8 +164,8 @@ class EncounterController extends Controller
             $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
             $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
             $kdLokasiSS = LZString::compressToEncodedURIComponent($row->ID_LOKASI_SS);
-            $id_unit = LZString::compressToEncodedURIComponent($id_unit);
-            $paramSatuSehat = "jenis_perawatan=" . $jenis . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS . "&id_unit=" .  $id_unit;
+            $unit = LZString::compressToEncodedURIComponent($id_unit);
+            $paramSatuSehat = "jenis_perawatan=" . $jenis . "&id_transaksi=" . $id_transaksi . "&kd_pasien_ss=" . $kdPasienSS . "&kd_nakes_ss=" . $kdNakesSS . "&kd_lokasi_ss=" .  $kdLokasiSS . "&id_unit=" .  $unit;
             $paramSatuSehat = LZString::compressToEncodedURIComponent($paramSatuSehat);
             $data[] = [
                 'DT_RowIndex' => $index++,
