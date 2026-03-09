@@ -261,6 +261,7 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::group(['prefix' => 'rawat-jalan', 'as' => '.rawat-jalan'], function () {
             Route::get('/', [App\Http\Controllers\Transaction\RawatJalanController::class, 'index'])->name('.index');
             Route::post('/datatable', [App\Http\Controllers\Transaction\RawatJalanController::class, 'datatable'])->name('.datatable');
+            Route::get('/lihat-detail/{param}', [App\Http\Controllers\Transaction\RawatJalanController::class, 'lihatDetail'])->name('.lihat-detail');
         });
         Route::group(['prefix' => 'rawat-inap', 'as' => '.rawat-inap'], function () {
             Route::get('/', [App\Http\Controllers\Transaction\RawatInapController::class, 'index'])->name('.index');

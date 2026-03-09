@@ -37,12 +37,13 @@
             <h3 class="text-themecolor">Transaksi Rawat Jalan Satusehat</h3>
             <ol class="breadcrumb">
                 <li class="breadcrumb-item">Transaksi Satusehat</li>
-                <li class="breadcrumb-item active"><a href="{{ route('transaction.rawat-jalan.index') }}">Rawat Jalan</li>
+                <li class="breadcrumb-item active"><a href="{{ route('transaction.rawat-jalan.index') }}">Rawat Jalan</a>
+                </li>
             </ol>
         </div>
         <div class="col-md-7 col-4 align-self-center">
             <div class="d-flex m-t-10 justify-content-end">
-                <h6>Selamat Datang <p><b>{{ Session::get('user') }}</b></p>
+                <h6>Selamat Datang <p><b>{{ Session::get('nama') }}</b></p>
                 </h6>
             </div>
         </div>
@@ -72,14 +73,14 @@
                                 </div>
                             </div>
                             <div class="col-4">
-                                <div class="card card-inverse card-success card-mapping" onclick="search('mapped')">
+                                <div class="card card-inverse card-success card-mapping" onclick="search('done')">
                                     <div class="card-body">
                                         <div class="card-title">
                                             <div class="row align-items-center ml-1">
                                                 <i class="fas fa-link" style="font-size: 48px"></i>
                                                 <div class="ml-3">
                                                     <span style="font-size: 24px"
-                                                        id="total_integrasi">{{ $result['total_sudah_integrasi'] }}</span>
+                                                        id="total_integrasi">{{ $result['total_integrasi'] }}</span>
                                                     <h4 class="text-white">Data Terintegrasi</h4>
                                                 </div>
                                             </div>
@@ -88,7 +89,7 @@
                                 </div>
                             </div>
                             <div class="col-4">
-                                <div class="card card-inverse card-danger card-mapping" onclick="search('unmapped')">
+                                <div class="card card-inverse card-danger card-mapping" onclick="search('pending')">
                                     <div class="card-body">
                                         <div class="card-title">
                                             <div class="row align-items-center ml-1">
@@ -147,8 +148,7 @@
                             <h4>Data Pasien</h4>
                         </div>
 
-                        <button type="button" class="btn btn-warning btn-rounded" onclick="bulkSend()"
-                            id="bulk-send-btn">
+                        <button type="button" class="btn btn-warning btn-rounded" onclick="bulkSend()" id="bulk-send-btn">
                             <i class="mdi mdi-send-outline"></i>
                             Kirim Terpilih ke SatuSehat
                         </button>
@@ -185,6 +185,7 @@
             </div>
         </div>
     </div>
+    @include('modals.modal_transaksi', $satuSehatMenu)
 @endsection
 
 
@@ -377,7 +378,7 @@
                 serverSide: true,
                 scrollX: false,
                 ajax: {
-                    url: `{{ route('satusehat.episode-of-care.datatable') }}`,
+                    url: `{{ route('transaction.rawat-jalan.datatable') }}`,
                     method: "POST",
                     data: function(data) {
                         data._token = `${$('meta[name="csrf-token"]').attr("content")}`;
@@ -388,9 +389,7 @@
                     dataSrc: function(json) {
                         if (json.summary != undefined) {
                             $('#total_all').text(json.summary.total_semua);
-                            $('#total_rawat_jalan').text(json.summary.total_rawat_jalan);
-                            $('#total_rawat_inap').text(json.summary.total_rawat_inap);
-                            $('#total_integrasi').text(json.summary.total_sudah_integrasi);
+                            $('#total_integrasi').text(json.summary.total_integrasi);
                             $('#total_belum_integrasi').text(json.summary.total_belum_integrasi);
                         }
                         return json.data;
@@ -479,6 +478,15 @@
             e.stopPropagation();
         });
 
+        function lihatDetail(param) {
+            paramSatuSehat = param;
+            ajaxGetJson(
+                `{{ route('transaction.rawat-jalan.lihat-detail', '') }}/${btoa(param)}`,
+                "show_modal",
+                ""
+            );
+        }
+
         function show_modal(response) {
             $('#nama_pasien').text(response.dataPasien.NAMA || '-');
             $('#no_rm').text(response.dataPasien.KBUKU || '-');
@@ -486,21 +494,46 @@
             $('#no_karcis').text(response.dataPasien.KARCIS || '-');
             $('#dokter').text(response.dataPasien.DOKTER || '-');
 
-            // Populate resume medis data
-            $('#plan').text(response.dataErm.PLAN_TERAPI || '-');
-            $('#diagnosa').text(response.dataErm.DIAGNOSA || '-');
+            // // Populate resume medis data
+            // $('#plan').text(response.dataErm.PLAN_TERAPI || '-');
+            // $('#diagnosa').text(response.dataErm.DIAGNOSA || '-');
 
-            // Show status based on integration status
-            $('#integrasi_care_plan, #success_care_plan, #failed_care_plan').hide();
+            // // Show status based on integration status
+            // $('#integrasi_care_plan, #success_care_plan, #failed_care_plan').hide();
 
-            if (!response.dataPasien.statusIntegrated) {
-                $('#integrasi_care_plan').show();
-            } else if (response.dataPasien.statusIntegrated) {
-                $('#success_care_plan').show();
+            // if (!response.dataPasien.statusIntegrated) {
+            //     $('#integrasi_care_plan').show();
+            // } else if (response.dataPasien.statusIntegrated) {
+            //     $('#success_care_plan').show();
+            // }
+
+            let keys = Object.keys(response.dataKirimanSatusehat)
+            for (let i = 0; i < keys.length; i++) {
+                const id = keys[i];
+                const val = response.dataKirimanSatusehat[id]
+                let bg_color = ''
+                let text_color = ''
+                let icon = ''
+                if (val == '1') {
+                    bg_color = 'card-success'
+                    text_color = 'text-white'
+                    icon = 'fa-check-circle'
+                } else {
+                    bg_color = 'card-danger'
+                    text_color = 'text-white'
+                    icon = 'fa-times-circle'
+                }
+
+                $(`#${id}`).addClass(bg_color)
+                $(`#${id}`).children().addClass(text_color)
+                $(`#${id}`).find('i').addClass(icon)
             }
+            $('.btn-kiriman-satusehat').each(function(index, el) {
+                // if($(el).attr('id') == )
+            })
 
             // Show modal
-            $('#modalCarePlan').modal('show');
+            $('#modal_transaksi').modal('show');
         }
 
         function sendSatuSehat(param) {
