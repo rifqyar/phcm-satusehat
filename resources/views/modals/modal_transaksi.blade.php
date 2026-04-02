@@ -1,5 +1,5 @@
 <!-- Modal Resume Medis Detail -->
-<div class="modal fade" id="modal_transaksi" tabindex="-1" role="dialog">
+<div class="modal fade" id="modal_transaksi">
     <div class="modal-dialog modal-xl" role="document">
         <div class="modal-content">
             <div class="modal-header">
@@ -59,9 +59,7 @@
                     </div>
                 </div>
 
-                <!-- Resume Medis -->
                 <div class="ribbon-wrapper card shadow-lg border-0 rounded-4 overflow-hidden mt-4">
-
                     <div class="ribbon ribbon-info">
                         <i class="fas fa-info-circle text-white"></i>
                         Kiriman Satusehat
@@ -79,6 +77,24 @@
                                     </div>
                                 </div>
                             @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ribbon-wrapper card shadow-lg border-0 rounded-4 overflow-hidden mt-4" id="ribbon-log">
+                    <div class="ribbon ribbon-info">
+                        <i class="fas fa-info-circle text-white"></i>
+                        Logging Kiriman Satusehat
+                    </div>
+
+                    <div class="card-body ribbon-content" id="card-log">
+                        <div class="form-group">
+                            <label for="service">Pilih Service Satusehat</label>
+                            <select name="service" id="service" class="form-control" data-placeholder="Harap pilih Service">
+                                @foreach ($listService as $service)
+                                    <option value="{{$service->service_name}}">{{$service->service_name}}</option>
+                                @endforeach
+                            </select>
                         </div>
                     </div>
                 </div>

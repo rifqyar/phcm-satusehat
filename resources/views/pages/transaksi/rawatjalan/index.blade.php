@@ -26,8 +26,8 @@
             cursor: pointer
         }
     </style>
-    <link href="{{ asset('assets/plugins/bootstrap-material-datetimepicker/css/bootstrap-material-datetimepicker.css') }}"
-        rel="stylesheet">
+    <link href="{{ asset('assets/plugins/bootstrap-material-datetimepicker/css/bootstrap-material-datetimepicker.css') }}" rel="stylesheet">
+    <link href="{{ asset('assets/plugins/select2/dist/css/select2.min.css') }}" rel="stylesheet" />
 @endpush
 
 @section('content')
@@ -185,14 +185,14 @@
             </div>
         </div>
     </div>
-    @include('modals.modal_transaksi', $satuSehatMenu)
+    @include('modals.modal_transaksi', [$satuSehatMenu, $listService])
 @endsection
 
 
 @push('after-script')
     <script src="{{ asset('assets/plugins/moment/moment.js') }}"></script>
-    <script src="{{ asset('assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js') }}">
-    </script>
+    <script src="{{ asset('assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js') }}"></script>
+    <script src="{{ asset('assets/plugins/select2/dist/js/select2.min.js') }}"></script>
     <script>
         var table;
         var selectedIds = [];
@@ -278,6 +278,23 @@
                     }
                 });
                 updateSelectAllCheckbox();
+            });
+
+            // Jalankan Select2 saat modal sudah selesai melakukan animasi "show"
+            $('#modal_transaksi').on('shown.bs.modal', function () {
+                $('#service').select2({
+                    width: '100%',
+                    theme: "classic",
+                    // Ubah dropdownParent ke .modal-content agar z-index mengikuti konten modal
+                    dropdownParent: $('#modal_transaksi .modal-content')
+                });
+            });
+
+            // Opsional: Hapus instance Select2 saat modal ditutup agar tidak duplikat saat dibuka lagi
+            $('#modal_transaksi').on('hidden.bs.modal', function () {
+                if ($('#service').hasClass("select2-hidden-accessible")) {
+                    $('#service').select2('destroy');
+                }
             });
         });
 
@@ -479,58 +496,43 @@
         });
 
         function lihatDetail(param) {
-            paramSatuSehat = param;
-            ajaxGetJson(
-                `{{ route('transaction.rawat-jalan.lihat-detail', '') }}/${btoa(param)}`,
-                "show_modal",
-                ""
-            );
+            // paramSatuSehat = param;
+            // ajaxGetJson(
+            //     `{{ route('transaction.rawat-jalan.lihat-detail', '') }}/${btoa(param)}`,
+            //     "show_modal",
+            //     ""
+            // );
+            show_modal(null)
         }
 
         function show_modal(response) {
-            $('#nama_pasien').text(response.dataPasien.NAMA || '-');
-            $('#no_rm').text(response.dataPasien.KBUKU || '-');
-            $('#no_peserta').text(response.dataPasien.NO_PESERTA || '-');
-            $('#no_karcis').text(response.dataPasien.KARCIS || '-');
-            $('#dokter').text(response.dataPasien.DOKTER || '-');
+            // $('#nama_pasien').text(response.dataPasien.NAMA || '-');
+            // $('#no_rm').text(response.dataPasien.KBUKU || '-');
+            // $('#no_peserta').text(response.dataPasien.NO_PESERTA || '-');
+            // $('#no_karcis').text(response.dataPasien.KARCIS || '-');
+            // $('#dokter').text(response.dataPasien.DOKTER || '-');
 
-            // // Populate resume medis data
-            // $('#plan').text(response.dataErm.PLAN_TERAPI || '-');
-            // $('#diagnosa').text(response.dataErm.DIAGNOSA || '-');
+            // let keys = Object.keys(response.dataKirimanSatusehat)
+            // for (let i = 0; i < keys.length; i++) {
+            //     const id = keys[i];
+            //     const val = response.dataKirimanSatusehat[id]
+            //     let bg_color = ''
+            //     let text_color = ''
+            //     let icon = ''
+            //     if (val == '1') {
+            //         bg_color = 'card-success'
+            //         text_color = 'text-white'
+            //         icon = 'fa-check-circle'
+            //     } else {
+            //         bg_color = 'card-danger'
+            //         text_color = 'text-white'
+            //         icon = 'fa-times-circle'
+            //     }
 
-            // // Show status based on integration status
-            // $('#integrasi_care_plan, #success_care_plan, #failed_care_plan').hide();
-
-            // if (!response.dataPasien.statusIntegrated) {
-            //     $('#integrasi_care_plan').show();
-            // } else if (response.dataPasien.statusIntegrated) {
-            //     $('#success_care_plan').show();
+            //     $(`#${id}`).addClass(bg_color)
+            //     $(`#${id}`).children().addClass(text_color)
+            //     $(`#${id}`).find('i').addClass(icon)
             // }
-
-            let keys = Object.keys(response.dataKirimanSatusehat)
-            for (let i = 0; i < keys.length; i++) {
-                const id = keys[i];
-                const val = response.dataKirimanSatusehat[id]
-                let bg_color = ''
-                let text_color = ''
-                let icon = ''
-                if (val == '1') {
-                    bg_color = 'card-success'
-                    text_color = 'text-white'
-                    icon = 'fa-check-circle'
-                } else {
-                    bg_color = 'card-danger'
-                    text_color = 'text-white'
-                    icon = 'fa-times-circle'
-                }
-
-                $(`#${id}`).addClass(bg_color)
-                $(`#${id}`).children().addClass(text_color)
-                $(`#${id}`).find('i').addClass(icon)
-            }
-            $('.btn-kiriman-satusehat').each(function(index, el) {
-                // if($(el).attr('id') == )
-            })
 
             // Show modal
             $('#modal_transaksi').modal('show');

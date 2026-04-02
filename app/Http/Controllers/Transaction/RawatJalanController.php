@@ -123,6 +123,18 @@ class RawatJalanController extends Controller
             1
         ]));
 
+        $queryService = "SELECT
+                DISTINCT
+                CASE
+                    WHEN CHARINDEX('/', slt.service) > 0
+                    THEN LEFT(slt.service, CHARINDEX('/', slt.service) - 1)
+                    ELSE slt.service
+                END AS service_name
+            FROM SATUSEHAT.dbo.SATUSEHAT_LOG_TRANSACTION slt
+            where service not in ('anamnese', 'lab', 'rad');";
+
+        $listService = DB::select($queryService);
+
         $summary = $dataKunjungan->first();
         $result = [
             'total_semua' => $summary->total_semua ?? 0,
@@ -130,7 +142,7 @@ class RawatJalanController extends Controller
             'total_belum_integrasi' => $summary->total_belum_integrasi ?? 0,
         ];
 
-        return view('pages.transaksi.rawatjalan.index', compact('result', 'satuSehatMenu'));
+        return view('pages.transaksi.rawatjalan.index', compact('result', 'satuSehatMenu', 'listService'));
     }
 
     public function datatable(Request $request)
