@@ -37,7 +37,7 @@ class QuestionnaireResponseController extends Controller
 
         // Get all karcis IDs
         $allKarcisIds = $dataKunjungan->pluck('ID_TRANSAKSI')->filter()->unique()->toArray();
-        
+
         // Count how many have logs in SATUSEHAT_LOG_RESPON_KUESIONER
         $integratedCount = 0;
         if (!empty($allKarcisIds)) {
@@ -51,7 +51,7 @@ class QuestionnaireResponseController extends Controller
         $mergedAll = $dataKunjungan->count();
         $mergedIntegrated = $integratedCount;
         $unmapped = $mergedAll - $mergedIntegrated;
-        
+
         return view('pages.satusehat.questionnaire-response.index', compact('mergedAll', 'mergedIntegrated', 'unmapped'));
     }
 
@@ -86,13 +86,13 @@ class QuestionnaireResponseController extends Controller
         // Fetch all log statuses in one query to avoid N+1 problem
         $allTransaksiIds = $dataKunjungan->pluck('ID_TRANSAKSI')->filter()->unique()->toArray();
         $logStatuses = [];
-        
+
         if (!empty($allTransaksiIds)) {
             $logs = DB::connection('sqlsrv')
                 ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_RESPON_KUESIONER')
                 ->whereIn('karcis', $allTransaksiIds)
                 ->get();
-            
+
             // Group by karcis and take the latest one for each
             foreach ($logs as $log) {
                 if (!isset($logStatuses[$log->karcis])) {
@@ -100,24 +100,24 @@ class QuestionnaireResponseController extends Controller
                 }
             }
         }
-        
+
         // Calculate totals based on log existence
         $total_semua = $dataKunjungan->count();
         $total_sudah_integrasi = count($logStatuses);
         $total_belum_integrasi = $total_semua - $total_sudah_integrasi;
-        
+
         // Apply filter based on search type
         if (!empty($cari)) {
             switch ($cari) {
                 case 'sent':
                     // Filter only integrated data (has log)
-                    $dataKunjungan = $dataKunjungan->filter(function($row) use ($logStatuses) {
+                    $dataKunjungan = $dataKunjungan->filter(function ($row) use ($logStatuses) {
                         return isset($logStatuses[$row->ID_TRANSAKSI]);
                     });
                     break;
                 case 'pending':
                     // Filter only non-integrated data (no log)
-                    $dataKunjungan = $dataKunjungan->filter(function($row) use ($logStatuses) {
+                    $dataKunjungan = $dataKunjungan->filter(function ($row) use ($logStatuses) {
                         return !isset($logStatuses[$row->ID_TRANSAKSI]);
                     });
                     break;
@@ -127,7 +127,7 @@ class QuestionnaireResponseController extends Controller
                     break;
             }
         }
-        
+
         $totalData = [
             'total_semua' => $total_semua,
             'total_sudah_integrasi' => $total_sudah_integrasi,
@@ -166,14 +166,13 @@ class QuestionnaireResponseController extends Controller
                 if ($row->JUMLAH_NOTA_SATUSEHAT > 0) {
                     return '<button style="white-space: nowrap" class="btn btn-sm btn-primary" onclick="tambahRespon(\'' . $row->ID_TRANSAKSI . '\', \'' . $paramEncoded . '\')">Isi respon kuesioner</button>';
                 } else {
-                    return '<i class="text-muted">Encounter Belum Dikirim</i>';   
+                    return '<i class="text-muted">Encounter Belum Dikirim</i>';
                 }
-                
             })
             ->addColumn('status_integrasi', function ($row) use ($logStatuses) {
                 // Use pre-fetched log status to avoid N+1 query
                 $logStatus = $logStatuses[$row->ID_TRANSAKSI] ?? null;
-                
+
                 if ($logStatus) {
                     return '<span class="badge badge-success">Sudah Integrasi</span><br><small>' . date('d-m-Y H:i', strtotime($logStatus->crtdt)) . '</small>';
                 } else {
@@ -202,8 +201,6 @@ class QuestionnaireResponseController extends Controller
     public function sendSatuSehat(Request $request, $param)
     {
         try {
-            $id_unit = Session::get('id_unit', '001');
-            
             // Parse parameters same as EncounterController
             $params = base64_decode($param);
             $params = LZString::decompressFromEncodedURIComponent($params);
@@ -224,7 +221,8 @@ class QuestionnaireResponseController extends Controller
             $kdPasienSS = $arrParam['kd_pasien_ss'];
             $kdNakesSS = $arrParam['kd_nakes_ss'];
             $kdLokasiSS = $arrParam['kd_lokasi_ss'];
-            
+            $id_unit = Session::get('id_unit', $arrParam['id_unit']);
+
             // Get visit data
             $visit = DB::connection('sqlsrv')
                 ->table('SIRS_PHCM.dbo.v_kunjungan_rj as rj')
@@ -233,7 +231,7 @@ class QuestionnaireResponseController extends Controller
                 ->orWhere('ri.ID_TRANSAKSI', $id_transaksi)
                 ->select('rj.*', 'ri.ID_TRANSAKSI as ri_id')
                 ->first();
-                
+
             if (!$visit) {
                 return response()->json([
                     'status' => 404,
@@ -241,13 +239,13 @@ class QuestionnaireResponseController extends Controller
                     'redirect' => ['need' => false, 'to' => '']
                 ], 404);
             }
-            
+
             // Get patient data using kdPasienSS
             $patient = DB::connection('sqlsrv')
                 ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
                 ->where('idpx', $kdPasienSS)
                 ->first();
-                
+
             if (!$patient) {
                 return response()->json([
                     'status' => 404,
@@ -255,10 +253,26 @@ class QuestionnaireResponseController extends Controller
                     'redirect' => ['need' => false, 'to' => '']
                 ], 404);
             }
-            
+
+            // Default responses
+            $defaultResponses = [
+                '1.1' => 'OV000052',
+                '1.2' => 'OV000052',
+                '1.3' => 'OV000052',
+                '1.4' => 'OV000052',
+                '2.1' => 'OV000052',
+                '2.2' => 'OV000052',
+                '2.3' => 'OV000052',
+                '2.4' => 'OV000052',
+                '3.1' => 'OV000052',
+                '3.2' => 'true',
+                '3.3' => 'true',
+                '3.4' => 'true',
+                '3.5' => 'true',
+            ];
             // Get responses from request
-            $responses = $request->input('responses', []);
-            
+            $responses = $request->input('responses', $defaultResponses);
+
             if (empty($responses)) {
                 return response()->json([
                     'status' => 400,
@@ -266,10 +280,10 @@ class QuestionnaireResponseController extends Controller
                     'redirect' => ['need' => false, 'to' => '']
                 ], 400);
             }
-            
+
             // Build payload items based on responses
             $items = [];
-            
+
             // Section 1: Persyaratan Administrasi
             $section1Items = [];
             foreach (['1.1', '1.2', '1.3', '1.4'] as $linkId) {
@@ -287,7 +301,7 @@ class QuestionnaireResponseController extends Controller
                     ];
                 }
             }
-            
+
             if (!empty($section1Items)) {
                 $items[] = [
                     'linkId' => '1',
@@ -295,7 +309,7 @@ class QuestionnaireResponseController extends Controller
                     'item' => $section1Items
                 ];
             }
-            
+
             // Section 2: Persyaratan Farmasetik
             $section2Items = [];
             foreach (['2.1', '2.2', '2.3', '2.4'] as $linkId) {
@@ -313,7 +327,7 @@ class QuestionnaireResponseController extends Controller
                     ];
                 }
             }
-            
+
             if (!empty($section2Items)) {
                 $items[] = [
                     'linkId' => '2',
@@ -321,7 +335,7 @@ class QuestionnaireResponseController extends Controller
                     'item' => $section2Items
                 ];
             }
-            
+
             // Section 3: Persyaratan Klinis
             $section3Items = [];
             foreach (['3.1', '3.2', '3.3', '3.4', '3.5'] as $linkId) {
@@ -342,7 +356,7 @@ class QuestionnaireResponseController extends Controller
                             'valueBoolean' => $responses[$linkId] === 'true' ? true : false
                         ]];
                     }
-                    
+
                     $section3Items[] = [
                         'linkId' => $linkId,
                         'text' => $this->getQuestionText($linkId),
@@ -350,7 +364,7 @@ class QuestionnaireResponseController extends Controller
                     ];
                 }
             }
-            
+
             if (!empty($section3Items)) {
                 $items[] = [
                     'linkId' => '3',
@@ -358,7 +372,7 @@ class QuestionnaireResponseController extends Controller
                     'item' => $section3Items
                 ];
             }
-            
+
             // Section 4: Resep yang dilakukan pengkajian resep (hardcoded)
             // $items[] = [
             //     'linkId' => '4',
@@ -369,14 +383,14 @@ class QuestionnaireResponseController extends Controller
             //         ]
             //     ]]
             // ];
-            
+
             // Get encounter ID
             $encounter = DB::connection('sqlsrv')
                 ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
                 ->where('karcis', $id_transaksi)
                 ->where('idunit', $id_unit)
                 ->first();
-                
+
             if (!$encounter || !$encounter->id_satusehat_encounter) {
                 return response()->json([
                     'status' => 404,
@@ -384,15 +398,15 @@ class QuestionnaireResponseController extends Controller
                     'redirect' => ['need' => false, 'to' => '']
                 ], 404);
             }
-            
+
             // Get practitioner data (author) using kdNakesSS
             $practitioner = DB::connection('sqlsrv')
                 ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
                 ->where('idnakes', $kdNakesSS)
                 ->first();
 
-                // dd($practitioner);
-                
+            // dd($practitioner);
+
             if (!$practitioner) {
                 return response()->json([
                     'status' => 404,
@@ -400,10 +414,10 @@ class QuestionnaireResponseController extends Controller
                     'redirect' => ['need' => false, 'to' => '']
                 ], 404);
             }
-            
+
             $practitionerId = $practitioner->idnakes;
             $practitionerName = $practitioner->nama;
-            
+
             // Build final payload
             $payload = [
                 'resourceType' => 'QuestionnaireResponse',
@@ -427,9 +441,8 @@ class QuestionnaireResponseController extends Controller
                 'item' => $items
             ];
 
+            // dd($request, $params, $arrParam, $defaultResponses, $responses, $payload);
 
-            // dd($payload);
-            
             // Get base URL
             $baseurl = '';
             if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
@@ -439,7 +452,7 @@ class QuestionnaireResponseController extends Controller
                 $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
                 $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
             }
-            
+
             // Login to get access token
             $login = $this->login($id_unit);
             if ($login['metadata']['code'] != 200) {
@@ -449,16 +462,16 @@ class QuestionnaireResponseController extends Controller
                     'redirect' => ['need' => false, 'to' => '']
                 ], 500);
             }
-            
+
             $token = $login['response']['token'];
-            
+
             // Send to SatuSehat using consumeSATUSEHATAPI
             $url = 'QuestionnaireResponse';
             $data = json_decode(json_encode($payload));
             $response = $this->consumeSATUSEHATAPI('POST', $baseurl, $url, $data, true, $token);
             $statusCode = $response->getStatusCode();
             $responseBody = json_decode($response->getBody()->getContents(), true);
-            
+
             // Log to database
             DB::connection('sqlsrv')->table('SATUSEHAT.dbo.SATUSEHAT_LOG_RESPON_KUESIONER')->insert([
                 'karcis' => $id_transaksi,
@@ -474,14 +487,32 @@ class QuestionnaireResponseController extends Controller
                 'crtusr' => Session::get('user', 'system'),
                 'sinkron_date' => $statusCode == 201 ? Carbon::now() : null
             ]);
-            
+
             if ($statusCode == 201) {
+                $this->logInfo('QuestionnaireResponse', 'Sukses kirim data Questionnaire Response', [
+                    'payload' => $payload,
+                    'response' => $responseBody,
+                    'user_id' => Session::get('nama', 'system') //Session::get('id')
+                ]);
+
+                $this->logDb(json_encode($responseBody), 'QuestionnaireResponse', json_encode($payload), 'system'); //Session::get('id')
+
                 return response()->json([
                     'status' => 200,
                     'message' => 'Data berhasil dikirim ke SatuSehat',
                     'redirect' => ['need' => false, 'to' => '']
                 ]);
             } else {
+                $responseError = json_decode($response->getBody(), true);
+
+                $this->logError('QuestionnaireResponse', 'Gagal kirim data Questionnaire Response', [
+                    'payload' => $payload,
+                    'response' => $response,
+                    'user_id' => Session::get('nama', 'system') //Session::get('id')
+                ]);
+
+                $this->logDb(json_encode($responseError), 'QuestionnaireResponse', json_encode($payload), 'system'); //Session::get('id')
+
                 $msg = '';
                 if (isset($responseBody['issue'])) {
                     foreach ($responseBody['issue'] as $issue) {
@@ -491,14 +522,13 @@ class QuestionnaireResponseController extends Controller
                 } else {
                     $msg = $responseBody['message'] ?? 'Unknown error';
                 }
-                
+
                 return response()->json([
                     'status' => $statusCode,
                     'message' => 'Gagal mengirim data: ' . trim($msg),
                     'redirect' => ['need' => false, 'to' => '']
                 ], $statusCode);
             }
-            
         } catch (Exception $e) {
             return response()->json([
                 'status' => 500,
@@ -507,7 +537,7 @@ class QuestionnaireResponseController extends Controller
             ], 500);
         }
     }
-    
+
     private function getQuestionText($linkId)
     {
         $questions = [
@@ -525,7 +555,7 @@ class QuestionnaireResponseController extends Controller
             '3.4' => 'Apakah terdapat kontraindikasi pengobatan?',
             '3.5' => 'Apakah terdapat dampak interaksi obat?'
         ];
-        
+
         return $questions[$linkId] ?? '';
     }
 

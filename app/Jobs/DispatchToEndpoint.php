@@ -16,6 +16,7 @@ use App\Services\MedicationRequestService;
 use App\Services\DiagnosaService;
 use App\Services\EpisodeOfCareService;
 use App\Services\MedStatementService;
+use App\Services\QuestionnaireResponseService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -114,6 +115,10 @@ class DispatchToEndpoint implements ShouldQueue
 
             case 'diagnostic-report':
                 app(DiagnosticReportService::class)->process($this->payload);
+                break;
+
+            case 'questionnaire-response':
+                app(QuestionnaireResponseService::class)->process($this->payload);
                 break;
 
             default:
