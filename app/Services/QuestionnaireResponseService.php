@@ -21,13 +21,6 @@ class QuestionnaireResponseService
       'user_id' => 'system',
     ]);
 
-    $encounterId = SATUSEHAT_NOTA::where(
-      'karcis',
-      (int) $payload['karcis']
-    )
-      ->where('idunit', $id_unit)
-      ->first();
-
     $data = $this->getKunjunganData($payload, $id_unit);
     if (! $data) {
       throw new \Exception('Data kunjungan tidak ditemukan');
@@ -48,7 +41,7 @@ class QuestionnaireResponseService
   protected function getKunjunganData(array $payload, $id_unit)
   {
     $jenisPerawatan = 'RAWAT_JALAN';
-    if (str_contains(strtoupper($payload['aktivitas']), 'RAWAT JALAN')) {
+    if (strtoupper($payload['jenis_layanan']) == 'JALAN' || str_contains(strtoupper($payload['jenis_layanan']), 'JALAN')) {
       $jenisPerawatan = 'RAWAT_JALAN';
     } else {
       $jenisPerawatan = 'RAWAT_INAP';
