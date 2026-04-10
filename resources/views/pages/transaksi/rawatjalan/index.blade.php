@@ -692,6 +692,17 @@
             });
         }
 
+        function input_error(err) {
+            console.log(err);
+            $.toast({
+                heading: "Gagal memproses data!",
+                text: err.message,
+                position: "top-right",
+                icon: "error",
+                hideAfter: 5000,
+            });
+        }
+
         $('#service').on('change', function() {
             const serviceName = $(this).val();
             ajaxGetJson(`{{ route('transaction.rawat-jalan.get-log', '') }}/${paramSatuSehat}/${serviceName}`,

@@ -257,13 +257,13 @@
         const today = moment().format('YYYY-MM-DD');
         $('#start_date').val(today);
         $('#end_date').val(today);
-        
+
         // Reset search type
         $('input[name="search"]').val('');
-        
+
         // Remove validation classes
         $("#search-data").removeClass("was-validated");
-        
+
         // Reload table
         table.ajax.reload();
     }
@@ -404,11 +404,11 @@
             data: { visit_id: id },
             success: function(response) {
                 Swal.close();
-                
+
                 // Populate modal with structured questions
                 let questionsHtml = '';
                 let questionNumber = 1;
-                
+
                 response.sections.forEach(function(section, sectionIndex) {
                     questionsHtml += `
                         <div class="card mb-3">
@@ -419,14 +419,14 @@
                                 <table class="table table-borderless">
                                     <tbody>
                     `;
-                    
+
                     section.questions.forEach(function(question) {
                         const isBoolean = question.type === 'valueBoolean';
                         const yesLabel = isBoolean ? 'Ya (Ada)' : 'Sesuai';
                         const noLabel = isBoolean ? 'Tidak (Tidak Ada)' : 'Tidak Sesuai';
                         const yesValue = isBoolean ? 'true' : 'OV000052';
                         const noValue = isBoolean ? 'false' : 'OV000053';
-                        
+
                         questionsHtml += `
                             <tr>
                                 <td style="width: 70%">
@@ -434,9 +434,9 @@
                                 </td>
                                 <td style="width: 30%">
                                     <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" 
-                                               name="question_${question.linkId}" 
-                                               id="yes_${question.linkId}" 
+                                        <input class="form-check-input" type="radio"
+                                               name="question_${question.linkId}"
+                                               id="yes_${question.linkId}"
                                                value="${yesValue}"
                                                data-type="${question.type}"
                                                checked>
@@ -445,9 +445,9 @@
                                         </label>
                                     </div>
                                     <div class="form-check form-check-inline">
-                                        <input class="form-check-input" type="radio" 
-                                               name="question_${question.linkId}" 
-                                               id="no_${question.linkId}" 
+                                        <input class="form-check-input" type="radio"
+                                               name="question_${question.linkId}"
+                                               id="no_${question.linkId}"
                                                value="${noValue}"
                                                data-type="${question.type}">
                                         <label class="form-check-label" for="no_${question.linkId}">
@@ -458,7 +458,7 @@
                             </tr>
                         `;
                     });
-                    
+
                     questionsHtml += `
                                     </tbody>
                                 </table>
@@ -466,11 +466,11 @@
                         </div>
                     `;
                 });
-                
+
                 $('#questionsContainer').html(questionsHtml);
                 $('#questionnaireModal').data('visitId', id);
                 $('#questionnaireModal').data('paramEncoded', paramEncoded);
-                
+
                 // Ensure modal is shown properly
                 setTimeout(function() {
                     $('#questionnaireModal').modal({
@@ -496,7 +496,7 @@
         const visitId = $('#questionnaireModal').data('visitId');
         const paramEncoded = $('#questionnaireModal').data('paramEncoded');
         const responses = {};
-        
+
         // Collect all radio button values
         $('#questionnaireForm input[type="radio"]:checked').each(function() {
             const name = $(this).attr('name');
@@ -507,7 +507,7 @@
         // Basic validation - ensure all questions are answered
         const totalQuestions = $('#questionnaireForm input[type="radio"]').length / 2; // Divide by 2 because each question has 2 radio buttons
         const answeredQuestions = Object.keys(responses).length;
-        
+
         if (answeredQuestions < totalQuestions) {
             Swal.fire({
                 title: 'Peringatan!',
@@ -634,5 +634,16 @@
             },
         });
     }
+
+    function input_error(err) {
+            console.log(err);
+            $.toast({
+                heading: "Gagal memproses data!",
+                text: err.message,
+                position: "top-right",
+                icon: "error",
+                hideAfter: 5000,
+            });
+        }
 </script>
 @endpush

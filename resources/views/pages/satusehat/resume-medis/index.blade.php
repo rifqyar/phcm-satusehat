@@ -516,7 +516,7 @@
 
     function lihatDetail(param) {
         paramSatuSehat = param;
-        
+
         Swal.fire({
             title: 'Loading...',
             text: 'Sedang memuat data',
@@ -535,7 +535,7 @@
             },
             success: function(response) {
                 Swal.close();
-                
+
                 // Populate patient data
                 $('#nama_pasien').text(response.dataPasien.NAMA || '-');
                 $('#no_rm').text(response.dataPasien.KBUKU || '-');
@@ -547,8 +547,8 @@
                 let allergyHtml = '';
                 if (response.dataAlergi && response.dataAlergi.length > 0) {
                     response.dataAlergi.forEach(function(allergy) {
-                        allergyHtml += '<tr><td>' + (allergy.JENIS || '-') + '</td><td>' 
-                            + (allergy.ALERGEN || '-') + '</td><td>' 
+                        allergyHtml += '<tr><td>' + (allergy.JENIS || '-') + '</td><td>'
+                            + (allergy.ALERGEN || '-') + '</td><td>'
                             + (allergy.ID_ALERGEN_SS || '-') + '</td></tr>';
                     });
                 } else {
@@ -572,7 +572,7 @@
 
                 // Show status based on integration status
                 $('#integrasi_resume, #success_resume, #failed_resume').hide();
-                
+
                 if (response.dataPasien.STATUS_INTEGRATED == 0) {
                     $('#integrasi_resume').show();
                 } else if (response.dataPasien.STATUS_INTEGRATED == 1) {
@@ -685,7 +685,7 @@
                     },
                     success: function(response) {
                         Swal.close();
-                        
+
                         if (response.status === 200) {
                             $.toast({
                                 heading: "Berhasil!",
@@ -694,7 +694,7 @@
                                 icon: "success",
                                 hideAfter: 7000
                             });
-                            
+
                             // Show additional info about background processing
                             setTimeout(() => {
                                 $.toast({
@@ -705,7 +705,7 @@
                                     hideAfter: 5000
                                 });
                             }, 2000);
-                            
+
                             // Clear selections and reload table
                             selectedIds = [];
                             $('#selectAll').prop('checked', false);
@@ -724,11 +724,11 @@
                     error: function(xhr) {
                         Swal.close();
                         let errorMessage = "Terjadi kesalahan saat mengirim data";
-                        
+
                         if (xhr.responseJSON && xhr.responseJSON.message) {
                             errorMessage = xhr.responseJSON.message;
                         }
-                        
+
                         $.toast({
                             heading: "Error!",
                             text: errorMessage,
@@ -781,5 +781,16 @@
             },
         });
     }
+
+    function input_error(err) {
+            console.log(err);
+            $.toast({
+                heading: "Gagal memproses data!",
+                text: err.message,
+                position: "top-right",
+                icon: "error",
+                hideAfter: 5000,
+            });
+        }
 </script>
 @endpush

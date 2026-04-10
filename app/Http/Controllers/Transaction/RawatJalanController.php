@@ -510,12 +510,20 @@ class RawatJalanController extends Controller
 
             return response()->json([
                 'status' => 200,
-                'message' => 'Integrasi berhasil diantrikan ke background job!'
+                'message' => 'Integrasi berhasil diantrikan ke background job!',
+                'redirect' => [
+                    'need' => false,
+                    'to' => null,
+                ]
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 500,
-                'message' => 'Gagal memproses integrasi: ' . $e->getMessage()
+                'message' => 'Gagal memproses integrasi: ' . $e->getMessage(),
+                'redirect' => [
+                    'need' => false,
+                    'to' => null,
+                ]
             ], 500);
         }
     }

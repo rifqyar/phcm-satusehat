@@ -657,5 +657,16 @@
                 },
             });
         }
+
+        function input_error(err) {
+            console.log(err);
+            $.toast({
+                heading: "Gagal memproses data!",
+                text: err.message,
+                position: "top-right",
+                icon: "error",
+                hideAfter: 5000,
+            });
+        }
     </script>
 @endpush
