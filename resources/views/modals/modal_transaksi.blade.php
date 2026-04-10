@@ -91,11 +91,14 @@
                         <div class="form-group">
                             <label for="service">Pilih Service Satusehat</label>
                             <select name="service" id="service" class="form-control" data-placeholder="Harap pilih Service">
+                                <option></option>
                                 @foreach ($listService as $service)
                                     <option value="{{$service->service_name}}">{{$service->service_name}}</option>
                                 @endforeach
                             </select>
                         </div>
+
+                        <div id="log-container"></div>
                     </div>
                 </div>
             </div>

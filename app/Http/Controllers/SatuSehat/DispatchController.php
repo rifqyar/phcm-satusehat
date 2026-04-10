@@ -57,20 +57,5 @@ class DispatchController extends Controller
         }
 
         return response()->json(['status' => 'queued']);
-
-        // $payload = $request->except(['url']); // array murni
-        // $urls    = $request->input('url');   // array endpoint
-        // Session::put('id_unit', $request->input('id_unit'));
-
-        // $this->logInfo('dispatchci', 'Receive param', [
-        //     'payload' => $payload,
-        //     'urls' => $urls
-        // ]);
-
-        // DispatchCIRequest::dispatch($payload, $urls)->onQueue('incoming');
-
-        // return response()->json([
-        //     'status' => 'queued'
-        // ]);
     }
 }

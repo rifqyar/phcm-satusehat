@@ -262,6 +262,8 @@ Route::middleware(['checkLogin'])->group(function () {
             Route::get('/', [App\Http\Controllers\Transaction\RawatJalanController::class, 'index'])->name('.index');
             Route::post('/datatable', [App\Http\Controllers\Transaction\RawatJalanController::class, 'datatable'])->name('.datatable');
             Route::get('/lihat-detail/{param}', [App\Http\Controllers\Transaction\RawatJalanController::class, 'lihatDetail'])->name('.lihat-detail');
+            Route::get('get-log/{param?}/{service?}', [App\Http\Controllers\Transaction\RawatJalanController::class, 'getLog'])->name('.get-log');
+            Route::post('/send-satusehat', [App\Http\Controllers\Transaction\RawatJalanController::class, 'sendSatuSehat'])->name('.send-satusehat');
         });
         Route::group(['prefix' => 'rawat-inap', 'as' => '.rawat-inap'], function () {
             Route::get('/', [App\Http\Controllers\Transaction\RawatInapController::class, 'index'])->name('.index');

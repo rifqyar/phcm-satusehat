@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Transaction;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\DispatchToEndpoint;
 use App\Lib\LZCompressor\LZString;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -93,7 +94,7 @@ class RawatJalanController extends Controller
             [
                 'title' => 'Respon Kuesioner',
                 'url' => 'satusehat.questionnaire-response.index',
-                'id' => ''
+                'id' => 'questionnaireresponse_sent'
             ],
             [
                 'title' => 'Episode of Care',
@@ -325,7 +326,7 @@ class RawatJalanController extends Controller
     public function lihatDetail($param)
     {
         $param = base64_decode($param);
-        $id_unit = Session::get('id_unit', '001');
+        $id_unit = trim((string)Session::get('id_unit', '001'));
         $detailKiriman = collect(DB::select("
             EXEC dbo.sp_getKunjunganSatusehat_Detail ?, ?, ?
         ", [
@@ -353,5 +354,211 @@ class RawatJalanController extends Controller
             'dataPasien' => $dataPasien,
             'dataKirimanSatusehat' => $detailKiriman,
         ]);
+    }
+
+    public function getLog($param, $service)
+    {
+        $id_unit = Session::get('id_unit', '001');
+        $karcis = $param;
+        $encounter = DB::select("SELECT TOP 1 * FROM dbo.fn_getDataKunjungan(?, 'RAWAT_JALAN') where ID_TRANSAKSI = ?", [
+            $id_unit,
+            $karcis
+        ]);
+
+        $log = collect(DB::select(
+            "SELECT * FROM SATUSEHAT.dbo.SATUSEHAT_LOG_TRANSACTION WHERE service = ? AND (request LIKE ? OR response LIKE ?)",
+            [
+                $service,
+                '%' . $encounter[0]->ID_SATUSEHAT_ENCOUNTER . '%', // Tambahkan % di sini
+                '%' . $encounter[0]->ID_SATUSEHAT_ENCOUNTER . '%', // Tambahkan % di sini
+            ]
+        ));
+
+        return response()->json([
+            'log' => $log
+        ]);
+    }
+
+    public function sendSatuSehat(Request $request)
+    {
+        try {
+            $params = LZString::decompressFromEncodedURIComponent($request->param);
+            $parts = explode('&', $params);
+
+            $arrParam = [];
+            $partsParam = explode('=', $parts[0]);
+            $arrParam[$partsParam[0]] = $partsParam[1];
+            for ($i = 1; $i < count($parts); $i++) {
+                $partsParam = explode('=', $parts[$i]);
+                $key = $partsParam[0];
+                $val = $partsParam[1];
+                $arrParam[$key] = LZString::decompressFromEncodedURIComponent($val);
+            }
+
+            $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
+            $dataPeserta = DB::selectOne("SELECT no_peserta FROM SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN_MAPPING where idpx = ?", [$arrParam['kd_pasien_ss']]);
+            $dataMedication = DB::selectOne("SELECT ID_TRANS from IF_HTRANS_OL where KARCIS = ? AND IDUNIT = ?", [$arrParam['id_transaksi'], $id_unit]);
+            $dataErm = DB::selectOne("
+                EXEC dbo.sp_getClinicalImpression ?, ?, ?, ?, ?, ?, ?, ?
+            ", [
+                $id_unit,
+                null,
+                null,
+                'all',
+                $arrParam['id_transaksi'] ?? '',
+                null,
+                1,
+                1
+            ]);
+
+            // Base payload yang isinya general
+            $post = [
+                'id_unit' => $id_unit,
+                'karcis' => $arrParam['id_transaksi'] ?? null,
+                'aktivitas' => 'RAWAT JALAN',
+                'jenis_layanan' => 'Rawat Jalan, RAWAT_JALAN, RAWAT JALAN',
+                'noPeserta' => $dataPeserta->no_peserta ?? null,
+                'ID_TRANS' => $dataMedication->ID_TRANS ?? null,
+                'id_erm' => $dataErm->ID_ERM ?? null,
+            ];
+
+            // ==========================================
+            // 1. DISPATCH BASE URLS (13 Endpoints)
+            // ==========================================
+            $urls = array(
+                'api/encounter',
+                'api/observasi',
+                'api/allergy-intolerance',
+                'api/service-request',
+                'api/specimen',
+                'api/medication-request',
+                'api/medication-dispense',
+                'api/clinical-impression',
+                'api/care-plan',
+                'api/episode-of-care',
+                'api/diagnosis',
+                'api/medstatement',
+                'api/composition',
+            );
+
+            $postBase = $post;
+            $postBase['aktivitas'] = 'KIRIM TRANSAKI RAWAT JALAN ALL IN';
+            $postBase['post_from'] = 'Trigger Otomatis Update Rajal From Ranap';
+            $postBase['url'] = $urls;
+
+            $this->triggerDispatchInternal($postBase);
+
+            // ==========================================
+            // 2. KHUSUS PROCEDURE
+            // ==========================================
+            $typeProcedure = ['anamnese', 'lab', 'rad', 'operasi'];
+            $icd9 = DB::selectOne("SELECT ICD9, DIPLAY_ICD9 FROM fn_getDataKunjungan(?, 'RAWAT_JALAN') WHERE ID_TRANSAKSI = ?", [$id_unit, $arrParam['id_transaksi']]);
+
+            for ($i = 0; $i < count($typeProcedure); $i++) {
+                $postProc = $post;
+                $postProc['type'] = $typeProcedure[$i];
+                $postProc['icd9_pm'] = $icd9->ICD9 ?? null;
+                $postProc['text_icd9_pm'] = $icd9->DIPLAY_ICD9 ?? null;
+                $postProc['url'] = ['api/procedure'];
+
+                $this->triggerDispatchInternal($postProc);
+            }
+
+            // ==========================================
+            // 3. KHUSUS SERVICE REQUEST & SPECIMEN
+            // ==========================================
+            $dataServiceRequest = DB::select("SELECT DISTINCT ID_RIWAYAT_ELAB, KLINIK_TUJUAN, KARCIS_RUJUKAN FROM vw_getData_Elab vgde where vgde.KARCIS_ASAL = ? AND vgde.IDUNIT = ?", [$arrParam['id_transaksi'], $id_unit]);
+
+            foreach ($dataServiceRequest as $serviceRequest) {
+                $postSr = $post;
+                $postSr['idElab'] = $serviceRequest->ID_RIWAYAT_ELAB;
+                $postSr['klinik'] = $serviceRequest->KLINIK_TUJUAN;
+                $postSr['karcis'] = $serviceRequest->KARCIS_RUJUKAN;
+                $postSr['url'] = ['api/service-request'];
+
+                if ($serviceRequest->KLINIK_TUJUAN == '0017') {
+                    array_push($postSr['url'], 'api/specimen');
+                }
+
+                $this->triggerDispatchInternal($postSr);
+            }
+
+            // ==========================================
+            // 4. KHUSUS DIAGNOSTIC REPORT
+            // ==========================================
+            $dataDiagnosticReport = DB::select(
+                "SELECT DISTINCT
+                rdp.id, vgde.ID_RIWAYAT_ELAB, vgde.KLINIK_TUJUAN, vgde.KARCIS_ASAL, vgde.KARCIS_RUJUKAN
+            from vw_getData_Elab vgde
+            inner join RIRJ_DOKUMEN_PX rdp ON vgde.KARCIS_ASAL = rdp.karcis
+                AND vgde.KD_TINDAKAN = rdp.kd_tindakan
+            where vgde.KARCIS_ASAL = ?
+                and vgde.IDUNIT = ?
+                AND rdp.id_kategori = 1",
+                [$arrParam['id_transaksi'], $id_unit]
+            );
+
+            foreach ($dataDiagnosticReport as $diagnosticReport) {
+                $postDr = $post;
+                $postDr['iddokumen'] = $diagnosticReport->id;
+                $postDr['karcis'] = $diagnosticReport->KARCIS_ASAL;
+                $postDr['karcis_rujukan'] = $diagnosticReport->KARCIS_RUJUKAN;
+                $postDr['url'] = ['api/diagnostic-report'];
+
+                $this->triggerDispatchInternal($postDr);
+            }
+
+            return response()->json([
+                'status' => 200,
+                'message' => 'Integrasi berhasil diantrikan ke background job!'
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 500,
+                'message' => 'Gagal memproses integrasi: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    private function triggerDispatchInternal(array $payload)
+    {
+        $urls = $payload['url'];
+        unset($payload['url']);
+
+        Session::put('id_unit', $payload['id_unit']);
+
+        $encounterId = DB::selectOne("
+            SELECT ID_SATUSEHAT_ENCOUNTER FROM fn_getDataKunjungan(?, 'RAWAT_JALAN')
+            WHERE ID_TRANSAKSI = ? AND TANGGAL >= DATEADD(YEAR, -1, GETDATE())
+            UNION ALL
+            SELECT ID_SATUSEHAT_ENCOUNTER FROM fn_getDataKunjungan(?, 'RAWAT_INAP')
+            WHERE ID_TRANSAKSI = ? AND TANGGAL >= DATEADD(YEAR, -1, GETDATE())
+        ", [
+            $payload['id_unit'],
+            $payload['karcis'],
+            $payload['id_unit'],
+            $payload['karcis'],
+        ]);
+
+        $arrKlinikRadLab = ['0016', '0015', '0021', '0017', '0031'];
+
+        if (!is_array($urls)) {
+            $urls = [$urls];
+        }
+
+        foreach ($urls as $val) {
+            $endpoint = explode('/', $val)[1];
+
+            if (isset($payload['klinik']) && !in_array($payload['klinik'], $arrKlinikRadLab)) {
+                if ($endpoint !== 'encounter' && empty($encounterId->ID_SATUSEHAT_ENCOUNTER)) {
+                    continue;
+                }
+            }
+
+            DispatchToEndpoint::dispatch(
+                $endpoint,
+                $payload
+            )->onQueue('incoming');
+        }
     }
 }

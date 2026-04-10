@@ -26,7 +26,38 @@
             cursor: pointer
         }
     </style>
-    <link href="{{ asset('assets/plugins/bootstrap-material-datetimepicker/css/bootstrap-material-datetimepicker.css') }}" rel="stylesheet">
+    <style>
+        /* Tambahan pemanis sedikit untuk UI */
+        .json-box {
+            background-color: #212529;
+            color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 0.85rem;
+        }
+
+        .custom-border-left {
+            border-left: 4px solid #0dcaf0 !important;
+            border-radius: 4px;
+        }
+
+        .modern-row:last-child {
+            border-bottom: none !important;
+        }
+
+        .btn-json-collapse[aria-expanded="true"] .fa-chevron-down {
+            transform: rotate(180deg);
+            transition: transform 0.3s ease;
+        }
+
+        .btn-json-collapse[aria-expanded="false"] .fa-chevron-down {
+            transform: rotate(0deg);
+            transition: transform 0.3s ease;
+        }
+    </style>
+    <link href="{{ asset('assets/plugins/bootstrap-material-datetimepicker/css/bootstrap-material-datetimepicker.css') }}"
+        rel="stylesheet">
     <link href="{{ asset('assets/plugins/select2/dist/css/select2.min.css') }}" rel="stylesheet" />
 @endpush
 
@@ -148,7 +179,8 @@
                             <h4>Data Pasien</h4>
                         </div>
 
-                        <button type="button" class="btn btn-warning btn-rounded" onclick="bulkSend()" id="bulk-send-btn">
+                        <button type="button" class="btn btn-warning btn-rounded" onclick="bulkSend()"
+                            id="bulk-send-btn">
                             <i class="mdi mdi-send-outline"></i>
                             Kirim Terpilih ke SatuSehat
                         </button>
@@ -191,7 +223,8 @@
 
 @push('after-script')
     <script src="{{ asset('assets/plugins/moment/moment.js') }}"></script>
-    <script src="{{ asset('assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js') }}"></script>
+    <script src="{{ asset('assets/plugins/bootstrap-material-datetimepicker/js/bootstrap-material-datetimepicker.js') }}">
+    </script>
     <script src="{{ asset('assets/plugins/select2/dist/js/select2.min.js') }}"></script>
     <script>
         var table;
@@ -281,17 +314,18 @@
             });
 
             // Jalankan Select2 saat modal sudah selesai melakukan animasi "show"
-            $('#modal_transaksi').on('shown.bs.modal', function () {
+            $('#modal_transaksi').on('shown.bs.modal', function() {
                 $('#service').select2({
                     width: '100%',
                     theme: "classic",
+                    placeholder: "Harap pilih Service",
                     // Ubah dropdownParent ke .modal-content agar z-index mengikuti konten modal
                     dropdownParent: $('#modal_transaksi .modal-content')
                 });
             });
 
             // Opsional: Hapus instance Select2 saat modal ditutup agar tidak duplikat saat dibuka lagi
-            $('#modal_transaksi').on('hidden.bs.modal', function () {
+            $('#modal_transaksi').on('hidden.bs.modal', function() {
                 if ($('#service').hasClass("select2-hidden-accessible")) {
                     $('#service').select2('destroy');
                 }
@@ -496,43 +530,42 @@
         });
 
         function lihatDetail(param) {
-            // paramSatuSehat = param;
-            // ajaxGetJson(
-            //     `{{ route('transaction.rawat-jalan.lihat-detail', '') }}/${btoa(param)}`,
-            //     "show_modal",
-            //     ""
-            // );
-            show_modal(null)
+            paramSatuSehat = param;
+            ajaxGetJson(
+                `{{ route('transaction.rawat-jalan.lihat-detail', '') }}/${btoa(param)}`,
+                "show_modal",
+                ""
+            );
         }
 
         function show_modal(response) {
-            // $('#nama_pasien').text(response.dataPasien.NAMA || '-');
-            // $('#no_rm').text(response.dataPasien.KBUKU || '-');
-            // $('#no_peserta').text(response.dataPasien.NO_PESERTA || '-');
-            // $('#no_karcis').text(response.dataPasien.KARCIS || '-');
-            // $('#dokter').text(response.dataPasien.DOKTER || '-');
+            $('#nama_pasien').text(response.dataPasien.NAMA || '-');
+            $('#no_rm').text(response.dataPasien.KBUKU || '-');
+            $('#no_peserta').text(response.dataPasien.NO_PESERTA || '-');
+            $('#no_karcis').text(response.dataPasien.KARCIS || '-');
+            $('#dokter').text(response.dataPasien.DOKTER || '-');
 
-            // let keys = Object.keys(response.dataKirimanSatusehat)
-            // for (let i = 0; i < keys.length; i++) {
-            //     const id = keys[i];
-            //     const val = response.dataKirimanSatusehat[id]
-            //     let bg_color = ''
-            //     let text_color = ''
-            //     let icon = ''
-            //     if (val == '1') {
-            //         bg_color = 'card-success'
-            //         text_color = 'text-white'
-            //         icon = 'fa-check-circle'
-            //     } else {
-            //         bg_color = 'card-danger'
-            //         text_color = 'text-white'
-            //         icon = 'fa-times-circle'
-            //     }
+            let keys = Object.keys(response.dataKirimanSatusehat)
+            for (let i = 0; i < keys.length; i++) {
+                const id = keys[i];
+                const val = response.dataKirimanSatusehat[id]
+                let bg_color = ''
+                let text_color = ''
+                let icon = ''
+                if (val == '1') {
+                    bg_color = 'card-success'
+                    text_color = 'text-white'
+                    icon = 'fa-check-circle'
+                } else {
+                    bg_color = 'card-danger'
+                    text_color = 'text-white'
+                    icon = 'fa-times-circle'
+                }
 
-            //     $(`#${id}`).addClass(bg_color)
-            //     $(`#${id}`).children().addClass(text_color)
-            //     $(`#${id}`).find('i').addClass(icon)
-            // }
+                $(`#${id}`).addClass(bg_color)
+                $(`#${id}`).children().addClass(text_color)
+                $(`#${id}`).find('i').addClass(icon)
+            }
 
             // Show modal
             $('#modal_transaksi').modal('show');
@@ -545,7 +578,7 @@
 
             Swal.fire({
                 title: "Konfirmasi Pengiriman",
-                text: `Kirim data Episode Of Care ke SatuSehat?`,
+                text: `Kirim data Transaksi pasien ini ke SatuSehat?`,
                 icon: "question",
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
@@ -555,7 +588,7 @@
             }).then(async (conf) => {
                 if (conf.value || conf.isConfirmed) {
                     await ajaxPostFile(
-                        `{{ route('satusehat.episode-of-care.send') }}`,
+                        `{{ route('transaction.rawat-jalan.send-satusehat') }}`,
                         formData,
                         "input_success",
                     );
@@ -657,6 +690,210 @@
                     }
                 },
             });
+        }
+
+        $('#service').on('change', function() {
+            const serviceName = $(this).val();
+            ajaxGetJson(`{{ route('transaction.rawat-jalan.get-log', '') }}/${paramSatuSehat}/${serviceName}`,
+                "show_log", "")
+        });
+
+        // Helper: Ubah camelCase jadi kalimat biasa
+        function humanizeText(str) {
+            return str
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/^./, function(char) {
+                    return char.toUpperCase();
+                });
+        }
+
+        // JSON Nested Accordion
+        function jsonToModernUI(data, level = 0) {
+            if (typeof data !== 'object' || data === null) {
+                return `<span class="text-dark fw-bold">${data}</span>`;
+            }
+
+            let html = '';
+
+            for (let key in data) {
+                let val = data[key];
+                let readableKey = humanizeText(key);
+
+                let icon = 'fas fa-chevron-right';
+                let keyLower = key.toLowerCase();
+                if (keyLower.includes('date') || keyLower.includes('time')) icon = 'far fa-clock text-warning';
+                else if (keyLower.includes('reference')) icon = 'fas fa-link text-primary';
+                else if (keyLower.includes('system')) icon = 'fas fa-globe text-info';
+                else if (keyLower.includes('display')) icon = 'fas fa-tag text-success';
+
+                if (key === 'resourceType') {
+                    html += `
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom mb-2">
+                        <span class="text-muted small fw-bold"><i class="fas fa-notes-medical text-danger me-1"></i> Resource Type</span>
+                        <span class="badge badge-primary rounded-pill px-3 py-2 shadow-sm" style="font-size:0.85rem;">${val}</span>
+                    </div>`;
+                    continue;
+                }
+
+                if (Array.isArray(val) || (typeof val === 'object' && val !== null)) {
+                    let isArray = Array.isArray(val);
+                    let titleIcon = isArray ? 'fas fa-list-ul' : 'fas fa-cube';
+                    let itemCount = isArray ?
+                        `<span class="badge badge-secondary ms-2 ml-2" style="font-size:0.65rem;">${val.length} Item</span>` :
+                        '';
+
+                    // ID Unik tanpa spasi atau karakter aneh biar Bootstrap nggak error
+                    let uniqueId = `collapse_${Math.random().toString(36).substr(2, 9)}`;
+
+                    let isOpen = level === 0 ? 'show' : '';
+                    let btnClass = level === 0 ? '' : 'collapsed';
+                    let isExpanded = level === 0 ? 'true' : 'false';
+
+                    html += `
+                    <div class="mt-2 mb-2 border rounded shadow-sm overflow-hidden">
+                        <button class="btn btn-light w-100 text-start text-left d-flex justify-content-between align-items-center p-2 border-0 shadow-none btn-json-collapse ${btnClass}"
+                                type="button"
+                                data-toggle="collapse" data-target="#${uniqueId}"
+                                data-bs-toggle="collapse" data-bs-target="#${uniqueId}"
+                                aria-expanded="${isExpanded}">
+                            <span class="text-secondary small fw-bold text-uppercase">
+                                <i class="${titleIcon} me-2 text-primary"></i> ${readableKey} ${itemCount}
+                            </span>
+                            <i class="fas fa-chevron-down text-muted small"></i>
+                        </button>
+
+                        <div class="collapse ${isOpen}" id="${uniqueId}">
+                            <div class="p-3 bg-white border-top">
+                                ${isArray ?
+                                    `<div class="d-flex flex-column gap-2 ps-2 pl-2 custom-border-left">
+                                                ${val.map((item, idx) => `
+                                            <div class="bg-light p-2 rounded border">
+                                                <div class="text-muted small mb-1 border-bottom pb-1"><i>Item #${idx + 1}</i></div>
+                                                ${jsonToModernUI(item, level + 1)}
+                                            </div>
+                                        `).join('')}
+                                            </div>`
+                                    :
+                                    jsonToModernUI(val, level + 1)
+                                }
+                            </div>
+                        </div>
+                    </div>`;
+                } else {
+                    let valueDisplay =
+                        `<span class="text-dark fw-bold text-end text-right" style="word-break: break-word;">${val}</span>`;
+
+                    if (key === 'code' || keyLower.includes('status')) {
+                        valueDisplay = `<span class="badge bg-dark text-white px-2 py-1">${val}</span>`;
+                    } else if (key === 'id') {
+                        valueDisplay = `<span class="text-secondary text-end text-right font-monospace">${val}</span>`;
+                    }
+
+                    html += `
+                    <div class="d-flex justify-content-between align-items-start py-2 border-bottom" style="gap: 15px;">
+                        <span class="text-muted small text-nowrap"><i class="${icon} me-1" style="font-size:0.8rem;"></i> ${readableKey}</span>
+                        ${valueDisplay}
+                    </div>`;
+                }
+            }
+
+            return html;
+        }
+
+        // FUNGSI UTAMA
+        function show_log(res) {
+            const container = document.getElementById('log-container');
+            container.innerHTML = '';
+            res = res.log
+
+            if (!Array.isArray(res) || res.length === 0) {
+                container.innerHTML =
+                    '<div class="alert alert-warning text-center mt-4">Tidak ada data log ditemukan.</div>';
+                return;
+            }
+
+            let accordionHTML = '<div class="accordion mt-4" id="logAccordion">';
+
+            res.forEach((log, index) => {
+                let reqObj = {},
+                    resObj = {};
+
+                try {
+                    reqObj = JSON.parse(log.request);
+                } catch (e) {
+                    reqObj = log.request;
+                }
+                try {
+                    resObj = JSON.parse(log.response);
+                } catch (e) {
+                    resObj = log.response;
+                }
+
+                let isError = false;
+                if (resObj.resourceType === "OperationOutcome" || resObj.issue || resObj.error) {
+                    isError = true;
+                }
+
+                let badgeClass = isError ? 'bg-danger' : 'bg-success';
+                let badgeText = isError ? 'Failed' : 'Success';
+                let headerIcon = isError ? '<i class="fas fa-times-circle text-danger me-2"></i>' :
+                    '<i class="fas fa-check-circle text-success me-2"></i>';
+
+                let isOpen = index === 0 ? 'show' : '';
+                let isCollapsed = index === 0 ? '' : 'collapsed';
+
+                accordionHTML += `
+                    <div class="card mb-3 border-0 shadow">
+                        <div class="card-header bg-white border-bottom p-0" id="heading${index}">
+                            <h2 class="mb-0">
+                                <button class="btn btn-link btn-block text-left text-decoration-none text-dark d-flex justify-content-between align-items-center w-100 p-3 ${isCollapsed}" type="button" data-toggle="collapse" data-bs-toggle="collapse" data-target="#collapse${index}" data-bs-target="#collapse${index}" aria-expanded="${index === 0 ? 'true' : 'false'}" aria-controls="collapse${index}">
+                                    <div>
+                                        ${headerIcon}
+                                        <strong>#${log.id}</strong> | ${log.service}
+                                        <small class="text-muted ml-3 ms-3"><i class="far fa-clock"></i> ${log.created_at}</small>
+                                    </div>
+                                    <span class="badge ${badgeClass} text-white px-3 py-2 rounded-pill">${badgeText}</span>
+                                </button>
+                            </h2>
+                        </div>
+
+                        <div id="collapse${index}" class="collapse ${isOpen}" aria-labelledby="heading${index}" data-parent="#logAccordion" data-bs-parent="#logAccordion">
+                            <div class="card-body bg-light">
+                                <div class="row">
+                                    <div class="col-md-6 mb-4 mb-md-0">
+                                        <h6 class="text-primary fw-bold mb-3"><i class="fas fa-cloud-upload-alt me-1"></i> Data Request</h6>
+
+                                        <div class="bg-white p-3 rounded border shadow-sm">
+                                            ${jsonToModernUI(reqObj)}
+                                        </div>
+
+                                        <details class="mt-3 text-muted" style="cursor: pointer;">
+                                            <summary class="small fw-bold"><i class="fas fa-code"></i> Tampilkan JSON Mentah</summary>
+                                            <pre class="json-box mt-2"><code>${JSON.stringify(reqObj, null, 2)}</code></pre>
+                                        </details>
+                                    </div>
+
+                                    <div class="col-md-6">
+                                        <h6 class="${isError ? 'text-danger' : 'text-success'} fw-bold mb-3"><i class="fas fa-cloud-download-alt me-1"></i> Balasan Server</h6>
+
+                                        <div class="bg-white p-3 rounded border shadow-sm">
+                                            ${jsonToModernUI(resObj)}
+                                        </div>
+
+                                        <details class="mt-3 text-muted" style="cursor: pointer;">
+                                            <summary class="small fw-bold"><i class="fas fa-code"></i> Tampilkan JSON Mentah</summary>
+                                            <pre class="json-box mt-2"><code>${JSON.stringify(resObj, null, 2)}</code></pre>
+                                        </details>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            accordionHTML += '</div>';
+            container.innerHTML = accordionHTML;
         }
     </script>
 @endpush

@@ -31,7 +31,7 @@ class EncounterController extends Controller
      * @return \Illuminate\Http\Response
      */
     protected $totalData = [];
-    public function index()
+    public function index(Request $request)
     {
         $startDate = Carbon::now()->startOfDay()->format('Y-m-d H:i:s');
         $endDate   = Carbon::now()->endOfDay()->format('Y-m-d H:i:s');
