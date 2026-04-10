@@ -15,6 +15,7 @@ use App\Services\SpecimenService;
 use App\Services\MedicationRequestService;
 use App\Services\DiagnosaService;
 use App\Services\EpisodeOfCareService;
+use App\Services\MedicationDispenseService;
 use App\Services\MedStatementService;
 use App\Services\QuestionnaireResponseService;
 use Illuminate\Bus\Queueable;
@@ -86,7 +87,7 @@ class DispatchToEndpoint implements ShouldQueue
                 break;
 
             case 'medication-dispense':
-                app(MedicationRequestService::class)->process($this->payload);
+                app(MedicationDispenseService::class)->process($this->payload);
                 break;
 
             case 'clinical-impression':

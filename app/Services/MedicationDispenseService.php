@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\SatuSehat\MedicationDispenseController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class MedicationDispenseService
@@ -41,6 +43,13 @@ class MedicationDispenseService
             return;
         }
 
+        // prepMedicationDispense
+        $controller = app(MedicationDispenseController::class);
+        $param = [
+            '_token' => csrf_token(),
+            'idTrans' => $idTrans,
+        ];
+        $result = $controller->prepMedicationDispense(new Request($param));
     }
     /**
      * Cek Encounter untuk Dispense
