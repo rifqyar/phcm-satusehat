@@ -451,7 +451,7 @@ class RawatJalanController extends Controller
             // ==========================================
             // 2. KHUSUS PROCEDURE
             // ==========================================
-            $typeProcedure = ['anamnese', 'lab', 'rad', 'operasi'];
+            $typeProcedure = ['anamnese', 'operasi'];
             $icd9 = DB::selectOne("SELECT ICD9, DIPLAY_ICD9 FROM fn_getDataKunjungan(?, 'RAWAT_JALAN') WHERE ID_TRANSAKSI = ?", [$id_unit, $arrParam['id_transaksi']]);
 
             for ($i = 0; $i < count($typeProcedure); $i++) {
@@ -459,6 +459,32 @@ class RawatJalanController extends Controller
                 $postProc['type'] = $typeProcedure[$i];
                 $postProc['icd9_pm'] = $icd9->ICD9 ?? null;
                 $postProc['text_icd9_pm'] = $icd9->DIPLAY_ICD9 ?? null;
+                $postProc['url'] = ['api/procedure'];
+
+                $this->triggerDispatchInternal($postProc);
+            }
+
+            // ==========================================
+            // Procedure LAB
+            // ==========================================
+            $dataLab = DB::select("SELECT DISTINCT KARCIS_RUJUKAN FROM vw_getData_Elab vgde where vgde.KARCIS_ASAL = ? AND vgde.IDUNIT = ? AND vgde.KLINIK_TUJUAN IN ('0017', '0031')", [$arrParam['id_transaksi'], $id_unit]);
+            for ($i = 0; $i < count($dataLab); $i++) {
+                $postProc = $post;
+                $postProc['type'] = 'lab';
+                $postProc['karcis'] = $dataLab[$i]->KARCIS_RUJUKAN;
+                $postProc['url'] = ['api/procedure'];
+
+                $this->triggerDispatchInternal($postProc);
+            }
+
+            // ==========================================
+            // Procedure RAD
+            // ==========================================
+            $dataRad = DB::select("SELECT DISTINCT KARCIS_RUJUKAN FROM vw_getData_Elab vgde where vgde.KARCIS_ASAL = ? AND vgde.IDUNIT = ? AND vgde.KLINIK_TUJUAN IN ('0015', '0016', '0021')", [$arrParam['id_transaksi'], $id_unit]);
+            for ($i = 0; $i < count($dataRad); $i++) {
+                $postProc = $post;
+                $postProc['type'] = 'rad';
+                $postProc['karcis'] = $dataRad[$i]->KARCIS_RUJUKAN;
                 $postProc['url'] = ['api/procedure'];
 
                 $this->triggerDispatchInternal($postProc);

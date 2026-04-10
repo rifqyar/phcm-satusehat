@@ -99,7 +99,7 @@ class ProcedureService
         } else if ($payload['type'] == 'lab') {
             $dataLab = DB::table('vw_getData_Elab as ere')
                 ->where('ere.KARCIS_RUJUKAN', $payload['karcis'])
-                ->where('ere.KLINIK_TUJUAN', '0017')
+                ->whereIn('ere.KLINIK_TUJUAN', ['0017', '0031'])
                 ->first();
 
             $procedureData = SATUSEHAT_PROCEDURE::where('karcis', (int)$payload['karcis'])
@@ -113,10 +113,7 @@ class ProcedureService
         } else if ($payload['type'] == 'rad') {
             $dataRad = DB::table('vw_getData_Elab as ere')
                 ->where('ere.KARCIS_RUJUKAN', $payload['karcis'])
-                ->where(function ($query) {
-                    $query->where('ere.KLINIK_TUJUAN', '0016')
-                        ->orWhere('ere.KLINIK_TUJUAN', '0015');
-                })
+                ->whereIn('ere.KLINIK_TUJUAN', ['0016', '0015', '0021'])
                 ->first();
             $procedureData = SATUSEHAT_PROCEDURE::where('karcis', (int)$payload['karcis'])
                 ->where('JENIS_TINDAKAN', 'rad')
