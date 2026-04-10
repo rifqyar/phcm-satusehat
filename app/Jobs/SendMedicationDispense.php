@@ -101,6 +101,17 @@ class SendMedicationDispense implements ShouldQueue
                 $responseBody    = json_decode($responseBodyRaw, true) ?? [];
             }
 
+            $this->logError(
+                'MedicationDispense',
+                'Gagal mengirim MedicationDispense ke SATUSEHAT',
+                [
+                    'payload' => $payload,
+                    'meta' => $meta,
+                    'ressponse' => $responseBody,
+                    'trace' => $e->getTrace(),
+                ]
+            );
+
             throw new \Exception(
                 json_encode($responseBody) ?: $e->getMessage(),
                 $httpStatus ?? 0,
