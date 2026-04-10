@@ -190,6 +190,20 @@ return [
             'level' => 'info',
             'days' => 7
         ],
+
+        'MedicationRequest' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/MedicationRequest.log'),
+            'level' => 'info',
+            'days' => 7
+        ],
+
+        'MedicationDispense' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/MedicationDispense.log'),
+            'level' => 'info',
+            'days' => 7
+        ],
     ],
 
 ];

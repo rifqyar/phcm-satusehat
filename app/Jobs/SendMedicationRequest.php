@@ -106,6 +106,17 @@ class SendMedicationRequest implements ShouldQueue
                 $message .= 'ERROR=' . $e->getMessage();
             }
 
+            $this->logError(
+                'MedicationRequest',
+                'Gagal mengirim MedicationRequest ke SATUSEHAT',
+                [
+                    'payload' => $payload,
+                    'meta' => $meta,
+                    'error' => $message,
+                    'trace' => $e->getTrace(),
+                ]
+            );
+
             throw new \RuntimeException(
                 $message,
                 $status ?? 0,
