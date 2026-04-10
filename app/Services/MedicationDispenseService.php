@@ -46,9 +46,10 @@ class MedicationDispenseService
         // prepMedicationDispense
         $controller = app(MedicationDispenseController::class);
         $param = [
-            '_token' => csrf_token(),
-            'idTrans' => $idTrans,
+            '_token' => 'LmSrzcaz4B8OBpO671qyR8k9TmM6spX09D1YPS7O',
+            'id_trans' => $idTrans,
         ];
+
         $result = $controller->prepMedicationDispense(new Request($param));
     }
     /**
