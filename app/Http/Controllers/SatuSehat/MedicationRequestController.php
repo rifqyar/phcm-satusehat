@@ -761,9 +761,9 @@ class MedicationRequestController extends Controller
                     "resourceType" => "MedicationRequest",
                     "identifier" => [
                         [
-                            "system" => "http://sys-ids.kemkes.go.id/prescription/$orgId",
+                            "system" => "http://sys-ids.kemkes.go.id/prescription",
                             "use" => "official",
-                            "value" => $orgId
+                            "value" => $uniqueId
                         ]
                     ],
                     "contained" => [
