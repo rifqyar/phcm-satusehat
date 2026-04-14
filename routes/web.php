@@ -270,6 +270,11 @@ Route::middleware(['checkLogin'])->group(function () {
         Route::group(['prefix' => 'rawat-inap', 'as' => '.rawat-inap'], function () {
             Route::get('/', [App\Http\Controllers\Transaction\RawatInapController::class, 'index'])->name('.index');
             Route::post('/datatable', [App\Http\Controllers\Transaction\RawatInapController::class, 'datatable'])->name('.datatable');
+            Route::get('/lihat-detail/{param}', [App\Http\Controllers\Transaction\RawatInapController::class, 'lihatDetail'])->name('.lihat-detail');
+            Route::get('get-log/{param?}/{service?}', [App\Http\Controllers\Transaction\RawatInapController::class, 'getLog'])->name('.get-log');
+            Route::post('/send-satusehat', [App\Http\Controllers\Transaction\RawatInapController::class, 'sendSatuSehat'])->name('.send-satusehat');
+            Route::post('/bulk-send-satusehat', [App\Http\Controllers\Transaction\RawatInapController::class, 'bulkSendSatuSehat'])->name('.bulk-send-satusehat');
+            Route::post('/resend-satusehat', [App\Http\Controllers\Transaction\RawatInapController::class, 'resendSatuSehat'])->name('.resend-satusehat');
         });
     });
 });
