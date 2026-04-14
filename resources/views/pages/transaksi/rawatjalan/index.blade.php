@@ -603,7 +603,7 @@
 
             Swal.fire({
                 title: "Konfirmasi Pengiriman Ulang",
-                text: `Kirim ulang Episode Of Care?`,
+                text: `Kirim ulang Transaksi Satusehat ini?`,
                 icon: "question",
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
@@ -613,7 +613,7 @@
             }).then(async (conf) => {
                 if (conf.value || conf.isConfirmed) {
                     await ajaxPostFile(
-                        `{{ route('satusehat.episode-of-care.resend', '') }}`,
+                        `{{ route('transaction.rawat-jalan.resend-satusehat', '') }}`,
                         formData,
                         "input_success",
                     );
@@ -635,7 +635,7 @@
 
             Swal.fire({
                 title: "Konfirmasi Bulk Send",
-                text: `Kirim ${selectedIds.length} data Episode Of Care ke SatuSehat?`,
+                text: `Kirim ${selectedIds.length} data Transaksi ini ke SatuSehat?`,
                 icon: "question",
                 showCancelButton: true,
                 confirmButtonColor: "#3085d6",
@@ -644,7 +644,7 @@
                 cancelButtonText: "Batal",
             }).then(async (result) => {
                 if (result.value) {
-                    await ajaxPostJson(`{{ route('satusehat.episode-of-care.bulk-send') }}`, {
+                    await ajaxPostJson(`{{ route('transaction.rawat-jalan.bulk-send-satusehat') }}`, {
                         _token: $('meta[name="csrf-token"]').attr("content"),
                         selected_ids: selectedIds
                     }, "input_success", "");
@@ -687,6 +687,7 @@
                     } else {
                         Swal.close();
                         table.ajax.reload()
+                        $('#modal_transaksi').modal('hide');
                     }
                 },
             });

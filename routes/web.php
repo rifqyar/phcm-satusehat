@@ -24,7 +24,7 @@ Route::get('/medication-dispense/sendsatusehatnm', [App\Http\Controllers\SatuSeh
 Route::get('/diagnosis/sendsatusehat', [App\Http\Controllers\SatuSehat\DiagnosisController::class, 'prepSendDiagnosis'])->name('diagnosis.sendsatusehat');
 
 Route::middleware(['checkLogin'])->group(function () {
-    Route::get('logs', [\Rap2hpoutre\LaravelLogViewer\LogViewerController::class, 'index']);
+    Route::get('logs', [\Rap2hpoutre\LaravelLogViewer\LogViewerController::class, 'index'])->name('logs');
     // Home
     Route::get('/', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
@@ -264,6 +264,8 @@ Route::middleware(['checkLogin'])->group(function () {
             Route::get('/lihat-detail/{param}', [App\Http\Controllers\Transaction\RawatJalanController::class, 'lihatDetail'])->name('.lihat-detail');
             Route::get('get-log/{param?}/{service?}', [App\Http\Controllers\Transaction\RawatJalanController::class, 'getLog'])->name('.get-log');
             Route::post('/send-satusehat', [App\Http\Controllers\Transaction\RawatJalanController::class, 'sendSatuSehat'])->name('.send-satusehat');
+            Route::post('/bulk-send-satusehat', [App\Http\Controllers\Transaction\RawatJalanController::class, 'bulkSendSatuSehat'])->name('.bulk-send-satusehat');
+            Route::post('/resend-satusehat', [App\Http\Controllers\Transaction\RawatJalanController::class, 'resendSatuSehat'])->name('.resend-satusehat');
         });
         Route::group(['prefix' => 'rawat-inap', 'as' => '.rawat-inap'], function () {
             Route::get('/', [App\Http\Controllers\Transaction\RawatInapController::class, 'index'])->name('.index');

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Jobs\DispatchToEndpoint;
 use App\Lib\LZCompressor\LZString;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Session;
@@ -594,5 +595,28 @@ class RawatJalanController extends Controller
                 $payload
             )->onQueue('incoming');
         }
+    }
+
+    public function bulkSendSatuSehat(Request $request)
+    {
+        $selectedIds = $request->input('selected_ids', []);
+        $responses = [];
+
+        foreach ($selectedIds as $data) {
+            $response = $this->sendSatuSehat(new Request(['param' => $data['param']]));
+            $responses[] = json_decode($response->getContent(), true);
+        }
+
+        return response()->json([
+            'status' => JsonResponse::HTTP_OK,
+            'message' => 'Proses Bulk Send Satusehat berhasil diantrikan ke background job!',
+            'responses' => $responses,
+        ], 200);
+    }
+
+    public function resendSatusehat(Request $request)
+    {
+        $param = $request->input('param');
+        return $this->sendSatuSehat(new Request(['param' => $param]));
     }
 }

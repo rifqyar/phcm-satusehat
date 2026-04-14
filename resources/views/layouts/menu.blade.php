@@ -26,7 +26,7 @@
                     </ul>
                 </li>
                 <li>
-                    <a href="#" aria-expanded="false"><span class="hide-menu">Log Transaksi</span></a>
+                    <a href="{{route('logs')}}" target="_blank" aria-expanded="false"><span class="hide-menu">Log Transaksi</span></a>
                 </li>
             </ul>
         </nav>
