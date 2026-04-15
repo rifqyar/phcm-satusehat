@@ -276,5 +276,9 @@ Route::middleware(['checkLogin'])->group(function () {
             Route::post('/bulk-send-satusehat', [App\Http\Controllers\Transaction\RawatInapController::class, 'bulkSendSatuSehat'])->name('.bulk-send-satusehat');
             Route::post('/resend-satusehat', [App\Http\Controllers\Transaction\RawatInapController::class, 'resendSatuSehat'])->name('.resend-satusehat');
         });
+
+        Route::group(['prefix' => 'per-endpoint', 'as' => '.per-endpoint'], function(){
+            Route::get('/', [App\Http\Controllers\Transaction\TransactionPerEndpointController::class, 'index'])->name('.index');
+        });
     });
 });

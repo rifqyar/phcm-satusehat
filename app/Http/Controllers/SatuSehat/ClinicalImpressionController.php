@@ -348,7 +348,7 @@ class ClinicalImpressionController extends Controller
                     'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
 
-                $this->logDb(json_encode($response), 'ClinicalImpression', json_encode($satusehatPayload), 'system'); //Session::get('id')
+                $this->logDb(json_encode($response), 'ClinicalImpression', json_encode($satusehatPayload), 'system', 0); //Session::get('id')
 
                 $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data ClinicalImpression';
                 throw new Exception($msg, $dataClinicalImpression->getStatusCode());
@@ -377,7 +377,7 @@ class ClinicalImpressionController extends Controller
                         'response' => $result,
                         'user_id' => Session::get('nama', 'system') //Session::get('id')
                     ]);
-                    $this->logDb(json_encode($result), 'ClinicalImpression', json_encode($satusehatPayload), 'system'); //Session::get('id')
+                    $this->logDb(json_encode($result), 'ClinicalImpression', json_encode($satusehatPayload), 'system', 1); //Session::get('id')
 
                     DB::commit();
                     return response()->json([

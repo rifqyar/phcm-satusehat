@@ -282,7 +282,7 @@ class EpisodeOfCareController extends Controller
                     'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
 
-                $this->logDb(json_encode($response), 'EpisodeOfCare', json_encode($satusehatPayload), 'system'); //Session::get('id')
+                $this->logDb(json_encode($response), 'EpisodeOfCare', json_encode($satusehatPayload), 'system', 0); //Session::get('id')
 
                 $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data EpisodeOfCare';
                 throw new Exception($msg, $dataEpisodeOfCare->getStatusCode());
@@ -310,7 +310,7 @@ class EpisodeOfCareController extends Controller
                         'response' => $result,
                         'user_id' => Session::get('nama', 'system') //Session::get('id')
                     ]);
-                    $this->logDb(json_encode($result), 'EpisodeOfCare', json_encode($satusehatPayload), 'system'); //Session::get('id')
+                    $this->logDb(json_encode($result), 'EpisodeOfCare', json_encode($satusehatPayload), 'system', 1); //Session::get('id')
 
                     DB::commit();
                     return response()->json([
@@ -860,7 +860,7 @@ class EpisodeOfCareController extends Controller
                     'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
 
-                $this->logDb(json_encode($response), 'EpisodeOfCare', json_encode($patchPayload), 'system');
+                $this->logDb(json_encode($response), 'EpisodeOfCare', json_encode($patchPayload), 'system', 0);
 
                 $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Update Data EpisodeOfCare';
                 throw new Exception($msg, $dataEpisodeOfCare->getStatusCode());
@@ -872,7 +872,7 @@ class EpisodeOfCareController extends Controller
                         'response' => $result,
                         'user_id' => Session::get('nama', 'system')
                     ]);
-                    $this->logDb(json_encode($result), 'EpisodeOfCare', json_encode($patchPayload), 'system');
+                    $this->logDb(json_encode($result), 'EpisodeOfCare', json_encode($patchPayload), 'system', 1);
 
                     DB::commit();
                     return response()->json([

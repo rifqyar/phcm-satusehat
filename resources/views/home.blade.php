@@ -45,16 +45,188 @@
 
     <div class="card">
         <div class="card-body">
-            <div class="row text-center">
-                @foreach ($satuSehatMenu as $item)
-                    <div class="col-md-4 mb-5">
-                        <div class="card {{$item->bg_color}}">
-                            <a class="btn p-5 shadow {{$item->bg_color != '' ? 'text-white' : ''}}"
-                                href="{{ $item->url != '#' && Route::has($item->url) ? route($item->url) : '#' }}">{{ $item->title }}</a>
+            <div class="row">
+                <div class="col-lg-8 col-md-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title">Trend Pengiriman SatuSehat (7 Hari Terakhir)</h4>
+                            <div style="height: 300px;">
+                                <canvas id="chartPerTanggal"></canvas>
+                            </div>
                         </div>
                     </div>
-                @endforeach
+                </div>
+
+                <div class="col-lg-4 col-md-12">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title">Distribusi per Endpoint</h4>
+                            <div style="height: 300px;">
+                                <canvas id="chartPerEndpoint"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title">Volume Pengiriman: Rawat Jalan vs Rawat Inap</h4>
+                            <div style="height: 300px;">
+                                <canvas id="chartRJRI"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <h4 class="card-title">Total Proporsi Layanan</h4>
+                            <div style="height: 300px;">
+                                <canvas id="chartProporsiLayanan"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 @endsection
+@push('after-script')
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+
+            // --- 1. SETTING BAR CHART (PER TANGGAL) ---
+            const ctxTanggal = document.getElementById('chartPerTanggal').getContext('2d');
+            const chartTanggal = new Chart(ctxTanggal, {
+                type: 'bar', // Bisa diganti 'line' kalau lebih suka garis
+                data: {
+                    labels: ['08 Apr', '09 Apr', '10 Apr', '11 Apr', '12 Apr', '13 Apr', '14 Apr'],
+                    datasets: [{
+                            label: 'Total Berhasil',
+                            data: [120, 150, 180, 90, 200, 250, 210],
+                            backgroundColor: 'rgba(38, 198, 218, 0.8)', // Warna khas MaterialPro (Cyan)
+                            borderWidth: 0,
+                            borderRadius: 4 // Bikin ujung bar agak melengkung (khas UI modern)
+                        },
+                        {
+                            label: 'Total Gagal',
+                            data: [5, 12, 4, 1, 15, 8, 3],
+                            backgroundColor: 'rgba(252, 75, 108, 0.8)', // Merah danger MaterialPro
+                            borderWidth: 0,
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
+                        }
+                    }
+                }
+            });
+
+            // --- 2. SETTING DONUT CHART (PER ENDPOINT) ---
+            const ctxEndpoint = document.getElementById('chartPerEndpoint').getContext('2d');
+            const chartEndpoint = new Chart(ctxEndpoint, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Encounter', 'Observation', 'DiagnosticReport', 'Patient'],
+                    datasets: [{
+                        data: [450, 850, 200, 150], // Mock data aggregate
+                        backgroundColor: [
+                            '#1e88e5', // Biru
+                            '#26c6da', // Cyan
+                            '#ffb22b', // Kuning
+                            '#fc4b6c' // Merah
+                        ],
+                        borderWidth: 2,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%', // Bikin lubang donut-nya lebih besar/kecil
+                    plugins: {
+                        legend: {
+                            position: 'bottom' // Biar legend gak makan tempat di samping
+                        }
+                    }
+                }
+            });
+        });
+
+        document.addEventListener("DOMContentLoaded", function() {
+
+            // --- 1. STACKED BAR CHART (RJ vs RI) ---
+            const ctxRJRI = document.getElementById('chartRJRI').getContext('2d');
+            new Chart(ctxRJRI, {
+                type: 'bar',
+                data: {
+                    labels: ['08 Apr', '09 Apr', '10 Apr', '11 Apr', '12 Apr', '13 Apr', '14 Apr'],
+                    datasets: [{
+                            label: 'Rawat Jalan',
+                            data: [80, 100, 120, 60, 140, 180, 150],
+                            backgroundColor: '#1e88e5', // Biru
+                        },
+                        {
+                            label: 'Rawat Inap',
+                            data: [40, 50, 60, 30, 60, 70, 60],
+                            backgroundColor: '#7460ee', // Ungu (khas MaterialPro)
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            stacked: true
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    }
+                }
+            });
+
+            // --- 2. DONUT CHART (PROPORSI LAYANAN) ---
+            const ctxProporsi = document.getElementById('chartProporsiLayanan').getContext('2d');
+            new Chart(ctxProporsi, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Rawat Jalan', 'Rawat Inap'],
+                    datasets: [{
+                        data: [830, 370], // Total akumulasi
+                        backgroundColor: ['#1e88e5', '#7460ee'],
+                        hoverOffset: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%'
+                }
+            });
+        });
+    </script>
+@endpush

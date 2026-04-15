@@ -495,7 +495,7 @@ class QuestionnaireResponseController extends Controller
                     'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
 
-                $this->logDb(json_encode($responseBody), 'QuestionnaireResponse', json_encode($payload), 'system'); //Session::get('id')
+                $this->logDb(json_encode($responseBody), 'QuestionnaireResponse', json_encode($payload), 'system', 1); //Session::get('id')
 
                 return response()->json([
                     'status' => 200,
@@ -511,7 +511,7 @@ class QuestionnaireResponseController extends Controller
                     'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
 
-                $this->logDb(json_encode($responseError), 'QuestionnaireResponse', json_encode($payload), 'system'); //Session::get('id')
+                $this->logDb(json_encode($responseError), 'QuestionnaireResponse', json_encode($payload), 'system', 0); //Session::get('id')
 
                 $msg = '';
                 if (isset($responseBody['issue'])) {

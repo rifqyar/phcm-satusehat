@@ -689,7 +689,7 @@ class DiagnosticReportController extends Controller
                     'user_id' => Session::get('nama', 'system')
                 ]);
 
-                $this->logDb(json_encode($response), 'DiagnosticReport', json_encode($data), 'system');
+                $this->logDb(json_encode($response), 'DiagnosticReport', json_encode($data), 'system', 0);
 
                 $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Diagnostic Report';
                 throw new Exception($msg, $diagnosticReportRequest->getStatusCode());
@@ -795,7 +795,7 @@ class DiagnosticReportController extends Controller
                         'response' => $result,
                         'user_id' => Session::get('nama', 'system') //Session::get('id')
                     ]);
-                    $this->logDb(json_encode($result), 'DiagnosticReport', json_encode($data), 'system'); //Session::get('id')
+                    $this->logDb(json_encode($result), 'DiagnosticReport', json_encode($data), 'system', 1); //Session::get('id')
 
                     return response()->json([
                         'status' => JsonResponse::HTTP_OK,

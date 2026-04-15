@@ -82,7 +82,7 @@ class SendObservationToSATUSEHAT implements ShouldQueue
                         'user_id' => Session::get('nama', 'system')
                     ]);
 
-                    $this->logDb(json_encode($res), $this->url, json_encode($this->payload), 'system'); //Session::get('id')
+                    $this->logDb(json_encode($res), $this->url, json_encode($this->payload), 'system', 0); //Session::get('id')
 
                     $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Encounter';
                     throw new Exception($msg, $response->getStatusCode());
@@ -152,7 +152,7 @@ class SendObservationToSATUSEHAT implements ShouldQueue
                         'user_id' => Session::get('nama', 'system') //Session::get('id')
                     ]);
 
-                    $this->logDb(json_encode($result), $this->url, json_encode($this->payload), 'system'); //Session::get('id')
+                    $this->logDb(json_encode($result), $this->url, json_encode($this->payload), 'system', 1); //Session::get('id')
                 }
             } else {
                 $this->logInfo($logChannel, 'Sudah Integrasi ' . $this->type, [

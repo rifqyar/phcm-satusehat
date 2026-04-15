@@ -23,7 +23,7 @@ trait LogTraits
         Log::channel('' . $channel)->warning($message, array_merge($context, ['timestamp' => Carbon::now()]));
     }
 
-    public function logDb($response = null, $service = null, $payload = null, $user_id = null)
+    public function logDb($response = null, $service = null, $payload = null, $user_id = null, $success = 0)
     {
         DB::beginTransaction();
         try {
@@ -33,6 +33,7 @@ trait LogTraits
                 'response' => $response ?? 'N/A',
                 'created_by' => $user_id ?? 'system',
                 'created_at' => Carbon::now(),
+                'flag_success' => $success ?? 0
             ]);
             DB::commit();
         } catch (Exception $th) {

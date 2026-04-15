@@ -782,7 +782,7 @@ class ResumeMedisController extends Controller
             ];
         }
 
-        // clinical impression 
+        // clinical impression
         $perencanaanPerawatanEntries = [];
         if ($dataClinicalImpression && count($dataClinicalImpression) > 0) {
             foreach ($dataClinicalImpression as $item) {
@@ -1115,7 +1115,7 @@ class ResumeMedisController extends Controller
                     'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
 
-                $this->logDb(json_encode($response), 'Composition', json_encode($payload), 'system'); //Session::get('id')
+                $this->logDb(json_encode($response), 'Composition', json_encode($payload), 'system', 0); //Session::get('id')
 
                 $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Composition';
                 throw new Exception($msg, $datacomposition->getStatusCode());
@@ -1197,7 +1197,7 @@ class ResumeMedisController extends Controller
                         'response' => $result,
                         'user_id' => Session::get('nama', 'system') //Session::get('id')
                     ]);
-                    $this->logDb(json_encode($result), 'Composition', json_encode($payload), 'system'); //Session::get('id')
+                    $this->logDb(json_encode($result), 'Composition', json_encode($payload), 'system', 1); //Session::get('id')
 
                     DB::commit();
                     return response()->json([

@@ -454,7 +454,7 @@ class EncounterController extends Controller
                     'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
 
-                $this->logDb(json_encode($response), 'Encounter', json_encode($payload), 'system'); //Session::get('id')
+                $this->logDb(json_encode($response), 'Encounter', json_encode($payload), 'system', 0); //Session::get('id')
 
                 $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Encounter';
                 throw new Exception($msg, $dataencounter->getStatusCode());
@@ -586,7 +586,7 @@ class EncounterController extends Controller
                         'response' => $result,
                         'user_id' => Session::get('nama', 'system') //Session::get('id')
                     ]);
-                    $this->logDb(json_encode($result), 'Encounter', json_encode($payload), 'system'); //Session::get('id')
+                    $this->logDb(json_encode($result), 'Encounter', json_encode($payload), 'system', 1); //Session::get('id')
 
                     DB::commit();
                     return response()->json([

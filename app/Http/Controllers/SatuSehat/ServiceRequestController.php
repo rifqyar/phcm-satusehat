@@ -542,7 +542,7 @@ class ServiceRequestController extends Controller
                     'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
 
-                $this->logDb(json_encode($response), 'ServiceRequest', json_encode($data), 'system'); //Session::get('id')
+                $this->logDb(json_encode($response), 'ServiceRequest', json_encode($data), 'system', 0); //Session::get('id')
 
                 $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Service Request';
                 throw new Exception($msg, $dataServiceRequest->getStatusCode());
@@ -590,7 +590,7 @@ class ServiceRequestController extends Controller
                         'response' => $result,
                         'user_id' => Session::get('nama', 'system') //Session::get('id')
                     ]);
-                    $this->logDb(json_encode($result), 'ServiceRequest', json_encode($data), 'system'); //Session::get('id')
+                    $this->logDb(json_encode($result), 'ServiceRequest', json_encode($data), 'system', 1); //Session::get('id')
 
                     if (trim($dataKarcis->KLINIK) == '0017' || trim($dataKarcis->KLINIK) == '0031') {
                         $post = [

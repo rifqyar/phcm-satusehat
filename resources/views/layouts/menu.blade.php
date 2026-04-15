@@ -13,6 +13,7 @@
                     <ul aria-expanded="false" class="collapse">
                         <li><a href="{{ route('transaction.rawat-jalan.index') }}">Rawat Jalan</a></li>
                         <li><a href="{{ route('transaction.rawat-inap.index') }}">Rawat Inap</a></li>
+                        <li><a href="{{ route('transaction.per-endpoint.index') }}">Transaksi per Endpoint</a></li>
                     </ul>
                 </li>
                 <li>

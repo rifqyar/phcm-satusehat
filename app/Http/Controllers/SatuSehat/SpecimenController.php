@@ -615,7 +615,7 @@ class SpecimenController extends Controller
                     'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
 
-                $this->logDb(json_encode($response), 'Specimen', json_encode($data), 'system'); //Session::get('id')
+                $this->logDb(json_encode($response), 'Specimen', json_encode($data), 'system', 0); //Session::get('id')
 
                 $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Service Request';
                 throw new Exception($msg, $dataServiceRequest->getStatusCode());
@@ -663,7 +663,7 @@ class SpecimenController extends Controller
                         'response' => $result,
                         'user_id' => Session::get('nama', 'system') //Session::get('id')
                     ]);
-                    $this->logDb(json_encode($result), 'Specimen', json_encode($data), 'system'); //Session::get('id')
+                    $this->logDb(json_encode($result), 'Specimen', json_encode($data), 'system', 1); //Session::get('id')
 
                     return response()->json([
                         'status' => JsonResponse::HTTP_OK,

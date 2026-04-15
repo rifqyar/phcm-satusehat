@@ -327,7 +327,7 @@ class CarePlanController extends Controller
                     'user_id' => Session::get('nama', 'system') //Session::get('id')
                 ]);
 
-                $this->logDb(json_encode($response), 'CarePlan', json_encode($satusehatPayload), 'system'); //Session::get('id')
+                $this->logDb(json_encode($response), 'CarePlan', json_encode($satusehatPayload), 'system', 0); //Session::get('id')
 
                 $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data CarePlan';
                 throw new Exception($msg, $dataCarePlan->getStatusCode());
@@ -355,7 +355,7 @@ class CarePlanController extends Controller
                         'response' => $result,
                         'user_id' => Session::get('nama', 'system') //Session::get('id')
                     ]);
-                    $this->logDb(json_encode($result), 'CarePlan', json_encode($satusehatPayload), 'system'); //Session::get('id')
+                    $this->logDb(json_encode($result), 'CarePlan', json_encode($satusehatPayload), 'system', 1); //Session::get('id')
 
                     DB::commit();
                     return response()->json([
