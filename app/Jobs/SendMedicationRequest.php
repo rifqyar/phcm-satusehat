@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Http\Traits\LogTraits;
+use App\Http\Traits\SATUSEHATTraits;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -15,10 +16,11 @@ use Illuminate\Support\Facades\Session;
 
 class SendMedicationRequest implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, LogTraits;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, LogTraits, SATUSEHATTraits;
 
     public $payload;
     public $meta;
+    public $id_unit;
 
     public $tries = 5;
     public $backoff = 10;
@@ -26,10 +28,11 @@ class SendMedicationRequest implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(array $payload, array $meta = [])
+    public function __construct(array $payload, array $meta = [], $id_unit)
     {
         $this->payload = $payload;
         $this->meta = $meta;
+        $this->id_unit = $id_unit;
         $this->onQueue('MedicationRequest');
     }
 
@@ -42,11 +45,12 @@ class SendMedicationRequest implements ShouldQueue
         $payload = $this->payload;
         $meta = $this->meta;
         //setup access token
-        $accessToken = $this->getAccessToken();
-
-        if (!$accessToken) {
-            throw new \Exception('Access token tidak tersedia di database.');
+        $login = $this->login($this->id_unit);
+        if ($login['metadata']['code'] != 200) {
+            $hasil = $login;
         }
+        $accessToken = $login['response']['token'];
+
         //setup organisasi
         $id_unit = Session::get('id_unit', '001');
         if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
@@ -117,6 +121,8 @@ class SendMedicationRequest implements ShouldQueue
                 ]
             );
 
+            $this->logDb(json_encode($body), $url, json_encode($payload), 'system', 0);
+
             throw new \RuntimeException(
                 $message,
                 $status ?? 0,
@@ -129,7 +135,7 @@ class SendMedicationRequest implements ShouldQueue
         // LOGGING
         // =======================
 
-        $this->logDb(json_encode($responseBody), $url, json_encode($this->payload), 'system');
+        $this->logDb(json_encode($responseBody), $url, json_encode($this->payload), 'system', 1);
 
         // =======================
         // LOGGING DB KHUSUS MEDICATION REQUEST

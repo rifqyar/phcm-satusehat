@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\HomeController;
+use App\Http\Traits\SATUSEHATTraits;
 use Illuminate\Support\Facades\DB;
 use App\Models\GlobalParameter;
 use App\Models\SATUSEHAT\SS_Kode_API;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\Session;
 
 class SatusehatKfaController extends Controller
 {
+    use SATUSEHATTraits;
+
     public function search(Request $request)
     {
         $homeController = app(HomeController::class);
@@ -214,6 +217,12 @@ class SatusehatKfaController extends Controller
             }
 
 
+            $login = $this->login($id_unit);
+            if ($login['metadata']['code'] != 200) {
+                $hasil = $login;
+            }
+
+            $token = $login['response']['token'];
 
             $id_unit = Session::get('id_unit_simrs', '001');
             if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
@@ -224,24 +233,9 @@ class SatusehatKfaController extends Controller
                 //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
             }
             $url = 'Medication';
-            $baseuri = rtrim($baseurl, '/') . '/' . ltrim($url, '/');
-
-            $client = new \GuzzleHttp\Client();
-
-            $response = $client->post(
-                $baseuri,
-                [
-                    'headers' => [
-                        'Authorization' => 'Bearer ' . $accessToken,
-                        'Content-Type' => 'application/json'
-                    ],
-                    'body' => json_encode($payload),
-                    'verify' => false
-                ]
-            );
-
-            $body = json_decode($response->getBody(), true);
-            $status = $response->getStatusCode();
+            $dataMedication = $this->consumeSATUSEHATAPI('POST' , $baseurl, $url, $payload, true, $token);
+            $body = json_decode($dataMedication->getBody()->getContents(), true);
+            $status = $dataMedication->getStatusCode();
 
             // LOGGING
             DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert([

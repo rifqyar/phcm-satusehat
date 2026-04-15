@@ -547,7 +547,9 @@ class MedicationRequestController extends Controller
     {
         $data = DB::table('SIRS_PHCM.dbo.IF_TRANS_OL as A')
             ->leftJoin('SIRS_PHCM.dbo.M_TRANS_KFA as B', 'A.KDBRG', '=', 'B.KDBRG_CENTRA')
+            ->leftJOIN('SIRS_PHCM.dbo.IF_HTRANS_OL as H', 'A.ID_TRANS', '=', 'H.ID_TRANS')
             ->select(
+                'H.KARCIS',
                 'A.ID_TRANS',
                 'A.KDBRG',
                 'A.NAMABRG',
@@ -566,6 +568,7 @@ class MedicationRequestController extends Controller
 
         $summary = [];
 
+        $dataICD10 = DB::selectOne("SELECT * FROM SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA rsd where rsd.karcis = ?", [$data[0]->KARCIS]);
         foreach ($data as $row) {
 
             // ===============================
@@ -615,12 +618,13 @@ class MedicationRequestController extends Controller
                 isset($result_kirim_medication['status']) &&
                 $result_kirim_medication['status'] === 'success'
             ) {
-                $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg);
+                $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg, $dataICD10);
 
                 $rowResult['status'] = $payloadResult['status'] ?? 'error';
                 $rowResult['message'] = $payloadResult['message'] ?? null;
                 $rowResult['created'] = ($payloadResult['status'] ?? '') === 'success';
 
+                $id_unit = Session::get('id_unit', '001');
                 if ($rowResult['created']) {
                     SendMedicationRequest::dispatch(
                         $payloadResult['payload'],
@@ -633,7 +637,8 @@ class MedicationRequestController extends Controller
                                 'ID_PASIEN' => $payloadResult['payload']['subject']['reference'] ?? null,
                                 'id_satusehat_encounter' => $payloadResult['payload']['encounter']['reference'] ?? null,
                             ]
-                        ]
+                        ],
+                        $id_unit
                     )->onQueue('MedicationRequest');
                 }
             } else {
@@ -641,19 +646,20 @@ class MedicationRequestController extends Controller
                 // ===============================
                 // DUPLICATE CASE
                 // ===============================
-                $decoded = isset($result_kirim_medication['message'])
-                    ? @json_decode($result_kirim_medication['message'], true)
+                $decoded = isset($result_kirim_medication['data'])
+                    ? @json_decode($result_kirim_medication['data'], true)
                     : null;
 
-                if ($decoded && ($decoded['issue'][0]['code'] ?? null) === 'duplicate') {
+                if ($result_kirim_medication && ($result_kirim_medication['data']['issue'][0]['code'] ?? null) === 'duplicate') {
 
-                    $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg);
+                    $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg, $dataICD10);
 
                     $rowResult['status'] = $payloadResult['status'] ?? 'error';
                     $rowResult['message'] = $payloadResult['message'] ?? null;
                     $rowResult['created'] = ($payloadResult['status'] ?? '') === 'success';
                     $rowResult['note'] = 'previously duplicate';
 
+                    $id_unit = Session::get('id_unit', '001');
                     if ($rowResult['created']) {
                         SendMedicationRequest::dispatch(
                             $payloadResult['payload'],
@@ -666,7 +672,8 @@ class MedicationRequestController extends Controller
                                     'ID_PASIEN' => $payloadResult['payload']['subject']['reference'] ?? null,
                                     'id_satusehat_encounter' => $payloadResult['payload']['encounter']['reference'] ?? null,
                                 ]
-                            ]
+                            ],
+                            $id_unit
                         )->onQueue('MedicationRequest');
                     }
                 } else {
@@ -716,31 +723,37 @@ class MedicationRequestController extends Controller
     }
 
     // create payload sekalian kirim melalui job
-    function createMedicationRequestPayload($idTrans, $kdbrg)
+    function createMedicationRequestPayload($idTrans, $kdbrg, $dataICD10 = null)
     {
         try {
             $data = DB::select("
-            SELECT
-                H.ID_TRANS,
-                MT.FHIR_ID AS medicationReference,
-                T.ID as 'fl_racik',
-                MT.NAMABRG_KFA,
-                MT.KD_BRG_KFA,
-                MT.IS_COMPOUND,
-                B.id_satusehat_encounter,
-                P.idpx AS ID_PASIEN,
-                P.nama AS PASIEN,
-                N.idnakes AS ID_NAKES,
-                N.nama AS NAKES
-            FROM SIRS_PHCM.dbo.RJ_KARCIS A
-            INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA AS B ON A.KARCIS = B.karcis
-            INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES AS N ON B.id_satusehat_dokter = N.idnakes
-            INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN AS P ON B.id_satusehat_px = P.idpx
-            INNER JOIN SIRS_PHCM.dbo.IF_HTRANS_OL H ON A.KARCIS = H.KARCIS
-            INNER JOIN SIRS_PHCM.dbo.IF_TRANS_OL T ON H.ID_TRANS = T.ID_TRANS
-            INNER JOIN SIRS_PHCM.dbo.M_TRANS_KFA MT ON T.KDBRG_CENTRA = MT.KDBRG_CENTRA
-            WHERE H.ID_TRANS = ? and T.KDBRG_CENTRA = ?
-        ", [$idTrans, $kdbrg]);
+                SELECT DISTINCT
+                    H.ID_TRANS,
+                    MT.FHIR_ID AS medicationReference,
+                    T.ID as 'fl_racik',
+                    T.JUMLAH,
+                    T.SIGNA2,
+                    T.SIGNACPT,
+                    T.INPUTDATE,
+                    T.HARI,
+                    T.ITER,
+                    MT.NAMABRG_KFA,
+                    MT.KD_BRG_KFA,
+                    MT.IS_COMPOUND,
+                    B.id_satusehat_encounter,
+                    P.idpx AS ID_PASIEN,
+                    P.nama AS PASIEN,
+                    N.idnakes AS ID_NAKES,
+                    N.nama AS NAKES
+                FROM SIRS_PHCM.dbo.RJ_KARCIS A
+                INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA AS B ON A.KARCIS = B.karcis
+                INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES AS N ON B.id_satusehat_dokter = N.idnakes
+                INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN AS P ON B.id_satusehat_px = P.idpx
+                INNER JOIN SIRS_PHCM.dbo.IF_HTRANS_OL H ON A.KARCIS = H.KARCIS
+                INNER JOIN SIRS_PHCM.dbo.IF_TRANS_OL T ON H.ID_TRANS = T.ID_TRANS
+                INNER JOIN SIRS_PHCM.dbo.M_TRANS_KFA MT ON T.KDBRG_CENTRA = MT.KDBRG_CENTRA
+                WHERE H.ID_TRANS = ? and T.KDBRG_CENTRA = ?
+            ", [$idTrans, $kdbrg]);
 
 
             $id_unit = Session::get('id_unit', '001');
@@ -750,65 +763,47 @@ class MedicationRequestController extends Controller
                 $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
             }
 
+            $payload = []; // Inisialisasi payload
+
             foreach ($data as $index => $item) {
                 $uniqueId = date('YmdHis') . '-' . str_pad($index + 1, 3, '0', STR_PAD_LEFT);
+                $localMedId = "med-" . $uniqueId;
 
-                $jenisCode = ($item->fl_racik == 1) ? 'C' : 'NC';
-                $jenisName = ($item->fl_racik == 1) ? 'Compound' : 'Non-compound';
+                $isRacik = ($item->fl_racik == 1);
 
-                // --- bentuk payload ---
+                // --- PERSIAPAN VARIABEL DINAMIS ---
+                $namaBarang = $item->NAMABRG_KFA ?? 'Unknown Medication';
+                $satuanObat = $this->getSatuanFromNama($namaBarang);
+
+                $frekuensi = $this->getFrekuensiFromSignaCpt($item->SIGNACPT);
+                // Default dosis per minum = 1 (karena biasanya di SIMRS signanya S 1-1-1 berarti sekali minum 1)
+                $dosisPerMinum = 1;
+
+                $totalQty = (int) $item->JUMLAH > 0 ? (int) $item->JUMLAH : 1;
+
+                // Hitung durasi hari: Coba ambil dari DB, jika 0 hitung berdasarkan qty dan frekuensi
+                $durasiHari = (float)$item->HARI > 0 ? (int)$item->HARI : ceil($totalQty / ($frekuensi * $dosisPerMinum));
+                $durasiHari = $durasiHari == 0 ? 1 : $durasiHari;
+
+                // Tanggal Resep
+                $waktuAwal = empty($item->INPUTDATE) ? 'now' : $item->INPUTDATE;
+                $tanggalResep = date('Y-m-d\TH:i:sP', strtotime($waktuAwal));
+                $tanggalSelesai = date('Y-m-d\TH:i:sP', strtotime($waktuAwal . " + $durasiHari days"));
+
+
+                // --- BENTUK BASE PAYLOAD ---
                 $payload = [
                     "resourceType" => "MedicationRequest",
                     "identifier" => [
                         [
-                            "system" => "http://sys-ids.kemkes.go.id/prescription",
+                            "system" => "http://sys-ids.kemkes.go.id/prescription/" . $orgId,
+                            "use" => "official",
+                            "value" => (string) $item->ID_TRANS
+                        ],
+                        [
+                            "system" => "http://sys-ids.kemkes.go.id/prescription-item/" . $orgId,
                             "use" => "official",
                             "value" => $uniqueId
-                        ]
-                    ],
-                    "contained" => [
-                        [
-                            "resourceType" => "Medication",
-                            "meta" => [
-                                "profile" => [
-                                    "https://fhir.kemkes.go.id/r4/StructureDefinition/Medication"
-                                ]
-                            ],
-                            "id" => $uniqueId,
-                            "identifier" => [
-                                [
-                                    "system" => "http://sys-ids.kemkes.go.id/medication",
-                                    "use" => "official",
-                                    "value" => $item->KD_BRG_KFA
-                                ]
-                            ],
-                            "code" => [
-                                "coding" => [
-                                    [
-                                        "system" => "http://sys-ids.kemkes.go.id/kfa",
-                                        "code" => $item->KD_BRG_KFA,
-                                        "display" => $item->NAMABRG_KFA
-                                    ]
-                                ]
-                            ],
-                            "status" => "active",
-                            "manufacturer" => [
-                                "reference" => "Organization/" . $orgId
-                            ],
-                            "extension" => [
-                                [
-                                    "url" => "https://fhir.kemkes.go.id/r4/StructureDefinition/MedicationType",
-                                    "valueCodeableConcept" => [
-                                        "coding" => [
-                                            [
-                                                "system" => "http://terminology.kemkes.go.id/CodeSystem/medication-type",
-                                                "code" => $jenisCode,
-                                                "display" => $jenisName
-                                            ]
-                                        ]
-                                    ]
-                                ]
-                            ]
                         ]
                     ],
                     "status" => "completed",
@@ -818,16 +813,13 @@ class MedicationRequestController extends Controller
                             "coding" => [
                                 [
                                     "system" => "http://terminology.hl7.org/CodeSystem/medicationrequest-category",
-                                    "code" => "community",
-                                    "display" => "Community"
+                                    "code" => "outpatient",
+                                    "display" => "Outpatient"
                                 ]
                             ]
                         ]
                     ],
                     "priority" => "routine",
-                    "medicationReference" => [
-                        "reference" => "Medication/" . $item->medicationReference
-                    ],
                     "subject" => [
                         "reference" => "Patient/" . $item->ID_PASIEN,
                         "display" => $item->PASIEN
@@ -835,12 +827,163 @@ class MedicationRequestController extends Controller
                     "encounter" => [
                         "reference" => "Encounter/" . $item->id_satusehat_encounter
                     ],
-                    "authoredOn" => now()->format('Y-m-d\TH:i:sP'),
+                    "authoredOn" => date('Y-m-d\TH:i:sP', strtotime($item->INPUTDATE ?? now())),
                     "requester" => [
                         "reference" => "Practitioner/" . $item->ID_NAKES,
                         "display" => $item->NAKES
                     ]
                 ];
+
+                if ($dataICD10) {
+                    $payload["reasonCode"] = [
+                        [
+                            "coding" => [
+                                [
+                                    "system" => "http://hl7.org/fhir/sid/icd-10",
+                                    "code" => $dataICD10->code,
+                                    "display" => $dataICD10->display
+                                ]
+                            ]
+                        ]
+                    ];
+                    $payload["reasonReference"] = [
+                        [
+                            "reference" => "Condition/" . $dataICD10->id_satusehat_condition,
+                            "display" => $dataICD10->display
+                        ]
+                    ];
+                }
+
+                $payload["courseOfTherapyType"] = [
+                    "coding" => [
+                        [
+                            "system" => "http://terminology.hl7.org/CodeSystem/medicationrequest-course-of-therapy",
+                            "code" => "continuous",
+                            "display" => "Continuing long term therapy"
+                        ]
+                    ]
+                ];
+
+                // --- INJECT DOSAGE INSTRUCTION DINAMIS ---
+                $payload["dosageInstruction"] = [
+                    [
+                        "sequence" => 1,
+                        "text" => $item->SIGNA2 ?? "Sesuai petunjuk dokter", // "S. 1 - 1 - 1"
+                        "patientInstruction" => $item->SIGNA2 ?? "Diminum sesuai anjuran",
+                        "timing" => [
+                            "repeat" => [
+                                "frequency" => $frekuensi,
+                                "period" => 1,
+                                "periodUnit" => "d"
+                            ]
+                        ],
+                        "route" => [
+                            "coding" => [
+                                [
+                                    "system" => "http://www.whocc.no/atc",
+                                    "code" => "O",
+                                    "display" => "Oral" // Idealnya bisa di-map juga berdasarkan bentuk sediaan, tapi Oral cukup aman sbg default.
+                                ]
+                            ]
+                        ],
+                        "doseAndRate" => [
+                            [
+                                "type" => [
+                                    "coding" => [
+                                        [
+                                            "system" => "http://terminology.hl7.org/CodeSystem/dose-rate-type",
+                                            "code" => "ordered",
+                                            "display" => "Ordered"
+                                        ]
+                                    ]
+                                ],
+                                "doseQuantity" => [
+                                    "value" => $dosisPerMinum,
+                                    "unit" => $satuanObat,
+                                    "system" => "http://terminology.hl7.org/CodeSystem/v3-orderableDrugForm",
+                                    "code" => $satuanObat
+                                ]
+                            ]
+                        ]
+                    ]
+                ];
+
+                // --- INJECT DISPENSE REQUEST DINAMIS ---
+                $payload["dispenseRequest"] = [
+                    "dispenseInterval" => [
+                        "value" => 1,
+                        "unit" => "days",
+                        "system" => "http://unitsofmeasure.org",
+                        "code" => "d"
+                    ],
+                    "validityPeriod" => [
+                        "start" => $tanggalResep,
+                        "end" => $tanggalSelesai
+                    ],
+                    "numberOfRepeatsAllowed" => (int) ($item->ITER ?? 0),
+                    "quantity" => [
+                        "value" => $totalQty,
+                        "unit" => $satuanObat,
+                        "system" => "http://terminology.hl7.org/CodeSystem/v3-orderableDrugForm",
+                        "code" => $satuanObat
+                    ],
+                    "expectedSupplyDuration" => [
+                        "value" => $durasiHari,
+                        "unit" => "days",
+                        "system" => "http://unitsofmeasure.org",
+                        "code" => "d"
+                    ],
+                    "performer" => [
+                        "reference" => "Organization/" . $orgId
+                    ]
+                ];
+
+                if ($isRacik) {
+                    $payload["contained"] = [
+                        [
+                            "resourceType" => "Medication",
+                            "id" => $localMedId,
+                            "extension" => [
+                                [
+                                    "url" => "https://fhir.kemkes.go.id/r4/StructureDefinition/MedicationType",
+                                    "valueCodeableConcept" => [
+                                        "coding" => [
+                                            [
+                                                "system" => "http://terminology.kemkes.go.id/CodeSystem/medication-type",
+                                                "code" => "C",
+                                                "display" => "Compound"
+                                            ]
+                                        ]
+                                    ]
+                                ]
+                            ],
+                            "ingredient" => [
+                                [
+                                    "itemCodeableConcept" => [
+                                        "coding" => [
+                                            [
+                                                "system" => "http://sys-ids.kemkes.go.id/kfa",
+                                                "code" => $item->KD_BRG_KFA,
+                                                "display" => $item->NAMABRG_KFA
+                                            ]
+                                        ]
+                                    ],
+                                    "isActive" => true
+                                ]
+                            ]
+                        ]
+                    ];
+
+                    $payload["medicationReference"] = [
+                        "reference" => "#" . $localMedId,
+                        "display" => "Racikan: " . $item->NAMABRG_KFA
+                    ];
+                } else {
+                    $payload["medicationReference"] = [
+                        "reference" => "Medication/" . $item->medicationReference,
+                        "display" => $item->NAMABRG_KFA
+                    ];
+                }
             }
 
             return [
@@ -856,5 +999,44 @@ class MedicationRequestController extends Controller
                 'message' => 'createMedicationRequestPayload exception: ' . $e->getMessage()
             ];
         }
+    }
+
+    function getSatuanFromNama($namaBarang)
+    {
+        $nama = strtoupper(trim($namaBarang));
+        $mappingSatuan = [
+            'TAB'       => 'TAB',  // Tablet
+            'KAPS'      => 'CAP',  // Kapsul
+            'SYR'       => 'BTL',  // Sirup (Botol)
+            'INJ'       => 'AMP',  // Injeksi / Ampul
+            'AMP'       => 'AMP',  // Ampul
+            'INF'       => 'BTL',  // Infus (Botol)
+            'VIAL'      => 'VIAL', // Vial
+            'SUPP'      => 'SUPP', // Suppositoria
+            'TUBE'      => 'TUBE', // Salep/Krim
+            'PCS'       => 'PCS',  // Pieces/Alkes (Spuit, Kasa)
+            'NEBU'      => 'AMP',  // Nebule/Respules
+            'RESP'      => 'AMP'   // Respules
+        ];
+
+        foreach ($mappingSatuan as $keyword => $kode) {
+            if (strpos($nama, $keyword) !== false) {
+                return $kode;
+            }
+        }
+        return 'TAB';
+    }
+
+    function getFrekuensiFromSignaCpt($signaCpt)
+    {
+        if (empty($signaCpt)) return 1;
+        if (is_numeric($signaCpt)) {
+            $sum = 0;
+            foreach (str_split((string)$signaCpt) as $char) {
+                $sum += (int)$char;
+            }
+            return $sum > 0 ? $sum : 1;
+        }
+        return 1;
     }
 }
