@@ -27,6 +27,7 @@ Route::middleware(['checkLogin'])->group(function () {
     Route::get('logs', [\Rap2hpoutre\LaravelLogViewer\LogViewerController::class, 'index'])->name('logs');
     // Home
     Route::get('/', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+    Route::get('/dashboard-data', [App\http\Controllers\HomeController::class, 'getDashboardChart'])->name('dashboard.data');
 
     // mapping obat
     Route::get('/master_obat', [App\Http\Controllers\MasterObatController::class, 'index'])->name('master_obat');

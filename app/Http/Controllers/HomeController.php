@@ -116,47 +116,124 @@ class HomeController extends Controller
         ];
     }
 
-    public function getChartDataRJRI()
+    public function getDashboardChart()
     {
-        // Menggunakan RAW Query Laravel untuk efisiensi Dashboard
-        // Asumsi lu punya tabel Master Kunjungan (misal: dbo.Trx_Kunjungan)
-        // yang nyimpen ID_SATUSEHAT_ENCOUNTER dan Jenis Layanan (RJ/RI)
+        $id_unit = Session::get('id_unit', '001');
 
-        $query = "
+        // 1. QUERY TREND PENGIRIMAN (Sukses vs Gagal)
+        $queryLogTrend = "
+            SELECT
+                CAST(created_at AS DATE) as tanggal,
+                SUM(CASE WHEN flag_success = 1 THEN 1 ELSE 0 END) as total_sukses,
+                SUM(CASE WHEN flag_success = 0 THEN 1 ELSE 0 END) as total_gagal
+            FROM SATUSEHAT.dbo.SATUSEHAT_LOG_TRANSACTION
+            WHERE created_at >= DATEADD(day, -7, GETDATE())
+            GROUP BY CAST(created_at AS DATE)
+        ";
+        $logTrend = DB::select($queryLogTrend);
+
+        // 2. QUERY KUNJUNGAN PASIEN
+        // Kita panggil CTE function lu buat ngitung Kunjungan per Tanggal
+        $queryKunjungan = "
+            WITH MasterKunjungan AS (
+                SELECT CAST(TANGGAL AS DATE) as tanggal, ID_SATUSEHAT_ENCOUNTER
+                FROM dbo.fn_getDataKunjungan('$id_unit', 'RAWAT_JALAN')
+                UNION ALL
+                SELECT CAST(TANGGAL AS DATE) as tanggal, ID_SATUSEHAT_ENCOUNTER
+                FROM dbo.fn_getDataKunjungan('$id_unit', 'RAWAT_INAP')
+            )
+            SELECT tanggal, COUNT(ID_SATUSEHAT_ENCOUNTER) as total_kunjungan
+            FROM MasterKunjungan
+            WHERE tanggal >= DATEADD(day, -7, GETDATE())
+            GROUP BY tanggal
+        ";
+        $kunjunganTrend = DB::select($queryKunjungan);
+
+        // 3. QUERY ENDPOINT (19 Endpoint)
+        // Pake trik SUBSTRING & CHARINDEX buat motong "Observation/123" jadi "Observation" aja
+        $queryEndpoint = "
+            SELECT
+                CASE
+                    WHEN CHARINDEX('/', service) > 0 THEN SUBSTRING(service, 1, CHARINDEX('/', service) - 1)
+                    ELSE service
+                END as endpoint_name,
+                COUNT(id) as total
+            FROM SATUSEHAT.dbo.SATUSEHAT_LOG_TRANSACTION
+            WHERE created_at >= DATEADD(day, -7, GETDATE())
+            GROUP BY
+                CASE
+                    WHEN CHARINDEX('/', service) > 0 THEN SUBSTRING(service, 1, CHARINDEX('/', service) - 1)
+                    ELSE service
+                END
+            ORDER BY total DESC
+        ";
+        $endpointData = DB::select($queryEndpoint);
+
+        // 4. QUERY RJ VS RI (Yang udah kita bahas sebelumnya pakai CTE)
+        $queryRJRI = "
+            WITH MasterKunjungan AS (
+                SELECT ID_SATUSEHAT_ENCOUNTER, 'RAWAT_JALAN' AS JENIS_LAYANAN FROM dbo.fn_getDataKunjungan('$id_unit', 'RAWAT_JALAN')
+                UNION ALL
+                SELECT ID_SATUSEHAT_ENCOUNTER, 'RAWAT_INAP' AS JENIS_LAYANAN FROM dbo.fn_getDataKunjungan('$id_unit', 'RAWAT_INAP')
+            )
             SELECT
                 CAST(L.created_at AS DATE) as tanggal,
-                K.JENIS_LAYANAN, -- (Isinya 'RAWAT_INAP' atau 'RAWAT_JALAN')
+                K.JENIS_LAYANAN,
                 COUNT(L.id) as total_pengiriman
             FROM SATUSEHAT.dbo.SATUSEHAT_LOG_TRANSACTION L
-
-            -- Ekstrak 'Encounter/abc-123' dari JSON request log, potong kata 'Encounter/'-nya
-            -- Lalu JOIN dengan tabel SIMRS lu yang nyimpen data Kunjungan
-            INNER JOIN DBO.NAMA_TABEL_KUNJUNGAN_LU K
-                ON K.ID_SATUSEHAT_ENCOUNTER = REPLACE(JSON_VALUE(L.request, '$.encounter.reference'), 'Encounter/', '')
-
-            -- Filter 7 hari terakhir biar enteng
-            WHERE L.created_at >= DATEADD(day, -7, GETDATE())
-            AND L.request IS NOT NULL -- Pastikan JSON tidak kosong
-
+            INNER JOIN MasterKunjungan K
+                ON K.ID_SATUSEHAT_ENCOUNTER = SUBSTRING(L.request, CHARINDEX('Encounter/', L.request) + 10, 36)
+            WHERE L.created_at >= DATEADD(day, -7, GETDATE()) AND L.flag_success = 1 AND L.request LIKE '%Encounter/%'
             GROUP BY CAST(L.created_at AS DATE), K.JENIS_LAYANAN
-            ORDER BY tanggal ASC
         ";
+        $rjriData = DB::select($queryRJRI);
 
-        $data = DB::select($query);
+        // --- MAPPING DATA KE FORMAT CHART.JS ---
 
-        // Format data biar gampang dimakan sama Chart.js di frontend
-        $formattedForChart = [
-            'tanggal' => [],
-            'rawat_jalan' => [],
-            'rawat_inap' => []
+        // Bikin array 7 hari terakhir biar sumbu X chart-nya rapi & gak bolong
+        $dates = [];
+        $chartUtama = ['labels' => [], 'kunjungan' => [], 'sukses' => [], 'gagal' => []];
+        $chartRjRi  = ['labels' => [], 'rj' => [], 'ri' => [], 'total_rj' => 0, 'total_ri' => 0];
+
+        for ($i = 6; $i >= 0; $i--) {
+            $dateStr = date('Y-m-d', strtotime("-$i days"));
+            $dateLabel = date('d M', strtotime("-$i days"));
+
+            $chartUtama['labels'][] = $dateLabel;
+            $chartRjRi['labels'][] = $dateLabel;
+
+            // Cari data log trend
+            $logMatch = collect($logTrend)->firstWhere('tanggal', $dateStr);
+            $chartUtama['sukses'][] = $logMatch ? $logMatch->total_sukses : 0;
+            $chartUtama['gagal'][] = $logMatch ? $logMatch->total_gagal : 0;
+
+            // Cari data kunjungan
+            $kunjMatch = collect($kunjunganTrend)->firstWhere('tanggal', $dateStr);
+            $chartUtama['kunjungan'][] = $kunjMatch ? $kunjMatch->total_kunjungan : 0;
+
+            // Cari data RJ RI per tanggal
+            $rjMatch = collect($rjriData)->where('tanggal', $dateStr)->where('JENIS_LAYANAN', 'RAWAT_JALAN')->first();
+            $riMatch = collect($rjriData)->where('tanggal', $dateStr)->where('JENIS_LAYANAN', 'RAWAT_INAP')->first();
+
+            $valRj = $rjMatch ? $rjMatch->total_pengiriman : 0;
+            $valRi = $riMatch ? $riMatch->total_pengiriman : 0;
+
+            $chartRjRi['rj'][] = $valRj;
+            $chartRjRi['ri'][] = $valRi;
+            $chartRjRi['total_rj'] += $valRj;
+            $chartRjRi['total_ri'] += $valRi;
+        }
+
+        // Format Data Endpoint
+        $chartEndpoint = [
+            'labels' => collect($endpointData)->pluck('endpoint_name'),
+            'data' => collect($endpointData)->pluck('total')
         ];
 
-        // (Opsional) Mapping logic di Laravel sebelum dilempar ke frontend...
-        // ...
-
         return response()->json([
-            'status' => 'success',
-            'data' => $data
+            'utama' => $chartUtama,
+            'endpoint' => $chartEndpoint,
+            'rj_ri' => $chartRjRi
         ]);
     }
 
