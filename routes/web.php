@@ -29,6 +29,9 @@ Route::middleware(['checkLogin'])->group(function () {
     Route::get('/', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
     Route::get('/dashboard-data', [App\http\Controllers\HomeController::class, 'getDashboardChart'])->name('dashboard.data');
 
+    // Monitoring Antrian Kiriman Satusehat
+    Route::get('/monitoring-kiriman', [App\Http\Controllers\MonitoringKirimanController::class, 'index'])->name('monitoring_kiriman.index');
+
     // mapping obat
     Route::get('/master_obat', [App\Http\Controllers\MasterObatController::class, 'index'])->name('master_obat');
     Route::post('/master_obat/datatable', [App\Http\Controllers\MasterObatController::class, 'getData'])->name('master_obat.datatable');

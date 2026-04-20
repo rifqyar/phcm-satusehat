@@ -40,7 +40,7 @@ class RawatJalanController extends Controller
             [
                 'title' => 'Immunization',
                 'url' => 'satusehat.imunisasi.index',
-                'id' => ''
+                'id' => 'immunizationresponse_sent'
             ],
             [
                 'title' => 'Medication Request',
@@ -440,6 +440,7 @@ class RawatJalanController extends Controller
                 'api/diagnosis',
                 'api/medstatement',
                 'api/composition',
+                'api/immunization',
             );
 
             $postBase = $post;

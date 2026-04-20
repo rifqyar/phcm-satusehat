@@ -309,8 +309,7 @@
                         d.tgl_akhir = $('#end_date').val();
                     }
                 },
-                columns: [
-                    {
+                columns: [{
                         data: null,
                         orderable: false,
                         searchable: false,
@@ -321,7 +320,7 @@
                         orderable: false,
                         searchable: false,
                         className: 'text-center',
-                        render: function (data, type, row) {
+                        render: function(data, type, row) {
 
                             if (type !== 'display') {
                                 return '-';
@@ -392,21 +391,30 @@
                         orderable: false,
                         searchable: false,
                         render: function(row) {
-                            let btnKirim = `
-                                <button class="btn btn-sm btn-primary w-100"
-                                    onclick='confirmkirimSatusehat(${JSON.stringify(row)})'>
-                                    <i class="fas fa-paper-plane mr-2"></i> Kirim SATUSEHAT
-                                </button>
-                            `;
-
-                            // jika sudah SUCCESS → kirim ulang
-                            if (row.SATUSEHAT_STATUS === 'SUCCESS') {
+                            var btnKirim = '';
+                            if (!row || !row.id_satusehat_encounter) {
                                 btnKirim = `
-                                    <button class="btn btn-sm btn-warning w-100"
-                                        onclick='confirmkirimSatusehat(${JSON.stringify(row)})'>
-                                        <i class="fas fa-sync-alt mr-2"></i> Kirim Ulang SATUSEHAT
+                                    <span class="text-danger font-weight">
+                                        Encounter Belum Kirim
+                                    </span>
+                                `;
+                            } else {
+                                btnKirim = `
+                                    <button class="btn btn-sm btn-primary w-100"
+                                        onclick='confirmkirimSatusehat(${JSON.stringify(row)}, false)'>
+                                        <i class="fas fa-paper-plane mr-2"></i> Kirim SATUSEHAT
                                     </button>
                                 `;
+
+                                // jika sudah SUCCESS → kirim ulang
+                                if (row.SATUSEHAT_STATUS === 'SUCCESS') {
+                                    btnKirim = `
+                                        <button class="btn btn-sm btn-warning w-100"
+                                            onclick='confirmkirimSatusehat(${JSON.stringify(row)}, true)'>
+                                            <i class="fas fa-sync-alt mr-2"></i> Kirim Ulang SATUSEHAT
+                                        </button>
+                                    `;
+                                }
                             }
 
                             const btnLihat = `
@@ -422,16 +430,20 @@
 
                     }
                 ],
-                order: [[4, 'desc']],
+                order: [
+                    [4, 'desc']
+                ],
                 lengthMenu: [10, 25, 50, 100],
                 language: {
                     processing: "Memuat data..."
                 },
-                drawCallback: function (settings) {
+                drawCallback: function(settings) {
                     var api = this.api();
                     var start = api.page.info().start;
 
-                    api.column(0, { page: 'current' }).nodes().each(function (cell, i) {
+                    api.column(0, {
+                        page: 'current'
+                    }).nodes().each(function(cell, i) {
                         cell.innerHTML = start + i + 1;
                     });
                 }
@@ -487,109 +499,114 @@
             });
 
             // bulk sned
-            $('#btnKirimDipilih').on('click', async function () {
+            $('#btnKirimDipilih').on('click', async function() {
 
-            const selected = $('.checkbox-item:checked')
-                .map(function () { return $(this).val(); })
-                .get();
+                const selected = $('.checkbox-item:checked')
+                    .map(function() {
+                        return $(this).val();
+                    })
+                    .get();
 
-            if (selected.length === 0) {
-                swal('Tidak ada data terpilih',
-                    'Silakan pilih pasien yang ingin dikirim ke SATUSEHAT.',
-                    'warning');
-                return;
-            }
-
-            const confirm = await swal({
-                title: 'Kirim data terpilih?',
-                text: `Akan mengirim ${selected.length} data ke SATUSEHAT.`,
-                icon: 'info',
-                buttons: {
-                    cancel: 'Batal',
-                    confirm: { text: 'Kirim', closeModal: false }
+                if (selected.length === 0) {
+                    swal('Tidak ada data terpilih',
+                        'Silakan pilih pasien yang ingin dikirim ke SATUSEHAT.',
+                        'warning');
+                    return;
                 }
-            });
 
-            if (!confirm) return;
+                const confirm = await swal({
+                    title: 'Kirim data terpilih?',
+                    text: `Akan mengirim ${selected.length} data ke SATUSEHAT.`,
+                    icon: 'info',
+                    buttons: {
+                        cancel: 'Batal',
+                        confirm: {
+                            text: 'Kirim',
+                            closeModal: false
+                        }
+                    }
+                });
 
-            const total = selected.length;
-            const success = [];
-            const fail = [];
+                if (!confirm) return;
 
-            // === PROGRESS MODAL ===
-            Swal.fire({
-                title: 'Mengirim ke SATUSEHAT',
-                html: `
+                const total = selected.length;
+                const success = [];
+                const fail = [];
+
+                // === PROGRESS MODAL ===
+                Swal.fire({
+                    title: 'Mengirim ke SATUSEHAT',
+                    html: `
                     <div id="progressContent" style="text-align:left">
                         <p>Proses <b>0</b> / <b>${total}</b></p>
                         <p>✔ Sukses : <b>0</b></p>
                         <p>✖ Gagal : <b>0</b></p>
                     </div>
                 `,
-                icon: 'info',
-                showConfirmButton: false,
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
+                    icon: 'info',
+                    showConfirmButton: false,
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
 
 
-            // === LOOP KIRIM (SATU KALI SAJA) ===
-            for (let i = 0; i < total; i++) {
-                const id = selected[i];
+                // === LOOP KIRIM (SATU KALI SAJA) ===
+                for (let i = 0; i < total; i++) {
+                    const id = selected[i];
 
-                try {
-                    const res = await kirimSatusehat(id, false);
+                    try {
+                        const res = await kirimSatusehat(id, false);
 
-                    if (res && res.success) {
-                        success.push(id);
-                    } else {
+                        if (res && res.success) {
+                            success.push(id);
+                        } else {
+                            fail.push({
+                                id,
+                                message: res?.message || 'Gagal'
+                            });
+                        }
+
+                    } catch (err) {
                         fail.push({
                             id,
-                            message: res?.message || 'Gagal'
+                            message: err
                         });
                     }
 
-                } catch (err) {
-                    fail.push({
-                        id,
-                        message: err
-                    });
+                    // UPDATE UI
+                    $('#progressContent').html(
+                        renderProgress(i + 1, total, success.length, fail.length)
+                    );
                 }
 
-                // UPDATE UI
-                $('#progressContent').html(
-                    renderProgress(i + 1, total, success.length, fail.length)
-                );
-            }
+                // === SUMMARY ===
+                let html = `<div style="text-align:left; max-height:300px; overflow:auto;">`;
+                html += `<strong>✔ Sukses (${success.length})</strong><br>`;
+                html += success.length ?
+                    success.map(id => `✅ ${id}`).join('<br>') :
+                    '<i>Tidak ada</i>';
 
-            // === SUMMARY ===
-            let html = `<div style="text-align:left; max-height:300px; overflow:auto;">`;
-            html += `<strong>✔ Sukses (${success.length})</strong><br>`;
-            html += success.length
-                ? success.map(id => `✅ ${id}`).join('<br>')
-                : '<i>Tidak ada</i>';
+                html += `<br><br><strong>✖ Gagal (${fail.length})</strong><br>`;
+                html += fail.length ?
+                    fail.map(f => `❌ ${f.id} — ${f.message}`).join('<br>') :
+                    '<i>Tidak ada</i>';
 
-            html += `<br><br><strong>✖ Gagal (${fail.length})</strong><br>`;
-            html += fail.length
-                ? fail.map(f => `❌ ${f.id} — ${f.message}`).join('<br>')
-                : '<i>Tidak ada</i>';
+                html += `</div>`;
 
-            html += `</div>`;
+                Swal.fire({
+                    title: 'Selesai',
+                    html: html,
+                    icon: fail.length === 0 ? 'success' : 'warning',
+                    confirmButtonText: 'Tutup'
+                }).then(() => {
+                    table.ajax.reload(null, false);
+                });
 
-            Swal.fire({
-                title: 'Selesai',
-                html: html,
-                icon: fail.length === 0 ? 'success' : 'warning',
-                confirmButtonText: 'Tutup'
-            }).then(() => {
-                table.ajax.reload(null, false);
+
             });
-
-
-        });
 
 
         }); // end document.ready
@@ -667,15 +684,16 @@
             $('#modalDetailImunisasi').modal('show');
         }
 
-        function confirmkirimSatusehat(row) {
-
+        function confirmkirimSatusehat(row, resend) {
+            console.log(row, resend)
             if (!row || !row.ID_IMUNISASI_PX) {
                 Swal.fire('Error', 'Data imunisasi tidak valid', 'error');
                 return;
             }
 
+            let title = resend ? 'Kirim Ulang ke SATUSEHAT?' : 'Kirim ke SATUSEHAT?';
             Swal.fire({
-                title: 'Kirim ke SATUSEHAT?',
+                title: title,
                 html: `
                     <div style="text-align:left">
                         <b>Pasien</b> : ${row.NAMA_PASIEN}<br>
@@ -688,20 +706,20 @@
                 confirmButtonText: 'Kirim',
                 cancelButtonText: 'Batal',
                 allowOutsideClick: false
-            }).then(function (result) {
+            }).then(function(result) {
                 if (result.value === true) {
-                    kirimSatusehat(row.ID_IMUNISASI_PX)
-                    .then(() => {
-                        table.ajax.reload(null, false);
-                    })
-                    .catch(() => {
-                        table.ajax.reload(null, false);
-                    });
+                    kirimSatusehat(row.ID_IMUNISASI_PX, true, resend)
+                        .then(() => {
+                            table.ajax.reload(null, false);
+                        })
+                        .catch(() => {
+                            table.ajax.reload(null, false);
+                        });
                 }
             });
         }
 
-        function kirimSatusehat(idImunisasiPx, showSwal = true) {
+        function kirimSatusehat(idImunisasiPx, showSwal = true, resend = false) {
             return new Promise((resolve, reject) => {
 
                 if (showSwal) {
@@ -721,25 +739,26 @@
                     dataType: "json",
                     data: {
                         _token: "{{ csrf_token() }}",
-                        id_imunisasi_px: idImunisasiPx
+                        id_imunisasi_px: idImunisasiPx,
+                        resend: resend ? 1 : 0,
                     },
-                    success: function (res) {
-                    if (showSwal) Swal.close();
+                    success: function(res) {
+                        if (showSwal) Swal.close();
 
-                    if (res.success === true) {
-                        if (showSwal) {
-                            Swal.fire('Berhasil', 'Data imunisasi berhasil dikirim', 'success');
-                        }
-                        resolve(res);
-                    } else {
+                        if (res.success === true) {
+                            if (showSwal) {
+                                Swal.fire('Berhasil', 'Data imunisasi sedang diproses pengiriman', 'success');
+                            }
+                            resolve(res);
+                        } else {
 
-                    let message = res.message || 'Gagal Kirim Ke SATUSEHAT';
-                    let rawResponse = res.response ? prettyJSON(res.response) : '-';
+                            let message = res.message || 'Gagal Kirim Ke SATUSEHAT';
+                            let rawResponse = res.response ? prettyJSON(res.response) : '-';
 
-                    if (showSwal) {
-                        Swal.fire({
-                            title: 'Gagal',
-                            html: `
+                            if (showSwal) {
+                                Swal.fire({
+                                    title: 'Gagal',
+                                    html: `
                                 <div style="text-align:left">
                                     <p>${message}</p>
 
@@ -760,17 +779,17 @@
                                     </details>
                                 </div>
                             `,
-                            icon: 'error',
-                            width: 700,
-                            confirmButtonText: 'OK'
-                        });
-                    }
+                                    icon: 'error',
+                                    width: 700,
+                                    confirmButtonText: 'OK'
+                                });
+                            }
 
-                    reject(res);
-                }
+                            reject(res);
+                        }
 
-                },
-                    error: function (xhr) {
+                    },
+                    error: function(xhr) {
 
                         if (showSwal) Swal.close();
 

@@ -13,7 +13,7 @@ use App\Http\Traits\LogTraits;
 
 class SendCondition implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels,LogTraits;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, LogTraits;
 
     public $payload;
     public $meta;
@@ -62,12 +62,12 @@ class SendCondition implements ShouldQueue
 
             $httpStatus = $response->getStatusCode();
             $responseBody = json_decode($response->getBody(), true);
+
             $this->logInfo('Diagnosis', 'Sukses kirim data diagnosis', [
                 'payload' => $payload,
                 'response' => $responseBody,
                 'user_id' => 'Jobs' //Session::get('id')
             ]);
-
         } catch (\GuzzleHttp\Exception\RequestException $e) {
 
             $status = null;
@@ -77,6 +77,12 @@ class SendCondition implements ShouldQueue
                 $status = $e->getResponse()->getStatusCode();
                 $body   = (string) $e->getResponse()->getBody();
             }
+
+            $this->logError('Diagnosis', 'Gagal kirim data diagnosis', [
+                'payload' => $payload,
+                'response' => $body,
+                'user_id' => 'Jobs' //Session::get('id')
+            ]);
 
             throw new \RuntimeException(
                 'SATUSEHAT Condition failed HTTP=' . $status . ' BODY=' . $body
@@ -122,12 +128,10 @@ class SendCondition implements ShouldQueue
             DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA')
                 ->where('id', $existing->id)
                 ->update($logData);
-
         } else {
 
             DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA')
                 ->insert($logData);
-
         }
     }
 

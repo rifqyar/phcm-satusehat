@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\SatuSehat;
 
 use App\Http\Controllers\Controller;
+use App\Http\Traits\SATUSEHATTraits;
+use App\Jobs\SendImmunization;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Yajra\DataTables\Facades\DataTables;
@@ -12,6 +14,8 @@ use App\Models\GlobalParameter;
 
 class ImunisasiController extends Controller
 {
+    use SATUSEHATTraits;
+
     public function index()
     {
         return response()->view('pages.satusehat.imunisasi.index');
@@ -61,11 +65,11 @@ class ImunisasiController extends Controller
         }
 
         $sql = "
-        SELECT 
+        SELECT
             A.ID_IMUNISASI_PX,
-            B.id_satusehat_encounter,
-            B.karcis,
-            C.nama AS NAMA_PASIEN,
+            C.id_satusehat_encounter,
+            C.ID_TRANSAKSI as karcis,
+            C.NAMA_PASIEN,
             A.TANGGAL,
             A.JENIS_VAKSIN,
             A.DOSIS,
@@ -75,10 +79,8 @@ class ImunisasiController extends Controller
             A.SATUSEHAT_STATUS,
             A.CRTDT
         FROM E_RM_PHCM.dbo.ERM_IMUNISASI_PX A
-        JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA B
-            ON A.KARCIS = B.karcis
-        JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN C
-            ON B.id_satusehat_px = C.idpx
+        LEFT JOIN fn_getDataKunjungan('$idUnit', 'RAWAT_JALAN') C
+	        ON A.KARCIS = C.ID_TRANSAKSI
         WHERE A.IDUNIT = ?
         $whereTanggal
         ORDER BY A.CRTDT DESC";
@@ -118,7 +120,9 @@ class ImunisasiController extends Controller
         }
 
         //  build payload FHIR
-        $payload = $this->buildPayloadImunisasi($data);
+        $resend = $request->resend ?? false;
+        $id_unit = Session::get('id_unit', $request->id_unit ?? '001');
+        $payload = $this->buildPayloadImunisasi($data, $resend);
 
         //  meta (untuk logging & update)
         $meta = [
@@ -130,15 +134,18 @@ class ImunisasiController extends Controller
         ];
 
         //  KIRIM KE SATUSEHAT (INI YANG TADI BELUM)
-        $result = $this->kirimImunisasiToSatuSehat($payload, $meta);
+        // $result = $this->kirimImunisasiToSatuSehat($payload, $meta, $id_unit, $resend);
+
+        // pindah ke jobs
+        SendImmunization::dispatch($payload, $meta, $id_unit, $resend)->onQueue('Immunization');
 
         // return ke frontend
         return response()->json([
-            'success' => $result['status'],
-            'message' => $result['message'],
-            'fhir_id' => $result['fhir_id'] ?? null,
-            'http'    => $result['http'] ?? null,
-            'response' => $result['response'] ?? null,
+            'success' => true,
+            'message' => 'Kiriman Immunization ke SATUSEHAT sedang diproses',
+            'fhir_id' => null,
+            'http'    => null,
+            'response' => 200,
         ]);
     }
 
@@ -146,7 +153,7 @@ class ImunisasiController extends Controller
     private function getDataImunisasi($idImunisasi)
     {
         $sql = "
-        SELECT 
+        SELECT
             A.ID_IMUNISASI_PX,
             A.DISPLAY_VAKSIN,
             A.KODE_VAKSIN,
@@ -173,17 +180,17 @@ class ImunisasiController extends Controller
         JOIN SIRS_PHCM.dbo.RIRJ_MKODE_UNIT E
             ON A.IDUNIT = E.ID_UNIT
         LEFT JOIN E_RM_PHCM.dbo.ERM_IMUNISASI_JENIS F
-            on A.JENIS_VAKSIN = F.CODE_VALUE 
+            on A.JENIS_VAKSIN = F.CODE_VALUE
         WHERE A.ID_IMUNISASI_PX = ?
     ";
 
         return DB::selectOne($sql, [$idImunisasi]);
     }
-    private function buildPayloadImunisasi($row)
+    private function buildPayloadImunisasi($row, $resend = false)
     {
-        return [
+        $payload = [
             'resourceType' => 'Immunization',
-            'status' => 'completed',
+            'status'       => 'completed',
 
             'vaccineCode' => [
                 'coding' => [
@@ -212,13 +219,14 @@ class ImunisasiController extends Controller
                 [
                     'coding' => [
                         [
-                            'system' => 'http://terminology.kemkes.go.id/CodeSystem/immunization-reason',
-                            'code'   => $row->JENIS_VAKSIN,
-                            'display'=> $row->CODE_DISPLAY,
+                            'system'  => 'http://terminology.kemkes.go.id/CodeSystem/immunization-reason',
+                            'code'    => $row->JENIS_VAKSIN,
+                            'display' => $row->CODE_DISPLAY,
                         ]
                     ]
                 ]
             ],
+
             'performer' => [
                 [
                     'function' => [
@@ -246,22 +254,30 @@ class ImunisasiController extends Controller
                 ]
             ]
         ];
+
+        if ($resend) {
+            $existingData = DB::table('E_RM_PHCM.dbo.ERM_IMUNISASI_PX')
+                ->where('ID_IMUNISASI_PX', $row->ID_IMUNISASI_PX)
+                ->where('SATUSEHAT_STATUS', 'SUCCESS')
+                ->first();
+
+            // Pastikan data ketemu dan punya SATUSEHAT_ID sebelum diinjek
+            if ($existingData && !empty($existingData->SATUSEHAT_ID)) {
+                $payload['id'] = $existingData->SATUSEHAT_ID;
+            }
+        }
+
+        return $payload;
     }
 
-    public function kirimImunisasiToSatuSehat(array $payload, array $meta)
+    public function kirimImunisasiToSatuSehat(array $payload, array $meta, string $id_unit, bool $resend = false)
     {
-        // =======================
-        // ACCESS TOKEN
-        // =======================
-        $accessToken = $this->getAccessToken();
-
-        if (!$accessToken) {
-            return [
-                'status'  => false,
-                'message' => 'Access token tidak tersedia',
-                'meta'    => $meta
-            ];
+        $login = $this->login($id_unit);
+        if ($login['metadata']['code'] != 200) {
+            $hasil = $login;
         }
+
+        $token = $login['response']['token'];
 
         // =======================
         // BASE URL
@@ -274,14 +290,26 @@ class ImunisasiController extends Controller
         $url      = rtrim($baseurl, '/') . '/' . $endpoint;
 
         // =======================
+        // HANDLING RESEND / UPDATE
+        // =======================
+        // Jika resend bernilai true dan payload punya 'id',
+        // ubah URL dan method menjadi PUT
+        $method   = 'POST';
+        if ($resend && isset($payload['id'])) {
+            $url    .= '/' . $payload['id'];
+            $method  = 'PUT';
+        }
+
+        // =======================
         // HTTP REQUEST
         // =======================
         try {
             $client = new \GuzzleHttp\Client();
 
-            $response = $client->post($url, [
+            // Eksekusi request secara dinamis (Bisa POST, bisa PUT)
+            $response = $client->request($method, $url, [
                 'headers' => [
-                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Authorization' => 'Bearer ' . $token,
                     'Content-Type'  => 'application/json',
                 ],
                 'body'    => json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
@@ -295,6 +323,7 @@ class ImunisasiController extends Controller
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new \Exception('Invalid JSON response from SATUSEHAT');
             }
+
         } catch (\GuzzleHttp\Exception\RequestException $e) {
 
             $httpStatus   = $e->hasResponse() ? $e->getResponse()->getStatusCode() : null;
@@ -304,10 +333,10 @@ class ImunisasiController extends Controller
 
             // update FAILED tanpa nimpa success
             DB::table('E_RM_PHCM.dbo.ERM_IMUNISASI_PX')
-                ->where('ID_IMUNISASI_PX', $meta['id_imunisasi_px'])
+                ->where('ID_IMUNISASI_PX', $meta['id_imunisasi_px']) // Pastikan $meta sudah di-define sebelumnya
                 ->where(function ($q) {
                     $q->whereNull('SATUSEHAT_STATUS')
-                    ->orWhere('SATUSEHAT_STATUS', 'FAILED');
+                        ->orWhere('SATUSEHAT_STATUS', 'FAILED');
                 })
                 ->update([
                     'SATUSEHAT_STATUS'   => 'FAILED',

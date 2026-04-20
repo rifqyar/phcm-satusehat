@@ -204,6 +204,13 @@ return [
             'level' => 'info',
             'days' => 7
         ],
+
+        'Immunization' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/Immunization.log'),
+            'level' => 'info',
+            'days' => 7
+        ],
     ],
 
 ];

@@ -15,6 +15,7 @@ use App\Services\SpecimenService;
 use App\Services\MedicationRequestService;
 use App\Services\DiagnosaService;
 use App\Services\EpisodeOfCareService;
+use App\Services\ImmunizationService;
 use App\Services\MedicationDispenseService;
 use App\Services\MedStatementService;
 use App\Services\QuestionnaireResponseService;
@@ -120,6 +121,10 @@ class DispatchToEndpoint implements ShouldQueue
 
             case 'questionnaire-response':
                 app(QuestionnaireResponseService::class)->process($this->payload);
+                break;
+
+            case 'immunization':
+                app(ImmunizationService::class)->process($this->payload);
                 break;
 
             default:

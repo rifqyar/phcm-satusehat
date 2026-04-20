@@ -242,8 +242,8 @@
 
         $(document).ready(function() {
             // datepicker
-            var startDate = moment().startOf('day');
-            var endDate = moment().endOf('day');
+            var startDate = moment().format('YYYY-MM-DD');
+            var endDate = moment().format('YYYY-MM-DD');
 
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
@@ -259,8 +259,8 @@
                 defaultDate: endDate
             });
 
-            $('#start_date').val(startDate.format('YYYY-MM-DD'));
-            $('#end_date').val(endDate.format('YYYY-MM-DD'));
+            $('#start_date').val(startDate);
+            $('#end_date').val(endDate);
 
             // Checkbox select-all
             $(document).on('change', '#checkAll', function() {
@@ -471,13 +471,19 @@
                                             Kode Diagnosa Tidak Ada
                                         </span>
                                     `;
-                            } else if (!data.id_satusehat_condition) {
+                            } else if (!data.id_satusehat_condition && data.id_satusehat_encounter) {
                                 // BELUM TERKIRIM → tombol kirim
                                 btnAction = `
                                         <button class="btn btn-sm btn-primary w-100"
                                                 onclick="confirmkirimSatusehat('${data.KARCIS}')">
                                             <i class="fas fa-paper-plane mr-2"></i> Kirim SATUSEHAT
                                         </button>
+                                    `;
+                            } else if (!data.id_satusehat_encounter) {
+                                btnAction = `
+                                        <span class="text-danger font-weight">
+                                            Encounter Belum Kirim
+                                        </span>
                                     `;
                             } else {
                                 // SUDAH TERKIRIM → tombol kirim ulang
@@ -548,11 +554,11 @@
         function resetSearch() {
             filterStatus = 'all';
 
-            var startDate = moment().startOf('day');
-            var endDate = moment().endOf('day');
+            var startDate = moment().format('YYYY-MM-DD');
+            var endDate = moment().format('YYYY-MM-DD');
 
-            $('#start_date').val(startDate.format('YYYY-MM-DD'));
-            $('#end_date').val(endDate.format('YYYY-MM-DD'));
+            $('#start_date').val(startDate);
+            $('#end_date').val(endDate);
 
             table.draw();
         }
@@ -768,17 +774,17 @@
                                         </summary>
                                         <div style="margin-top:10px">
                                             ${issues.map((issue, idx) => `
-                                                            <div style="padding:8px; border-left:4px solid #dc3545; margin-bottom:8px">
-                                                                <strong>#${idx + 1} ${issue.code ?? '-'}</strong><br>
-                                                                <small><b>Severity:</b> ${issue.severity ?? '-'}</small><br>
-                                                                <small><b>Message:</b> ${issue.diagnostics ?? '-'}</small><br>
-                                                                ${
-                                                                    issue.expression
-                                                                        ? `<small><b>Field:</b> ${issue.expression.join(', ')}</small>`
-                                                                        : ''
-                                                                }
-                                                            </div>
-                                                        `).join('')}
+                                                                <div style="padding:8px; border-left:4px solid #dc3545; margin-bottom:8px">
+                                                                    <strong>#${idx + 1} ${issue.code ?? '-'}</strong><br>
+                                                                    <small><b>Severity:</b> ${issue.severity ?? '-'}</small><br>
+                                                                    <small><b>Message:</b> ${issue.diagnostics ?? '-'}</small><br>
+                                                                    ${
+                                                                        issue.expression
+                                                                            ? `<small><b>Field:</b> ${issue.expression.join(', ')}</small>`
+                                                                            : ''
+                                                                    }
+                                                                </div>
+                                                            `).join('')}
                                         </div>
                                     </details>
                                 `;

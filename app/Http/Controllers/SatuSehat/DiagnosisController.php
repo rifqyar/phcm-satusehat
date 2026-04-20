@@ -34,51 +34,6 @@ class DiagnosisController extends Controller
             $startDate = now()->subDays(30)->toDateString();
         }
 
-
-        // $baseSql = "
-        //     SELECT distinct
-        //         SE.id_satusehat_encounter,
-        //         SP.nama AS PASIEN,
-        //         SN.nama AS DOKTER,
-        //         irja.KODE_DIAGNOSA_UTAMA,
-        //         SD.id_satusehat_condition,
-        //         b.KARCIS,
-        //         b.TGL,
-        //         d.REKENING AS KLINIK,
-        //         SE.jam_datang,
-        //         SE.jam_progress,
-        //         SE.jam_selesai
-        //     FROM SIRS_PHCM..RJ_KARCIS b
-        //     LEFT JOIN (
-        //         SELECT KARCIS, KODE_DIAGNOSA_UTAMA
-        //         FROM (
-        //             SELECT
-        //                 KARCIS,
-        //                 KODE_DIAGNOSA_UTAMA,
-        //                 ROW_NUMBER() OVER (
-        //                     PARTITION BY KARCIS
-        //                     ORDER BY CRTDT DESC
-        //                 ) AS rn
-        //             FROM E_RM_PHCM.dbo.ERM_RM_IRJA
-        //             WHERE KODE_DIAGNOSA_UTAMA IS NOT NULL
-        //         ) x
-        //         WHERE rn = 1
-        //     ) irja
-        //         ON irja.KARCIS = b.KARCIS
-        //     LEFT JOIN SIRS_PHCM..RJ_MKLINIK d
-        //         ON d.KDKLINIK = b.KLINIK
-        //     LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA SE
-        //         ON b.KARCIS = SE.karcis
-        //     JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN SP
-        //         ON SE.id_satusehat_px = SP.idpx
-        //     JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES SN
-        //     	ON SE.id_satusehat_dokter = SN.idnakes
-        //     LEFT JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA SD
-        //         ON b.KARCIS = SD.karcis
-        //     WHERE b.TGL BETWEEN ? AND ?
-        //     AND b.IDUNIT = ?
-        //     ";
-
         $baseSql = "SELECT distinct
                         b.id_satusehat_encounter,
                         b.NAMA_PASIEN AS PASIEN,
@@ -362,7 +317,7 @@ class DiagnosisController extends Controller
         ];
 
         // dispatch ke queue
-        SendCondition::dispatch($payload, $meta);
+        SendCondition::dispatch($payload, $meta)->onQueue('Condition');
 
         return response()->json([
             'status'  => true,

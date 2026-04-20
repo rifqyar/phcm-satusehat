@@ -17,6 +17,9 @@
                     </ul>
                 </li>
                 <li>
+                    <a href="{{route('logs')}}" aria-expanded="false"><span class="hide-menu">Monitoring Antrian Kiriman Satusehat</span></a>
+                </li>
+                <li>
                     <a class="has-arrow" href="#" aria-expanded="false"><span class="hide-menu">Master
                             Data</span></a>
                     <ul aria-expanded="false" class="collapse">
