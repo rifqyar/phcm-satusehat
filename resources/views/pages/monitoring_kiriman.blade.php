@@ -90,9 +90,15 @@
         </div>
         <div class="col-md-7 col-4 align-self-center">
             <div class="d-flex m-t-10 justify-content-end align-items-center" style="gap: 0.5rem;">
-                <span class="badge badge-success px-3 py-2">
-                    <i class="fas fa-circle fa-xs"></i> Redis Connected
-                </span>
+                @if($redisConnected)
+                    <span class="badge badge-success px-3 py-2">
+                        <i class="fas fa-circle fa-xs"></i> Redis Connected
+                    </span>
+                @else
+                    <span class="badge badge-danger px-3 py-2">
+                        <i class="fas fa-circle fa-xs"></i> Redis Disconnected
+                    </span>
+                @endif
                 <button class="btn btn-sm btn-light border" onclick="window.location.reload()">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
@@ -110,12 +116,12 @@
         $totalPending = collect($monitoringData)->sum(fn($q) => count($q['pending']));
         $totalFailed  = collect($monitoringData)->sum(fn($q) => count($q['failed']));
         $totalQueues  = count($monitoringData);
-        $activeQueues = collect($monitoringData)->filter(fn($q) => count($q['pending']) > 0 || count($q['failed']) > 0)->count();
+        // $activeQueues = collect($monitoringData)->filter(fn($q) => count($q['pending']) > 0 || count($q['failed']) > 0)->count();
     @endphp
 
     {{-- Summary Cards --}}
     <div class="row">
-        <div class="col-lg-3 col-md-6">
+        <div class="col-lg-4 col-md-6">
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
@@ -130,7 +136,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-lg-3 col-md-6">
+        <div class="col-lg-4 col-md-6">
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
@@ -145,7 +151,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-lg-3 col-md-6">
+        <div class="col-lg-4 col-md-6">
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
@@ -160,7 +166,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-lg-3 col-md-6">
+        {{-- <div class="col-lg-3 col-md-6">
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex align-items-center">
@@ -174,7 +180,7 @@
                     </div>
                 </div>
             </div>
-        </div>
+        </div> --}}
     </div>
 
     {{-- Queue Cards --}}
@@ -223,13 +229,18 @@
                             <th>UUID</th>
                             <th>Job Class</th>
                             <th>Attempts</th>
-                            <th>Jenis Perawatan</th>
-                            <th>ID Transaksi</th>
-                            <th>Kd Pasien SS</th>
-                            <th>Kd Nakes SS</th>
-                            <th>Kd Lokasi SS</th>
-                            <th>ID Unit</th>
-                            <th>Pushed At</th>
+                            {{-- Collect all unique param keys across all jobs in this queue --}}
+                            <th>No</th>
+                            @php
+                                $paramKeys = collect($queue['pending'])
+                                    ->flatMap(fn($job) => array_keys($job['params'] ?? []))
+                                    ->unique()
+                                    ->values();
+                            @endphp
+                            @foreach($paramKeys as $key)
+                                <th>{{ $key }}</th>
+                            @endforeach
+                            {{-- <th>Pushed At</th> --}}
                         </tr>
                     </thead>
                     <tbody>
@@ -239,17 +250,15 @@
                             <td><div class="job-id-cell" title="{{ $job['id'] ?? '' }}">{{ $job['id'] ?? '—' }}</div></td>
                             <td><div class="job-class-cell">{{ class_basename($job['job_class'] ?? '—') }}</div></td>
                             <td><span class="badge badge-info">{{ $job['attempts'] ?? 0 }}</span></td>
-                            <td class="param-cell">{{ $p['jenis_perawatan'] ?? '—' }}</td>
-                            <td class="param-cell">{{ $p['id_transaksi']    ?? '—' }}</td>
-                            <td class="param-cell">{{ $p['kd_pasien_ss']    ?? '—' }}</td>
-                            <td class="param-cell">{{ $p['kd_nakes_ss']     ?? '—' }}</td>
-                            <td class="param-cell">{{ $p['kd_lokasi_ss']    ?? '—' }}</td>
-                            <td class="param-cell">{{ $p['id_unit']         ?? '—' }}</td>
-                            <td class="param-cell text-muted">{{ $job['pushed_at'] ?? '—' }}</td>
+                            <td class="param-cell text-muted">{{ $loop->iteration }}</td>
+                            @foreach($paramKeys as $key)
+                                <td class="param-cell">{{ $p[$key] ?? '—' }}</td>
+                            @endforeach
+                            {{-- <td class="param-cell text-muted">{{ $job['pushed_at'] ?? '—' }}</td> --}}
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="10" class="text-center text-muted py-3">
+                            <td colspan="{{ 4 + count($paramKeys) }}" class="text-center text-muted py-3">
                                 <i class="fas fa-inbox m-r-5"></i> No pending jobs
                             </td>
                         </tr>
@@ -307,9 +316,9 @@
     </div>
     @endforeach
 
-    <p class="text-muted text-right" style="font-size:0.78rem">
+    {{-- <p class="text-muted text-right" style="font-size:0.78rem">
         Last loaded: {{ now()->format('Y-m-d H:i:s') }}
-    </p>
+    </p> --}}
 
 @endsection
 

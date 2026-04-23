@@ -3,19 +3,35 @@
 namespace App\Http\Controllers;
 
 use App\Lib\LZCompressor\LZString;
+use App\Models\Karcis;
+use App\Models\SATUSEHAT\SATUSEHAT_NOTA_DIAGNOSA;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Session;
 
 class MonitoringKirimanController extends Controller
 {
     public function index()
     {
-        $response  = $this->getQueueMonitor();
-        $monitoringData = json_decode($response->getContent(), true)['data'];
+        $redisConnected = false;
+        try {
+            Redis::connection()->ping();
+            $redisConnected = true;
+        } catch (\Exception $e) {
+            $redisConnected = false;
+        }
 
-        return view('pages.monitoring_kiriman', compact('monitoringData'));
+        $monitoringData = [];
+
+        if ($redisConnected) {
+            $response = $this->getQueueMonitor();
+            $monitoringData = json_decode($response->getContent(), true)['data'];
+            // dd($monitoringData);
+        }
+
+        return view('pages.monitoring_kiriman', compact('monitoringData', 'redisConnected'));
     }
 
     public function getQueueMonitor()
@@ -123,10 +139,93 @@ class MonitoringKirimanController extends Controller
 
             $job   = unserialize($command);
             $param = $job->param ?? null;
+            $queueJob = $job->queue ?? null;
             if (!$param) return null;
 
-            $decoded = base64_decode($param);
-            $decoded = LZString::decompressFromEncodedURIComponent($decoded);
+            $decoded = LZString::decompressFromEncodedURIComponent($param);
+            if ($queueJob == "encounter") {
+                $parts   = explode('&', $decoded);
+
+                $arrParam   = [];
+                $resParam   = [];
+                $partsParam = explode('=', $parts[0]);
+                $arrParam[$partsParam[0]] = $partsParam[1];
+
+                for ($i = 1; $i < count($parts); $i++) {
+                    $partsParam       = explode('=', $parts[$i]);
+                    $key              = $partsParam[0];
+                    $val              = $partsParam[1] ?? '';
+                    $arrParam[$key]   = LZString::decompressFromEncodedURIComponent($val);
+                }
+
+                $jenisPerawatan = $arrParam['jenis_perawatan'];
+                $idTransaksi = $arrParam['id_transaksi'];
+                $kdPasienSS = $arrParam['kd_pasien_ss'];
+                $kdNakesSS = $arrParam['kd_nakes_ss'];
+                $kdLokasiSS = $arrParam['kd_lokasi_ss'];
+                $id_unit = Session::get('id_unit', $arrParam['id_unit']);
+
+                $dataKarcis = Karcis::leftJoin('RJ_KARCIS_BAYAR AS KarcisBayar', function ($query) use ($arrParam, $id_unit) {
+                    $query->on('RJ_KARCIS.KARCIS', '=', 'KarcisBayar.KARCIS')
+                        ->on('RJ_KARCIS.IDUNIT', '=', 'KarcisBayar.IDUNIT')
+                        ->whereRaw('ISNULL(KarcisBayar.STBTL,0) = 0')
+                        ->where('KarcisBayar.IDUNIT', $id_unit); // pindahkan ke sini
+                })
+                    ->with([
+                        'ermkunjung' => function ($query) use ($arrParam, $id_unit) {
+                            $query->select('KARCIS', 'NO_KUNJUNG', 'CRTDT AS WAKTU_ERM')
+                                ->where('IDUNIT', $id_unit);
+                        }
+                    ])
+                    ->with('inap')
+                    ->select('RJ_KARCIS.NOREG', 'RJ_KARCIS.KARCIS', 'RJ_KARCIS.KBUKU', 'RJ_KARCIS.NO_PESERTA', 'RJ_KARCIS.KLINIK', 'RJ_KARCIS.KDDOK', 'RJ_KARCIS.TGL_VERIF_KARCIS', 'RJ_KARCIS.CRTDT AS WAKTU_BUAT_KARCIS', 'KarcisBayar.TGL_CETAK AS WAKTU_NOTA', 'KarcisBayar.NOTA', 'RJ_KARCIS.TGL')
+                    ->where(function ($query) use ($arrParam) {
+                        if ($arrParam['jenis_perawatan'] == 'RI') {
+                            $query->where('RJ_KARCIS.NOREG', $arrParam['id_transaksi']);
+                        } else {
+                            $query->where('RJ_KARCIS.KARCIS', $arrParam['id_transaksi']);
+                        }
+                    })
+                    ->where('RJ_KARCIS.IDUNIT', $id_unit)
+                    ->first();
+
+                $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
+                    ->where('idpx', $kdPasienSS)
+                    ->first();
+
+                $nakes = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
+                    ->where('idnakes', $kdNakesSS)
+                    ->first();
+
+                $location = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_LOCATION')
+                    ->where('idss', $kdLokasiSS)
+                    ->first();
+
+                $resParam['Karcis'] = $idTransaksi;
+                $resParam['Jenis Perawatan'] = $jenisPerawatan;
+                $resParam['Pasien'] = $patient ? $patient->nama : null;
+                $resParam['Dokter'] = $nakes ? $nakes->nama : null;
+                $resParam['Lokasi'] = $location ? $location->name : null;
+                $resParam['Created At'] = $dataKarcis ? $dataKarcis->WAKTU_BUAT_KARCIS : null;
+
+                return $resParam;
+            } else if ($queueJob == "observasi") {
+                $parts   = explode('&', $decoded);
+
+                $arrParam   = [];
+                $partsParam = explode('=', $parts[0]);
+                $arrParam[$partsParam[0]] = $partsParam[1];
+
+                for ($i = 1; $i < count($parts); $i++) {
+                    $partsParam       = explode('=', $parts[$i]);
+                    $key              = $partsParam[0];
+                    $val              = $partsParam[1] ?? '';
+                    $arrParam[$key]   = LZString::decompressFromEncodedURIComponent($val);
+                }
+
+                return $arrParam;
+            }
+            // $decoded = base64_decode($decoded);
             $parts   = explode('&', $decoded);
 
             $arrParam   = [];
@@ -141,14 +240,29 @@ class MonitoringKirimanController extends Controller
             }
 
             // Extract known keys
-            return [
-                'jenis_perawatan' => $arrParam['jenis_perawatan'] ?? null,
-                'id_transaksi'    => $arrParam['id_transaksi']    ?? null,
-                'kd_pasien_ss'    => $arrParam['kd_pasien_ss']    ?? null,
-                'kd_nakes_ss'     => $arrParam['kd_nakes_ss']     ?? null,
-                'kd_lokasi_ss'    => $arrParam['kd_lokasi_ss']    ?? null,
-                'id_unit'         => $arrParam['id_unit']         ?? null,
-            ];
+            if ($queueJob == "encounter") {
+                return [
+                    'jenis_perawatan' => $arrParam['jenis_perawatan'] ?? null,
+                    'id_transaksi'    => $arrParam['id_transaksi']    ?? null,
+                    'kd_pasien_ss'    => $arrParam['kd_pasien_ss']    ?? null,
+                    'kd_nakes_ss'     => $arrParam['kd_nakes_ss']     ?? null,
+                    'kd_lokasi_ss'    => $arrParam['kd_lokasi_ss']    ?? null,
+                    'id_unit'         => $arrParam['id_unit']         ?? null,
+                ];
+            } else {
+                return [
+                    'jenis_perawatan' => $arrParam['jenis_perawatan'] ?? null,
+                    'id_transaksi'    => $arrParam['id_transaksi']    ?? null,
+                    'kd_pasien_ss'    => $arrParam['kd_pasien_ss']    ?? null,
+                    'kd_nakes_ss'     => $arrParam['kd_nakes_ss']     ?? null,
+                    'kd_lokasi_ss'    => $arrParam['kd_lokasi_ss']    ?? null,
+                    'id_unit'         => $arrParam['id_unit']         ?? null,
+                ];
+            }
+
+            // or simply return all decoded params
+            // dd($arrParam);
+            // return $arrParam;
         } catch (\Exception $e) {
             return null;
         }
