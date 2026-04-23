@@ -97,134 +97,66 @@ class ServiceRequestController extends Controller
     {
         $tgl_awal  = $request->input('tgl_awal');
         $tgl_akhir = $request->input('tgl_akhir');
-        $cari = $request->input('cari'); // Filter type: all, lab, rad, mapped, unmapped
-        $id_unit = Session::get('id_unit', '001');
+        $cari      = $request->input('cari');
+        $id_unit   = Session::get('id_unit', '001');
 
-        if (empty($tgl_awal) && empty($tgl_akhir)) {
-            $tgl_awal  = Carbon::now()->startOfDay();
-            $tgl_akhir = Carbon::now()->endOfDay();
-        } else {
-            if (empty($tgl_awal)) {
-                $tgl_awal = Carbon::parse($tgl_akhir)->startOfDay();
-            }
-            if (empty($tgl_akhir)) {
-                $tgl_akhir = Carbon::now()->endOfDay();
-            } else {
-                // Force the end date to be at 23:59:59 (end of that day)
-                $tgl_akhir = Carbon::parse($tgl_akhir)->endOfDay();
-            }
-        }
+        $awal = empty($tgl_awal)
+            ? (empty($tgl_akhir) ? Carbon::now()->startOfDay() : Carbon::parse($tgl_akhir)->startOfDay())
+            : Carbon::parse($tgl_awal)->startOfDay();
 
-        if (!$this->checkDateFormat($tgl_awal) || !$this->checkDateFormat($tgl_akhir)) {
+        $akhir = empty($tgl_akhir)
+            ? (empty($tgl_awal) ? Carbon::now()->endOfDay() : Carbon::parse($tgl_awal)->endOfDay())
+            : Carbon::parse($tgl_akhir)->endOfDay();
+
+        if (!$this->checkDateFormat($awal->format('Y-m-d')) || !$this->checkDateFormat($akhir->format('Y-m-d'))) {
             return DataTables::of([])->make(true);
         }
 
-        $dataKunjungan = DB::connection('sqlsrv')
-            ->table('SIRS_PHCM.dbo.vw_getData_Elab as elab')
-            ->join('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as nt', function ($join) {
-                $join->on('nt.karcis', '=', 'elab.KARCIS_ASAL')
-                    ->on('nt.idunit', '=', 'elab.IDUNIT')
-                    ->on('nt.kbuku', '=', 'elab.KBUKU')
-                    ->on('nt.no_peserta', '=', 'elab.NO_PESERTA');
-            })
-            ->join('SIRS_PHCM.dbo.DR_MDOKTER as dk', 'elab.KDDOK', '=', 'dk.kdDok')
-            ->join('SIRS_PHCM.dbo.RIRJ_MASTERPX as ps', DB::raw("LEFT(CONCAT(RTRIM(ps.kbuku), '00'), 8)"), '=', 'elab.KBUKU')
-            ->join('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as mb', 'elab.KD_TINDAKAN', '=', 'mb.KD_TIND')
-            ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN_MAPPING as psm', DB::raw("LEFT(CONCAT(RTRIM(psm.kbuku), '00'), 8)"), '=', 'elab.KBUKU')
-            ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as nk', 'elab.KDDOK', '=', 'nk.kddok')
-            ->leftJoin('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST as ss', 'elab.KARCIS_RUJUKAN', '=', 'ss.karcis')
-            ->select([
-                DB::raw('ps.NAMA as NAMA_PASIEN'),
-                'psm.idpx as ID_PASIEN_SS',
-                'nk.idnakes as ID_NAKES_SS',
-                'elab.KBUKU',
-                'elab.NO_PESERTA',
-                'elab.IDUNIT',
-                'elab.KLINIK_TUJUAN',
-                'elab.TANGGAL_ENTRI',
-                'elab.ID_RIWAYAT_ELAB',
-                'elab.KARCIS_ASAL',
-                'elab.KARCIS_RUJUKAN',
-                'elab.KD_TINDAKAN',
-                'mb.NM_TIND as NM_TINDAKAN',
-                'dk.kdDok',
-                'nk.idnakes',
-                'dk.nmDok',
-                DB::raw('1 as STATUS_SELESAI'),
-                DB::raw('1 as AllServiceRequestExist'),
-                DB::raw('CASE WHEN ss.id_satusehat_servicerequest IS NOT NULL THEN 1 ELSE 0 END AS SATUSEHAT'),
-            ])
-            ->whereBetween(DB::raw('CAST(elab.TANGGAL_ENTRI AS DATE)'), [$tgl_awal, $tgl_akhir])
-            ->where('elab.IDUNIT', $id_unit);
+        $rawData = DB::connection('sqlsrv')->select(
+            "EXEC sp_getDataServiceRequest ?, ?, ?",
+            [$awal->format('Y-m-d H:i:s'), $akhir->format('Y-m-d H:i:s'), $id_unit]
+        );
 
-        // Apply filter based on search type
+        $dataKunjungan = collect($rawData);
         if (!empty($cari)) {
-            switch ($cari) {
-                case 'lab':
-                    // Filter only Laboratory (KLINIK_TUJUAN = '0017')
-                    $dataKunjungan->where('elab.KLINIK_TUJUAN', '0017');
-                    break;
-                case 'rad':
-                    // Filter only Radiology (KLINIK_TUJUAN != '0017')
-                    $dataKunjungan->where('elab.KLINIK_TUJUAN', '!=', '0017');
-                    break;
-                case 'mapped':
-                    // Filter only mapped/integrated data
-                    $dataKunjungan->whereNotNull('ss.id_satusehat_servicerequest');
-                    break;
-                case 'unmapped':
-                    // Filter only unmapped/not integrated data
-                    $dataKunjungan->whereNull('ss.id_satusehat_servicerequest');
-                    break;
-                case 'all':
-                default:
-                    // No additional filter, show all data
-                    break;
+            if ($cari === 'lab') {
+                $dataKunjungan = $dataKunjungan->where('KLINIK_TUJUAN', '0017');
+            } elseif ($cari === 'rad') {
+                $dataKunjungan = $dataKunjungan->where('KLINIK_TUJUAN', '!=', '0017');
+            } elseif ($cari === 'mapped') {
+                $dataKunjungan = $dataKunjungan->where('SATUSEHAT', 1);
+            } elseif ($cari === 'unmapped') {
+                $dataKunjungan = $dataKunjungan->where('SATUSEHAT', 0);
             }
         }
 
         return DataTables::of($dataKunjungan)
             ->addIndexColumn()
-            ->addColumn('checkbox', function ($row) {
-                $kdbuku = LZString::compressToEncodedURIComponent($row->KBUKU);
-                $kdDok = LZString::compressToEncodedURIComponent($row->kdDok);
-                $kdKlinik = LZString::compressToEncodedURIComponent($row->KLINIK_TUJUAN);
-                // $idUnit = LZString::compressToEncodedURIComponent($row->ID_UNIT);
-                // $param = LZString::compressToEncodedURIComponent($kdbuku . '+' . $kdDok . '+' . $kdKlinik . '+' . $idUnit);
+            ->addColumn('checkbox', function ($row) use ($id_unit) {
+                $kdKlinik       = LZString::compressToEncodedURIComponent($row->KLINIK_TUJUAN);
+                $idRiwayatElab  = LZString::compressToEncodedURIComponent($row->ID_RIWAYAT_ELAB);
+                $karcis         = LZString::compressToEncodedURIComponent($row->KARCIS_RUJUKAN);
+                $kdPasienSS     = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS ?? '');
+                $kdNakesSS      = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS ?? '');
+                $kdDokterSS     = LZString::compressToEncodedURIComponent($row->idnakes ?? '');
+                $id_unit        = LZString::compressToEncodedURIComponent($id_unit);
 
-                $idRiwayatElab = LZString::compressToEncodedURIComponent($row->ID_RIWAYAT_ELAB);
-                $karcis = LZString::compressToEncodedURIComponent($row->KARCIS_RUJUKAN);
-                // var_dump($row->KARCIS_RUJUKAN);
-                $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
-                $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
-                // $kdPerformerSS = LZString::compressToEncodedURIComponent($row->idnakes);
-                $kdDokterSS = LZString::compressToEncodedURIComponent($row->idnakes);
-                $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcis . '+' . $kdKlinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcis . '+' . $kdKlinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS . '+' . $id_unit);
 
-                $checkBox = '';
-                if ($row->ID_PASIEN_SS == null) {
-                    // $btn = '<i class="text-muted">Pasien Belum Mapping Satu Sehat</i>';
-                } else if ($row->ID_NAKES_SS == null) {
-                    // $btn = '<i class="text-muted">Nakes Belum Mapping Satu Sehat</i>';
-                } else if ($row->idnakes == null) {
-                    // $btn = '<i class="text-muted">Dokter Penindak Lanjut Belum Mapping Satu Sehat</i>';
-                } else if ($row->AllServiceRequestExist == 0) {
-                    // $btn = '<i class="text-muted">Tindakan Belum Mapping</i>';
-                } else {
-                    if ($row->SATUSEHAT == 0) {
-                        if ($row->STATUS_SELESAI != "9" && $row->STATUS_SELESAI != "10") {
-                            $checkBox = "
-                                <input type='checkbox' class='select-row chk-col-purple' value='$paramSatuSehat' id='$paramSatuSehat' />
-                                <label for='$paramSatuSehat' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
-                            ";
-                        }
+                if ($row->ID_PASIEN_SS != null && $row->ID_NAKES_SS != null && $row->idnakes != null && $row->AllServiceRequestExist != 0) {
+                    if ($row->SATUSEHAT == 0 && !in_array($row->STATUS_SELESAI, ["9", "10"])) {
+                        return "
+                        <input type='checkbox' class='select-row chk-col-purple' value='$paramSatuSehat' id='$paramSatuSehat' />
+                        <label for='$paramSatuSehat' style='margin-bottom: 0px !important; line-height: 25px !important; font-weight: 500'> &nbsp; </label>
+                    ";
                     }
                 }
-
-                return $checkBox;
+                return '';
             })
             ->editColumn('KLINIK_TUJUAN', function ($row) {
-                return $row->KLINIK_TUJUAN == '0017' ? '<span class="badge badge-pill badge-success p-2 w-100">Laboratory</span>' : '<span class="badge badge-pill badge-info p-2 w-100">Radiology</span>';
+                return $row->KLINIK_TUJUAN == '0017'
+                    ? '<span class="badge badge-pill badge-success p-2 w-100">Laboratory</span>'
+                    : '<span class="badge badge-pill badge-info p-2 w-100">Radiology</span>';
             })
             ->editColumn('TANGGAL_ENTRI', function ($row) {
                 return date('Y-m-d H:i:s', strtotime($row->TANGGAL_ENTRI));
@@ -239,79 +171,51 @@ class ServiceRequestController extends Controller
                 return $row->nmDok ?? 'Dokter Tidak Ditemukan';
             })
             ->addColumn('NM_TINDAKAN', function ($row) {
-                return $row->NM_TINDAKAN;
-                if (empty($row->ARRAY_TINDAKAN)) {
-                    return '<span class="text-muted">-</span>';
-                }
-
-                // Split the comma-separated IDs
-                $tindakanIds = array_filter(explode(',', $row->ARRAY_TINDAKAN));
-
-                if (empty($tindakanIds)) {
-                    return '<span class="text-muted">-</span>';
-                }
-
-                // Get tindakan names from RIRJ_MTINDAKAN
-                $tindakanNames = DB::connection('sqlsrv')
-                    ->table('SIRS_PHCM.dbo.RIRJ_MTINDAKAN')
-                    ->whereIn('ID', $tindakanIds)
-                    ->pluck('NM_TINDAKAN')
-                    ->toArray();
-
-                return !empty($tindakanNames) ? implode(', ', $tindakanNames) : '<span class="text-muted">-</span>';
+                return $row->NM_TINDAKAN ?? '<span class="text-muted">-</span>';
             })
-            ->addColumn('action', function ($row) {
-                $kdbuku = LZString::compressToEncodedURIComponent($row->KBUKU);
-                $kdDok = LZString::compressToEncodedURIComponent($row->kdDok);
-                $kdKlinik = LZString::compressToEncodedURIComponent($row->KLINIK_TUJUAN);
-                // $idUnit = LZString::compressToEncodedURIComponent($row->ID_UNIT);
-                // $param = LZString::compressToEncodedURIComponent($kdbuku . '+' . $kdDok . '+' . $kdKlinik . '+' . $idUnit);
+            ->addColumn('action', function ($row) use ($id_unit) {
+                $kdKlinik       = LZString::compressToEncodedURIComponent($row->KLINIK_TUJUAN);
+                $idRiwayatElab  = LZString::compressToEncodedURIComponent($row->ID_RIWAYAT_ELAB);
+                $karcis         = LZString::compressToEncodedURIComponent($row->KARCIS_RUJUKAN);
+                $kdPasienSS     = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS ?? '');
+                $kdNakesSS      = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS ?? '');
+                $kdDokterSS     = LZString::compressToEncodedURIComponent($row->idnakes ?? '');
+                $id_unit        = LZString::compressToEncodedURIComponent($id_unit);
 
-                $idRiwayatElab = LZString::compressToEncodedURIComponent($row->ID_RIWAYAT_ELAB);
-                $karcis = LZString::compressToEncodedURIComponent($row->KARCIS_RUJUKAN);
-                $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
-                $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
-                // $kdPerformerSS = LZString::compressToEncodedURIComponent($row->idnakes);
-                $kdDokterSS = LZString::compressToEncodedURIComponent($row->idnakes);
-                $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcis . '+' . $kdKlinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
+
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcis . '+' . $kdKlinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS . '+' . $id_unit);
 
                 if ($row->ID_PASIEN_SS == null) {
-                    $btn = '<i class="text-muted">Pasien Belum Mapping Satu Sehat</i>';
+                    return '<i class="text-muted">Pasien Belum Mapping Satu Sehat</i>';
                 } else if ($row->ID_NAKES_SS == null) {
-                    $btn = '<i class="text-muted">Nakes Belum Mapping Satu Sehat</i>';
+                    return '<i class="text-muted">Nakes Belum Mapping Satu Sehat</i>';
                 } else if ($row->idnakes == null) {
-                    $btn = '<i class="text-muted">Dokter Penindak Lanjut Belum Mapping Satu Sehat</i>';
+                    return '<i class="text-muted">Dokter Penindak Lanjut Belum Mapping Satu Sehat</i>';
                 } else if ($row->AllServiceRequestExist == 0) {
-                    $btn = '<i class="text-muted">Tindakan Belum Mapping</i>';
+                    return '<i class="text-muted">Tindakan Belum Mapping</i>';
                 } else {
                     if ($row->SATUSEHAT == 0) {
                         if ($row->STATUS_SELESAI != "9" && $row->STATUS_SELESAI != "10") {
-                            $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
+                            return '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-primary w-100"><i class="fas fa-link mr-2"></i>Kirim Satu Sehat</a>';
                         } else {
-                            $btn = '<i class="text-muted">Tunggu Verifikasi Pasien</i>';
+                            return '<i class="text-muted">Tunggu Verifikasi Pasien</i>';
                         }
                     } else {
-                        $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                        return '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                     }
                 }
-                return $btn;
             })
             ->addColumn('status_integrasi', function ($row) {
-                if ($row->SATUSEHAT > 0) {
-                    return '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>';
-                } else {
-                    return '<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>';
-                }
+                return $row->SATUSEHAT > 0
+                    ? '<span class="badge badge-pill badge-success p-2 w-100">Sudah Integrasi</span>'
+                    : '<span class="badge badge-pill badge-danger p-2 w-100">Belum Integrasi</span>';
             })
             ->addColumn('status_mapping', function ($row) {
-                if ($row->AllServiceRequestExist == 1) {
-                    return '<span class="badge badge-pill badge-success p-2 w-100">Semua Tindakan Sudah Mapping</span>';
-                } else {
-                    return '<span class="badge badge-pill badge-danger p-2 w-100">Tindakan Belum Mapping</span>';
-                }
+                return $row->AllServiceRequestExist == 1
+                    ? '<span class="badge badge-pill badge-success p-2 w-100">Semua Tindakan Sudah Mapping</span>'
+                    : '<span class="badge badge-pill badge-danger p-2 w-100">Tindakan Belum Mapping</span>';
             })
-            ->rawColumns(['checkbox', 'KLINIK_TUJUAN', 'action', 'status_integrasi', 'status_mapping'])
-            // ->rawColumns(['STATUS_SELESAI', 'action', 'status_integrasi'])
+            ->rawColumns(['checkbox', 'KLINIK_TUJUAN', 'action', 'status_integrasi', 'status_mapping', 'NM_TINDAKAN'])
             ->make(true);
     }
 
@@ -331,7 +235,7 @@ class ServiceRequestController extends Controller
         }
     }
 
-    public function sendSatuSehat(Request $request, $param)
+    public function sendSatuSehat(Request $request, $param, $resend = false)
     {
         try {
             $param = base64_decode($param);
@@ -354,7 +258,7 @@ class ServiceRequestController extends Controller
 
             $idRiwayatElab = LZString::decompressFromEncodedURIComponent($parts[0]);
             $karcis = LZString::decompressFromEncodedURIComponent($parts[1]);
-            // dd($karcis);
+
             $kdKlinik = LZString::decompressFromEncodedURIComponent($parts[2]);
             $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[3]);
             $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[4]);
@@ -386,12 +290,10 @@ class ServiceRequestController extends Controller
         }
 
         $riwayatlabrad = DB::connection('sqlsrv')
-            // ->table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB')
             ->table('vw_getData_Elab')
             ->where('IDUNIT', $id_unit)
             ->where('KARCIS_RUJUKAN', $karcis)
             ->first();
-        // dd($riwayatlabrad);
 
         $encounter = DB::connection('sqlsrv')
             ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
@@ -421,7 +323,6 @@ class ServiceRequestController extends Controller
             ->first();
 
         $kdTindakan = DB::connection('sqlsrv')
-            // ->table('E_RM_PHCM.dbo.ERM_RIWAYAT_ELAB')
             ->table('vw_getData_Elab')
             ->where('IDUNIT', $id_unit)
             ->where('ID_RIWAYAT_ELAB', $idRiwayatElab)
@@ -429,16 +330,13 @@ class ServiceRequestController extends Controller
 
         $tindakanList = [];
         if ($kdTindakan) {
-            // Convert '12,53,24' → [12, 53, 24]
-            $ids = $kdTindakan; //array_filter(explode(',', $kdTindakan));
-            // dd($ids);
+            $ids = $kdTindakan;
 
             $serviceRequestCodes = DB::connection('sqlsrv')
                 ->table('SATUSEHAT.dbo.SATUSEHAT_M_SERVICEREQUEST_CODE')
                 ->whereIn('ID', $ids)
                 ->select('ID', 'code', 'codesystem', 'display')
                 ->get();
-            // dd($serviceRequestCodes);
 
             $tindakanList = $serviceRequestCodes->map(function ($item) {
                 return [
@@ -482,7 +380,6 @@ class ServiceRequestController extends Controller
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
             $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
-        // dd($baseurl);
 
         try {
             $data = [
@@ -517,32 +414,51 @@ class ServiceRequestController extends Controller
                     "display" => "$dokter->nama"
                 ]],
             ];
-            // dd($data);
+
+            // --- TAMBAHAN LOGIC RESEND ---
+            $methodAPI = 'POST';
+            $urlAPI = 'ServiceRequest';
+
+            if ($resend == true) {
+                // Tarik ID ServiceRequest dari DB untuk di-hit ulang
+                $logExist = DB::connection('sqlsrv')
+                    ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
+                    ->where('karcis', $karcis)
+                    ->where('idriwayat', $idRiwayatElab) // pastikan ngambil record yg spesifik
+                    ->first();
+
+                if ($logExist && !empty($logExist->id_satusehat_servicerequest)) {
+                    $methodAPI = 'PUT'; // Kalau update wajib pakai PUT
+                    $urlAPI = 'ServiceRequest/' . $logExist->id_satusehat_servicerequest; // Tambahin ID di URL
+                    $data['id'] = $logExist->id_satusehat_servicerequest; // Wajib diselipkan di dalam payload
+                } else {
+                    throw new Exception('Gagal kirim ulang: Data ID Service Request sebelumnya tidak ditemukan di Log.');
+                }
+            }
+            // ------------------------------
 
             $login = $this->login($id_unit);
             if ($login['metadata']['code'] != 200) {
                 $hasil = $login;
             }
-            // dd($login);
 
             $token = $login['response']['token'];
-
-            $url = 'ServiceRequest';
             $data = json_decode(json_encode($data));
-            $dataServiceRequest = $this->consumeSATUSEHATAPI('POST', $baseurl, $url, $data, true, $token);
+
+            // Consume API diganti pakai variabel dinamis
+            $dataServiceRequest = $this->consumeSATUSEHATAPI($methodAPI, $baseurl, $urlAPI, $data, true, $token);
             $result = json_decode($dataServiceRequest->getBody()->getContents(), true);
 
             if ($dataServiceRequest->getStatusCode() >= 400) {
                 $response = json_decode($dataServiceRequest->getBody(), true);
-                // dd($response);
 
                 $this->logError('servicerequest', 'Gagal kirim data service request', [
                     'payload' => $data,
                     'response' => $response,
-                    'user_id' => Session::get('nama', 'system') //Session::get('id')
+                    'user_id' => Session::get('nama', 'system')
                 ]);
 
-                $this->logDb(json_encode($response), 'ServiceRequest', json_encode($data), 'system', 0); //Session::get('id')
+                $this->logDb(json_encode($response), 'ServiceRequest', json_encode($data), 'system', 0);
 
                 $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Service Request';
                 throw new Exception($msg, $dataServiceRequest->getStatusCode());
@@ -555,42 +471,57 @@ class ServiceRequestController extends Controller
                         ->where('rk.IDUNIT', $id_unit)
                         ->orderBy('rk.TGL', 'DESC')
                         ->first();
-                    // dd($dataKarcis);
 
                     $dataPeserta = DB::connection('sqlsrv')
                         ->table('SIRS_PHCM.dbo.RIRJ_MASTERPX')
                         ->where('KBUKU', $dataKarcis->KBUKU)
                         ->first();
 
-                    DB::connection('sqlsrv')
-                        ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
-                        ->insert([
-                            'karcis'                      => $dataKarcis->KARCIS,
-                            'nota'                        => $encounter->nota,
-                            'idriwayat'                   => $idRiwayatElab,
-                            'idunit'                      => $id_unit,
-                            'tgl'                         => Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d'),
-                            'id_satusehat_encounter'      => $encounter->id_satusehat_encounter,
-                            'id_satusehat_servicerequest' => $result['id'],
-                            'kbuku'                       => $dataPeserta->KBUKU,
-                            'no_peserta'                  => $dataPeserta->NO_PESERTA,
-                            'id_satusehat_px'             => $kdPasienSS,
-                            'kddok'                       => $dataKarcis->KDDOK,
-                            'id_satusehat_dokter'         => $kdDokterSS,
-                            'kdklinik'                    => $dataKarcis->KLINIK,
-                            'status_sinkron'              => 1,
-                            'crtdt'                       => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
-                            'crtusr'                      => 'system', // Session::get('id'),
-                            'sinkron_date'                => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
-                            'jam_datang'                  => Carbon::parse($riwayat->TANGGAL_ENTRI, 'Asia/Jakarta')->format('Y-m-d H:i:s'),
-                        ]);
+                    // --- UPDATE LOGIC INSERT/UPDATE DB ---
+                    if ($resend == false) {
+                        // Kalau POST baru, insert baris baru
+                        DB::connection('sqlsrv')
+                            ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
+                            ->insert([
+                                'karcis'                      => $dataKarcis->KARCIS,
+                                'nota'                        => $encounter->nota,
+                                'idriwayat'                   => $idRiwayatElab,
+                                'idunit'                      => $id_unit,
+                                'tgl'                         => Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d'),
+                                'id_satusehat_encounter'      => $encounter->id_satusehat_encounter,
+                                'id_satusehat_servicerequest' => $result['id'],
+                                'kbuku'                       => $dataPeserta->KBUKU,
+                                'no_peserta'                  => $dataPeserta->NO_PESERTA,
+                                'id_satusehat_px'             => $kdPasienSS,
+                                'kddok'                       => $dataKarcis->KDDOK,
+                                'id_satusehat_dokter'         => $kdDokterSS,
+                                'kdklinik'                    => $dataKarcis->KLINIK,
+                                'status_sinkron'              => 1,
+                                'crtdt'                       => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
+                                'crtusr'                      => 'system',
+                                'sinkron_date'                => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
+                                'jam_datang'                  => Carbon::parse($riwayat->TANGGAL_ENTRI, 'Asia/Jakarta')->format('Y-m-d H:i:s'),
+                                'kd_tindakan'                 => implode(',', $kdTindakan->toArray())
+                            ]);
+                    } else {
+                        // Kalau PUT / Resend, cukup update tanggal sinkron biar datanya valid terus
+                        DB::connection('sqlsrv')
+                            ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
+                            ->where('karcis', $dataKarcis->KARCIS)
+                            ->where('idriwayat', $idRiwayatElab)
+                            ->update([
+                                'sinkron_date' => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
+                                'kd_tindakan'  => implode(',', $kdTindakan->toArray()) // update in case tindakan berubah
+                            ]);
+                    }
+                    // ------------------------------------
 
                     $this->logInfo('servicerequest', 'Sukses kirim data service request', [
                         'payload' => $data,
                         'response' => $result,
-                        'user_id' => Session::get('nama', 'system') //Session::get('id')
+                        'user_id' => Session::get('nama', 'system')
                     ]);
-                    $this->logDb(json_encode($result), 'ServiceRequest', json_encode($data), 'system', 1); //Session::get('id')
+                    $this->logDb(json_encode($result), 'ServiceRequest', json_encode($data), 'system', 1);
 
                     if (trim($dataKarcis->KLINIK) == '0017' || trim($dataKarcis->KLINIK) == '0031') {
                         $post = [
@@ -637,7 +568,6 @@ class ServiceRequestController extends Controller
                         ]
                     ], 200);
                 } catch (Exception $th) {
-                    // dd($th);
                     throw new Exception($th->getMessage(), $th->getCode());
                 }
             }
@@ -651,6 +581,11 @@ class ServiceRequestController extends Controller
                 ]
             ], $th->getCode() != '' ? $th->getCode() : 500);
         }
+    }
+
+    public function resendSatuSehat($param)
+    {
+        return $this->sendSatuSehat(new Request(), $param, true);
     }
 
     public function bulkSendSatuSehat(Request $request)

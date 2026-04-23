@@ -21,14 +21,15 @@ class MonitoringKirimanController extends Controller
             'observasi',
             'procedure',
             'Composition',
-            'AllergyIntolerance',
-            'DiagnosticReport',
-            'MedicationDispense',
+            'Immunization',
             'MedicationRequest',
+            'MedicationDispense',
+            'AllergyIntolerance',
             'ServiceRequest',
-            'specimen',
-            'CarePlan',
             'ClinicalImpression',
+            'specimen',
+            'DiagnosticReport',
+            'CarePlan',
             'EpisodeOfCare',
             'QuestionnaireResponse'
         ];
@@ -49,6 +50,7 @@ class MonitoringKirimanController extends Controller
             ];
         }
 
+        dd($monitoringData);
         return response()->json([
             'status' => 'success',
             'data' => $monitoringData

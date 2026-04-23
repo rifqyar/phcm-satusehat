@@ -277,7 +277,7 @@
                 weekStart: 0,
                 time: false
             });
-            $('#start_date').val(sevenDaysAgo);
+            $('#start_date').val(today);
             $('#end_date').val(today);
 
             getAllData();
@@ -552,16 +552,10 @@
         }
 
         function sendSatuSehat(param) {
-            // function formatNowForInput() {
-            //     const d = new Date();
-            //     const pad = (n) => n.toString().padStart(2, '0');
-            //     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-            // }
-
             Swal.fire({
                     title: "Konfirmasi Pengiriman",
                     text: `Kirim data service request ke SatuSehat?`,
-                    icon: "question",
+                    type: "question",
                     showCancelButton: true,
                     confirmButtonColor: "#3085d6",
                     cancelButtonColor: "#d33",
@@ -576,75 +570,27 @@
                         );
                     }
                 });
+        }
 
-            // Swal.fire({
-            //     title: "Masukkan Tanggal & Jam Datang",
-            //     html: `
-            //         <input type="datetime-local" id="jam_datang" class="swal2-input" value="${formatNowForInput()}" style="width:100%;box-sizing:border-box;">
-            //         <div id="jam_err" style="color:#f27474;font-size:0.95rem;margin-top:6px;display:block;"></div>
-            //     `,
-            //     focusConfirm: false,
-            //     showCancelButton: true,
-            //     confirmButtonText: "Lanjut",
-            //     cancelButtonText: "Batal",
-            //     preConfirm: () => {
-            //         const jamDatangEl = document.getElementById('jam_datang');
-            //         const jamErrEl = document.getElementById('jam_err');
-
-            //         if (!jamDatangEl.value) {
-            //             jamErrEl.innerHTML = "Tanggal & jam datang wajib diisi!";
-            //             return false;
-            //         }
-            //         jamErrEl.innerHTML = "";
-            //         return jamDatangEl.value;
-            //     },
-            //     onOpen: () => {
-            //         const el = document.getElementById('jam_datang');
-            //         if (el) el.focus();
-            //     }
-            // }).then((timeResult) => {
-            //     if (!timeResult.isConfirmed && !timeResult.value) return;
-
-            //     const datetimeLocal = timeResult.value;
-            //     const jamDatangIso = datetimeLocal + ':00+07:00';
-
-            //     Swal.fire({
-            //         title: "Konfirmasi Pengiriman",
-            //         text: `Kirim data kunjungan dengan jam datang ${jamDatangIso}?`,
-            //         icon: "question",
-            //         showCancelButton: true,
-            //         confirmButtonColor: "#3085d6",
-            //         cancelButtonColor: "#d33",
-            //         confirmButtonText: "Ya, kirim!",
-            //         cancelButtonText: "Batal",
-            //     }).then(async (conf) => {
-            //         if (conf.value || conf.isConfirmed) {
-            //             await ajaxGetJson(
-            //                 `{{ route('satusehat.service-request.send', '') }}/${btoa(param)}?jam_datang=${encodeURIComponent(jamDatangIso)}`,
-            //                 "input_success",
-            //                 ""
-            //             );
-            //         }
-            //     });
-            // });
-            // Swal.fire({
-            //     title: "Apakah anda yakin ingin mengirim data kunjungan ke Satu Sehat?",
-            //     type: "question",
-            //     showCancelButton: true,
-            //     confirmButtonColor: "#3085d6",
-            //     cancelButtonColor: "#d33",
-            //     confirmButtonText: "Ya",
-            // }).then(async (conf) => {
-            //     if (conf.value == true) {
-            //         await ajaxGetJson(
-            //             `{{ route('satusehat.encounter.send', '') }}/${btoa(param)}`,
-            //             "input_success",
-            //             ""
-            //         );
-            //     } else {
-            //         return false;
-            //     }
-            // });
+        function resendSatuSehat(param) {
+            Swal.fire({
+                    title: "Konfirmasi kirim ulang",
+                    text: `Kirim ulang data service request ke SatuSehat?`,
+                    type: "question",
+                    showCancelButton: true,
+                    confirmButtonColor: "#3085d6",
+                    cancelButtonColor: "#d33",
+                    confirmButtonText: "Ya, kirim!",
+                    cancelButtonText: "Batal",
+                }).then(async (conf) => {
+                    if (conf.value || conf.isConfirmed) {
+                        await ajaxGetJson(
+                            `{{ route('satusehat.service-request.resend', '') }}/${btoa(param)}`,
+                            "input_success",
+                            ""
+                        );
+                    }
+                });
         }
 
         function input_success(res) {
