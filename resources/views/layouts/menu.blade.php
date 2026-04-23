@@ -17,7 +17,7 @@
                     </ul>
                 </li>
                 <li>
-                    <a href="{{route('monitoring_kiriman.index')}}" aria-expanded="false"><span class="hide-menu">Monitoring Antrian Kiriman Satusehat</span></a>
+                    <a href="{{ route('monitoring_kiriman.index') }}" aria-expanded="false"><span class="hide-menu">Monitoring Antrian Kiriman Satusehat</span></a>
                 </li>
                 <li>
                     <a class="has-arrow" href="#" aria-expanded="false"><span class="hide-menu">Master
