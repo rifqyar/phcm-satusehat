@@ -329,11 +329,13 @@
 
             //  DataTable
             table = $('#medicationTable').DataTable({
-                drawCallback: function (settings) {
+                drawCallback: function(settings) {
                     var api = this.api();
                     var start = api.page.info().start;
 
-                    api.column(0, { page: 'current' }).nodes().each(function (cell, i) {
+                    api.column(0, {
+                        page: 'current'
+                    }).nodes().each(function(cell, i) {
                         cell.innerHTML = start + i + 1;
                     });
                 },
@@ -432,13 +434,13 @@
                             } else if (data.STATUS_MAPPING === '100') {
                                 btnAction = `
                                     <button class="btn btn-sm btn-primary w-100"
-                                        onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                        onclick="confirmkirimSatusehat('${data.ID_TRANS}', false)">
                                         <i class="fas fa-link mr-2"></i> Kirim SATUSEHAT
                                     </button>`;
                             } else if (data.STATUS_MAPPING === '200') {
                                 btnAction = `
                                     <button class="btn btn-sm btn-warning w-100"
-                                        onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                        onclick="confirmkirimSatusehat('${data.ID_TRANS}', true)">
                                         <i class="fas fa-link mr-2"></i> Kirim Ulang SATUSEHAT
                                     </button>`;
                             } else {
@@ -537,8 +539,8 @@
                                                                                                 : row.KD_BRG_KFA
                                                                                         )
                                                                                         : `<a href="/master_obat?kode=${row.KDBRG}" class="btn btn-sm btn-primary" target="_blank">
-                                                                                                        <i class='fa fa-link'></i> Mapping
-                                                                                                </a>`
+                                                                                                            <i class='fa fa-link'></i> Mapping
+                                                                                                    </a>`
                                                                                 }
                                                                             </td>
                                                                                 <td>${row.NAMABRG_KFA ?? '-'}</td>
@@ -559,12 +561,16 @@
             });
         }
         //function confirmKirim
-        function confirmkirimSatusehat(idTrans) {
+        function confirmkirimSatusehat(idTrans, resend) {
             if (!idTrans) return;
 
+            let title = resend ? 'Kirim Ulang ke SATUSEHAT?' : 'Kirim ke SATUSEHAT?';
+            let text = resend ?
+                `Yakin ingin mengirim ulang transaksi ${idTrans} ke SATUSEHAT?` :
+                `Yakin ingin mengirim transaksi ${idTrans} ke SATUSEHAT?`;
             swal({
-                title: 'Kirim ke SATUSEHAT?',
-                text: `Yakin ingin mengirim transaksi ${idTrans} ke SATUSEHAT?`,
+                title: title,
+                text: text,
                 type: 'question',
                 showCancelButton: true,
                 confirmButtonText: 'Ya, kirim',
@@ -574,7 +580,7 @@
             }).then((result) => {
                 if (result.value) {
                     console.log("Lanjut kirim ke SATUSEHAT");
-                    kirimSatusehat(idTrans);
+                    kirimSatusehat(idTrans, null, true, resend);
                     table.ajax.reload();
                 } else {
                     console.log("Dibatalkan");
@@ -585,7 +591,7 @@
 
 
         // fungsi kirim ke SATUSEHAT
-        function kirimSatusehat(idTrans, btn = null, showSwal = true) {
+        function kirimSatusehat(idTrans, btn = null, showSwal = true, resend = false) {
             return new Promise((resolve, reject) => {
                 if (!idTrans) return reject('ID_TRANS kosong.');
 
@@ -604,7 +610,8 @@
                     url: '{{ route('satusehat.medication-request.prepsatusehat') }}',
                     type: 'GET',
                     data: {
-                        id_trans: idTrans
+                        id_trans: idTrans,
+                        resend: resend ? 1 : 0
                     },
                     success: function(res) {
                         if (res.status === 'success') {

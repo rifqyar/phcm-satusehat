@@ -43,53 +43,52 @@ class SendMedicationRequest implements ShouldQueue
     {
         // Ambil data dari constructor
         $payload = $this->payload;
-        $meta = $this->meta;
-        //setup access token
+        $meta    = $this->meta;
+
+        // --- SETUP RESEND LOGIC DARI META ---
+        $isResend     = $meta['resendData']['resend'] ?? false;
+        $fhirMedReqId = $meta['resendData']['fhir_medicationrequest_id'] ?? null;
+
+        $method = 'POST';
+        $url    = 'MedicationRequest';
+
+        if ($isResend === true && !empty($fhirMedReqId)) {
+            $method = 'PUT';
+            $url    = 'MedicationRequest/' . $fhirMedReqId;
+        }
+
+        // --- SETUP ACCESS TOKEN ---
         $login = $this->login($this->id_unit);
         if ($login['metadata']['code'] != 200) {
-            $hasil = $login;
+            $hasil = $login; // Sebaiknya di sini ada throw exception jika login gagal
         }
         $accessToken = $login['response']['token'];
 
-        //setup organisasi
-        $id_unit = Session::get('id_unit', '001');
+        // --- SETUP BASEURL ---
         if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
-            //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
         } else {
             $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
-            //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
         }
-        // setup baseurl
-        $baseurl = '';
-        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
-            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
-            //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
-        } else {
-            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
-            //$organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
-        }
-        //
-        $url = 'MedicationRequest';
 
         try {
             $client = new \GuzzleHttp\Client();
-
             $baseuri = rtrim($baseurl, '/') . '/' . ltrim($url, '/');
-            $response = $client->post($baseuri, [
+
+            // Gunakan request dinamis (POST / PUT)
+            $response = $client->request($method, $baseuri, [
                 'headers' => [
                     'Authorization' => 'Bearer ' . $accessToken,
-                    'Content-Type' => 'application/json',
+                    'Content-Type'  => 'application/json',
                 ],
-                'body' => json_encode($payload),
-                'verify' => false,
+                'body'    => json_encode($payload),
+                'verify'  => false,
                 'timeout' => 30,
             ]);
 
             $responseBody = json_decode($response->getBody(), true);
-            $httpStatus = $response->getStatusCode();
+            $httpStatus   = $response->getStatusCode();
         } catch (\GuzzleHttp\Exception\RequestException $e) {
-
             $status = null;
             $body   = null;
 
@@ -99,7 +98,6 @@ class SendMedicationRequest implements ShouldQueue
             }
 
             $message = 'SATUSEHAT MedicationRequest failed. ';
-
             if ($status !== null) {
                 $message .= 'HTTP=' . $status . ' ';
             }
@@ -115,13 +113,14 @@ class SendMedicationRequest implements ShouldQueue
                 'Gagal mengirim MedicationRequest ke SATUSEHAT',
                 [
                     'payload' => $payload,
-                    'meta' => $meta,
-                    'error' => $message,
-                    'trace' => $e->getTrace(),
+                    'meta'    => $meta,
+                    'error'   => $message,
+                    'trace'   => $e->getTrace(),
                 ]
             );
 
-            $this->logDb(json_encode($body), $url, json_encode($payload), 'system', 0);
+            // Disimpan base url resminya saja (MedicationRequest) untuk log
+            $this->logDb(json_encode($body), 'MedicationRequest', json_encode($payload), 'system', 0);
 
             throw new \RuntimeException(
                 $message,
@@ -130,34 +129,36 @@ class SendMedicationRequest implements ShouldQueue
             );
         }
 
-
         // =======================
-        // LOGGING
+        // LOGGING BERHASIL
         // =======================
-
-        $this->logDb(json_encode($responseBody), $url, json_encode($this->payload), 'system', 1);
+        $this->logDb(json_encode($responseBody), 'MedicationRequest', json_encode($this->payload), 'system', 1);
+        $this->logInfo('MedicationRequest', 'Berhasil mengirim MedicationRequest ke SATUSEHAT', [
+            'payload'  => $payload,
+            'response' => $responseBody,
+            'user_id'  => Session::get('nama', 'system')
+        ]);
 
         // =======================
         // LOGGING DB KHUSUS MEDICATION REQUEST
         // =======================
-
         $idTrans = $meta['idTrans'] ?? null;
-        $item = $meta['item'] ?? null;
+        $item    = $meta['item'] ?? null;
 
         $logData = [
-            'LOG_TYPE' => $item['FROM'] ?? 'MedicationRequest',
-            'LOCAL_ID' => $idTrans,
-            'KFA_CODE' => $item['KD_BRG_KFA'] ?? null,
-            'NAMA_OBAT' => $item['NAMABRG_KFA'] ?? null,
+            'LOG_TYPE'                   => $item['FROM'] ?? 'MedicationRequest',
+            'LOCAL_ID'                   => $idTrans,
+            'KFA_CODE'                   => $item['KD_BRG_KFA'] ?? null,
+            'NAMA_OBAT'                  => $item['NAMABRG_KFA'] ?? null,
             'FHIR_MEDICATION_REQUEST_ID' => $responseBody['id'] ?? null,
-            'FHIR_ID' => $responseBody['id'] ?? null,
-            'FHIR_MEDICATION_ID' => $item['medicationReference'] ?? null,
-            'PATIENT_ID' => $item['ID_PASIEN'] ?? null,
-            'ENCOUNTER_ID' => $item['id_satusehat_encounter'] ?? null,
-            'STATUS' => isset($responseBody['id']) ? 'success' : 'failed',
-            'HTTP_STATUS' => $httpStatus,
-            'RESPONSE_MESSAGE' => json_encode($responseBody),
-            'CREATED_AT' => now(),
+            'FHIR_ID'                    => $responseBody['id'] ?? null,
+            'FHIR_MEDICATION_ID'         => $item['medicationReference'] ?? null,
+            'PATIENT_ID'                 => $item['ID_PASIEN'] ?? null,
+            'ENCOUNTER_ID'               => $item['id_satusehat_encounter'] ?? null,
+            'STATUS'                     => isset($responseBody['id']) ? 'success' : 'failed',
+            'HTTP_STATUS'                => $httpStatus,
+            'RESPONSE_MESSAGE'           => json_encode($responseBody),
+            'CREATED_AT'                 => now(),
         ];
 
         $existing = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
@@ -167,19 +168,22 @@ class SendMedicationRequest implements ShouldQueue
             ->first();
 
         if ($existing) {
+            // Kalau data sudah ada (biasanya case resend / retry), lakukan UPDATE
             DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
                 ->where('ID', $existing->ID)
                 ->update([
-                    'FHIR_ID' => $logData['FHIR_ID'],
-                    'FHIR_MEDICATION_ID' => $logData['FHIR_MEDICATION_ID'],
-                    'PATIENT_ID' => $logData['PATIENT_ID'],
-                    'ENCOUNTER_ID' => $logData['ENCOUNTER_ID'],
-                    'STATUS' => $logData['STATUS'],
-                    'HTTP_STATUS' => $logData['HTTP_STATUS'],
-                    'RESPONSE_MESSAGE' => $logData['RESPONSE_MESSAGE'],
-                    'UPDATED_AT' => now(),
+                    'FHIR_ID'                    => $logData['FHIR_ID'],
+                    'FHIR_MEDICATION_REQUEST_ID' => $logData['FHIR_MEDICATION_REQUEST_ID'],
+                    'FHIR_MEDICATION_ID'         => $logData['FHIR_MEDICATION_ID'],
+                    'PATIENT_ID'                 => $logData['PATIENT_ID'],
+                    'ENCOUNTER_ID'               => $logData['ENCOUNTER_ID'],
+                    'STATUS'                     => $logData['STATUS'],
+                    'HTTP_STATUS'                => $logData['HTTP_STATUS'],
+                    'RESPONSE_MESSAGE'           => $logData['RESPONSE_MESSAGE'],
+                    'UPDATED_AT'                 => now(),
                 ]);
         } else {
+            // Kalau data belum ada, lakukan INSERT
             DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert($logData);
         }
     }

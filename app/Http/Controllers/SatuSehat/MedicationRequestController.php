@@ -27,47 +27,47 @@ class MedicationRequestController extends Controller
 
     public function datatable(Request $request)
     {
-        $startDate = $request->input('start_date');
-        $endDate   = $request->input('end_date');
-        $jenis     = $request->input('jenis');
+        $startDate  = $request->input('start_date');
+        $endDate    = $request->input('end_date');
+        $jenis      = $request->input('jenis');
         $ketLayanan = $jenis === 'ri' ? 'INAP' : 'JALAN';
-        $id_unit   = Session::get('id_unit', '001');
+        $id_unit    = Session::get('id_unit', '001');
 
         if (!$startDate || !$endDate) {
             $endDate   = now()->format('Y-m-d');
             $startDate = now()->subDays(30)->format('Y-m-d');
         }
 
-        $kunjunganView = $jenis === 'ri'
-            ? 'SIRS_PHCM.dbo.v_kunjungan_ri'
-            : 'SIRS_PHCM.dbo.v_kunjungan_rj';
+        // Tentukan parameter function berdasarkan tipe kunjungan
+        $jenisLayananFn = $jenis === 'ri' ? 'RAWAT_INAP' : 'RAWAT_JALAN';
 
         // =====================================================
         // BASE QUERY
         // =====================================================
         $query = DB::table('SIRS_PHCM.dbo.IF_HTRANS_OL as a')
+            // Memanggil function secara langsung dan memfilter tanggal di dalamnya
             ->join(DB::raw("
-            (
-                SELECT *
-                FROM {$kunjunganView}
-                WHERE TANGGAL >= '{$startDate}'
-                  AND TANGGAL <  DATEADD(day, 1, '{$endDate}')
-            ) as c
-        "), 'a.KARCIS', '=', 'c.ID_TRANSAKSI')
-            ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as b', 'a.KARCIS', '=', 'b.karcis')
+                (
+                    SELECT *
+                    FROM fn_getDataKunjungan('{$id_unit}', '{$jenisLayananFn}')
+                    WHERE TANGGAL >= '{$startDate}'
+                    AND TANGGAL <  DATEADD(day, 1, '{$endDate}')
+                ) as fn
+            "), 'a.KARCIS', '=', 'fn.ID_TRANSAKSI')
+
+            // ->leftJoin('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA as b', 'a.KARCIS', '=', 'b.karcis') // DIHAPUS karena sudah di-cover oleh function
 
             ->where('a.IDUNIT', $id_unit)
             ->where('a.ACTIVE', '1')
             ->where('a.KET_LAYANAN', $ketLayanan)
 
             ->select([
-                'b.id',
-                'b.id_satusehat_encounter',
+                'fn.id_satusehat_encounter', // Diambil dari function (sebelumnya b.id_satusehat_encounter)
                 'a.ID_TRANS',
-                DB::raw('CAST(c.TANGGAL AS date) AS TGL_KARCIS'),
+                DB::raw('CAST(fn.TANGGAL AS date) AS TGL_KARCIS'),
                 'a.KARCIS',
-                DB::raw('c.NAMA_PASIEN AS PASIEN'),
-                DB::raw('c.DOKTER AS DOKTER'),
+                DB::raw('fn.NAMA_PASIEN AS PASIEN'),
+                DB::raw('fn.DOKTER AS DOKTER'),
 
                 // ===== STATUS MAPPING =====
                 DB::raw("
@@ -76,8 +76,8 @@ class MedicationRequestController extends Controller
                         SELECT 1
                         FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION lm
                         WHERE lm.LOCAL_ID = a.ID_TRANS
-                          AND lm.LOG_TYPE = 'MedicationRequest'
-                          AND lm.STATUS = 'success'
+                        AND lm.LOG_TYPE = 'MedicationRequest'
+                        AND lm.STATUS = 'success'
                     )
                     THEN '200'
                     WHEN EXISTS (
@@ -86,12 +86,12 @@ class MedicationRequestController extends Controller
                         LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA kfa
                             ON ol.KDBRG_CENTRA = kfa.KDBRG_CENTRA
                         WHERE ol.ID_TRANS = a.ID_TRANS
-                          AND kfa.KD_BRG_KFA IS NULL
+                        AND kfa.KD_BRG_KFA IS NULL
                     )
                     THEN '000'
                     ELSE '100'
                 END AS STATUS_MAPPING
-            "),
+                "),
 
                 // ===== LOG TERAKHIR (scalar subquery) =====
                 DB::raw("
@@ -99,22 +99,22 @@ class MedicationRequestController extends Controller
                     SELECT TOP 1 lm.STATUS
                     FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION lm
                     WHERE lm.LOCAL_ID = a.ID_TRANS
-                      AND lm.LOG_TYPE = 'MedicationRequest'
-                      AND lm.STATUS = 'success'
+                    AND lm.LOG_TYPE = 'MedicationRequest'
+                    AND lm.STATUS = 'success'
                     ORDER BY lm.ID DESC
                 ) AS LOG_STATUS
-            "),
+                "),
 
                 DB::raw("
                 (
                     SELECT TOP 1 lm.CREATED_AT
                     FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION lm
                     WHERE lm.LOCAL_ID = a.ID_TRANS
-                      AND lm.LOG_TYPE = 'MedicationRequest'
-                      AND lm.STATUS = 'success'
+                    AND lm.LOG_TYPE = 'MedicationRequest'
+                    AND lm.STATUS = 'success'
                     ORDER BY lm.ID DESC
                 ) AS LOG_CREATED_AT
-            "),
+                "),
             ]);
 
         // =====================================================
@@ -123,27 +123,27 @@ class MedicationRequestController extends Controller
         $status = $request->input('status', 'all');
 
         $statusExpr = "
-        CASE
-            WHEN EXISTS (
-                SELECT 1
-                FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION lm
-                WHERE lm.LOCAL_ID = a.ID_TRANS
-                  AND lm.LOG_TYPE = 'MedicationRequest'
-                  AND lm.STATUS = 'success'
-            )
-            THEN '200'
-            WHEN EXISTS (
-                SELECT 1
-                FROM SIRS_PHCM.dbo.IF_TRANS_OL ol
-                LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA kfa
-                    ON ol.KDBRG_CENTRA = kfa.KDBRG_CENTRA
-                WHERE ol.ID_TRANS = a.ID_TRANS
-                  AND kfa.KD_BRG_KFA IS NULL
-            )
-            THEN '000'
-            ELSE '100'
-        END
-    ";
+            CASE
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION lm
+                    WHERE lm.LOCAL_ID = a.ID_TRANS
+                    AND lm.LOG_TYPE = 'MedicationRequest'
+                    AND lm.STATUS = 'success'
+                )
+                THEN '200'
+                WHEN EXISTS (
+                    SELECT 1
+                    FROM SIRS_PHCM.dbo.IF_TRANS_OL ol
+                    LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA kfa
+                        ON ol.KDBRG_CENTRA = kfa.KDBRG_CENTRA
+                    WHERE ol.ID_TRANS = a.ID_TRANS
+                    AND kfa.KD_BRG_KFA IS NULL
+                )
+                THEN '000'
+                ELSE '100'
+            END
+        ";
 
         $baseQuery = clone $query;
 
@@ -523,6 +523,7 @@ class MedicationRequestController extends Controller
     {
         try {
             $idTrans = $request->input('id_trans');
+            $resend = $request->input('resend', false);
 
             if (empty($idTrans)) {
                 return response()->json([
@@ -531,7 +532,7 @@ class MedicationRequestController extends Controller
                 ], 400);
             }
 
-            $result = $this->sendMedRequestPayload($idTrans);
+            $result = $this->sendMedRequestPayload($idTrans, $resend);
 
             return response()->json($result, 200);
         } catch (\Exception $e) {
@@ -543,7 +544,7 @@ class MedicationRequestController extends Controller
     }
 
 
-    public function sendMedRequestPayload(string $idTrans): array
+    public function sendMedRequestPayload(string $idTrans, bool $resend): array
     {
         $data = DB::table('SIRS_PHCM.dbo.IF_TRANS_OL as A')
             ->leftJoin('SIRS_PHCM.dbo.M_TRANS_KFA as B', 'A.KDBRG', '=', 'B.KDBRG_CENTRA')
@@ -618,7 +619,7 @@ class MedicationRequestController extends Controller
                 isset($result_kirim_medication['status']) &&
                 $result_kirim_medication['status'] === 'success'
             ) {
-                $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg, $dataICD10);
+                $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg, $dataICD10, $resend);
 
                 $rowResult['status'] = $payloadResult['status'] ?? 'error';
                 $rowResult['message'] = $payloadResult['message'] ?? null;
@@ -636,6 +637,10 @@ class MedicationRequestController extends Controller
                                 'medicationReference' => $result_kirim_medication['medicationReference'] ?? null,
                                 'ID_PASIEN' => $payloadResult['payload']['subject']['reference'] ?? null,
                                 'id_satusehat_encounter' => $payloadResult['payload']['encounter']['reference'] ?? null,
+                            ],
+                            'resendData' => [
+                                'resend' => $resend,
+                                'fhir_medicationrequest_id' => $payloadResult['fhir_medicationrequest_id'] ?? null
                             ]
                         ],
                         $id_unit
@@ -652,7 +657,7 @@ class MedicationRequestController extends Controller
 
                 if ($result_kirim_medication && ($result_kirim_medication['data']['issue'][0]['code'] ?? null) === 'duplicate') {
 
-                    $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg, $dataICD10);
+                    $payloadResult = $this->createMedicationRequestPayload($idTrans, $kdbrg, $dataICD10, $resend);
 
                     $rowResult['status'] = $payloadResult['status'] ?? 'error';
                     $rowResult['message'] = $payloadResult['message'] ?? null;
@@ -671,6 +676,10 @@ class MedicationRequestController extends Controller
                                     'medicationReference' => $row->FHIR_ID ?? null,
                                     'ID_PASIEN' => $payloadResult['payload']['subject']['reference'] ?? null,
                                     'id_satusehat_encounter' => $payloadResult['payload']['encounter']['reference'] ?? null,
+                                ],
+                                'resendData' => [
+                                    'resend' => $resend,
+                                    'fhir_medicationrequest_id' => $payloadResult['fhir_medicationrequest_id']
                                 ]
                             ],
                             $id_unit
@@ -723,9 +732,11 @@ class MedicationRequestController extends Controller
     }
 
     // create payload sekalian kirim melalui job
-    function createMedicationRequestPayload($idTrans, $kdbrg, $dataICD10 = null)
+    public function createMedicationRequestPayload($idTrans, $kdbrg, $dataICD10 = null, $resend = false)
     {
         try {
+            $id_unit = Session::get('id_unit', '001');
+            $fhirMedReqId = null;
             $data = DB::select("
                 SELECT DISTINCT
                     H.ID_TRANS,
@@ -745,25 +756,40 @@ class MedicationRequestController extends Controller
                     P.nama AS PASIEN,
                     N.idnakes AS ID_NAKES,
                     N.nama AS NAKES
-                FROM SIRS_PHCM.dbo.RJ_KARCIS A
+                FROM SIRS_PHCM.dbo.IF_TRANS_OL T
+                INNER JOIN SIRS_PHCM.dbo.IF_HTRANS_OL H ON T.ID_TRANS = H.ID_TRANS
+                INNER JOIN SIRS_PHCM.dbo.RJ_KARCIS A ON H.KARCIS = A.KARCIS
                 INNER JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA AS B ON A.KARCIS = B.karcis
                 INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES AS N ON B.id_satusehat_dokter = N.idnakes
                 INNER JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN AS P ON B.id_satusehat_px = P.idpx
-                INNER JOIN SIRS_PHCM.dbo.IF_HTRANS_OL H ON A.KARCIS = H.KARCIS
-                INNER JOIN SIRS_PHCM.dbo.IF_TRANS_OL T ON H.ID_TRANS = T.ID_TRANS
                 INNER JOIN SIRS_PHCM.dbo.M_TRANS_KFA MT ON T.KDBRG_CENTRA = MT.KDBRG_CENTRA
-                WHERE H.ID_TRANS = ? and T.KDBRG_CENTRA = ?
-            ", [$idTrans, $kdbrg]);
+                WHERE H.ID_TRANS = ? AND T.KDBRG_CENTRA = ? AND A.IDUNIT = ?
+            ", [$idTrans, $kdbrg, $id_unit]);
 
+            if ($resend === true) {
+                $logExist = DB::connection('sqlsrv')
+                    ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
+                    ->where('LOCAL_ID', $idTrans)
+                    ->where('KFA_CODE', $data[0]->KD_BRG_KFA) // Langsung pakai parameter function
+                    ->where('LOG_TYPE', 'MedicationRequest')
+                    ->first();
 
-            $id_unit = Session::get('id_unit', '001');
-            if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
-                $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
-            } else {
-                $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
+                if ($logExist && !empty($logExist->FHIR_MEDICATION_REQUEST_ID)) {
+                    $fhirMedReqId = $logExist->FHIR_MEDICATION_REQUEST_ID;
+                } else {
+                    throw new \Exception("Gagal Resend: Data ID FHIR_MEDICATION_REQUEST_ID tidak ditemukan di log.");
+                }
             }
 
-            $payload = []; // Inisialisasi payload
+            if (empty($data)) {
+                throw new \Exception("Data resep tidak ditemukan untuk KDBRG $kdbrg di Transaksi $idTrans.");
+            }
+
+            // Ambil orgId cukup 1 baris kode saja biar rapi
+            $envApi = strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT' ? 'Dev' : 'Prod';
+            $orgId  = SS_Kode_API::where('idunit', $id_unit)->where('env', $envApi)->value('org_id');
+
+            $payload = [];
 
             foreach ($data as $index => $item) {
                 $uniqueId = date('YmdHis') . '-' . str_pad($index + 1, 3, '0', STR_PAD_LEFT);
@@ -771,27 +797,19 @@ class MedicationRequestController extends Controller
 
                 $isRacik = ($item->fl_racik == 1);
 
-                // --- PERSIAPAN VARIABEL DINAMIS ---
                 $namaBarang = $item->NAMABRG_KFA ?? 'Unknown Medication';
                 $satuanObat = $this->getSatuanFromNama($namaBarang);
-
                 $frekuensi = $this->getFrekuensiFromSignaCpt($item->SIGNACPT);
-                // Default dosis per minum = 1 (karena biasanya di SIMRS signanya S 1-1-1 berarti sekali minum 1)
                 $dosisPerMinum = 1;
-
                 $totalQty = (int) $item->JUMLAH > 0 ? (int) $item->JUMLAH : 1;
 
-                // Hitung durasi hari: Coba ambil dari DB, jika 0 hitung berdasarkan qty dan frekuensi
                 $durasiHari = (float)$item->HARI > 0 ? (int)$item->HARI : ceil($totalQty / ($frekuensi * $dosisPerMinum));
                 $durasiHari = $durasiHari == 0 ? 1 : $durasiHari;
 
-                // Tanggal Resep
                 $waktuAwal = empty($item->INPUTDATE) ? 'now' : $item->INPUTDATE;
                 $tanggalResep = date('Y-m-d\TH:i:sP', strtotime($waktuAwal));
                 $tanggalSelesai = date('Y-m-d\TH:i:sP', strtotime($waktuAwal . " + $durasiHari days"));
 
-
-                // --- BENTUK BASE PAYLOAD ---
                 $payload = [
                     "resourceType" => "MedicationRequest",
                     "identifier" => [
@@ -834,6 +852,13 @@ class MedicationRequestController extends Controller
                     ]
                 ];
 
+                // ==========================================
+                // 3. INJECT ID JIKA RESEND (Lebih bersih)
+                // ==========================================
+                if ($resend === true && !empty($fhirMedReqId)) {
+                    $payload['id'] = $fhirMedReqId;
+                }
+
                 if ($dataICD10) {
                     $payload["reasonCode"] = [
                         [
@@ -864,11 +889,10 @@ class MedicationRequestController extends Controller
                     ]
                 ];
 
-                // --- INJECT DOSAGE INSTRUCTION DINAMIS ---
                 $payload["dosageInstruction"] = [
                     [
                         "sequence" => 1,
-                        "text" => $item->SIGNA2 ?? "Sesuai petunjuk dokter", // "S. 1 - 1 - 1"
+                        "text" => $item->SIGNA2 ?? "Sesuai petunjuk dokter",
                         "patientInstruction" => $item->SIGNA2 ?? "Diminum sesuai anjuran",
                         "timing" => [
                             "repeat" => [
@@ -882,7 +906,7 @@ class MedicationRequestController extends Controller
                                 [
                                     "system" => "http://www.whocc.no/atc",
                                     "code" => "O",
-                                    "display" => "Oral" // Idealnya bisa di-map juga berdasarkan bentuk sediaan, tapi Oral cukup aman sbg default.
+                                    "display" => "Oral"
                                 ]
                             ]
                         ],
@@ -908,7 +932,6 @@ class MedicationRequestController extends Controller
                     ]
                 ];
 
-                // --- INJECT DISPENSE REQUEST DINAMIS ---
                 $payload["dispenseRequest"] = [
                     "dispenseInterval" => [
                         "value" => 1,
@@ -991,7 +1014,8 @@ class MedicationRequestController extends Controller
                 'message' => 'Payload dibuat untuk KDBRG ' . $kdbrg,
                 'idTrans' => $idTrans,
                 'KDBRG' => $kdbrg,
-                'payload' => $payload
+                'payload' => $payload,
+                'fhir_medicationrequest_id' => $fhirMedReqId
             ];
         } catch (\Exception $e) {
             return [
