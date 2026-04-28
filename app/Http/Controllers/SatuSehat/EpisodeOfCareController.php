@@ -918,4 +918,27 @@ class EpisodeOfCareController extends Controller
             'responses' => $responses,
         ], 200);
     }
+
+    public function getDataEpisodeOfCareQueue($arrParam)
+    {
+        $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
+
+        $data = collect(DB::select("
+            EXEC dbo.sp_getDataEpisodeOfCare ?, ?, ?, ?, ?, ?, ?
+        ", [
+            $id_unit,
+            null,
+            null,
+            'all',
+            1,
+            1,
+            $arrParam['id_transaksi']
+        ]))->first();
+
+        $resParam['Karcis'] = $arrParam ? $arrParam['karcis_rujukan'] : 'not found';
+        $resParam['Pasien'] = $data ? $data->NAMA_PASIEN : "not found";
+        $resParam['Dokter'] = $data ? $data->DOKTER : "not found";
+
+        return $resParam;
+    }
 }

@@ -821,6 +821,43 @@ class SpecimenController extends Controller
         // self::sendSatuSehat(base64_encode($paramSatuSehat));
     }
 
+    public function getDataSpecimenQueue($parts)
+    {
+        $idRiwayatElab = LZString::decompressFromEncodedURIComponent($parts[0]);
+        $karcisAsal = LZString::decompressFromEncodedURIComponent($parts[1]);
+        $karcisRujukan = LZString::decompressFromEncodedURIComponent($parts[2]);
+        $kdKlinik = LZString::decompressFromEncodedURIComponent($parts[3]);
+        $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[4]);
+        $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[5]);
+        $kdDokterSS = LZString::decompressFromEncodedURIComponent($parts[6]);
+        $idUnit = LZString::decompressFromEncodedURIComponent($parts[7]);
+
+        $id_unit = Session::get('id_unit', $idUnit ?? null);
+
+        $patient = DB::connection('sqlsrv')
+            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
+            ->where('idpx', $kdPasienSS)
+            ->first();
+
+        $nakes = DB::connection('sqlsrv')
+            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
+            ->where('idnakes', $kdNakesSS)
+            ->first();
+
+        $klinik = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.RJ_KLINIK_RADIOLOGI')
+            ->where('IDUNIT', $id_unit)
+            ->where('KODE_KLINIK', $kdKlinik)
+            ->first();
+
+        $resParam['Karcis'] = $karcisRujukan ?? 'not found';
+        $resParam['Pasien'] = $patient ? $patient->nama : "not found";
+        $resParam['Dokter'] = $nakes ? $nakes->nama : "not found";
+        $resParam['Klinik'] = $klinik ? "Rad" : "Lab";
+
+        return $resParam;
+    }
+
     /**
      * Show the form for creating a new resource.
      *

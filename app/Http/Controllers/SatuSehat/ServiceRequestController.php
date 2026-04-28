@@ -773,6 +773,42 @@ class ServiceRequestController extends Controller
         }
     }
 
+    public function getDataServiceRequestQueue($parts)
+    {
+        $idRiwayatElab = LZString::decompressFromEncodedURIComponent($parts[0]);
+        $karcis = LZString::decompressFromEncodedURIComponent($parts[1]);
+
+        $kdKlinik = LZString::decompressFromEncodedURIComponent($parts[2]);
+        $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[3]);
+        $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[4]);
+        $kdDokterSS = LZString::decompressFromEncodedURIComponent($parts[5]);
+        $idUnit = LZString::decompressFromEncodedURIComponent($parts[6]);
+        $id_unit = Session::get('id_unit', $idUnit ?? null);
+
+        $patient = DB::connection('sqlsrv')
+            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
+            ->where('idpx', $kdPasienSS)
+            ->first();
+
+        $nakes = DB::connection('sqlsrv')
+            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
+            ->where('idnakes', $kdNakesSS)
+            ->first();
+
+        $klinik = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.RJ_KLINIK_RADIOLOGI')
+            ->where('IDUNIT', $id_unit)
+            ->where('KODE_KLINIK', $kdKlinik)
+            ->first();
+
+        $resParam['Karcis'] = $karcis;
+        $resParam['Pasien'] = $patient ? $patient->nama : "not found";
+        $resParam['Dokter'] = $nakes ? $nakes->nama : "not found";
+        $resParam['Klinik'] = $klinik ? "Rad" : "Lab";
+
+        return $resParam;
+    }
+
     /**
      * Show the form for creating a new resource.
      *

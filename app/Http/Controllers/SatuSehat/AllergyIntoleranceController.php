@@ -656,6 +656,32 @@ class AllergyIntoleranceController extends Controller
         }
     }
 
+    public function getDataAllergyIntoleranceQueue($arrParam)
+    {
+        $id_unit = Session::get('id_unit', '001');
+
+        $dataKarcis = DB::table('RJ_KARCIS as rk')
+            ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
+            ->where('rk.KARCIS', $arrParam['karcis'])
+            ->where('rk.IDUNIT', $id_unit)
+            ->orderBy('rk.TGL', 'DESC')
+            ->first();
+
+        $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
+            ->where('idpx', $arrParam['id_pasien_ss'])
+            ->first();
+
+        $nakes = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
+            ->where('idnakes', $arrParam['id_nakes_ss'])
+            ->first();
+
+        $resParam['Karcis'] = $dataKarcis->KARCIS;
+        $resParam['Pasien'] = $patient ? $patient->nama : "not found";
+        $resParam['Dokter'] = $nakes ? $nakes->nama : "not found";
+
+        return $resParam;
+    }
+
     /**
      * Show the form for creating a new resource.
      *

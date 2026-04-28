@@ -1081,6 +1081,61 @@ class EncounterController extends Controller
         ];
     }
 
+    public function getEncounterDataQueue($arrParam)
+    {
+        $jenisPerawatan = $arrParam['jenis_perawatan'];
+        $idTransaksi = $arrParam['id_transaksi'];
+        $kdPasienSS = $arrParam['kd_pasien_ss'];
+        $kdNakesSS = $arrParam['kd_nakes_ss'];
+        $kdLokasiSS = $arrParam['kd_lokasi_ss'];
+        $id_unit = Session::get('id_unit', $arrParam['id_unit']);
+
+        $dataKarcis = Karcis::leftJoin('RJ_KARCIS_BAYAR AS KarcisBayar', function ($query) use ($arrParam, $id_unit) {
+            $query->on('RJ_KARCIS.KARCIS', '=', 'KarcisBayar.KARCIS')
+                ->on('RJ_KARCIS.IDUNIT', '=', 'KarcisBayar.IDUNIT')
+                ->whereRaw('ISNULL(KarcisBayar.STBTL,0) = 0')
+                ->where('KarcisBayar.IDUNIT', $id_unit); // pindahkan ke sini
+        })
+            ->with([
+                'ermkunjung' => function ($query) use ($arrParam, $id_unit) {
+                    $query->select('KARCIS', 'NO_KUNJUNG', 'CRTDT AS WAKTU_ERM')
+                        ->where('IDUNIT', $id_unit);
+                }
+            ])
+            ->with('inap')
+            ->select('RJ_KARCIS.NOREG', 'RJ_KARCIS.KARCIS', 'RJ_KARCIS.KBUKU', 'RJ_KARCIS.NO_PESERTA', 'RJ_KARCIS.KLINIK', 'RJ_KARCIS.KDDOK', 'RJ_KARCIS.TGL_VERIF_KARCIS', 'RJ_KARCIS.CRTDT AS WAKTU_BUAT_KARCIS', 'KarcisBayar.TGL_CETAK AS WAKTU_NOTA', 'KarcisBayar.NOTA', 'RJ_KARCIS.TGL')
+            ->where(function ($query) use ($arrParam) {
+                if ($arrParam['jenis_perawatan'] == 'RI') {
+                    $query->where('RJ_KARCIS.NOREG', $arrParam['id_transaksi']);
+                } else {
+                    $query->where('RJ_KARCIS.KARCIS', $arrParam['id_transaksi']);
+                }
+            })
+            ->where('RJ_KARCIS.IDUNIT', $id_unit)
+            ->first();
+
+        $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
+            ->where('idpx', $kdPasienSS)
+            ->first();
+
+        $nakes = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
+            ->where('idnakes', $kdNakesSS)
+            ->first();
+
+        $location = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_LOCATION')
+            ->where('idss', $kdLokasiSS)
+            ->first();
+
+        $resParam['Karcis'] = $idTransaksi;
+        $resParam['Jenis Perawatan'] = $jenisPerawatan;
+        $resParam['Pasien'] = $patient ? $patient->nama : "not found";
+        $resParam['Dokter'] = $nakes ? $nakes->nama : "not found";
+        $resParam['Lokasi'] = $location ? $location->name : "not found";
+        $resParam['Created At'] = $dataKarcis ? $dataKarcis->WAKTU_BUAT_KARCIS : "not found";
+
+        return $resParam;
+    }
+
     /**
      * Show the form for creating a new resource.
      *

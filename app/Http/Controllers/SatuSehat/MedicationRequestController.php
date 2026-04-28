@@ -1063,4 +1063,29 @@ class MedicationRequestController extends Controller
         }
         return 1;
     }
+
+    public function getDataMedicationRequestQueue($idTrans)
+    {
+        $data = DB::table('SIRS_PHCM.dbo.IF_TRANS_OL as A')
+            ->leftJoin('SIRS_PHCM.dbo.M_TRANS_KFA as B', 'A.KDBRG', '=', 'B.KDBRG_CENTRA')
+            ->leftJOIN('SIRS_PHCM.dbo.IF_HTRANS_OL as H', 'A.ID_TRANS', '=', 'H.ID_TRANS')
+            ->select(
+                'H.KARCIS',
+                'A.ID_TRANS',
+                'A.KDBRG',
+                'A.NAMABRG',
+                'B.FHIR_ID',
+                'B.KD_BRG_KFA'
+            )
+            ->where('A.ID_TRANS', $idTrans)
+            ->get();
+
+        $resParam['Karcis'] = $data ? $data->KARCIS : "not found";
+        $resParam['Kode Barang'] = $data ? $data->KDBRG : "not found";
+        $resParam['Nama Barang'] = $data ? $data->NAMABRG : "not found";
+        $resParam['ID FHIR'] = $data ? $data->FHIR_ID : "not found";
+        $resParam['Kode Barang KFA'] = $data ? $data->KD_BRG_KFA : "not found";
+
+        return $resParam;
+    }
 }

@@ -1541,6 +1541,31 @@ class ProcedureController extends Controller
         ];
     }
 
+    public function getProcedureDataQueue($arrParam)
+    {
+        $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
+
+        $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
+            ->where('idpx', $arrParam['id_pasien_ss'])
+            ->first();
+
+        $dataKarcis = DB::table('RJ_KARCIS as rk')
+            ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU', 'rk.NOREG')
+            ->where($arrParam['jenis_perawatan'] == 'RAWAT_JALAN' ? 'rk.KARCIS' : 'rk.NOREG', $arrParam['karcis'])
+            ->where('rk.IDUNIT', $id_unit)
+            ->orderBy('rk.TGL', 'DESC')
+            ->first();
+
+        $nakes = SS_Nakes::where('idnakes', $arrParam['id_nakes_ss'])->first();
+
+        $resParam['Karcis'] = $dataKarcis->KARCIS;
+        $resParam['Jenis Perawatan'] = $arrParam["jenis_perawatan"];
+        $resParam['Pasien'] = $patient ? $patient->nama : "not found";
+        $resParam['Dokter'] = $nakes ? $nakes->nama : "not found";
+
+        return $resParam;
+    }
+
     /**
      * Show the form for creating a new resource.
      *

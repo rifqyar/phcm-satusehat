@@ -1267,4 +1267,56 @@ class ResumeMedisController extends Controller
         // dd($payload);
         return $payload;
     }
+
+    public function getDataCompositionQueue($parts)
+    {
+        $jenisPerawatan = $parts[0];
+        $idTransaksi = LZString::decompressFromEncodedURIComponent($parts[1]);
+        $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[2]);
+        $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[3]);
+        $kdLokasiSS = LZString::decompressFromEncodedURIComponent($parts[4]);
+
+        $id_unit = isset($parts[5])
+            ? LZString::decompressFromEncodedURIComponent($parts[5])
+            : Session::get('id_unit', '001');
+
+        $dataKarcis = Karcis::leftJoin('RJ_KARCIS_BAYAR AS KarcisBayar', function ($query) use ($idTransaksi, $id_unit) {
+            $query->on('RJ_KARCIS.KARCIS', '=', 'KarcisBayar.KARCIS')
+                ->on('RJ_KARCIS.IDUNIT', '=', 'KarcisBayar.IDUNIT')
+                ->whereRaw('ISNULL(KarcisBayar.STBTL,0) = 0')
+                ->where('KarcisBayar.IDUNIT', $id_unit); // pindahkan ke sini
+        })
+            ->with([
+                'ermkunjung' => function ($query) use ($id_unit) {
+                    $query->select('KARCIS', 'NO_KUNJUNG', 'CRTDT AS WAKTU_ERM')
+                        ->where('IDUNIT', $id_unit);
+                }
+            ])
+            ->with('inap')
+            ->select('RJ_KARCIS.NOREG', 'RJ_KARCIS.KARCIS', 'RJ_KARCIS.KBUKU', 'RJ_KARCIS.NO_PESERTA', 'RJ_KARCIS.KLINIK', 'RJ_KARCIS.KDDOK', 'RJ_KARCIS.TGL_VERIF_KARCIS', 'RJ_KARCIS.CRTDT AS WAKTU_BUAT_KARCIS', 'KarcisBayar.TGL_CETAK AS WAKTU_NOTA', 'KarcisBayar.NOTA', 'RJ_KARCIS.TGL')
+            ->where(function ($query) use ($jenisPerawatan, $idTransaksi) {
+                if ($jenisPerawatan == 'RI') {
+                    $query->where('RJ_KARCIS.NOREG', $idTransaksi);
+                } else {
+                    $query->where('RJ_KARCIS.KARCIS', $idTransaksi);
+                }
+            })
+            ->where('RJ_KARCIS.IDUNIT', $id_unit)
+            ->first();
+
+        $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
+            ->where('idpx', $kdPasienSS)
+            ->first();
+
+        $nakes = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
+            ->where('idnakes', $kdNakesSS)
+            ->first();
+
+        $resParam['Karcis'] = $dataKarcis->KARCIS;
+        $resParam['Jenis Perawatan'] = $jenisPerawatan == "RJ" ? "Rawat Jalan" : "Rawat Inap";
+        $resParam['Pasien'] = $patient ? $patient->nama : "not found";
+        $resParam['Dokter'] = $nakes ? $nakes->nama : "not found";
+
+        return $resParam;
+    }
 }

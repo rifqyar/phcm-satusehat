@@ -821,4 +821,56 @@ class DiagnosticReportController extends Controller
             ], 400);
         }
     }
+
+    public function getDataDiagnosticReportQueue($arrParam)
+    {
+        $id_unit = $arrParam['id_unit'] ?? Session::get('id_unit', '001');
+
+        $dokumen_px = DB::connection('sqlsrv')
+            ->table(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX as a'))
+            ->join(DB::raw('SIRS_PHCM.dbo.vw_getData_Elab as l'), function ($join) {
+                $join->on('a.kd_tindakan', '=', 'l.KD_TINDAKAN')
+                    ->where(function ($q) {
+                        $q->whereColumn('a.karcis', 'l.KARCIS_ASAL')
+                            ->orWhereColumn('a.karcis', 'l.KARCIS_RUJUKAN');
+                    });
+            })
+            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_DOKUMEN_PX_KATEGORI as b'), 'a.id_kategori', '=', 'b.id')
+            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MASTERPX as c'), 'a.kbuku', '=', 'c.kbuku')
+            ->join(DB::raw('SIRS_PHCM.dbo.RIRJ_MTINDAKAN as m'), 'l.kd_tindakan', '=', 'm.KD_TIND')
+            ->select([
+                'a.*',
+                'b.nama_kategori',
+                'm.KD_TIND',
+            ])
+            ->where('a.AKTIF', 1)
+            ->where('a.id', $arrParam['id'])
+            ->where(function ($query) use ($arrParam) {
+                $query->where('a.karcis', $arrParam['karcis_rujukan'])
+                    ->orWhere('a.karcis', $arrParam['karcis_asal']);
+            })
+            ->first();
+
+        $patient = DB::connection('sqlsrv')
+            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN_MAPPING as a')
+            ->join('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN as b', 'a.idpx', '=', 'b.idpx')
+            ->select('a.idpx', 'b.nama', 'a.no_peserta', 'a.kbuku')
+            ->where('a.no_peserta', $dokumen_px->no_peserta)
+            ->where('a.kbuku', $dokumen_px->kbuku)
+            ->first();
+
+        $dokter = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.vw_getData_Elab as a')
+            ->leftJoin('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES as b', 'a.kddok', '=', 'b.kddok')
+            ->where('IDUNIT', $id_unit)
+            ->where('KARCIS_ASAL', $arrParam['karcis_asal'])
+            ->where('KARCIS_RUJUKAN', $arrParam['karcis_rujukan'])
+            ->first();
+
+        $resParam['Karcis'] = $arrParam ? $arrParam['karcis_rujukan'] : 'not found';
+        $resParam['Pasien'] = $patient ? $patient->nama : "not found";
+        $resParam['Dokter'] = $dokter ? $dokter->nama : "not found";
+
+        return $resParam;
+    }
 }

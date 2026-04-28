@@ -134,7 +134,7 @@ class MedicationDispenseController extends Controller
                 DB::raw('SSM_DISP.CREATED_AT AS DISP_CREATED_AT'),
             );
 
-            $statusExpr = "
+        $statusExpr = "
         CASE
             WHEN SSM_DISP.ID IS NOT NULL THEN '200'
             WHEN SSM_REQ.ID  IS NOT NULL THEN '100'
@@ -148,8 +148,7 @@ class MedicationDispenseController extends Controller
 
         if ($status === 'sent') {
             $query->whereRaw("$statusExpr = '200'");
-        }
-        else if ($status === 'unsent') {
+        } else if ($status === 'unsent') {
             $query->whereRaw("$statusExpr <> '200'");
         }
 
@@ -1116,5 +1115,50 @@ class MedicationDispenseController extends Controller
         $medResult = app(\App\Http\Controllers\SatusehatKfaController::class)->processMedication($kdbrg_centra);
 
         return $medResult;
+    }
+
+    public function getDataMedicationDispenseQueue($idTrans)
+    {
+        $data = DB::select(
+            "
+                SELECT distinct
+                    i.ID_TRANS AS ID_RESEP_FARMASI,
+                    i3.ID_TRANS AS RESEP_DOKTER,
+                    i2.MR_LINE as urutan,
+                    FORMAT(i2.INPUTDATE, 'yyyy-MM-ddTHH:mm:sszzz') as inputdate,
+                    i2.ID as isRacikan,
+                    i3.KARCIS,
+                    m.FHIR_ID AS medicationReference_reference,
+                    m.NAMABRG AS medicationReference_display,
+                    m.KD_BRG_KFA,
+                    r.id_satusehat_encounter,
+                    s.FHIR_MEDICATION_REQUEST_ID,
+                    r2.idpx,
+                    r2.nama AS pasien_nama,
+                    r3.idnakes,
+                    r3.nama AS nakes_nama
+                FROM SIRS_PHCM.dbo.IF_HTRANS i
+                JOIN SIRS_PHCM.dbo.IF_TRANS i2 ON i.ID_TRANS = i2.ID_TRANS
+                JOIN SIRS_PHCM.dbo.IF_HTRANS_OL i3 ON i.ID_TRANS_OL = i3.ID_TRANS
+                JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA r ON i3.KARCIS  = r.karcis
+                JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN r2 ON r.id_satusehat_px = r2.idpx
+                JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES r3 ON r.id_satusehat_dokter = r3.idnakes
+                LEFT JOIN SIRS_PHCM.dbo.M_TRANS_KFA m ON i2.KDBRG_CENTRA = m.KDBRG_CENTRA
+                LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION s
+                    ON m.KD_BRG_KFA = s.KFA_CODE
+                    AND i3.ID_TRANS = s.LOCAL_ID
+                WHERE i.ID_TRANS = ?
+            ",
+            [$idTrans],
+        );
+
+        $resParam['Karcis'] = $data ? $data->KARCIS : "not found";
+        $resParam['Jenis Perawatan'] = $jenisPerawatan;
+        $resParam['Pasien'] = $patient ? $patient->nama : "not found";
+        $resParam['Dokter'] = $nakes ? $nakes->nama : "not found";
+        $resParam['Lokasi'] = $location ? $location->name : "not found";
+        $resParam['Created At'] = $dataKarcis ? $dataKarcis->WAKTU_BUAT_KARCIS : "not found";
+
+        return $resParam;
     }
 }

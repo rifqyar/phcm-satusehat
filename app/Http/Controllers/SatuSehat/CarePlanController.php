@@ -456,4 +456,27 @@ class CarePlanController extends Controller
             'responses' => $responses,
         ], 200);
     }
+
+    public function getDataCarePlanQueue($arrParam)
+    {
+        $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
+        $data = DB::selectOne("
+            EXEC dbo.sp_getCarePlan ?, ?, ?, ?, ?, ?, ?, ?
+        ", [
+            $id_unit,
+            null,
+            null,
+            'all',
+            $arrParam['karcis'] ?? '',
+            null,
+            1,
+            1
+        ]);
+
+        $resParam['Karcis'] = $arrParam ? $arrParam['karcis_rujukan'] : 'not found';
+        $resParam['Pasien'] = $data ? $data->NAMA_PASIEN : "not found";
+        $resParam['Dokter'] = $data ? $data->DOKTER : "not found";
+
+        return $resParam;
+    }
 }

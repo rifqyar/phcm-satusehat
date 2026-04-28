@@ -652,4 +652,39 @@ class QuestionnaireResponseController extends Controller
             'sections' => $sections
         ]);
     }
+
+    public function getDataQuestionnaireResponse($arrParam)
+    {
+        $jenisPerawatan = $arrParam['jenis_perawatan'];
+        $id_transaksi = $arrParam['id_transaksi'];
+        $kdPasienSS = $arrParam['kd_pasien_ss'];
+        $kdNakesSS = $arrParam['kd_nakes_ss'];
+        $kdLokasiSS = $arrParam['kd_lokasi_ss'];
+        $id_unit = Session::get('id_unit', $arrParam['id_unit']);
+
+        // Get visit data
+        $visit = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.v_kunjungan_rj as rj')
+            ->leftJoin('SIRS_PHCM.dbo.v_kunjungan_ri as ri', 'rj.ID_TRANSAKSI', '=', 'ri.ID_TRANSAKSI')
+            ->where('rj.ID_TRANSAKSI', $id_transaksi)
+            ->orWhere('ri.ID_TRANSAKSI', $id_transaksi)
+            ->select('rj.*', 'ri.ID_TRANSAKSI as ri_id')
+            ->first();
+
+        $patient = DB::connection('sqlsrv')
+            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
+            ->where('idpx', $kdPasienSS)
+            ->first();
+
+        $practitioner = DB::connection('sqlsrv')
+            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
+            ->where('idnakes', $kdNakesSS)
+            ->first();
+
+        $resParam['Karcis'] = $id_transaksi ?? 'not found';
+        $resParam['Pasien'] = $patient ? $patient->nama : "not found";
+        $resParam['Dokter'] = $practitioner ? $practitioner->nama : "not found";
+
+        return $resParam;
+    }
 }

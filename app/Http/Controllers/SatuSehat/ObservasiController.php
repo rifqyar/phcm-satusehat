@@ -10,6 +10,7 @@ use App\Lib\LZCompressor\LZString;
 use App\Models\GlobalParameter;
 use App\Models\SATUSEHAT\SATUSEHAT_OBSERVATION;
 use App\Models\SATUSEHAT\SS_Kode_API;
+use App\Models\SATUSEHAT\SS_Nakes;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\JsonResponse;
@@ -1315,6 +1316,31 @@ class ObservasiController extends Controller
         }
 
         return $payloadP;
+    }
+
+    public function getDataObservationQueue($arrParam)
+    {
+        $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
+
+        $dataKarcis = DB::table('RJ_KARCIS as rk')
+            ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
+            ->where('rk.KARCIS', $arrParam['karcis'])
+            ->where('rk.IDUNIT', $id_unit)
+            ->orderBy('rk.TGL', 'DESC')
+            ->first();
+
+        $patient = DB::table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
+            ->where('idpx', $arrParam['id_pasien_ss'])
+            ->first();
+
+        $nakes = SS_Nakes::where('idnakes', $arrParam['id_nakes_ss'])->first();
+
+        $resParam['Karcis'] = $dataKarcis->KARCIS;
+        $resParam['Jenis Perawatan'] = $arrParam['jenis_perawatan'] == 'RAWAT_INAP' ? "RAWAT INAP" : "RAWAT JALAN";
+        $resParam['Pasien'] = $patient ? $patient->nama : "not found";
+        $resParam['Dokter'] = $nakes ? $nakes->nama : "not found";
+
+        return $resParam;
     }
 
     /**

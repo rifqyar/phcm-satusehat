@@ -493,6 +493,30 @@ class ClinicalImpressionController extends Controller
         ], 200);
     }
 
+    public function getDataClinicalImpressionQueue($arrParam)
+    {
+        $id_unit = Session::get('id_unit', $arrParam['id_unit'] ?? null);
+
+        $data = collect(DB::select("
+            EXEC dbo.sp_getClinicalImpression ?, ?, ?, ?, ?, ?, ?, ?
+        ", [
+            $id_unit,
+            null,
+            null,
+            'all',
+            $arrParam['karcis'] ?? '',
+            $arrParam['id_erm'] ?? null,
+            1,
+            1
+        ]))->first();
+
+        $resParam['Karcis'] = $arrParam['karcis'] ?? 'not found';
+        $resParam['Pasien'] = $data ? $data->NAMA_PASIEN : "not found";
+        $resParam['Dokter'] = $data ? $data->DOKTER : "not found";
+
+        return $resParam;
+    }
+
     /**
      * Show the form for creating a new resource.
      *
