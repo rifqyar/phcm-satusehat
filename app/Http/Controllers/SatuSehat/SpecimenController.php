@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Session;
@@ -377,21 +378,16 @@ class SpecimenController extends Controller
             ->editColumn('JENIS_PERAWATAN', function ($row) {
                 return $row->JENIS_PERAWATAN;
             })
-            ->addColumn('action', function ($row) {
-                $kdbuku = LZString::compressToEncodedURIComponent($row->KBUKU);
-                $kdDok = LZString::compressToEncodedURIComponent($row->kdDok);
-                $kdKlinik = LZString::compressToEncodedURIComponent($row->KLINIK_TUJUAN);
-                // $idUnit = LZString::compressToEncodedURIComponent($row->ID_UNIT);
-                // $param = LZString::compressToEncodedURIComponent($kdbuku . '+' . $kdDok . '+' . $kdKlinik . '+' . $idUnit);
-
+            ->addColumn('action', function ($row) use ($id_unit) {
                 $idRiwayatElab = LZString::compressToEncodedURIComponent($row->ID_RIWAYAT_ELAB);
                 $karcisAsal = LZString::compressToEncodedURIComponent($row->KARCIS_ASAL);
                 $karcisRujukan = LZString::compressToEncodedURIComponent($row->KARCIS_RUJUKAN);
                 $kdPasienSS = LZString::compressToEncodedURIComponent($row->ID_PASIEN_SS);
                 $kdNakesSS = LZString::compressToEncodedURIComponent($row->ID_NAKES_SS);
-                // $kdPerformerSS = LZString::compressToEncodedURIComponent($row->idnakes);
                 $kdDokterSS = LZString::compressToEncodedURIComponent($row->idnakes);
-                $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcisAsal . '+' . $karcisRujukan . '+' . $kdKlinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS);
+                $id_unit = LZString::compressToEncodedURIComponent($id_unit);
+                $kdKlinik = LZString::compressToEncodedURIComponent($row->KLINIK_TUJUAN);
+                $paramSatuSehat = LZString::compressToEncodedURIComponent($idRiwayatElab . '+' . $karcisAsal . '+' . $karcisRujukan . '+' . $kdKlinik . '+' . $kdPasienSS . '+' . $kdNakesSS . '+' . $kdDokterSS . '+' . $id_unit);
 
                 if ($row->ID_PASIEN_SS == null) {
                     $btn = '<i class="text-muted">Pasien Belum Mapping Satu Sehat</i>';
@@ -409,7 +405,7 @@ class SpecimenController extends Controller
                             $btn = '<i class="text-muted">Tunggu Verifikasi Pasien</i>';
                         }
                     } else {
-                        $btn = '<a href="javascript:void(0)" onclick="sendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
+                        $btn = '<a href="javascript:void(0)" onclick="resendSatuSehat(`' . $paramSatuSehat . '`)" class="btn btn-sm btn-warning w-100"><i class="fas fa-link mr-2"></i>Kirim Ulang</a>';
                     }
                 }
                 return $btn;
@@ -448,255 +444,459 @@ class SpecimenController extends Controller
         }
     }
 
-    public function sendSatuSehat($param)
+    public function sendSatuSehat($param, $resend = false)
+    {
+        $startedAt = microtime(true);
+
+        try {
+
+            /**
+             * ==================================================
+             * DECODE PARAM
+             * ==================================================
+             */
+            $p = $this->decodeSpecimenParam($param);
+
+            $idRiwayat = $p['idRiwayatElab'];
+            $karcisAsal = $p['karcisAsal'];
+            $karcisRujukan = $p['karcisRujukan'];
+            $kdKlinik = $p['kdKlinik'];
+            $patientId = $p['kdPasienSS'];
+            $doctorId = $p['kdDokterSS'];
+            $idUnit = Session::get('id_unit', $p['idUnit']);
+
+            /**
+             * ==================================================
+             * CONFIG + TOKEN (CACHE)
+             * ==================================================
+             */
+            $config = $this->getFastSatuSehatConfig($idUnit);
+            $token  = $this->getFastSatuSehatToken($idUnit);
+
+            /**
+             * ==================================================
+             * MASTER DATA
+             * ==================================================
+             */
+            $master = $this->getSpecimenMasterData(
+                $idUnit,
+                $karcisAsal,
+                $karcisRujukan,
+                $idRiwayat,
+                $patientId,
+                $kdKlinik
+            );
+
+            /**
+             * ==================================================
+             * RESEND MODE
+             * ==================================================
+             */
+            $oldSpecimen = null;
+
+            if ($resend) {
+                $oldSpecimen = DB::connection('sqlsrv')
+                    ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SPECIMEN')
+                    ->select('id_satusehat_specimen')
+                    ->where('karcis', $karcisRujukan)
+                    ->where('idriwayat', $idRiwayat)
+                    ->where('idunit', $idUnit)
+                    ->first();
+
+                if (!$oldSpecimen) {
+                    throw new Exception('Data resend specimen tidak ditemukan');
+                }
+            }
+
+            /**
+             * ==================================================
+             * BUILD PAYLOAD
+             * ==================================================
+             */
+            $payload = $this->buildFastSpecimenPayload(
+                $master,
+                $config['org_id'],
+                $patientId,
+                $idRiwayat,
+                $oldSpecimen
+            );
+
+            /**
+             * ==================================================
+             * METHOD + URL
+             * ==================================================
+             */
+            $method = $resend ? 'PUT' : 'POST';
+
+            $url = $resend
+                ? 'Specimen/' . $oldSpecimen->id_satusehat_specimen
+                : 'Specimen';
+
+            /**
+             * ==================================================
+             * SEND API
+             * ==================================================
+             */
+            $response = $this->consumeSATUSEHATAPI(
+                $method,
+                $config['baseurl'],
+                $url,
+                json_decode(json_encode($payload)),
+                true,
+                $token
+            );
+
+            $result = json_decode(
+                $response->getBody()->getContents(),
+                true
+            );
+
+            if ($response->getStatusCode() >= 400) {
+                throw new Exception(
+                    $result['issue'][0]['details']['text']
+                        ?? 'Gagal kirim specimen',
+                    $response->getStatusCode()
+                );
+            }
+
+            /**
+             * ==================================================
+             * SAVE LOG
+             * ==================================================
+             */
+            $this->saveFastSpecimenLog(
+                $karcisRujukan,
+                $master,
+                $result,
+                $idRiwayat,
+                $idUnit,
+                $patientId,
+                $doctorId,
+                $resend,
+                $payload
+            );
+
+            return response()->json([
+                'status' => 200,
+                'message' => $resend
+                    ? 'Berhasil update Specimen'
+                    : 'Berhasil kirim Specimen',
+                'duration_ms' =>
+                round((microtime(true) - $startedAt) * 1000),
+            ], 200);
+        } catch (Exception $e) {
+
+            $this->logError('Specimen', 'Gagal kirim specimen', [
+                'message' => $e->getMessage()
+            ]);
+
+            return response()->json([
+                'status' => $e->getCode() ?: 500,
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * ==========================================================
+     * FAST CONFIG CACHE
+     * ==========================================================
+     */
+    private function getFastSatuSehatConfig($idUnit)
+    {
+        return Cache::remember(
+            'satusehat_cfg_' . $idUnit,
+            3600,
+            function () use ($idUnit) {
+
+                $isDev =
+                    strtoupper(env('SATUSEHAT')) == 'DEVELOPMENT';
+
+                return [
+                    'baseurl' => GlobalParameter::where(
+                        'tipe',
+                        $isDev
+                            ? 'SATUSEHAT_BASEURL_STAGING'
+                            : 'SATUSEHAT_BASEURL'
+                    )->value('valStr'),
+
+                    'org_id' => SS_Kode_API::where('idunit', $idUnit)
+                        ->where('env', $isDev ? 'Dev' : 'Prod')
+                        ->value('org_id')
+                ];
+            }
+        );
+    }
+
+    private function decodeSpecimenParam($param)
     {
         $param = base64_decode($param);
         $param = LZString::decompressFromEncodedURIComponent($param);
         $parts = explode('+', $param);
 
-        $idRiwayatElab = LZString::decompressFromEncodedURIComponent($parts[0]);
-        $karcisAsal = LZString::decompressFromEncodedURIComponent($parts[1]);
-        $karcisRujukan = LZString::decompressFromEncodedURIComponent($parts[2]);
-        $kdKlinik = LZString::decompressFromEncodedURIComponent($parts[3]);
-        $kdPasienSS = LZString::decompressFromEncodedURIComponent($parts[4]);
-        $kdNakesSS = LZString::decompressFromEncodedURIComponent($parts[5]);
-        $kdDokterSS = LZString::decompressFromEncodedURIComponent($parts[6]);
-        $idUnit = LZString::decompressFromEncodedURIComponent($parts[7]);
+        return [
+            'idRiwayatElab' => LZString::decompressFromEncodedURIComponent($parts[0]),
+            'karcisAsal'    => LZString::decompressFromEncodedURIComponent($parts[1]),
+            'karcisRujukan' => LZString::decompressFromEncodedURIComponent($parts[2]),
+            'kdKlinik'      => LZString::decompressFromEncodedURIComponent($parts[3]),
+            'kdPasienSS'    => LZString::decompressFromEncodedURIComponent($parts[4]),
+            'kdNakesSS'     => LZString::decompressFromEncodedURIComponent($parts[5]),
+            'kdDokterSS'    => LZString::decompressFromEncodedURIComponent($parts[6]),
+            'idUnit'        => LZString::decompressFromEncodedURIComponent($parts[7]),
+        ];
+    }
 
-        $id_unit = Session::get('id_unit', $idUnit ?? null);
+    /**
+     * ==========================================================
+     * FAST TOKEN CACHE
+     * ==========================================================
+     */
+    private function getFastSatuSehatToken($idUnit)
+    {
+        return Cache::remember(
+            'satusehat_token_' . $idUnit,
+            3300,
+            function () use ($idUnit) {
 
-        $encounter = DB::connection('sqlsrv')
-            ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
-            ->where('karcis', $karcisAsal)
-            ->where('idunit', $id_unit)
-            ->first();
-        // dd($encounter);
+                $login = $this->login($idUnit);
 
-        $riwayat = DB::connection('sqlsrv')
-            ->table('vw_getData_Elab')
-            ->where('IDUNIT', $id_unit)
-            ->where('ID_RIWAYAT_ELAB', $idRiwayatElab)
-            ->get();
+                if (($login['metadata']['code'] ?? 500) != 200) {
+                    throw new Exception('Login gagal');
+                }
 
-        $servicerequest = DB::connection('sqlsrv')
-            ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
-            ->where('karcis', $karcisRujukan)
-            ->where('idunit', $id_unit)
-            ->first();
+                return $login['response']['token'];
+            }
+        );
+    }
 
-        $patient = DB::connection('sqlsrv')
-            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
-            ->where('idpx', $kdPasienSS)
-            ->first();
+    /**
+     * ==========================================================
+     * MASTER DATA MINIMAL QUERY
+     * ==========================================================
+     */
+    private function getSpecimenMasterData(
+        $idUnit,
+        $karcisAsal,
+        $karcisRujukan,
+        $idRiwayat,
+        $patientId,
+        $kdKlinik
+    ) {
+        return [
 
-        $nakes = DB::connection('sqlsrv')
-            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
-            ->where('idnakes', $kdNakesSS)
-            ->first();
+            'encounter' => DB::connection('sqlsrv')
+                ->table('SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA')
+                ->select('nota', 'id_satusehat_encounter')
+                ->where('karcis', $karcisAsal)
+                ->where('idunit', $idUnit)
+                ->first(),
 
-        $klinik = DB::connection('sqlsrv')
-            ->table('SIRS_PHCM.dbo.RJ_KLINIK_RADIOLOGI')
-            ->where('IDUNIT', $id_unit)
-            ->where('KODE_KLINIK', $kdKlinik)
-            ->first();
+            'riwayat' => DB::connection('sqlsrv')
+                ->table('vw_getData_Elab')
+                ->select('TANGGAL_ENTRI')
+                ->where('IDUNIT', $idUnit)
+                ->where('ID_RIWAYAT_ELAB', $idRiwayat)
+                ->first(),
 
-        $dokter = DB::connection('sqlsrv')
-            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_NAKES')
-            ->where('idnakes', $kdDokterSS)
-            ->first();
+            'service' => DB::connection('sqlsrv')
+                ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SERVICEREQUEST')
+                ->select('id_satusehat_servicerequest')
+                ->where('karcis', $karcisRujukan)
+                ->where('idunit', $idUnit)
+                ->first(),
 
-        $specimenList = [];
+            'patient' => DB::connection('sqlsrv')
+                ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN')
+                ->select('nama')
+                ->where('idpx', $patientId)
+                ->first(),
 
-        if ($riwayat) {
-            // Convert '12,53,24' → [12, 53, 24]
-            $ids = $riwayat->pluck('KD_TINDAKAN');
+            'klinik' => DB::connection('sqlsrv')
+                ->table('SIRS_PHCM.dbo.RJ_KLINIK_RADIOLOGI')
+                ->select('KODE_KLINIK')
+                ->where('IDUNIT', $idUnit)
+                ->where('KODE_KLINIK', $kdKlinik)
+                ->first()
+        ];
+    }
 
-            // === 🔗 Get specimen info connected to tindakan IDs ===
-            $specimenList = DB::connection('sqlsrv')
-                ->table('SATUSEHAT.dbo.SATUSEHAT_SPECIMEN_MAPPING as map')
-                ->join('SATUSEHAT.dbo.SATUSEHAT_M_SPECIMEN as sp', 'map.KODE_SPECIMEN', '=', 'sp.CODE')
-                ->whereIn('map.KODE_TINDAKAN', $ids)
-                ->select('sp.CODE', 'sp.DISPLAY', 'sp.CODESYSTEM')
-                ->distinct()
-                ->get()
-                ->map(function ($item) {
-                    return [
-                        'system' => $item->CODESYSTEM,
-                        'code' => $item->CODE,
-                        'display' => $item->DISPLAY,
-                    ];
-                })
-                ->toArray();
-        } else {
-            $specimenList = [];
-        }
-        // dd($specimenList);
+    /**
+     * ==========================================================
+     * FAST PAYLOAD
+     * ==========================================================
+     */
+    private function buildFastSpecimenPayload(
+        $master,
+        $orgId,
+        $patientId,
+        $idRiwayat,
+        $old = null
+    ) {
+        $now = now()->toIso8601String();
 
-        $dateTimeNow = Carbon::now()->toIso8601String();
-
-        $jenisService = [];
-        if ($klinik != null) {
-            $jenisService = [[
-                "system" => "http://snomed.info/sct",
-                "code" => "363679005",
-                "display" => "Imaging"
-            ]];
-        } else {
-            $jenisService = [[
-                "system" => "http://snomed.info/sct",
-                "code" => "108252007",
-                "display" => "Laboratory procedure"
-            ]];
-        }
-
-        $baseurl = '';
-        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
-            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
-            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
-        } else {
-            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
-            $organisasi = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
-        }
-        // dd($baseurl);
-
-        try {
-            $data = [
-                "resourceType" => "Specimen",
-                "identifier" => [[
-                    "system" => "http://sys-ids.kemkes.go.id/specimen/{$organisasi}",
-                    "value" => "$idRiwayatElab"
-                ]],
-                "status" => "available",
-                "type" => [
-                    "coding" => $specimenList
-                ],
-                "collection" => [
-                    "collectedDateTime" => $dateTimeNow,
-                    "extension" => [[
-                        "url" => "https://fhir.kemkes.go.id/r4/StructureDefinition/CollectorOrganization",
-                        "valueReference" => [
-                            "reference" => "Organization/{$organisasi}",
-                        ]
-                    ]]
-                ],
-                "subject" => [
-                    "reference" => "Patient/{$kdPasienSS}",
-                    "display" => "$patient->nama"
-                ],
-                "request" => [[
-                    "reference" => "ServiceRequest/{$servicerequest->id_satusehat_servicerequest}",
-                ]],
-                "receivedTime" => $dateTimeNow,
-                "extension" => [[
-                    "url" => "https://fhir.kemkes.go.id/r4/StructureDefinition/TransportedTime",
-                    "valueDateTime" => $dateTimeNow
-                ]]
+        $coding = $master['klinik']
+            ? [
+                [
+                    'system' => 'http://snomed.info/sct',
+                    'code' => '363679005',
+                    'display' => 'Imaging'
+                ]
+            ]
+            : [
+                [
+                    'system' => 'http://snomed.info/sct',
+                    'code' => '108252007',
+                    'display' => 'Laboratory procedure'
+                ]
             ];
 
-            $login = $this->login($id_unit);
-            if ($login['metadata']['code'] != 200) {
-                $hasil = $login;
-            }
-            // dd($login);
+        $payload = [
+            'resourceType' => 'Specimen',
+            'identifier' => [[
+                'system' =>
+                "http://sys-ids.kemkes.go.id/specimen/{$orgId}",
+                'value' => $idRiwayat
+            ]],
+            'status' => 'available',
+            'type' => ['coding' => $coding],
+            'subject' => [
+                'reference' => 'Patient/' . $patientId,
+                'display' => $master['patient']->nama
+            ],
+            'request' => [[
+                'reference' =>
+                'ServiceRequest/' .
+                    $master['service']->id_satusehat_servicerequest
+            ]],
+            'receivedTime' => $now
+        ];
 
-            $token = $login['response']['token'];
-
-            $url = 'Specimen';
-            $data = json_decode(json_encode($data));
-            $dataServiceRequest = $this->consumeSATUSEHATAPI('POST', $baseurl, $url, $data, true, $token);
-            $result = json_decode($dataServiceRequest->getBody()->getContents(), true);
-            if ($dataServiceRequest->getStatusCode() >= 400) {
-                $response = json_decode($dataServiceRequest->getBody(), true);
-                // dd($response);
-
-                $this->logError('specimen', 'Gagal kirim data specimen', [
-                    'payload' => $data,
-                    'response' => $response,
-                    'user_id' => Session::get('nama', 'system') //Session::get('id')
-                ]);
-
-                $this->logDb(json_encode($response), 'Specimen', json_encode($data), 'system', 0); //Session::get('id')
-
-                $msg = $response['issue'][0]['details']['text'] ?? 'Gagal Kirim Data Service Request';
-                throw new Exception($msg, $dataServiceRequest->getStatusCode());
-            } else {
-                try {
-                    $dataKarcis = DB::connection('sqlsrv')
-                        ->table('SIRS_PHCM.dbo.RJ_KARCIS as rk')
-                        ->select('rk.KARCIS', 'rk.IDUNIT', 'rk.KLINIK', 'rk.TGL', 'rk.KDDOK', 'rk.KBUKU')
-                        ->where('rk.KARCIS', $karcisRujukan)
-                        ->where('rk.IDUNIT', $id_unit)
-                        ->orderBy('rk.TGL', 'DESC')
-                        ->first();
-
-                    $dataPeserta = DB::connection('sqlsrv')
-                        ->table('SIRS_PHCM.dbo.RIRJ_MASTERPX')
-                        ->where('KBUKU', $dataKarcis->KBUKU)
-                        ->first();
-
-                    DB::connection('sqlsrv')
-                        ->table('SATUSEHAT.dbo.SATUSEHAT_LOG_SPECIMEN')
-                        ->insert([
-                            'karcis'                      => $karcisRujukan,
-                            'nota'                        => $encounter->nota,
-                            'idriwayat'                   => $idRiwayatElab,
-                            'idunit'                      => $id_unit,
-                            'tgl'                         => Carbon::parse($dataKarcis->TGL, 'Asia/Jakarta')->format('Y-m-d'),
-                            'id_satusehat_encounter'      => $encounter->id_satusehat_encounter,
-                            'id_satusehat_servicerequest' => $servicerequest->id_satusehat_servicerequest,
-                            'id_satusehat_specimen'       => $result['id'],
-                            'kbuku'                       => $dataPeserta->KBUKU,
-                            'no_peserta'                  => $dataPeserta->NO_PESERTA,
-                            'id_satusehat_px'             => $kdPasienSS,
-                            'kddok'                       => $dataKarcis->KDDOK,
-                            'id_satusehat_dokter'         => $kdDokterSS,
-                            'kdklinik'                    => $dataKarcis->KLINIK,
-                            'status_sinkron'              => 1,
-                            'crtdt'                       => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
-                            'crtusr'                      => 'system', // Session::get('id'),
-                            'sinkron_date'                => Carbon::now('Asia/Jakarta')->format('Y-m-d H:i:s'),
-                            'jam_datang'                  => Carbon::parse($riwayat[0]->TANGGAL_ENTRI, 'Asia/Jakarta')->format('Y-m-d H:i:s'),
-                        ]);
-
-                    $this->logInfo('Specimen', 'Sukses kirim data specimen', [
-                        'payload' => $data,
-                        'response' => $result,
-                        'user_id' => Session::get('nama', 'system') //Session::get('id')
-                    ]);
-                    $this->logDb(json_encode($result), 'Specimen', json_encode($data), 'system', 1); //Session::get('id')
-
-                    return response()->json([
-                        'status' => JsonResponse::HTTP_OK,
-                        'message' => 'Berhasil Kirim Data Specimen',
-                        'redirect' => [
-                            'need' => false,
-                            'to' => null,
-                        ]
-                    ], 200);
-                } catch (Exception $th) {
-                    // dd($th);
-                    throw new Exception($th->getMessage(), $th->getCode());
-                }
-            }
-        } catch (Exception $th) {
-            $this->logError('Specimen', 'Gagal kirim data specimen', [
-                'status' => $th->getCode() != '' ? $th->getCode() : 500,
-                'message' => $th->getMessage() != '' ? $th->getMessage() : 'Gagal Kirim Data Specimen',
-                'redirect' => [
-                    'need' => false,
-                    'to' => null,
-                ]
-            ]);
-
-            return response()->json([
-                'status' => $th->getCode() != '' ? $th->getCode() : 500,
-                'message' => $th->getMessage() != '' ? $th->getMessage() : 'Gagal Kirim Data Specimen',
-                'redirect' => [
-                    'need' => false,
-                    'to' => null,
-                ]
-            ], $th->getCode() != '' ? $th->getCode() : 500);
+        if ($old) {
+            $payload['id'] = $old->id_satusehat_specimen;
         }
+
+        return $payload;
+    }
+
+    private function saveFastSpecimenLog(
+        $karcisRujukan,
+        $master,
+        $result,
+        $idRiwayat,
+        $idUnit,
+        $patientId,
+        $doctorId,
+        $resend,
+        $payload
+    ) {
+        $table = 'SATUSEHAT.dbo.SATUSEHAT_LOG_SPECIMEN';
+
+        $now = now();
+
+        /**
+         * ===================================================
+         * OPTIONAL MASTER DATA PESERTA / KARCIS
+         * ===================================================
+         */
+        $karcisData = DB::connection('sqlsrv')
+            ->table('SIRS_PHCM.dbo.RJ_KARCIS')
+            ->select('KBUKU', 'KDDOK', 'KLINIK')
+            ->where('KARCIS', $karcisRujukan)
+            ->where('IDUNIT', $idUnit)
+            ->first();
+
+        $peserta = null;
+
+        if ($karcisData && !empty($karcisData->KBUKU)) {
+            $peserta = DB::connection('sqlsrv')
+                ->table('SIRS_PHCM.dbo.RIRJ_MASTERPX')
+                ->select('NO_PESERTA')
+                ->where('KBUKU', $karcisData->KBUKU)
+                ->first();
+        }
+
+        /**
+         * ===================================================
+         * DATA LOG
+         * ===================================================
+         */
+        $data = [
+            'karcis'                      => $karcisRujukan,
+            'nota'                        => $master['encounter']->nota ?? null,
+            'idriwayat'                   => $idRiwayat,
+            'idunit'                      => $idUnit,
+            'tgl'                         => $now->format('Y-m-d'),
+
+            'id_satusehat_encounter'      => $master['encounter']->id_satusehat_encounter ?? null,
+            'id_satusehat_servicerequest' => $master['service']->id_satusehat_servicerequest ?? null,
+            'id_satusehat_specimen'       => $result['id'] ?? null,
+
+            'kbuku'                       => $karcisData->KBUKU ?? null,
+            'no_peserta'                  => $peserta->NO_PESERTA ?? null,
+
+            'id_satusehat_px'             => $patientId,
+            'kddok'                       => $karcisData->KDDOK ?? null,
+            'id_satusehat_dokter'         => $doctorId,
+            'kdklinik'                    => $karcisData->KLINIK ?? null,
+
+            'status_sinkron'              => 1,
+
+            'sinkron_date'                => $now,
+            'jam_datang'                  => $master['riwayat']->TANGGAL_ENTRI ?? $now,
+            'jam_progress'                => $now,
+            'jam_selesai'                 => $now,
+        ];
+
+        /**
+         * ===================================================
+         * CHECK EXISTING
+         * ===================================================
+         */
+        $existing = DB::connection('sqlsrv')
+            ->table($table)
+            ->where('karcis', $karcisRujukan)
+            ->where('idriwayat', $idRiwayat)
+            ->where('idunit', $idUnit)
+            ->first();
+
+        /**
+         * ===================================================
+         * UPDATE
+         * ===================================================
+         */
+        if ($existing) {
+
+            DB::connection('sqlsrv')
+                ->table($table)
+                ->where('id', $existing->id)
+                ->update($data);
+        } else {
+
+            $data['crtdt']  = $now;
+            $data['crtusr'] = 'system';
+
+            DB::connection('sqlsrv')
+                ->table($table)
+                ->insert($data);
+        }
+
+        /**
+         * ===================================================
+         * GLOBAL LOG API
+         * ===================================================
+         */
+        $this->logDb(
+            json_encode($result),
+            'Specimen',
+            json_encode($payload),
+            'system',
+            1
+        );
+    }
+
+    public function resendSatusehat($param)
+    {
+        return $this->sendSatuSehat($param, true);
     }
 
     public function bulkSendSatuSehat(Request $request)

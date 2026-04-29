@@ -268,7 +268,7 @@
         let selectedIds = [];
         $(function() {
             const today = moment().format('YYYY-MM-DD');
-            const sevenDaysAgo = moment().subtract(7, 'days').format('YYYY-MM-DD');
+            const sevenDaysAgo = moment().format('YYYY-MM-DD');
             $("#start_date").bootstrapMaterialDatePicker({
                 weekStart: 0,
                 time: false
@@ -563,6 +563,27 @@
                     if (conf.value || conf.isConfirmed) {
                         await ajaxGetJson(
                             `{{ route('satusehat.specimen.send', '') }}/${btoa(param)}`,
+                            "input_success",
+                            ""
+                        );
+                    }
+                });
+        }
+
+        function resendSatuSehat(param) {
+            Swal.fire({
+                    title: "Konfirmasi Pengiriman Ulang",
+                    text: `Kirim ulang data spesimen ke SatuSehat?`,
+                    icon: "question",
+                    showCancelButton: true,
+                    confirmButtonColor: "#3085d6",
+                    cancelButtonColor: "#d33",
+                    confirmButtonText: "Ya, kirim!",
+                    cancelButtonText: "Batal",
+                }).then(async (conf) => {
+                    if (conf.value || conf.isConfirmed) {
+                        await ajaxGetJson(
+                            `{{ route('satusehat.specimen.resend', '') }}/${btoa(param)}`,
                             "input_success",
                             ""
                         );
