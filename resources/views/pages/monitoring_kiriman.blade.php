@@ -113,10 +113,10 @@
     </div>
 
     @php
-        $totalPending = collect($monitoringData)->sum(fn($q) => count($q['pending']));
-        $totalFailed  = collect($monitoringData)->sum(fn($q) => count($q['failed']));
+        $totalPending = collect($monitoringData)->sum(function($q) { return count($q['pending']); });
+        $totalFailed  = collect($monitoringData)->sum(function($q) { return count($q['failed']); });
         $totalQueues  = count($monitoringData);
-        // $activeQueues = collect($monitoringData)->filter(fn($q) => count($q['pending']) > 0 || count($q['failed']) > 0)->count();
+        // $activeQueues = collect($monitoringData)->filter(function($q) { return count($q['pending']) > 0 || count($q['failed']) > 0; })->count();
     @endphp
 
     {{-- Summary Cards --}}
@@ -233,7 +233,7 @@
                             <th>No</th>
                             @php
                                 $paramKeys = collect($queue['pending'])
-                                    ->flatMap(fn($job) => array_keys($job['params'] ?? []))
+                                    ->flatMap(function($job) { return array_keys($job['params'] ?? []); })
                                     ->unique()
                                     ->values();
                             @endphp

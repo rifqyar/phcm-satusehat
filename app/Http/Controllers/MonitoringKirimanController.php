@@ -78,7 +78,7 @@ class MonitoringKirimanController extends Controller
             ];
         }
 
-        dd($monitoringData);
+        // dd($monitoringData);
         return response()->json([
             'status' => 'success',
             'data'   => $monitoringData
