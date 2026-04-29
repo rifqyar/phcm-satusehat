@@ -28,7 +28,7 @@ class SendMedicationRequest implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(array $payload, array $meta = [], $id_unit)
+    public function __construct(array $payload, array $meta = [], string $id_unit)
     {
         $this->payload = $payload;
         $this->meta = $meta;

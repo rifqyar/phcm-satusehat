@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Http\Traits\LogTraits;
+use App\Http\Traits\SATUSEHATTraits;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -15,10 +16,11 @@ use Illuminate\Support\Facades\Session;
 
 class SendMedicationDispense implements ShouldQueue
 {
-    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, LogTraits;
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels, LogTraits, SATUSEHATTraits;
 
     public $payload;
     public $meta;
+    public $id_unit;
 
     public $tries = 5;
     public $backoff = 10;
@@ -27,10 +29,11 @@ class SendMedicationDispense implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(array $payload, array $meta = [])
+    public function __construct(array $payload, array $meta = [], string $id_unit)
     {
         $this->payload = $payload;
         $this->meta = $meta;
+        $this->id_unit = $id_unit;
         $this->onQueue('MedicationDispense');
     }
 
@@ -39,152 +42,195 @@ class SendMedicationDispense implements ShouldQueue
      */
     public function handle()
     {
-        // Ambil data dari constructor
         $payload = $this->payload;
-        $meta = $this->meta;
-        //setup access token
-        $accessToken = $this->getAccessToken();
+        $meta    = $this->meta;
 
-        if (!$accessToken) {
-            throw new \Exception("Access token tidak tersedia di database.");
-        }
-        //setup organisasi
-        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
-            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
-        } else {
-            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
-        }
-        // setup baseurl
-        $baseurl = '';
-        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
-            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL_STAGING')->select('valStr')->first()->valStr;
-        } else {
-            $baseurl = GlobalParameter::where('tipe', 'SATUSEHAT_BASEURL')->select('valStr')->first()->valStr;
-        }
-        //
-        $url = 'MedicationDispense';
+        $item       = $meta['item'] ?? null;
+        $resendData = $meta['resendData'] ?? [];
+
+        $isResend = !empty($resendData['resend'])
+            && !empty($resendData['fhir_medicationdispense_id']);
+
+        $dispenseId = $resendData['fhir_medicationdispense_id'] ?? null;
 
         try {
-            $client = new \GuzzleHttp\Client();
+            $accessToken = $this->getAccessToken();
+            $baseUrl     = $this->getBaseUrl();
 
-            $baseuri = rtrim($baseurl, '/') . '/' . ltrim($url, '/');
+            $url    = $isResend
+                ? 'MedicationDispense/' . $dispenseId
+                : 'MedicationDispense';
 
-            $response = $client->post($baseuri, [
-                'headers' => [
-                    'Authorization' => 'Bearer ' . $accessToken,
-                    'Content-Type'  => 'application/json',
-                ],
-                'body'    => json_encode($payload),
-                'verify'  => false,
-                'timeout' => 30,
-            ]);
+            $method = $isResend ? 'put' : 'post';
 
-            // =======================
-            // RESPONSE PARSING (FIX)
-            // =======================
-            $responseBodyRaw = (string) $response->getBody();
-            $responseBody    = json_decode($responseBodyRaw, true);
+            $response = $this->sendRequest(
+                $method,
+                $baseUrl,
+                $url,
+                $payload,
+                $accessToken
+            );
+
+            $responseBody = json_decode((string) $response->getBody(), true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new \Exception('Invalid JSON response from SATUSEHAT');
             }
 
             $httpStatus = $response->getStatusCode();
+
+            $this->saveLog($payload, $responseBody, $httpStatus, $item);
         } catch (\GuzzleHttp\Exception\RequestException $e) {
 
             $responseBody = [];
-            $httpStatus   = null;
+            $httpStatus   = 500;
 
             if ($e->hasResponse()) {
                 $httpStatus = $e->getResponse()->getStatusCode();
-                $responseBodyRaw = (string) $e->getResponse()->getBody();
-                $responseBody    = json_decode($responseBodyRaw, true) ?? [];
+                $responseBody = json_decode(
+                    (string) $e->getResponse()->getBody(),
+                    true
+                ) ?: [];
             }
 
             $this->logError(
                 'MedicationDispense',
-                'Gagal mengirim MedicationDispense ke SATUSEHAT',
+                'Gagal kirim MedicationDispense',
                 [
-                    'payload' => $payload,
-                    'meta' => $meta,
-                    'ressponse' => $responseBody,
-                    'trace' => $e->getTrace(),
+                    'payload'  => $payload,
+                    'meta'     => $meta,
+                    'response' => $responseBody,
                 ]
             );
 
             throw new \Exception(
-                json_encode($responseBody) ?: $e->getMessage(),
-                $httpStatus ?? 0,
+                json_encode($responseBody),
+                $httpStatus,
                 $e
             );
         }
+    }
 
-        // =======================
-        // LOGGING
-        // =======================
+    /**
+     * =====================================================
+     * ACCESS TOKEN
+     * =====================================================
+     */
+    private function getAccessToken()
+    {
+        $login = $this->login($this->id_unit);
+
+        if (($login['metadata']['code'] ?? 500) != 200) {
+            throw new \Exception('Login SATUSEHAT gagal');
+        }
+
+        $token = $login['response']['token'] ?? null;
+
+        if (!$token) {
+            throw new \Exception('Access token tidak tersedia');
+        }
+
+        return $token;
+    }
+
+    /**
+     * =====================================================
+     * BASE URL
+     * =====================================================
+     */
+    private function getBaseUrl()
+    {
+        $env = strtoupper(env('SATUSEHAT', 'PRODUCTION'));
+
+        $type = $env == 'DEVELOPMENT'
+            ? 'SATUSEHAT_BASEURL_STAGING'
+            : 'SATUSEHAT_BASEURL';
+
+        return GlobalParameter::where('tipe', $type)
+            ->value('valStr');
+    }
+
+    /**
+     * =====================================================
+     * HTTP REQUEST
+     * =====================================================
+     */
+    private function sendRequest($method, $baseUrl, $url, $payload, $token)
+    {
+        $client = new \GuzzleHttp\Client();
+
+        return $client->$method(
+            rtrim($baseUrl, '/') . '/' . ltrim($url, '/'),
+            [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $token,
+                    'Content-Type'  => 'application/json',
+                ],
+                'body'    => json_encode($payload),
+                'verify'  => false,
+                'timeout' => 30,
+            ]
+        );
+    }
+
+    /**
+     * =====================================================
+     * SAVE LOG
+     * =====================================================
+     */
+    private function saveLog($payload, $responseBody, $httpStatus, $item)
+    {
+        $dispenseId = $responseBody['id'] ?? null;
 
         $this->logDb(
-            json_encode($responseBody, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-            $url,
-            json_encode($this->payload),
+            json_encode($responseBody),
+            'MedicationDispense',
+            json_encode($payload),
             'system'
         );
 
-        // =======================
-        // LOGGING DB KHUSUS MEDICATION DISPENSE
-        // =======================
-
-        $idTrans = $meta['idTrans'] ?? null;
-        $item    = $meta['item'] ?? null;
-
-        $dispenseId = $responseBody['id'] ?? null;
-
-        $logData = [
+        $data = [
             'LOG_TYPE' => 'MedicationDispense',
             'LOCAL_ID' => $item->ID_RESEP_FARMASI,
-            'ENCOUNTER_ID' => $item->id_satusehat_encounter ?? null,
-            'FHIR_MEDICATION_ID' => $item->medicationReference_reference ?? null,
-            'NAMA_OBAT' => $item->medicationReference_display ?? '-',
-            'KFA_CODE' => $item->KD_BRG_KFA ?? '-',
+            'FHIR_MEDICATION_ID' =>
+            $item->medicationReference_reference ?? null,
             'FHIR_MEDICATION_DISPENSE_ID' => $dispenseId,
-            'FHIR_MEDICATION_REQUEST_ID' => $item->FHIR_MEDICATION_REQUEST_ID ?? null,
+            'FHIR_MEDICATION_REQUEST_ID' =>
+            $item->FHIR_MEDICATION_REQUEST_ID ?? null,
             'PATIENT_ID' => $item->idpx ?? null,
             'ENCOUNTER_ID' => $item->ENCOUNTER_ID ?? null,
-            'STATUS' => !empty($dispenseId) ? 'success' : 'failed',
+            'KFA_CODE' => $item->KD_BRG_KFA ?? '-',
+            'STATUS' => $dispenseId ? 'success' : 'failed',
             'HTTP_STATUS' => $httpStatus,
-            'RESPONSE_MESSAGE' => json_encode(
-                $responseBody,
-                JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE
-            ),
-            'CREATED_AT' => now(),
-            'PAYLOAD' => json_encode($payload)
+            'RESPONSE_MESSAGE' => json_encode($responseBody),
+            'PAYLOAD' => json_encode($payload),
+            'UPDATED_AT' => now(),
         ];
 
         $existing = DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
             ->where('LOCAL_ID', $item->ID_RESEP_FARMASI)
-            ->where('FHIR_MEDICATION_ID', $item->medicationReference_reference)
             ->where('LOG_TYPE', 'MedicationDispense')
             ->first();
 
         if ($existing) {
             DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
                 ->where('ID', $existing->ID)
-                ->update([
-                    'FHIR_MEDICATION_DISPENSE_ID' => $logData['FHIR_MEDICATION_DISPENSE_ID'],
-                    'FHIR_MEDICATION_REQUEST_ID' => $logData['FHIR_MEDICATION_REQUEST_ID'],
-                    'FHIR_MEDICATION_ID' => $item->medicationReference_reference ?? null,
-                    'PATIENT_ID' => $logData['PATIENT_ID'],
-                    'ENCOUNTER_ID' => $logData['ENCOUNTER_ID'],
-                    'KFA_CODE' => $item->KD_BRG_KFA ?? '-',
-                    'STATUS' => $logData['STATUS'],
-                    'HTTP_STATUS' => $logData['HTTP_STATUS'],
-                    'RESPONSE_MESSAGE' => $logData['RESPONSE_MESSAGE'],
-                    'UPDATED_AT' => now(),
-                    'PAYLOAD' => json_encode($payload)
-                ]);
+                ->update($data);
         } else {
-            DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')->insert($logData);
+            $data['CREATED_AT'] = now();
+
+            DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION')
+                ->insert($data);
         }
+
+        $this->logInfo(
+            'MedicationDispense',
+            'Sukses kirim MedicationDispense',
+            [
+                'payload'  => $payload,
+                'response' => $responseBody,
+            ]
+        );
     }
 
     /**
@@ -213,18 +259,5 @@ class SendMedicationDispense implements ShouldQueue
             'RESPONSE_MESSAGE' => $exception->getMessage(),
             'CREATED_AT' => now()
         ]);
-    }
-
-
-    private function getAccessToken()
-    {
-        $tokenData = DB::connection('sqlsrv')
-            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_AUTH')
-            ->select('issued_at', 'expired_in', 'access_token')
-            ->where('idunit', '001')
-            ->orderBy('id', 'desc')
-            ->first();
-
-        return $tokenData->access_token ?? null;
     }
 }

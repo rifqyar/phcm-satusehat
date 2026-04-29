@@ -609,7 +609,10 @@ class MedicationDispenseController extends Controller
     public function prepMedicationDispense(Request $request)
     {
         try {
+            $id_unit = Session::get('id_unit', '001');
             $idTrans = $request->input('id_trans');
+            $resend = $request->input('resend', false);
+
             if (empty($idTrans)) {
                 return response()->json(
                     [
@@ -636,6 +639,7 @@ class MedicationDispenseController extends Controller
                 m.KD_BRG_KFA,
                 r.id_satusehat_encounter,
                 COALESCE(s.FHIR_MEDICATION_REQUEST_ID, slm.FHIR_MEDICATION_REQUEST_ID) AS FHIR_MEDICATION_REQUEST_ID,
+                COALESCE(s.FHIR_MEDICATION_DISPENSE_ID, slm1.FHIR_MEDICATION_DISPENSE_ID) AS FHIR_MEDICATION_DISPENSE_ID,
                 r2.idpx,
                 r2.nama AS pasien_nama,
                 r3.idnakes,
@@ -677,16 +681,28 @@ class MedicationDispenseController extends Controller
             $alreadySent = 0;
 
             foreach ($data as $item) {
-                // 💥 Jika sudah berhasil dikirim sebelumnya → skip
+                // 💥 Jika sudah berhasil dikirim sebelumnya → resend
                 if (!empty($item->STATUS_KIRIM)) {
+                    $payload = $this->createMedicationDispensePayload($item, $item->FHIR_MEDICATION_DISPENSE_ID);
+
+                    SendMedicationDispense::dispatch($payload, [
+                        'idTrans' => $idTrans,
+                        'item' => $item,
+                        'resendData' => [
+                            'resend' => true,
+                            'fhir_medicationdispense_id' => $item->FHIR_MEDICATION_DISPENSE_ID
+                        ]
+                    ],$id_unit)->onQueue('MedicationDispense');
+
                     $summary[] = [
                         'medication' => $item->medicationReference_display,
-                        'status' => 'already_sent',
+                        'status' => 'resend',
                     ];
-                    $alreadySent++;
+
                     continue;
                 }
 
+                // Jika med request belum ada skip
                 if (empty($item->FHIR_MEDICATION_REQUEST_ID)) {
                     $summary[] = [
                         'medication' => $item->medicationReference_display,
@@ -699,17 +715,21 @@ class MedicationDispenseController extends Controller
                 }
 
                 // 🚀 Build & queue payload
-                $payload = $this->createMedicationDispensePayload($item);
+                if (empty($item->FHIR_MEDICATION_DISPENSE_ID)) {
+                    $payload = $this->createMedicationDispensePayload($item);
 
-                SendMedicationDispense::dispatch($payload, [
-                    'idTrans' => $idTrans,
-                    'item' => $item,
-                ])->onQueue('MedicationDispense');
+                    SendMedicationDispense::dispatch($payload, [
+                        'idTrans' => $idTrans,
+                        'item' => $item,
+                    ], $id_unit)->onQueue('MedicationDispense');
 
-                $summary[] = [
-                    'medication' => $item->medicationReference_display,
-                    'status' => 'queued',
-                ];
+                    $summary[] = [
+                        'medication' => $item->medicationReference_display,
+                        'status' => 'queued',
+                    ];
+
+                    continue;
+                }
             }
 
             // 💡 Jika 100% sudah pernah dikirim → return jelas
@@ -795,24 +815,16 @@ class MedicationDispenseController extends Controller
     }
 
     //buat payload dispense
-    private function createMedicationDispensePayload($item)
+    private function createMedicationDispensePayload($item, $medDispenseId = null): array
     {
-        $id_unit = Session::get('id_unit_simrs', '001');
-        if (strtoupper(env('SATUSEHAT', 'PRODUCTION')) == 'DEVELOPMENT') {
-            $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Dev')->select('org_id')->first()->org_id;
-        } else {
-            $orgId = SS_Kode_API::where('idunit', $id_unit)->where('env', 'Prod')->select('org_id')->first()->org_id;
-        }
+        $orgId = $this->getOrganizationId();
+        $isCompound = (int) $item->isRacikan === 1;
 
-        $jenisCode = $item->isRacikan == 1 ? 'C' : 'NC';
-        $jenisName = $item->isRacikan == 1 ? 'Compound' : 'Non-compound';
-
-        $medId = $item->ID_RESEP_FARMASI . '-' . $item->urutan;
-        $authorizingPrescription = [
-            [
-                'reference' => 'MedicationRequest/' . $item->FHIR_MEDICATION_REQUEST_ID,
-            ],
-        ];
+        $medicationId = "{$item->ID_RESEP_FARMASI}-{$item->urutan}";
+        $patientReference = "Patient/{$item->idpx}";
+        $encounterReference = "Encounter/{$item->id_satusehat_encounter}";
+        $practitionerReference = "Practitioner/{$item->idnakes}";
+        $medicationRequestReference = "MedicationRequest/{$item->FHIR_MEDICATION_REQUEST_ID}";
 
         $payload = [
             'resourceType' => 'MedicationDispense',
@@ -820,12 +832,14 @@ class MedicationDispenseController extends Controller
                 [
                     'resourceType' => 'Medication',
                     'meta' => [
-                        'profile' => ['https://fhir.kemkes.go.id/r4/StructureDefinition/Medication'],
+                        'profile' => [
+                            'https://fhir.kemkes.go.id/r4/StructureDefinition/Medication',
+                        ],
                     ],
-                    'id' => $item->ID_RESEP_FARMASI . '-' . $item->urutan,
+                    'id' => $medicationId,
                     'identifier' => [
                         [
-                            'system' => 'http://sys-ids.kemkes.go.id/medication/' . $orgId,
+                            'system' => "http://sys-ids.kemkes.go.id/medication/{$orgId}",
                             'use' => 'official',
                         ],
                     ],
@@ -846,8 +860,8 @@ class MedicationDispenseController extends Controller
                                 'coding' => [
                                     [
                                         'system' => 'http://terminology.kemkes.go.id/CodeSystem/medication-type',
-                                        'code' => $jenisCode,
-                                        'display' => $jenisName,
+                                        'code' => $isCompound ? 'C' : 'NC',
+                                        'display' => $isCompound ? 'Compound' : 'Non-compound',
                                     ],
                                 ],
                             ],
@@ -855,13 +869,16 @@ class MedicationDispenseController extends Controller
                     ],
                 ],
             ],
+
             'identifier' => [
                 [
-                    'system' => 'http://sys-ids.kemkes.go.id/prescription/' . $orgId,
+                    'system' => "http://sys-ids.kemkes.go.id/prescription/{$orgId}",
                     'use' => 'official',
                 ],
             ],
+
             'status' => 'completed',
+
             'category' => [
                 'coding' => [
                     [
@@ -871,40 +888,70 @@ class MedicationDispenseController extends Controller
                     ],
                 ],
             ],
+
             'medicationReference' => [
-                'reference' => '#' . $item->ID_RESEP_FARMASI . '-' . $item->urutan,
+                'reference' => "#{$medicationId}",
             ],
+
             'subject' => [
-                'reference' => 'Patient/' . $item->idpx,
+                'reference' => $patientReference,
                 'display' => $item->pasien_nama,
             ],
+
             'context' => [
-                'reference' => 'Encounter/' . $item->id_satusehat_encounter,
+                'reference' => $encounterReference,
             ],
+
             'whenPrepared' => now()->toIso8601String(),
+
             'performer' => [
                 [
                     'actor' => [
-                        'reference' => 'Practitioner/' . $item->idnakes,
+                        'reference' => $practitionerReference,
                         'display' => $item->nakes_nama,
                     ],
                 ],
             ],
-            'authorizingPrescription' => $authorizingPrescription,
+
+            'authorizingPrescription' => [
+                [
+                    'reference' => $medicationRequestReference,
+                ],
+            ],
+
             'receiver' => [
                 [
-                    'reference' => 'Patient/' . $item->idpx,
+                    'reference' => $patientReference,
                     'display' => $item->pasien_nama,
                 ],
             ],
+
             'substitution' => [
                 'wasSubstituted' => false,
             ],
         ];
 
-        // echo json_encode($payload, JSON_PRETTY_PRINT);die();
+
+        if (!empty($medDispenseId)) {
+            $payload['id'] = $medDispenseId;
+        }
 
         return $payload;
+    }
+
+    /**
+     * Ambil orgId berdasarkan environment SATUSEHAT
+     */
+    private function getOrganizationId(): string
+    {
+        $idUnit = Session::get('id_unit');
+        $env = strtoupper(env('SATUSEHAT', 'PRODUCTION')) === 'DEVELOPMENT'
+            ? 'Dev'
+            : 'Prod';
+
+        return SS_Kode_API::where('idunit', $idUnit)
+            ->where('env', $env)
+            ->value('org_id');
     }
 
     //buat dispense kirim med request

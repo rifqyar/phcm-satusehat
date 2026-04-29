@@ -323,13 +323,13 @@
                             if (data.STATUS_MAPPING === '100') {
                                 btn += `
                                     <button class="btn btn-sm btn-primary w-100"
-                                        onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                        onclick="confirmkirimSatusehat('${data.ID_TRANS}', false)">
                                         <i class="fas fa-paper-plane"></i> Kirim SATUSEHAT
                                     </button>`;
                             } else if (data.STATUS_MAPPING === '200') {
                                 btn += `
                                     <button class="btn btn-sm btn-warning w-100"
-                                        onclick="confirmkirimSatusehat('${data.ID_TRANS}')">
+                                        onclick="confirmkirimSatusehat('${data.ID_TRANS}', true)">
                                         <i class="fas fa-redo"></i> Kirim Ulang
                                     </button>`;
                             } else {
@@ -586,13 +586,18 @@
             });
         }
 
-        function confirmkirimSatusehat(idTrans) {
+        function confirmkirimSatusehat(idTrans, resend) {
             console.log('confirmKirimSatusehat called, idTrans =', idTrans);
             if (!idTrans) return;
 
+            let title = resend ? 'Kirim Ulang ke SATUSEHAT?' : 'Kirim ke SATUSEHAT?';
+            let text = resend ?
+                `Yakin ingin mengirim ulang transaksi ${idTrans} ke SATUSEHAT?` :
+                `Yakin ingin mengirim transaksi ${idTrans} ke SATUSEHAT?`;
+
             Swal.fire({
-                title: 'Kirim ke SATUSEHAT?',
-                text: `Yakin ingin mengirim transaksi ${idTrans} ke SATUSEHAT?`,
+                title: title,
+                text: text,
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonText: 'Ya, kirim',
@@ -602,7 +607,7 @@
             }).then((result) => {
                 if (result.value) {
                     console.log("Lanjut kirim ke SATUSEHAT");
-                    kirimSatusehat(idTrans);
+                    kirimSatusehat(idTrans, null, true, resend);
                     table.ajax.reload();
                 } else {
                     console.log("Dibatalkan");
@@ -612,7 +617,7 @@
         }
 
         // Kirim ke SATUSEHAT
-        function kirimSatusehat(idTrans, btn = null, showSwal = true) {
+        function kirimSatusehat(idTrans, btn = null, showSwal = true, resend = false) {
             return new Promise((resolve, reject) => {
                 if (!idTrans) return reject('ID_TRANS kosong.');
 
@@ -620,7 +625,8 @@
                     url: '{{ route('satusehat.medication-dispense.sendsehat') }}',
                     type: 'GET',
                     data: {
-                        id_trans: idTrans
+                        id_trans: idTrans,
+                        resend: resend ? 1 : 0
                     },
                     success: function(res) {
                         if (res.status === 'success') {
