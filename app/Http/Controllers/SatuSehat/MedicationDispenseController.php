@@ -692,7 +692,7 @@ class MedicationDispenseController extends Controller
                             'resend' => true,
                             'fhir_medicationdispense_id' => $item->FHIR_MEDICATION_DISPENSE_ID
                         ]
-                    ],$id_unit)->onQueue('MedicationDispense');
+                    ], $id_unit)->onQueue('MedicationDispense');
 
                     $summary[] = [
                         'medication' => $item->medicationReference_display,
@@ -1166,7 +1166,7 @@ class MedicationDispenseController extends Controller
 
     public function getDataMedicationDispenseQueue($idTrans)
     {
-        $data = DB::select(
+        $data = DB::selectOne(
             "
                 SELECT distinct
                     i.ID_TRANS AS ID_RESEP_FARMASI,
@@ -1200,11 +1200,9 @@ class MedicationDispenseController extends Controller
         );
 
         $resParam['Karcis'] = $data ? $data->KARCIS : "not found";
-        $resParam['Jenis Perawatan'] = $jenisPerawatan;
-        $resParam['Pasien'] = $patient ? $patient->nama : "not found";
-        $resParam['Dokter'] = $nakes ? $nakes->nama : "not found";
-        $resParam['Lokasi'] = $location ? $location->name : "not found";
-        $resParam['Created At'] = $dataKarcis ? $dataKarcis->WAKTU_BUAT_KARCIS : "not found";
+        $resParam['Pasien'] = $data ? $data->pasien_nama : "not found";
+        $resParam['Dokter'] = $data ? $data->nakes_nama : "not found";
+        $resParam['Kode Barang KFA'] = $data ? $data->KD_BRG_KFA : "not found";
 
         return $resParam;
     }

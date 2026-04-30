@@ -8,6 +8,7 @@ use App\Http\Controllers\SatuSehat\ClinicalImpressionController;
 use App\Http\Controllers\SatuSehat\DiagnosticReportController;
 use App\Http\Controllers\SatuSehat\EncounterController;
 use App\Http\Controllers\SatuSehat\EpisodeOfCareController;
+use App\Http\Controllers\SatuSehat\MedicationDispenseController;
 use App\Http\Controllers\SatuSehat\MedicationRequestController;
 use App\Http\Controllers\SatuSehat\ObservasiController;
 use App\Http\Controllers\SatuSehat\ProcedureController;
@@ -225,7 +226,10 @@ class MonitoringKirimanController extends Controller
                 $idTrans = $param;
 
                 return app(MedicationRequestController::class)->getDataMedicationRequestQueue($idTrans);
-                // } else if ($queueJob == "MedicationDispense") {
+            } else if ($queueJob == "MedicationDispense") {
+                $idTrans = $param;
+
+                return app(MedicationDispenseController::class)->getDataMedicationDispenseQueue($idTrans);
             } else if ($queueJob == "AllergyIntolerance") {
                 $decoded = LZString::decompressFromEncodedURIComponent($param);
                 $parts   = explode('&', $decoded);
