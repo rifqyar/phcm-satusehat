@@ -56,13 +56,13 @@ class MedStatementController extends Controller
         $status = $request->get('status', 'all');
 
         $sql = "
-        SELECT 
+        SELECT
             AA.KARCIS,
             A.ID_TRANS,
             A.NMPX,
             A.TGL,
             B.CREATED_AT AS WAKTU_KIRIM_DISPENSE,
-            CASE 
+            CASE
                 WHEN EXISTS (
                     SELECT 1
                     FROM SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION MS
@@ -74,7 +74,7 @@ class MedStatementController extends Controller
                 ELSE 'Belum Integrasi'
             END AS STATUS_KIRIM_STATEMENT
         FROM IF_HTRANS A
-        JOIN IF_HTRANS_OL AA 
+        JOIN IF_HTRANS_OL AA
             ON A.ID_TRANS_OL = AA.ID_TRANS
         JOIN (
             SELECT *
@@ -139,7 +139,7 @@ class MedStatementController extends Controller
         $idTrans = $request->id_trans;
 
         $sql = "
-        SELECT 
+        SELECT
             PS.nik,
             PS.nama,
             PS.sex,
@@ -159,26 +159,26 @@ class MedStatementController extends Controller
             D1.IDENTIFIER_VALUE
 
         FROM IF_HTRANS A
-        JOIN IF_HTRANS_OL AA 
+        JOIN IF_HTRANS_OL AA
             ON A.ID_TRANS_OL = AA.ID_TRANS
-        JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA AAA 
+        JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA AAA
             ON AA.KARCIS = AAA.karcis
-        JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN PS 
+        JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN PS
             ON AAA.id_satusehat_px = PS.idpx
-        JOIN IF_TRANS B 
+        JOIN IF_TRANS B
             ON A.ID_TRANS = B.ID_TRANS
-        JOIN IF_MSIGNA SIG 
+        JOIN IF_MSIGNA SIG
             ON B.SIGNA = SIG.KDSIGNA
-        JOIN M_TRANS_KFA C 
+        JOIN M_TRANS_KFA C
             ON B.KDBRG_CENTRA = C.KDBRG_CENTRA
-        LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION D 
+        LEFT JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION D
             ON A.ID_TRANS = D.LOCAL_ID
            AND D.LOG_TYPE = 'MedicationDispense'
            and D.STATUS = 'success'
            AND C.KD_BRG_KFA = D.KFA_CODE
-        left JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION D1 ON A.ID_TRANS = D1.LOCAL_ID 
-            AND D1.LOG_TYPE = 'MedicationStatement' 
-            and D1.STATUS = 'success' 
+        left JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION D1 ON A.ID_TRANS = D1.LOCAL_ID
+            AND D1.LOG_TYPE = 'MedicationStatement'
+            and D1.STATUS = 'success'
             and C.KD_BRG_KFA = D1.KFA_CODE
         WHERE A.ID_TRANS = ?";
 
@@ -286,7 +286,7 @@ class MedStatementController extends Controller
         $sql = "SELECT TOP 1
                 A.ID_TRANS
             FROM IF_HTRANS A
-            JOIN IF_HTRANS_OL AA 
+            JOIN IF_HTRANS_OL AA
                 ON A.ID_TRANS_OL = AA.ID_TRANS
             JOIN (
                 SELECT *
@@ -315,7 +315,7 @@ class MedStatementController extends Controller
         }
 
         $idTrans = $row->ID_TRANS;
-        $this->sendStatement($idTrans);
+        $this->prepMedStatementPayload($idTrans);
     }
 
 
@@ -326,7 +326,7 @@ class MedStatementController extends Controller
     public function prepMedStatementPayload($idTrans)
     {
         $sql = "
-                SELECT 
+                SELECT
                 AAA.id_satusehat_encounter,
                 PS.nik,
                 PS.nama,
@@ -341,19 +341,19 @@ class MedStatementController extends Controller
                 D.CREATED_AT AS WK_KIRIM_SATUSEHAT,
                 D.FHIR_MEDICATION_DISPENSE_ID
             FROM IF_HTRANS A
-            JOIN IF_HTRANS_OL AA 
+            JOIN IF_HTRANS_OL AA
                 ON A.ID_TRANS_OL = AA.ID_TRANS
-            JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA AAA 
+            JOIN SATUSEHAT.dbo.RJ_SATUSEHAT_NOTA AAA
                 ON AA.KARCIS = AAA.karcis
-            JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN PS 
-                ON AAA.id_satusehat_px = PS.idpx 
-            JOIN IF_TRANS B 
+            JOIN SATUSEHAT.dbo.RIRJ_SATUSEHAT_PASIEN PS
+                ON AAA.id_satusehat_px = PS.idpx
+            JOIN IF_TRANS B
                 ON A.ID_TRANS = B.ID_TRANS
-            JOIN IF_MSIGNA SIG 
+            JOIN IF_MSIGNA SIG
                 ON B.SIGNA = SIG.KDSIGNA
-            JOIN M_TRANS_KFA C 
+            JOIN M_TRANS_KFA C
                 ON B.KDBRG_CENTRA = C.KDBRG_CENTRA
-            JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION D 
+            JOIN SATUSEHAT.dbo.SATUSEHAT_LOG_MEDICATION D
                 ON A.ID_TRANS = D.LOCAL_ID
             AND D.LOG_TYPE = 'MedicationDispense'
             AND D.STATUS = 'success'

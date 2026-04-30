@@ -764,72 +764,98 @@ class EpisodeOfCareController extends Controller
             ->first();
 
         try {
-            if ($dataKarcis->inap) {
-                $historyTime = $this->getHistoryTime($dataKarcis);
-                $historyTimeInap = $this->getHistoryTimeInap($dataKarcis);
-                if ($dataKarcis->inap->tgl_plng !== null) {
+            $patchPayload = [];
+            // Cek status dx khusus
+            $sql = "SELECT TOP 1 dk.ID_TRANSAKSI, edk.STATUS_AKTIF
+                    FROM fn_getDataKunjungan(?, ?) dk
+                    INNER JOIN E_RM_PHCM.dbo.ERM_DX_KHUSUSPX edk
+                        ON dk.ID_TRANSAKSI = edk.KARCIS
+                        AND dk.NO_PESERTA = edk.NO_PESERTA
+                    WHERE dk.NO_PESERTA = ?
+                    ORDER BY edk.CRTDT DESC";
 
-                    $finishedTime = Carbon::createFromFormat(
-                        'Y-m-d H:i:s',
-                        $historyTimeInap['jam_finish']
-                    )->toIso8601String();
+            $dxKhusus = DB::selectOne($sql, [
+                $id_unit,
+                'RAWAT_JALAN',
+                $dataKarcis->NO_PESERTA
+            ]);
 
-                    $patchPayload[] = [
-                        'op'    => 'replace',
-                        'path'  => '/status',
-                        'value' => 'finished',
-                    ];
+            if ($dxKhusus->STATUS_AKTIF == 0) {
+                if ($dataKarcis->inap) {
+                    $historyTime = $this->getHistoryTime($dataKarcis);
+                    $historyTimeInap = $this->getHistoryTimeInap($dataKarcis);
+                    if ($dataKarcis->inap->tgl_plng !== null) {
 
-                    $patchPayload[] = [
-                        'op'   => 'add',
-                        'path' => '/statusHistory/-',
-                        'value' => [
-                            'status' => 'finished',
-                            'period' => [
-                                'start' => $finishedTime,
+                        $finishedTime = Carbon::createFromFormat(
+                            'Y-m-d H:i:s',
+                            $historyTimeInap['jam_finish']
+                        )->toIso8601String();
+
+                        $patchPayload[] = [
+                            'op'    => 'replace',
+                            'path'  => '/status',
+                            'value' => 'finished',
+                        ];
+
+                        $patchPayload[] = [
+                            'op'   => 'add',
+                            'path' => '/statusHistory/-',
+                            'value' => [
+                                'status' => 'finished',
+                                'period' => [
+                                    'start' => $finishedTime,
+                                ],
                             ],
-                        ],
-                    ];
+                        ];
 
-                    $patchPayload[] = [
-                        'op'    => 'add',
-                        'path'  => '/period/end',
-                        'value' => $finishedTime,
-                    ];
+                        $patchPayload[] = [
+                            'op'    => 'add',
+                            'path'  => '/period/end',
+                            'value' => $finishedTime,
+                        ];
+                    }
+                } else {
+                    $historyTime = $this->getHistoryTime($dataKarcis);
+                    if ($dataKarcis->NOTA !== null && $dataKarcis->WAKTU_NOTA !== null) {
+                        $finishedTime = Carbon::parse(
+                            $historyTime['jam_finish']
+                        )->toIso8601String();
+
+                        $patchPayload[] = [
+                            'op'    => 'replace',
+                            'path'  => '/status',
+                            'value' => 'finished',
+                        ];
+
+                        $patchPayload[] = [
+                            'op'   => 'add',
+                            'path' => '/statusHistory/-',
+                            'value' => [
+                                'status' => 'finished',
+                                'period' => [
+                                    'start' => $finishedTime,
+                                ],
+                            ],
+                        ];
+
+                        $patchPayload[] = [
+                            'op'    => 'add',
+                            'path'  => '/period/end',
+                            'value' => $finishedTime,
+                        ];
+                    } else {
+                        return response()->json([
+                            'status' => JsonResponse::HTTP_OK,
+                            'message' => 'Karcis ini belum terbit nota & belum melakukan pembayaran',
+                            'data' => null,
+                            'redirect' => [
+                                'need' => false,
+                                'to' => null,
+                            ]
+                        ], 200);
+                    }
                 }
             } else {
-                $historyTime = $this->getHistoryTime($dataKarcis);
-                if ($dataKarcis->NOTA !== null && $dataKarcis->WAKTU_NOTA !== null) {
-                    $finishedTime = Carbon::parse(
-                        $historyTime['jam_finish']
-                    )->toIso8601String();
-
-                    $patchPayload[] = [
-                        'op'    => 'replace',
-                        'path'  => '/status',
-                        'value' => 'finished',
-                    ];
-
-                    $patchPayload[] = [
-                        'op'   => 'add',
-                        'path' => '/statusHistory/-',
-                        'value' => [
-                            'status' => 'finished',
-                            'period' => [
-                                'start' => $finishedTime,
-                            ],
-                        ],
-                    ];
-
-                    $patchPayload[] = [
-                        'op'    => 'add',
-                        'path'  => '/period/end',
-                        'value' => $finishedTime,
-                    ];
-                }
-            }
-
-            if (empty($patchPayload)) {
                 return response()->json([
                     'status' => JsonResponse::HTTP_OK,
                     'message' => 'EpisodeOfCare belum selesai, tidak perlu kirim ulang',

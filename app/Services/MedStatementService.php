@@ -11,7 +11,7 @@ class MedStatementService
     public function process(array $payload): void
     {
         $karcis = isset($payload['karcis']) && $payload['karcis'] !== '' ? $payload['karcis'] : null;
-        $idunit = $payload['idunit'] ?? null;
+        $idunit = $payload['id_unit'] ?? null;
 
         if (!$karcis) {
             throw new \Exception('karcis wajib ada');

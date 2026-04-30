@@ -29,9 +29,9 @@ class DispatchController extends Controller
             WHERE ID_TRANSAKSI = ? AND TANGGAL >= DATEADD(YEAR, -1, GETDATE())
         ", [
             $request->id_unit,
-            $payload['karcis'],
+            $payload['karcis'] ?? null,
             $request->id_unit,
-            $payload['karcis'],
+            $payload['karcis'] ?? null,
         ]);
 
         $arrKlinikRadLab = [
@@ -44,9 +44,11 @@ class DispatchController extends Controller
         foreach ($urls as $val) {
             $endpoint = explode('/', $val)[1];
 
-            if (isset($payload['klinik']) && !in_array($payload['klinik'], $arrKlinikRadLab)) {
-                if ($endpoint !== 'encounter' && !$encounterId->ID_SATUSEHAT_ENCOUNTER) {
-                    continue;
+            if (!str_contains($endpoint, 'medication')){
+                if (isset($payload['klinik']) && !in_array($payload['klinik'], $arrKlinikRadLab)) {
+                    if ($endpoint !== 'encounter' && !$encounterId->ID_SATUSEHAT_ENCOUNTER) {
+                        continue;
+                    }
                 }
             }
 
