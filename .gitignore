@@ -14,3 +14,4 @@ config/database.php
 user.md
 composer.
 notes.md
+/ws-monitor/node_modules/
