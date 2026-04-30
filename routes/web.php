@@ -31,6 +31,8 @@ Route::middleware(['checkLogin'])->group(function () {
 
     // Monitoring Antrian Kiriman Satusehat
     Route::get('/monitoring-kiriman', [App\Http\Controllers\MonitoringKirimanController::class, 'index'])->name('monitoring_kiriman.index');
+    // routes/web.php
+    Route::get('/monitoring-kiriman/jobs', [App\Http\Controllers\MonitoringKirimanController::class, 'getQueueMonitor']);
 
     // mapping obat
     Route::get('/master_obat', [App\Http\Controllers\MasterObatController::class, 'index'])->name('master_obat');
@@ -283,7 +285,7 @@ Route::middleware(['checkLogin'])->group(function () {
             Route::post('/resend-satusehat', [App\Http\Controllers\Transaction\RawatInapController::class, 'resendSatuSehat'])->name('.resend-satusehat');
         });
 
-        Route::group(['prefix' => 'per-endpoint', 'as' => '.per-endpoint'], function(){
+        Route::group(['prefix' => 'per-endpoint', 'as' => '.per-endpoint'], function () {
             Route::get('/', [App\Http\Controllers\Transaction\TransactionPerEndpointController::class, 'index'])->name('.index');
         });
     });
