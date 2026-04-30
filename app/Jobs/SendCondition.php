@@ -18,14 +18,16 @@ class SendCondition implements ShouldQueue
 
     public $payload;
     public $meta;
+    public $id_unit;
 
     public $tries = 5;
     public $backoff = 10;
 
-    public function __construct(array $payload, array $meta = [])
+    public function __construct(array $payload, array $meta = [], string $id_unit)
     {
         $this->payload = $payload;
         $this->meta = $meta;
+        $this->id_unit = $id_unit;
         $this->onQueue('Condition');
     }
 
@@ -35,7 +37,11 @@ class SendCondition implements ShouldQueue
         $payload = $this->payload;
         $meta = $this->meta;
 
-        $accessToken = $this->getAccessToken();
+        $login = $this->login($this->id_unit);
+        if ($login['metadata']['code'] != 200) {
+            $hasil = $login;
+        }
+        $accessToken = $login['response']['token'];
 
         if (!$accessToken) {
             throw new \Exception('Access token tidak tersedia');
@@ -150,17 +156,5 @@ class SendCondition implements ShouldQueue
             'created_by' => $meta['user'] ?? 'system',
             'created_at' => now(),
         ]);
-    }
-
-    private function getAccessToken()
-    {
-        $tokenData = DB::connection('sqlsrv')
-            ->table('SATUSEHAT.dbo.RIRJ_SATUSEHAT_AUTH')
-            ->select('access_token')
-            ->where('idunit', '001')
-            ->orderBy('id', 'desc')
-            ->first();
-
-        return $tokenData->access_token ?? null;
     }
 }

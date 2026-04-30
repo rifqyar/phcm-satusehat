@@ -317,7 +317,7 @@ class DiagnosisController extends Controller
         ];
 
         // dispatch ke queue
-        SendCondition::dispatch($payload, $meta)->onQueue('Condition');
+        SendCondition::dispatch($payload, $meta, $id_unit)->onQueue('Condition');
 
         return response()->json([
             'status'  => true,
