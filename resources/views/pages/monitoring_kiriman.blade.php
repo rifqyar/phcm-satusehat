@@ -99,13 +99,16 @@
                         <i class="fas fa-circle fa-xs"></i> Redis Disconnected
                     </span>
                 @endif
-                <button class="btn btn-sm btn-light border" onclick="window.location.reload()">
+                <button class="btn btn-sm btn-light border" id="refresh-btn" onclick="window.location.reload()">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
+                <span id="ws-status" class="badge badge-secondary px-3 py-2">
+                    <i class="fas fa-circle fa-xs"></i> Connecting...
+                </span>
                 {{-- <button class="btn btn-sm btn-danger" onclick="clearAllQueues()">
                     <i class="fas fa-trash"></i> Clear All Queues
                 </button> --}}
-                <span class="text-muted text-right" style="font-size:0.78rem;">
+                <span class="text-muted text-right" style="font-size:0.78rem;" id="last-loaded">
                     Last loaded: {{ now()->format('Y-m-d H:i:s') }}
                 </span>
             </div>
@@ -144,7 +147,7 @@
                             <span class="summary-icon text-warning"><i class="fas fa-hourglass-half"></i></span>
                         </div>
                         <div>
-                            <h2 class="font-bold m-b-0">{{ $totalPending }}</h2>
+                            <h2 class="font-bold m-b-0" id="summary-pending">{{ $totalPending }}</h2>
                             <small class="text-muted">Pending Jobs</small>
                         </div>
                     </div>
@@ -159,7 +162,7 @@
                             <span class="summary-icon text-danger"><i class="fas fa-times-circle"></i></span>
                         </div>
                         <div>
-                            <h2 class="font-bold m-b-0">{{ $totalFailed }}</h2>
+                            <h2 class="font-bold m-b-0" id="summary-failed">{{ $totalFailed }}</h2>
                             <small class="text-muted">Failed Jobs</small>
                         </div>
                     </div>
@@ -193,20 +196,33 @@
 
     <div class="card">
         <div class="card-header queue-card-header d-flex align-items-center justify-content-between"
-             onclick="toggleQueue('queue-body-{{ $index }}', 'chevron-{{ $index }}')">
+            data-queue="{{ $queue['queue'] }}"
+            onclick="toggleQueue('queue-body-{{ $index }}', 'chevron-{{ $index }}')">
             <div class="d-flex align-items-center">
                 <i class="fas fa-circle fa-xs m-r-10 {{ $failedCount > 0 ? 'text-danger' : ($pendingCount > 0 ? 'text-warning' : 'text-success') }}"></i>
                 <h4 class="card-title m-b-0">{{ $queue['queue'] }}</h4>
             </div>
             <div class="d-flex align-items-center" style="gap: 0.4rem;">
                 @if($pendingCount > 0)
-                    <span class="badge badge-pending px-2 py-1">{{ $pendingCount }} pending</span>
+                    <span class="badge badge-pending px-2 py-1"
+                        id="badge-pending-{{ $queue['queue'] }}"
+                        style="{{ $pendingCount > 0 ? '' : 'display:none' }}">
+                        {{ $pendingCount }} pending
+                    </span>
                 @endif
                 @if($failedCount > 0)
-                    <span class="badge badge-failed px-2 py-1">{{ $failedCount }} failed</span>
+                    <span class="badge badge-failed px-2 py-1"
+                        id="badge-failed-{{ $queue['queue'] }}"
+                        style="{{ $failedCount > 0 ? '' : 'display:none' }}">
+                        {{ $failedCount }} failed
+                    </span>
                 @endif
                 @if(!$hasJobs)
-                    <span class="badge badge-empty px-2 py-1">empty</span>
+                    <span class="badge badge-empty px-2 py-1"
+                        id="badge-empty-{{ $queue['queue'] }}"
+                        style="{{ !$hasJobs ? '' : 'display:none' }}">
+                        empty
+                    </span>
                 @endif
                 <i class="fas fa-chevron-down chevron-icon {{ $hasJobs ? 'rotated' : '' }}" id="chevron-{{ $index }}"></i>
             </div>
@@ -218,13 +234,13 @@
             <div class="px-4 pt-3">
                 <div class="section-divider">
                     <i class="fas fa-hourglass-half text-warning m-r-5"></i>
-                    Pending Jobs ({{ $pendingCount }})
+                    Pending Jobs (<span id="pending-count-{{ $queue['queue'] }}">{{ $pendingCount }}</span>)
                 </div>
             </div>
 
             <div class="queue-table-wrapper">
                 <table class="table table-hover table-sm mb-0">
-                    <thead class="thead-light">
+                    <thead class="thead-light" id="pending-thead-{{ $queue['queue'] }}">
                         <tr>
                             <th>UUID</th>
                             <th>Job Class</th>
@@ -243,7 +259,7 @@
                             {{-- <th>Pushed At</th> --}}
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="pending-tbody-{{ $queue['queue'] }}">
                         @forelse($queue['pending'] as $job)
                         @php $p = $job['params'] ?? []; @endphp
                         <tr>
@@ -287,7 +303,7 @@
                             <th>Connection</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="failed-tbody-{{ $queue['queue'] }}">
                         @forelse($queue['failed'] as $job)
                         <tr>
                             <td class="param-cell text-muted">{{ $job['id'] }}</td>
@@ -324,31 +340,192 @@
 
 @push('after-script')
 <script>
-    function toggleQueue(bodyId, chevronId) {
-        const body    = document.getElementById(bodyId);
-        const chevron = document.getElementById(chevronId);
-        const isOpen  = body.style.display !== 'none';
-        body.style.display = isOpen ? 'none' : 'block';
-        chevron.classList.toggle('rotated', !isOpen);
+(function () {
+    const ws = new WebSocket('ws://localhost:6001');
+    const statusEl = document.getElementById('ws-status');
+
+    // Track previous counts to detect changes
+    const prevCounts = {};
+
+    ws.onopen = () => {
+        statusEl.className = 'badge badge-success px-3 py-2';
+        statusEl.innerHTML = '<i class="fas fa-circle fa-xs"></i> Live';
+    };
+
+    ws.onclose = () => {
+        statusEl.className = 'badge badge-danger px-3 py-2';
+        statusEl.innerHTML = '<i class="fas fa-circle fa-xs"></i> Disconnected';
+        setTimeout(() => location.reload(), 5000);
+    };
+
+    ws.onmessage = async (event) => {
+        const msg = JSON.parse(event.data);
+        if (msg.type !== 'queue_update') return;
+
+        // Update timestamp always
+        const lastLoaded = document.getElementById('last-loaded');
+        if (lastLoaded) lastLoaded.textContent = 'Last updated: ' + new Date().toLocaleTimeString();
+
+        // Always refresh from Laravel — don't trust WS counts for table content
+        await refreshJobTables();
+    };
+
+    async function refreshJobTables() {
+        try {
+            const res  = await fetch('/monitoring-kiriman/jobs');
+            const json = await res.json();
+            if (json.status !== 'success') return;
+
+            let totalPending = 0;
+            let totalFailed  = 0;
+
+            json.data.forEach(({ queue, pending, failed }) => {
+                const pendingCount = pending.length;
+                const failedCount  = failed.length;
+
+                totalPending += pendingCount;
+                totalFailed  += failedCount;
+
+                // Update badges from REAL data
+                const badgePending = document.getElementById(`badge-pending-${queue}`);
+                const badgeFailed  = document.getElementById(`badge-failed-${queue}`);
+                const badgeEmpty   = document.getElementById(`badge-empty-${queue}`);
+                const countEl      = document.getElementById(`pending-count-${queue}`);
+                const header       = document.querySelector(`[data-queue="${queue}"]`);
+
+                if (badgePending) {
+                    badgePending.textContent = `${pendingCount} pending`;
+                    badgePending.style.display = pendingCount > 0 ? '' : 'none';
+                }
+                if (badgeFailed) {
+                    badgeFailed.textContent = `${failedCount} failed`;
+                    badgeFailed.style.display = failedCount > 0 ? '' : 'none';
+                }
+                if (badgeEmpty) {
+                    badgeEmpty.style.display = (pendingCount === 0 && failedCount === 0) ? '' : 'none';
+                }
+                if (countEl) countEl.textContent = pendingCount;
+                if (header) {
+                    const dot = header.querySelector('.fa-circle');
+                    if (dot) {
+                        dot.className = `fas fa-circle fa-xs m-r-10 ${
+                            failedCount > 0 ? 'text-danger' : (pendingCount > 0 ? 'text-warning' : 'text-success')
+                        }`;
+                    }
+                }
+
+                // Rebuild tables
+                rebuildPendingTable(queue, pending);
+                rebuildFailedTable(queue, failed);
+            });
+
+            // Update summary cards
+            const summaryPending = document.getElementById('summary-pending');
+            const summaryFailed  = document.getElementById('summary-failed');
+            if (summaryPending) summaryPending.textContent = totalPending;
+            if (summaryFailed)  summaryFailed.textContent  = totalFailed;
+
+        } catch (err) {
+            console.error('Failed to fetch job details:', err);
+        }
     }
 
-    // function clearAllQueues() {
-    //     if (!confirm('Yakin ingin menghapus semua queue? Tindakan ini tidak dapat dibatalkan.')) return;
+    function updateBadge(queue, count) {
+        const badgePending = document.getElementById(`badge-pending-${queue}`);
+        const badgeEmpty   = document.getElementById(`badge-empty-${queue}`);
+        const countEl      = document.getElementById(`pending-count-${queue}`);
+        const header       = document.querySelector(`[data-queue="${queue}"]`);
 
-    //     fetch('/monitoring-kiriman/clear-queues', {
-    //         method: 'POST',
-    //         headers: {
-    //             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-    //             'Content-Type': 'application/json'
-    //         }
-    //     })
-    //     .then(r => r.json())
-    //     .then(data => {
-    //         if (data.status === 'success') window.location.reload();
-    //     })
-    //     .catch(err => {
-    //         alert('Gagal menghapus queue: ' + err.message);
-    //     });
-    // }
+        if (badgePending) {
+            badgePending.textContent = `${count} pending`;
+            badgePending.style.display = count > 0 ? '' : 'none';
+        }
+        if (badgeEmpty) {
+            badgeEmpty.style.display = count > 0 ? 'none' : '';
+        }
+        if (countEl) {
+            countEl.textContent = count;
+        }
+        if (header) {
+            const dot = header.querySelector('.fa-circle');
+            if (dot) {
+                dot.className = `fas fa-circle fa-xs m-r-10 ${count > 0 ? 'text-warning' : 'text-success'}`;
+            }
+        }
+    }
+
+    function rebuildPendingTable(queue, jobs) {
+        const tbody = document.getElementById(`pending-tbody-${queue}`);
+        const thead = document.getElementById(`pending-thead-${queue}`);
+        if (!tbody) return;
+
+        if (!jobs || jobs.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-3">
+                        <i class="fas fa-inbox m-r-5"></i> No pending jobs
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        // Collect unique param keys
+        const paramKeys = [...new Set(jobs.flatMap(j => Object.keys(j.params || {})))];
+
+        if (thead) {
+            thead.innerHTML = `<tr>
+                <th>UUID</th><th>Job Class</th><th>Attempts</th><th>No</th>
+                ${paramKeys.map(k => `<th>${k}</th>`).join('')}
+            </tr>`;
+        }
+
+        tbody.innerHTML = jobs.map((job, i) => `
+            <tr>
+                <td><div class="job-id-cell" title="${job.id || ''}">${job.id || '—'}</div></td>
+                <td><div class="job-class-cell">${(job.job_class || '—').split('\\').pop()}</div></td>
+                <td><span class="badge badge-info">${job.attempts || 0}</span></td>
+                <td class="param-cell text-muted">${i + 1}</td>
+                ${paramKeys.map(k => `<td class="param-cell">${job.params?.[k] ?? '—'}</td>`).join('')}
+            </tr>
+        `).join('');
+    }
+
+    function rebuildFailedTable(queue, jobs) {
+        const tbody = document.getElementById(`failed-tbody-${queue}`);
+        if (!tbody) return;
+
+        if (!jobs || jobs.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-3">
+                        <i class="fas fa-check-circle text-success m-r-5"></i> No failed jobs
+                    </td>
+                </tr>`;
+            return;
+        }
+
+        tbody.innerHTML = jobs.map(job => `
+            <tr>
+                <td class="param-cell text-muted">${job.id}</td>
+                <td><div class="job-class-cell">${(job.job_class || '—').split('\\').pop()}</div></td>
+                <td><span class="badge badge-warning">${job.attempts ?? '—'}</span></td>
+                <td class="param-cell text-muted" style="white-space:nowrap">${job.failed_at}</td>
+                <td><div class="exception-cell" title="${job.exception?.message || ''}">${job.exception?.message || '—'}</div></td>
+                <td class="param-cell text-muted">${job.connection || '—'}</td>
+            </tr>
+        `).join('');
+    }
+
+    // Load job details immediately on page load too
+    refreshJobTables();
+})();
+
+function toggleQueue(bodyId, chevronId) {
+    const body    = document.getElementById(bodyId);
+    const chevron = document.getElementById(chevronId);
+    const isOpen  = body.style.display !== 'none';
+    body.style.display = isOpen ? 'none' : 'block';
+    chevron.classList.toggle('rotated', !isOpen);
+}
 </script>
 @endpush
