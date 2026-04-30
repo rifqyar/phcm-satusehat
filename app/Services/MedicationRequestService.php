@@ -10,19 +10,20 @@ class MedicationRequestService
     public function process(array $payload): void
     {
         $idTrans = $payload['ID_TRANS'] ?? null;
+        $idUnit = $payload['id_unit'] ?? '001';
 
         if (!$idTrans) {
             throw new \Exception('ID_TRANS wajib ada');
         }
 
-        $encounter = $this->getEncounterByTrans($idTrans);
+        $encounter = $this->getEncounterByTrans($idTrans, $idUnit);
 
         if (!$encounter || !$encounter->id_satusehat_encounter) {
             throw new \Exception("Encounter SATUSEHAT belum ada untuk $idTrans");
         }
 
         // query obat
-        $items = $this->getMedicationByTrans($idTrans);
+        $items = $this->getMedicationByTrans($idTrans, $idUnit);
 
         // filter obat valid
         $items = $items->filter(function ($item) {
@@ -43,7 +44,7 @@ class MedicationRequestService
     }
 
 
-    private function getEncounterByTrans(string $idTrans)
+    private function getEncounterByTrans(string $idTrans, string $id_unit)
     {
         return DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.IF_HTRANS_OL as H')
@@ -60,11 +61,11 @@ class MedicationRequestService
             ])
             ->where('H.ID_TRANS', $idTrans)
             ->where('H.ACTIVE', 1)
-            ->whereIn('H.IDUNIT', ['001', '002'])
+            ->where('H.IDUNIT', $id_unit)
             ->first();
     }
 
-    private function getMedicationByTrans(string $idTrans)
+    private function getMedicationByTrans(string $idTrans, string $id_unit)
     {
         return DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.IF_HTRANS_OL as H')
@@ -105,7 +106,7 @@ class MedicationRequestService
             ])
             ->where('H.ID_TRANS', $idTrans)
             ->where('H.ACTIVE', 1)
-            ->whereIn('H.IDUNIT', ['001', '002'])
+            ->where('H.IDUNIT', $id_unit)
             ->get();
     }
 }

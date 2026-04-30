@@ -14,18 +14,19 @@ class MedicationDispenseService
     public function process(array $payload): void
     {
         $idTrans = $payload['ID_TRANS'] ?? null;
+        $id_unit = $payload['id_unit'] ?? null;
 
         if (!$idTrans) {
             throw new \Exception('ID_TRANS wajib ada');
         }
-        $encounter = $this->getEncounterDispense($idTrans);
+        $encounter = $this->getEncounterDispense($idTrans, $id_unit);
 
         if (!$encounter || !$encounter->id_satusehat_encounter) {
             // Dispense tidak boleh jalan tanpa encounter
             return;
         }
 
-        $items = $this->getMedicationDispenseByTrans($idTrans);
+        $items = $this->getMedicationDispenseByTrans($idTrans, $id_unit);
 
         if ($items->isEmpty()) {
             // tidak ada obat
@@ -55,7 +56,7 @@ class MedicationDispenseService
     /**
      * Cek Encounter untuk Dispense
      */
-    private function getEncounterDispense(string $idTrans)
+    private function getEncounterDispense(string $idTrans, string $id_unit)
     {
         return DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.IF_HTRANS as ih')
@@ -76,7 +77,7 @@ class MedicationDispenseService
                 'iho.ID_TRANS as ID_TRANS_DOKTER',
                 'NT.id_satusehat_encounter',
             ])
-            ->whereIn('ih.IDUNIT', ['001', '002'])
+            ->where('ih.IDUNIT', $id_unit)
             ->where('ih.ID_TRANS', $idTrans)
             ->first();
     }
@@ -84,7 +85,7 @@ class MedicationDispenseService
     /**
      * Ambil data obat untuk MedicationDispense
      */
-    private function getMedicationDispenseByTrans(string $idTrans)
+    private function getMedicationDispenseByTrans(string $idTrans, string $id_unit)
     {
         return DB::connection('sqlsrv')
             ->table('SIRS_PHCM.dbo.IF_TRANS as i')
@@ -115,7 +116,7 @@ class MedicationDispenseService
                 'ih.ID_TRANS_OL',
                 'iho.ID_TRANS as ID_TRANS_DOKTER',
             ])
-            ->whereIn('ih.IDUNIT', ['001', '002'])
+            ->where('ih.IDUNIT', $id_unit)
             ->where('i.ID_TRANS', $idTrans)
             ->get();
     }
