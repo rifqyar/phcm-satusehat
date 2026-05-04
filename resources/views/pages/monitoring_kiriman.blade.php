@@ -347,7 +347,7 @@
 @push('after-script')
 <script>
 (function () {
-    const ws = new WebSocket('ws://localhost:6001');
+    const ws = new WebSocket('ws://110.232.78.30:6001');
     const statusEl = document.getElementById('ws-status');
 
     ws.onopen = () => {
