@@ -1,8 +1,8 @@
 const { WebSocketServer } = require("ws");
 const Redis = require("ioredis");
 
-const redis = new Redis({ host: "127.0.0.1", port: 6379 });
-const wss = new WebSocketServer({ port: 6001 });
+const redis = new Redis({ host: "110.232.78.30", port: 6379 });
+const wss = new WebSocketServer({ host: "110.232.78.30", port: 6001 });
 
 const QUEUES = [
     "encounter",
@@ -101,4 +101,4 @@ wss.on("connection", async (ws) => {
     ws.send(JSON.stringify({ type: "queue_update", data }));
 });
 
-console.log("WS running on ws://localhost:6001");
+console.log("WS running on ws://110.232.78.30:6001");
