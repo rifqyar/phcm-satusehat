@@ -74,8 +74,9 @@ class MonitoringKirimanController extends Controller
         $allFailed = DB::table('failed_jobs')
             ->whereIn('queue', $queues)
             ->orderByDesc('failed_at')
-            ->get()
-            ->groupBy('queue');
+            ->get(['id', 'queue', 'payload', 'exception', 'failed_at', 'connection'])
+            ->groupBy('queue')
+            ->map(fn($jobs) => $jobs->take(20));
 
 
         foreach ($queues as $q) {
