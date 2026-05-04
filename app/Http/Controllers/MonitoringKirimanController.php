@@ -76,7 +76,9 @@ class MonitoringKirimanController extends Controller
             ->orderByDesc('failed_at')
             ->get(['id', 'queue', 'payload', 'exception', 'failed_at', 'connection'])
             ->groupBy('queue')
-            ->map(fn($jobs) => $jobs->take(20));
+            ->map(function ($jobs) {
+                return $jobs->take(20);
+            });
 
 
         foreach ($queues as $q) {
