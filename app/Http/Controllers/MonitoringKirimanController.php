@@ -57,7 +57,7 @@ class MonitoringKirimanController extends Controller
             ->whereIn('queue', $queues)
             ->orderByDesc('failed_at')
             ->limit(200)
-            ->get(['id', 'uuid', 'queue', 'payload', 'exception', 'failed_at', 'connection'])
+            ->get(['id', 'queue', 'payload', 'exception', 'failed_at', 'connection'])
             ->groupBy('queue');
 
         $data = [];
