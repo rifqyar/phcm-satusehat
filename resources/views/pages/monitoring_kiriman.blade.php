@@ -378,9 +378,9 @@
             let totalPending = 0;
             let totalFailed  = 0;
 
-            json.data.forEach(({ queue, pending, pending_total, failed }) => {
+            json.data.forEach(({ queue, pending, pending_total, failed, failed_total }) => {
                 const pendingCount = pending_total;
-                const failedCount  = failed.length;
+                const failedCount  = failed_total;
 
                 totalPending += pendingCount;
                 totalFailed  += failedCount;
@@ -421,7 +421,7 @@
 
                 // --- Rebuild tables ---
                 rebuildPendingTable(queue, pending, pending_total);
-                rebuildFailedTable(queue, failed);
+                rebuildFailedTable(queue, failed, failed_total);
             });
 
             // --- Summary ---
@@ -483,7 +483,7 @@
         }
     }
 
-    function rebuildFailedTable(queue, jobs) {
+    function rebuildFailedTable(queue, jobs, total) {
         const tbody = document.getElementById(`failed-tbody-${queue}`);
         if (!tbody) return;
 
@@ -507,6 +507,15 @@
                 <td class="param-cell text-muted">${job.connection || '—'}</td>
             </tr>
         `).join('');
+
+        if (total > jobs.length) {
+            tbody.innerHTML += `
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-2" style="font-size:0.78rem">
+                        <i class="fas fa-info-circle"></i> Showing ${jobs.length} of ${total} failed jobs
+                    </td>
+                </tr>`;
+        }
     }
 
     // Initial load
