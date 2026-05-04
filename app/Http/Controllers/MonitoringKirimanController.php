@@ -87,7 +87,7 @@ class MonitoringKirimanController extends Controller
                 + Redis::zcard($q . ':delayed');
 
             $failedJobs   = $allFailed->get($q, collect());
-            $totalFailed  = $failedJobs->count();
+            $totalFailed  = $failedJobs->count() ?? 0;
 
             $monitoringData[] = [
                 'queue'   => $q,
