@@ -77,10 +77,16 @@ class MonitoringKirimanController extends Controller
             ->get()
             ->groupBy('queue');
 
+
         foreach ($queues as $q) {
+            $totalPending = Redis::llen($q)
+                + Redis::zcard($q . ':reserved')
+                + Redis::zcard($q . ':delayed');
+
             $monitoringData[] = [
                 'queue'   => $q,
-                'pending' => $this->getPendingJobs($q),
+                'pending' => $this->getPendingJobs($q, 20),
+                'pending_total' => $totalPending,
                 'failed'  => $this->formatFailedJobs($allFailed->get($q, collect())),
             ];
         }
@@ -96,15 +102,15 @@ class MonitoringKirimanController extends Controller
      * Get pending job details directly from Redis.
      * Laravel stores queued jobs in a Redis list: queues:{queue_name}
      */
-    private function getPendingJobs(string $queue): array
+    private function getPendingJobs(string $queue, int $limit = 20): array
     {
         $redisKey = 'queues:' . $queue;
 
         // LRANGE gets all items in the list (0 to -1 = all)
         $rawJobs = array_merge(
-            Redis::lrange($redisKey, 0, -1),                    // pending
-            Redis::zrange($redisKey . ':reserved', 0, -1),      // reserved/processing
-            Redis::zrange($redisKey . ':delayed', 0, -1),       // delayed
+            Redis::lrange($redisKey, 0, $limit - 1),               // pending
+            Redis::zrange($redisKey . ':reserved', 0, $limit - 1), // reserved
+            Redis::zrange($redisKey . ':delayed', 0, $limit - 1),  // delayed
         );
 
         $jobs = [];
