@@ -70,6 +70,46 @@ class SendCondition implements ShouldQueue
             $httpStatus = $response->getStatusCode();
             $responseBody = json_decode($response->getBody(), true);
 
+
+
+            $conditionId = $responseBody['id'] ?? null;
+            $status = $conditionId ? 'success' : 'failed';
+
+            $logData = [
+                'karcis'  => $meta['karcis'],
+                'nota'    => $meta['nota'],
+                'idunit'  => $meta['idunit'],
+                'tgl'     => $meta['tgl'],
+                'rank'    => $meta['rank'] ?? 1,
+
+                'code'    => $payload['code']['coding'][0]['code'] ?? null,
+                'display' => $payload['code']['coding'][0]['display'] ?? null,
+
+                'id_satusehat_condition' => $conditionId,
+                'status_sinkron'         => $status === 'success' ? 1 : 0,
+                'crtusr'                 => $meta['user'] ?? 'system',
+                'crtdt'                  => now(),
+                'sinkron_date'           => $status === 'success' ? now() : null,
+            ];
+
+            $existing = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA')
+                ->where('karcis', $logData['karcis'])
+                ->where('rank', $logData['rank'])
+                ->where('idunit', $logData['idunit'])
+                ->first();
+
+            if ($existing) {
+
+                DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA')
+                    ->where('id', $existing->id)
+                    ->update($logData);
+            } else {
+
+                DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA')
+                    ->insert($logData);
+            }
+
+            $this->logDb(json_encode($responseBody), 'Condition', json_encode($payload), $meta['user'] ?? 'system', 1);
             $this->logInfo('Diagnosis', 'Sukses kirim data diagnosis', [
                 'payload' => $payload,
                 'response' => $responseBody,
@@ -85,6 +125,7 @@ class SendCondition implements ShouldQueue
                 $body   = (string) $e->getResponse()->getBody();
             }
 
+            $this->logDb(json_encode($responseBody), 'Condition', json_encode($payload), $meta['user'] ?? 'system', 0);
             $this->logError('Diagnosis', 'Gagal kirim data diagnosis', [
                 'payload' => $payload,
                 'response' => $body,
@@ -94,51 +135,6 @@ class SendCondition implements ShouldQueue
             throw new \RuntimeException(
                 'SATUSEHAT Condition failed HTTP=' . $status . ' BODY=' . $body
             );
-        }
-
-        $conditionId = $responseBody['id'] ?? null;
-        $status = $conditionId ? 'success' : 'failed';
-
-        DB::table('SATUSEHAT.dbo.SATUSEHAT_LOG_TRANSACTION')->insert([
-            'service' => 'Condition',
-            'request' => json_encode($payload),
-            'response' => json_encode($responseBody),
-            'created_by' => $meta['user'] ?? 'system',
-            'created_at' => now(),
-        ]);
-
-        $logData = [
-            'karcis'  => $meta['karcis'],
-            'nota'    => $meta['nota'],
-            'idunit'  => $meta['idunit'],
-            'tgl'     => $meta['tgl'],
-            'rank'    => $meta['rank'] ?? 1,
-
-            'code'    => $payload['code']['coding'][0]['code'] ?? null,
-            'display' => $payload['code']['coding'][0]['display'] ?? null,
-
-            'id_satusehat_condition' => $conditionId,
-            'status_sinkron'         => $status === 'success' ? 1 : 0,
-            'crtusr'                 => $meta['user'] ?? 'system',
-            'crtdt'                  => now(),
-            'sinkron_date'           => $status === 'success' ? now() : null,
-        ];
-
-        $existing = DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA')
-            ->where('karcis', $logData['karcis'])
-            ->where('rank', $logData['rank'])
-            ->where('idunit', $logData['idunit'])
-            ->first();
-
-        if ($existing) {
-
-            DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA')
-                ->where('id', $existing->id)
-                ->update($logData);
-        } else {
-
-            DB::table('SATUSEHAT.dbo.RJ_SATUSEHAT_DIAGNOSA')
-                ->insert($logData);
         }
     }
 
