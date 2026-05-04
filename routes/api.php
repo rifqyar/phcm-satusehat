@@ -13,10 +13,6 @@ use Illuminate\Support\Facades\Route;
 | is assigned the "api" middleware group. Enjoy building your API!
 |
 */
-Route::get('/', function () {
-    return response()->json(['message' => 'API is working'], 200);
-});
-
 Route::post('dispatch', [App\Http\Controllers\SatuSehat\DispatchController::class, 'dispatchController']);
 // Route::get('encounter', [App\Http\Controllers\SatuSehat\EncounterController::class, 'receiveSatuSehat'])->name('encounter');
 // Route::get('allergy-intolerance', [App\Http\Controllers\SatuSehat\AllergyIntoleranceController::class, 'receiveSatuSehat'])->name('allergy-intolerance');
